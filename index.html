@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ticker-tape</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Status bar (top) — indices strip -->
+    <div id="status-bar">
+        <span id="market-badge"></span>
+        <span id="indices-strip"></span>
+        <span id="clock"></span>
+    </div>
+
+    <!-- Three-panel layout -->
+    <div id="layout">
+        <!-- Sidebar (left) — watchlist + pulse -->
+        <div id="sidebar">
+            <div id="sidebar-header">
+                <span class="c-accent">Watchlist</span>
+                <div id="sidebar-updated" class="c-dim"></div>
+            </div>
+            <div id="watchlist"></div>
+            <div id="pulse"></div>
+        </div>
+
+        <!-- Resize handle -->
+        <div id="resize-handle"></div>
+
+        <!-- Main panel (right) — chat default, other views on command -->
+        <div id="main-panel"></div>
+    </div>
+
+    <!-- Input bar (bottom) — always visible -->
+    <div id="input-bar">
+        <span id="input-model" class="c-accent">ticker&gt;</span>
+        <input type="text" id="input" placeholder="type command or symbol..." autocomplete="off" spellcheck="false">
+    </div>
+
+    <!-- Settings modal (minimal, no Bootstrap) -->
+    <div id="settings-overlay" class="hidden" style="display:none">
+        <div id="settings-box">
+            <div class="settings-header">
+                <span class="c-accent">Settings</span>
+                <span id="settings-close" class="c-dim" style="cursor:pointer">[x]</span>
+            </div>
+            <div class="settings-row">
+                <label class="c-dim">Anthropic key</label>
+                <input type="password" id="key-anthropic" placeholder="sk-ant-...">
+            </div>
+            <div class="settings-row">
+                <label class="c-dim">Google AI key</label>
+                <input type="password" id="key-google" placeholder="AIza...">
+            </div>
+            <div class="settings-row">
+                <label class="c-dim">OpenAI key</label>
+                <input type="password" id="key-openai" placeholder="sk-...">
+            </div>
+            <div class="settings-row">
+                <label class="c-dim">Tavily key</label>
+                <input type="password" id="key-tavily" placeholder="tvly-...">
+            </div>
+            <div class="settings-row">
+                <label class="c-dim">Profile context</label>
+                <textarea id="user-profile" rows="3" placeholder="e.g. I'm a trader focused on semiconductors..."></textarea>
+            </div>
+            <div style="text-align:right;margin-top:8px">
+                <button id="btn-save-settings" class="btn-accent">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts — no Bootstrap needed -->
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/sidebar.js"></script>
+    <script src="js/chat/markdown.js"></script>
+    <script src="js/chat/memory.js"></script>
+    <script src="js/chat/providers.js"></script>
+    <script src="js/pages/dashboard.js"></script>
+    <script src="js/pages/market.js"></script>
+    <script src="js/pages/sectors.js"></script>
+    <script src="js/pages/heatmap.js"></script>
+    <script src="js/pages/earnings.js"></script>
+    <script src="js/pages/econ.js"></script>
+    <script src="js/pages/commodities.js"></script>
+    <script src="js/pages/technicals.js"></script>
+    <script src="js/pages/lookup.js"></script>
+    <script src="js/pages/charts.js"></script>
+    <script src="js/pages/news.js"></script>
+    <script src="js/chat/chat.js"></script>
+</body>
+</html>
