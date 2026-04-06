@@ -8,7 +8,7 @@ App.registerPage('lookup', function(container, data, params) {
     const info = data[`lookup/${symbol}.json`];
 
     if (!info) {
-        container.innerHTML = `<div class="text-dim p-4">No data for ${symbol}. <a href="#/">Back</a></div>`;
+        container.innerHTML = `<div class="c-dim" style="padding:16px">No data for ${symbol}. <a href="#/">Back</a></div>`;
         return;
     }
 
@@ -25,19 +25,19 @@ App.registerPage('lookup', function(container, data, params) {
     // Header
     html += '<div class="tt-section" style="padding:12px 16px">';
     html += `<div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">`;
-    html += `<span class="text-accent" style="font-size:20px;font-weight:700">${symbol}</span>`;
-    html += `<span class="text-dim">${info.shortName || info.longName || ''}</span>`;
+    html += `<span class="c-accent" style="font-size:20px;font-weight:700">${symbol}</span>`;
+    html += `<span class="c-dim">${info.shortName || info.longName || ''}</span>`;
     html += '</div>';
     html += `<div style="font-size:24px;font-weight:700;margin:4px 0">${Utils.fmtPrice(price)} ${Utils.colorChange(change, pct)}</div>`;
     if (info.preMarketPrice) {
         const pc = info.preMarketPrice - price;
         const pp = price ? (pc / price) * 100 : 0;
-        html += `<div class="text-purple" style="font-size:13px">Pre: ${Utils.fmtPrice(info.preMarketPrice)} ${Utils.colorPct(pp)}</div>`;
+        html += `<div class="c-purple" style="font-size:13px">Pre: ${Utils.fmtPrice(info.preMarketPrice)} ${Utils.colorPct(pp)}</div>`;
     }
     if (info.postMarketPrice) {
         const pc = info.postMarketPrice - price;
         const pp = price ? (pc / price) * 100 : 0;
-        html += `<div class="text-purple" style="font-size:13px">AH: ${Utils.fmtPrice(info.postMarketPrice)} ${Utils.colorPct(pp)}</div>`;
+        html += `<div class="c-purple" style="font-size:13px">AH: ${Utils.fmtPrice(info.postMarketPrice)} ${Utils.colorPct(pp)}</div>`;
     }
     html += '</div>';
 
@@ -72,7 +72,7 @@ App.registerPage('lookup', function(container, data, params) {
     html += '<div class="tt-section"><div class="tt-section-title">Other</div>';
     html += row('Beta', info.beta != null ? Number(info.beta).toFixed(2) : '\u2014');
     html += row('Dividend Yield', info.dividendYield != null ? Utils.fmtPct(info.dividendYield * 100) : '\u2014');
-    const recColor = { buy: 'positive', strong_buy: 'positive', hold: 'text-amber', sell: 'negative', strong_sell: 'negative' };
+    const recColor = { buy: 'positive', strong_buy: 'positive', hold: 'c-amber', sell: 'negative', strong_sell: 'negative' };
     html += row('Recommendation', info.recommendationKey ? `<span class="${recColor[info.recommendationKey] || ''}">${info.recommendationKey}</span>` : '\u2014');
     if (info.targetMeanPrice) {
         const upside = price ? ((info.targetMeanPrice - price) / price * 100).toFixed(1) : null;
@@ -123,8 +123,8 @@ App.registerPage('lookup', function(container, data, params) {
     html += '</div>';
     html += '</div>';
 
-    html += `<div class="mt-3"><a href="#/ta/${symbol}" class="btn btn-sm btn-outline-secondary me-2">Technicals</a>`;
-    html += `<a href="#/charts/${symbol}" class="btn btn-sm btn-outline-secondary">Charts</a></div>`;
+    html += `<div style="margin-top:12px"><a href="#/ta/${symbol}" class="nav-link">Technicals</a>`;
+    html += `<a href="#/charts/${symbol}" class="nav-link">Charts</a></div>`;
 
     container.innerHTML = html;
 });

@@ -5,11 +5,11 @@
 App.registerPage('commodities', function(container, data) {
     const commodities = data['commodities.json'];
     if (!commodities || !Object.keys(commodities).length) {
-        container.innerHTML = '<div class="text-dim p-4">Awaiting commodities data...</div>';
+        container.innerHTML = '<div class="c-dim" style="padding:16px">Awaiting commodities data...</div>';
         return;
     }
 
-    let html = '<h5 class="text-accent mb-3">Commodities</h5>';
+    let html = '<div class="tt-section-title">Commodities</div>';
 
     for (const [group, items] of Object.entries(commodities)) {
         if (!items || !items.length) continue;
@@ -21,9 +21,9 @@ App.registerPage('commodities', function(container, data) {
 
         for (const item of items) {
             html += '<tr>';
-            html += `<td class="text-accent">${item.symbol}</td>`;
-            html += `<td class="text-dim">${item.name || ''}</td>`;
-            html += `<td class="text-dim">${item.unit || ''}</td>`;
+            html += `<td class="c-accent">${item.symbol}</td>`;
+            html += `<td class="c-dim">${item.name || ''}</td>`;
+            html += `<td class="c-dim">${item.unit || ''}</td>`;
             html += `<td>${Utils.fmtPrice(item.price)}</td>`;
             html += `<td>${Utils.colorChange(item.change, item.pct)}</td>`;
             html += '</tr>';

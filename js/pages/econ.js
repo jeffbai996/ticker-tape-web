@@ -5,11 +5,11 @@
 App.registerPage('econ', function(container, data) {
     const events = data['econ.json'];
     if (!events || !events.length) {
-        container.innerHTML = '<div class="text-dim p-4">No economic events data.</div>';
+        container.innerHTML = '<div class="c-dim" style="padding:16px">No economic events data.</div>';
         return;
     }
 
-    let html = '<h5 class="text-accent mb-3">Economic Calendar</h5>';
+    let html = '<div class="tt-section-title">Economic Calendar</div>';
     html += '<div class="tt-section">';
     html += '<table class="tt-table"><thead><tr>';
     html += '<th>Event</th><th>Date</th><th style="text-align:right">Days Until</th>';
@@ -18,11 +18,11 @@ App.registerPage('econ', function(container, data) {
     for (const ev of events) {
         const type = ev.type || '';
         const typeCls = `econ-${type}`;
-        let daysCls = 'text-dim';
+        let daysCls = 'c-dim';
         if (ev.days_until != null) {
             if (ev.days_until <= 0) daysCls = 'negative';
             else if (ev.days_until <= 3) daysCls = 'negative';
-            else if (ev.days_until <= 7) daysCls = 'text-amber';
+            else if (ev.days_until <= 7) daysCls = 'c-amber';
         }
 
         html += '<tr>';

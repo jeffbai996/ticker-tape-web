@@ -8,13 +8,13 @@ App.registerPage('technicals', function(container, data, params) {
     const symbol = params.symbol;
 
     if (!allTech || !symbol) {
-        container.innerHTML = '<div class="text-dim p-4">No technicals data.</div>';
+        container.innerHTML = '<div class="c-dim" style="padding:16px">No technicals data.</div>';
         return;
     }
 
     const t = allTech[symbol];
     if (!t) {
-        container.innerHTML = `<div class="text-dim p-4">No technicals for ${symbol}. <a href="#/">Back</a></div>`;
+        container.innerHTML = `<div class="c-dim" style="padding:16px">No technicals for ${symbol}. <a href="#/">Back</a></div>`;
         return;
     }
 
@@ -27,7 +27,7 @@ App.registerPage('technicals', function(container, data, params) {
         return `${Utils.fmtPrice(avg)} <span class="${Utils.signClass(d)}">(${d >= 0 ? '+' : ''}${d.toFixed(1)}%)</span>`;
     };
 
-    let html = `<h5 class="text-accent mb-3">Technicals \u2014 ${Utils.symLink(symbol, 'lookup')}</h5>`;
+    let html = `<div class="tt-section-title">Technicals \u2014 ${Utils.symLink(symbol, 'lookup')}</div>`;
     html += '<div class="two-col">';
 
     // Left column
@@ -74,7 +74,7 @@ App.registerPage('technicals', function(container, data, params) {
     html += '<div class="tt-section"><div class="tt-section-title">Volume & Range</div>';
     html += row('Volume', Utils.fmtNum(t.current_vol));
     html += row('Avg Vol (20d)', Utils.fmtNum(t.avg_vol_20));
-    const vrCls = t.vol_ratio > 2 ? 'negative' : t.vol_ratio > 1.5 ? 'text-amber' : '';
+    const vrCls = t.vol_ratio > 2 ? 'negative' : t.vol_ratio > 1.5 ? 'c-amber' : '';
     html += row('Vol Ratio', t.vol_ratio != null ? `<span class="${vrCls}">${t.vol_ratio.toFixed(2)}x</span>` : '\u2014');
     html += row('52w High', t.high_52w != null ? `${Utils.fmtPrice(t.high_52w)} <span class="${Utils.signClass(t.off_high)}">(${t.off_high?.toFixed(1)}%)</span>` : '\u2014');
     html += row('52w Low', t.low_52w != null ? `${Utils.fmtPrice(t.low_52w)} <span class="positive">(+${t.off_low?.toFixed(1)}%)</span>` : '\u2014');
@@ -86,14 +86,14 @@ App.registerPage('technicals', function(container, data, params) {
         html += '<div class="tt-section"><div class="tt-section-title">Signals</div>';
         html += '<div style="display:flex;flex-wrap:wrap;gap:6px">';
         for (const sig of t.trend_signals) {
-            const cls = /above|golden|bullish/i.test(sig) ? 'positive' : /below|death|bearish/i.test(sig) ? 'negative' : 'text-dim';
-            html += `<span class="badge bg-dark ${cls}" style="font-size:11px">${sig}</span>`;
+            const cls = /above|golden|bullish/i.test(sig) ? 'positive' : /below|death|bearish/i.test(sig) ? 'negative' : 'c-dim';
+            html += `<span class="tt-badge ${cls}">${sig}</span>`;
         }
         html += '</div></div>';
     }
 
-    html += `<div class="mt-3"><a href="#/charts/${symbol}" class="btn btn-sm btn-outline-secondary me-2">Charts</a>`;
-    html += `<a href="#/lookup/${symbol}" class="btn btn-sm btn-outline-secondary">Fundamentals</a></div>`;
+    html += `<div style="margin-top:12px"><a href="#/charts/${symbol}" class="nav-link">Charts</a>`;
+    html += `<a href="#/lookup/${symbol}" class="nav-link">Fundamentals</a></div>`;
 
     container.innerHTML = html;
 });

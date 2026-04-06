@@ -186,12 +186,83 @@ body {
 
 /* --- Main Panel --- */
 #main-panel {
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 4px 8px;
+    min-width: 0;
+}
+
+/* --- Chat Resize Handle (hidden by default, shown when chat-open) --- */
+#chat-resize-handle {
+    display: none;
+    width: 3px;
+    cursor: col-resize;
+    background: var(--border);
+    flex-shrink: 0;
+}
+#chat-resize-handle:hover { background: var(--accent); }
+
+/* --- Chat Panel (hidden by default, shown when chat-open) --- */
+#chat-panel {
+    display: none;
+    flex-direction: column;
+    border-left: 1px solid var(--border);
+    overflow: hidden;
+    background: var(--bg-panel);
+    min-width: 0;
+}
+#chat-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    flex-shrink: 0;
+}
+.chat-header-btn {
+    color: var(--dim);
+    cursor: pointer;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    padding: 0 3px;
+}
+.chat-header-btn:hover { color: var(--accent); }
+#chat-panel-scroll {
     flex: 1;
     overflow-y: auto;
     padding: 4px 8px;
-    display: flex;
-    flex-direction: column;
 }
+#chat-panel-input-bar {
+    display: flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+    background: var(--bg-input);
+}
+#chat-panel-input-bar input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--white);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    outline: none;
+}
+
+/* Wide desktop: show chat panel in grid */
+@media (min-width: 1201px) {
+    #chat-toggle { display: inline !important; }
+    #layout.chat-open {
+        grid-template-columns: var(--sidebar-w) 3px 1fr 3px 300px;
+    }
+    #layout.chat-open #chat-resize-handle { display: block; }
+    #layout.chat-open #chat-panel { display: flex; }
+}
+/* Terminal scrollback sections */
+.terminal-section { border-bottom: 1px solid #111; padding-bottom: 4px; margin-bottom: 4px; }
+.terminal-section:last-child { border-bottom: none; }
 /* Fade-in on page switch */
 #main-panel > * { animation: fadeIn 0.12s ease-in; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -234,6 +305,13 @@ body {
 .c-white { color: var(--white); }
 .positive { color: var(--green); }
 .negative { color: var(--red); }
+
+/* Navigation links (page footer) */
+.nav-link { color: var(--accent); text-decoration: none; font-size: 12px; margin-right: 8px; }
+.nav-link:hover { color: #fff; }
+
+/* TUI badge (trend signals, tags) */
+.tt-badge { font-size: 11px; padding: 1px 6px; border: 1px solid #333; border-radius: 2px; display: inline-block; }
 
 /* --- Sparkline (SVG) --- */
 .sparkline {
@@ -281,6 +359,8 @@ body {
     font-family: var(--font-mono);
 }
 .chat-msg pre code { background: none; padding: 0; }
+.chat-msg .code-exec-block pre { background: none; padding: 2px 0; margin: 0; border-radius: 0; }
+.chat-msg .code-exec-block pre code { padding: 0; }
 .chat-msg ul, .chat-msg ol { padding-left: 18px; margin: 2px 0; }
 .chat-msg li { margin: 1px 0; }
 .chat-msg strong { color: #fff; }
@@ -295,6 +375,17 @@ body {
     margin: 4px 0;
     font-size: 12px;
     font-family: var(--font-mono);
+    overflow-x: auto;
+}
+.code-exec-block pre {
+    margin: 0;
+    padding: 2px 0;
+    white-space: pre;
+    overflow-x: auto;
+}
+.code-exec-block pre code {
+    padding: 0;
+    background: none;
 }
 .chat-thinking {
     color: var(--dim);
@@ -303,17 +394,18 @@ body {
 }
 
 /* --- Tables (for page views in main panel) --- */
+.tt-table-wrap { overflow-x: auto; }
 .tt-table {
     width: 100%;
     border-collapse: collapse;
     font-family: var(--font-mono);
-    font-size: 13px;
+    font-size: 12px;
 }
 .tt-table th {
     color: var(--dim);
     font-weight: 500;
-    font-size: 11px;
-    padding: 4px 6px;
+    font-size: 10px;
+    padding: 3px 4px;
     border-bottom: 1px solid #222;
     text-align: right;
     text-transform: uppercase;
@@ -326,12 +418,14 @@ body {
 .tt-table th:first-child { text-align: left; }
 .tt-table th .sort-arrow { font-size: 9px; margin-left: 2px; }
 .tt-table td {
-    padding: 3px 6px;
+    padding: 3px 4px;
     border-bottom: 1px solid #111;
     text-align: right;
     white-space: nowrap;
 }
 .tt-table td:first-child { text-align: left; }
+.tt-table td:nth-child(2) { text-align: left; }
+.tt-table th:nth-child(2) { text-align: left; }
 .tt-table tr:hover { background: #111; }
 
 .sym-link { color: var(--accent); font-weight: 600; text-decoration: none; }
@@ -351,16 +445,35 @@ body {
 /* Thesis dashboard header */
 .thesis-header {
     font-family: var(--font-mono);
-    font-size: 13px;
-    line-height: 1.5;
-    padding: 4px 0 8px;
-    margin-bottom: 8px;
+    font-size: 12px;
+    line-height: 1.4;
+    padding: 4px 0 6px;
+    margin-bottom: 6px;
     border-bottom: 1px solid #222;
 }
 .thesis-header .thesis-title {
     color: var(--blue);
     font-weight: 700;
     letter-spacing: 1px;
+}
+
+/* Dashboard two-line rows (TUI style) */
+.dash-row {
+    padding: 2px 0;
+    border-bottom: 1px solid #111;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.5;
+}
+.dash-row:hover { background: #0a0a0a; }
+.dash-line1 { white-space: nowrap; }
+.dash-line2 {
+    padding-left: 8px;
+    font-size: 11px;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 2px;
 }
 
 /* Summary bar (dashboard) */
@@ -377,7 +490,7 @@ body {
 .summary-value { font-weight: 600; font-family: var(--font-mono); }
 
 /* Two-col layout (lookup/technicals) */
-.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .detail-row { display: flex; justify-content: space-between; padding: 2px 0; border-bottom: 1px solid #111; }
 .detail-row .label { color: var(--dim); }
 .detail-row .value { text-align: right; font-family: var(--font-mono); }
@@ -482,6 +595,13 @@ body {
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: #222; border-radius: 2px; }
 ::-webkit-scrollbar-thumb:hover { background: #444; }
+
+/* Tablet & below: no persistent chat panel */
+@media (max-width: 1200px) {
+    #chat-panel { display: none !important; }
+    #chat-resize-handle { display: none !important; }
+    #chat-toggle { display: none !important; }
+}
 
 /* Mobile */
 @media (max-width: 768px) {

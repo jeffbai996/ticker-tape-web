@@ -114,7 +114,7 @@ const ChatEngine = (() => {
 })();
 
 // Register chat as a page
-App.registerPage('chat', function(container, data) {
+App.registerPage('chat', function(container, data, params) {
     const quotes = data['quotes.json'] || [];
     const tech = data['technicals.json'] || {};
     const meta = data['meta.json'] || {};
@@ -122,10 +122,19 @@ App.registerPage('chat', function(container, data) {
     const systemPrompt = buildSystemPrompt(quotes, tech, meta);
     ChatEngine._setPrompt(systemPrompt);
 
-    // Render chat history
-    const scroll = document.createElement('div');
-    scroll.className = 'chat-scroll';
+    // Panel mode: render into the dedicated chat panel scroll area
+    const isPanelMode = params?.panelMode;
+    let scroll;
 
+    if (isPanelMode) {
+        scroll = document.getElementById('chat-panel-scroll');
+        scroll.innerHTML = '';
+    } else {
+        scroll = document.createElement('div');
+        scroll.className = 'chat-scroll';
+    }
+
+    // Render chat history
     const history = window._chatHistory;
     for (const msg of history) {
         const div = document.createElement('div');
@@ -142,13 +151,16 @@ App.registerPage('chat', function(container, data) {
         const hint = document.createElement('div');
         hint.className = 'c-dim';
         hint.style.padding = '8px 0';
-        hint.textContent = 'Chat mode. Type messages below. Type "back" or press Esc to exit.';
+        hint.textContent = isPanelMode
+            ? 'Chat with AI. Type messages in the input below.'
+            : 'Chat mode. Type messages below. Type "back" or press Esc to exit.';
         scroll.appendChild(hint);
     }
 
-    container.replaceChildren(scroll);
+    if (!isPanelMode) {
+        container.replaceChildren(scroll);
+    }
     ChatEngine._setScrollEl(scroll);
-
     scroll.scrollTop = scroll.scrollHeight;
 });
 

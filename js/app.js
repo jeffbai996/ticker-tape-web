@@ -8,6 +8,8 @@ const App = (() => {
     let _refreshTimer = null;
     let _lastTimestamp = null;
     let _chatMode = false;
+    let _chatPanelOpen = false;
+    let _chatPanelInitialized = false;
 
     async function loadData(path) {
         const now = Date.now();
@@ -62,13 +64,19 @@ const App = (() => {
     // Deferred pipeline commands — show helpful message
     const DEFERRED_CMDS = ['impact', 'insider', 'options'];
 
-    /** Show a page view in the main panel. */
+    /** Show a page view in the main panel (appends — terminal-style scrollback). */
     async function showView(page, dataKeys, params) {
         const panel = document.getElementById('main-panel');
-        if (!PAGES[page]) { panel.textContent = 'Unknown view: ' + page; return; }
+        if (!PAGES[page]) { _appendOutput(panel, `<span class="c-dim">Unknown view: ${page}</span>`); return; }
         _chatMode = false;
         updatePrompt();
-        panel.innerHTML = '<div class="loading">Loading...</div>';
+
+        // Create a section for this command's output
+        const section = document.createElement('div');
+        section.className = 'terminal-section';
+        section.innerHTML = '<div class="loading">Loading...</div>';
+        panel.appendChild(section);
+        panel.scrollTop = panel.scrollHeight;
 
         const dataMap = {};
         await Promise.all(dataKeys.map(async path => { dataMap[path] = await loadData(path); }));
@@ -85,15 +93,15 @@ const App = (() => {
             // Live data fallback for missing symbols
             if (typeof LiveData !== 'undefined' && LiveData.isConfigured()) {
                 if (needsLookup && !dataMap[`lookup/${sym}.json`]) {
-                    panel.innerHTML = '<div class="loading">Fetching live data...</div>';
+                    section.innerHTML = '<div class="loading">Fetching live data...</div>';
                     dataMap[`lookup/${sym}.json`] = await LiveData.fetchLookup(sym);
                 }
                 if (needsChart && !dataMap[`charts/${sym}.json`]) {
-                    panel.innerHTML = '<div class="loading">Fetching live data...</div>';
+                    section.innerHTML = '<div class="loading">Fetching live data...</div>';
                     dataMap[`charts/${sym}.json`] = await LiveData.fetchChart(sym);
                 }
                 if (needsTech && !dataMap['technicals.json']?.[sym]) {
-                    panel.innerHTML = '<div class="loading">Fetching live data...</div>';
+                    section.innerHTML = '<div class="loading">Fetching live data...</div>';
                     const liveTech = await LiveData.fetchTechnicals(sym);
                     if (liveTech) {
                         if (!dataMap['technicals.json']) dataMap['technicals.json'] = {};
@@ -111,8 +119,18 @@ const App = (() => {
             const parts = params.symbols.split(/\s+/).map(s => s.toUpperCase());
             params.symbolList = parts;
         }
-        try { PAGES[page](panel, dataMap, params || {}); }
-        catch (e) { panel.textContent = 'Error: ' + e.message; console.error(e); }
+        try { PAGES[page](section, dataMap, params || {}); }
+        catch (e) { section.textContent = 'Error: ' + e.message; console.error(e); }
+        panel.scrollTop = panel.scrollHeight;
+    }
+
+    /** Append an HTML snippet to the main panel. */
+    function _appendOutput(panel, html) {
+        const section = document.createElement('div');
+        section.className = 'terminal-section';
+        section.innerHTML = `<div style="padding:4px 0">${html}</div>`;
+        panel.appendChild(section);
+        panel.scrollTop = panel.scrollHeight;
     }
 
     /** Show dashboard (default view). */
@@ -120,8 +138,84 @@ const App = (() => {
         showView('dashboard', ['quotes.json','technicals.json','sparklines.json','meta.json','market.json','earnings.json']);
     }
 
+    /** Check if viewport is wide enough for persistent chat panel. */
+    function isWideScreen() { return window.innerWidth > 1200; }
+
+    /** Toggle the persistent desktop chat panel. */
+    async function toggleChatPanel(open) {
+        _chatPanelOpen = open ?? !_chatPanelOpen;
+        const layout = document.getElementById('layout');
+        const toggle = document.getElementById('chat-toggle');
+
+        if (_chatPanelOpen) {
+            layout.classList.add('chat-open');
+            if (toggle) toggle.innerHTML = '<span class="c-accent">[chat]</span>';
+            await initChatPanelContent();
+        } else {
+            layout.classList.remove('chat-open');
+            if (toggle) toggle.innerHTML = '<span class="c-dim">[chat]</span>';
+        }
+    }
+
+    /** Initialize the persistent chat panel content (once). */
+    async function initChatPanelContent() {
+        if (_chatPanelInitialized) return;
+        _chatPanelInitialized = true;
+
+        const dataMap = {
+            'quotes.json': await loadData('quotes.json'),
+            'technicals.json': await loadData('technicals.json'),
+            'meta.json': await loadData('meta.json'),
+        };
+        // panelMode: chat.js renders into #chat-panel-scroll directly
+        if (PAGES.chat) PAGES.chat(null, dataMap, { panelMode: true });
+        updateChatPanelLabel();
+        // Focus chat input after panel opens
+        const chatInput = document.getElementById('chat-input');
+        if (chatInput) chatInput.focus();
+    }
+
+    /** Rebuild the chat system prompt with current data + memories. */
+    async function _refreshChatPrompt() {
+        if (typeof ChatEngine === 'undefined') return;
+        const dataMap = {
+            'quotes.json': await loadData('quotes.json'),
+            'technicals.json': await loadData('technicals.json'),
+            'meta.json': await loadData('meta.json'),
+        };
+        // buildSystemPrompt is defined in chat.js — we re-invoke the page to rebuild
+        // But simpler: just re-set the prompt via the page's builder
+        if (typeof buildSystemPrompt === 'function') {
+            const prompt = buildSystemPrompt(
+                dataMap['quotes.json'] || [],
+                dataMap['technicals.json'] || {},
+                dataMap['meta.json'] || {}
+            );
+            ChatEngine._setPrompt(prompt);
+        }
+    }
+
+    /** Update the model label shown in the chat panel header. */
+    function updateChatPanelLabel() {
+        const label = document.getElementById('chat-model-label');
+        const inputLabel = document.getElementById('chat-input-model');
+        if (label) label.textContent = Providers.getActiveConfig()?.label || '';
+        if (inputLabel) inputLabel.textContent = Providers.getActive() + '>';
+    }
+
     /** Enter chat mode. */
     async function enterChat(initialMsg) {
+        // Wide screen: use persistent side panel
+        if (isWideScreen()) {
+            await toggleChatPanel(true);
+            if (initialMsg) {
+                setTimeout(() => {
+                    if (typeof ChatEngine !== 'undefined') ChatEngine.sendFromInput(initialMsg);
+                }, 50);
+            }
+            return;
+        }
+        // Narrow screen: chat in main panel (existing behavior)
         _chatMode = true;
         updatePrompt();
         const panel = document.getElementById('main-panel');
@@ -203,7 +297,7 @@ const App = (() => {
         html += cmd('help, ?', 'This help screen');
 
         html += '</pre>';
-        panel.innerHTML = html;
+        _appendOutput(panel, html);
     }
 
     /** Update the input prompt indicator. */
@@ -232,11 +326,16 @@ const App = (() => {
             return;
         }
 
-        // Back to dashboard
-        if (lower === 'q' || lower === 'quit' || lower === 'back') { showDashboard(); return; }
+        // Back to dashboard (clears terminal)
+        if (lower === 'q' || lower === 'quit' || lower === 'back') {
+            document.getElementById('main-panel').innerHTML = '';
+            showDashboard();
+            return;
+        }
 
-        // Refresh
+        // Refresh — clear terminal + reload data
         if (lower === 'r' || lower === 'refresh') {
+            document.getElementById('main-panel').innerHTML = '';
             invalidateCache();
             Sidebar.render();
             Sidebar.renderStatusBar();
@@ -249,7 +348,6 @@ const App = (() => {
         if (modelMatch) {
             const name = modelMatch[1];
             if (!name) {
-                const panel = document.getElementById('main-panel');
                 let html = '<pre style="line-height:1.6;font-family:var(--font-mono)">\n<span class="c-accent">== MODELS ==</span>\n';
                 for (const [key, cfg] of Object.entries(Providers.MODELS)) {
                     const active = key === Providers.getActive() ? ' <span class="c-green">\u25C6</span>' : '  ';
@@ -257,16 +355,14 @@ const App = (() => {
                     html += `${active} <span class="c-amber">${key.padEnd(12)}</span>${cfg.label.padEnd(18)}${cfg.id.padEnd(34)}${hasKey}\n`;
                 }
                 html += '\n<span class="c-dim">Type model &lt;name&gt; to switch.</span></pre>';
-                panel.innerHTML = html;
-                _chatMode = false;
-                updatePrompt();
+                showOutput(html);
                 return;
             }
             if (Providers.MODELS[name]) {
                 Providers.setActive(name);
                 updatePrompt();
-                const panel = document.getElementById('main-panel');
-                panel.innerHTML = `<div style="padding:8px"><span class="c-green">Switched to ${Providers.MODELS[name].label}</span></div>`;
+                updateChatPanelLabel();
+                showOutput(`<span class="c-green">Switched to ${Providers.MODELS[name].label}</span>`);
                 return;
             }
         }
@@ -274,9 +370,6 @@ const App = (() => {
         // Resume chat
         if (lower === 'resume') {
             enterChat();
-            setTimeout(() => {
-                if (typeof ChatEngine !== 'undefined' && ChatEngine.showRecentHistory) ChatEngine.showRecentHistory(5);
-            }, 100);
             return;
         }
 
@@ -298,14 +391,50 @@ const App = (() => {
         const watchMatch = trimmed.match(/^watch\s+(\S+)$/i);
         if (watchMatch && typeof Watchlist !== 'undefined') {
             const sym = watchMatch[1].toUpperCase();
-            // Pass cached pipeline quotes so first-use seeding works
             const cached = DATA_CACHE['quotes.json'];
             const pipelineQuotes = cached?.data || [];
-            const inPipeline = pipelineQuotes.some(q => q.symbol === sym);
             Watchlist.add(sym, pipelineQuotes);
-            let msg = `<span class="c-green">Added ${sym} to watchlist</span>`;
-            if (!inPipeline) msg += `<br><span class="c-dim">${sym} not in pipeline data. Add to WATCHLIST_SYMBOLS secret for live data.</span>`;
-            showOutput(msg);
+            showOutput(`<span class="c-green">Added ${sym} to watchlist</span>`);
+
+            // If symbol not in pipeline, fetch live data and inject into caches
+            const inPipeline = pipelineQuotes.some(q => q.symbol === sym);
+            if (!inPipeline && typeof LiveData !== 'undefined' && LiveData.isConfigured()) {
+                showOutput(`<span class="c-dim">Fetching live data for ${sym}...</span>`);
+                (async () => {
+                    try {
+                        const [quote, sp, liveTech] = await Promise.all([
+                            LiveData.fetchQuote(sym),
+                            LiveData.fetchSparkline(sym),
+                            LiveData.fetchTechnicals(sym),
+                        ]);
+                        if (quote) {
+                            pipelineQuotes.push(quote);
+                            // Store name in meta cache
+                            const metaCache = DATA_CACHE['meta.json'];
+                            if (metaCache?.data) {
+                                if (!metaCache.data.names) metaCache.data.names = {};
+                                metaCache.data.names[sym] = quote.name || sym;
+                            }
+                        }
+                        if (sp) {
+                            const spCache = DATA_CACHE['sparklines.json'];
+                            if (spCache?.data) spCache.data[sym] = sp;
+                        }
+                        if (liveTech) {
+                            const tCache = DATA_CACHE['technicals.json'];
+                            if (tCache?.data) tCache.data[sym] = liveTech;
+                        }
+                        if (quote) {
+                            showOutput(`<span class="c-green">${sym} data loaded</span>`);
+                            Sidebar.render();
+                        } else {
+                            showOutput(`<span class="c-amber">Could not fetch data for ${sym}</span>`);
+                        }
+                    } catch (e) {
+                        showOutput(`<span class="negative">Error fetching ${sym}: ${e.message}</span>`);
+                    }
+                })();
+            }
             Sidebar.render();
             return;
         }
@@ -316,7 +445,7 @@ const App = (() => {
             Sidebar.render();
             return;
         }
-        if (lower === 'wl' && typeof Watchlist !== 'undefined') {
+        if ((lower === 'wl' || lower === 'watch') && typeof Watchlist !== 'undefined') {
             Watchlist.show();
             return;
         }
@@ -405,10 +534,10 @@ const App = (() => {
         showOutput(`<span class="c-dim">Unknown command:</span> ${trimmed.replace(/</g,'&lt;')}. <span class="c-dim">Type</span> <span class="c-green">?</span> <span class="c-dim">for help.</span>`);
     }
 
-    /** Show a quick output in main panel. */
+    /** Show a quick output in main panel (appends). */
     function showOutput(html) {
         const panel = document.getElementById('main-panel');
-        panel.innerHTML = `<div style="padding:8px">${html}</div>`;
+        _appendOutput(panel, html);
         _chatMode = false;
         updatePrompt();
     }
@@ -426,13 +555,14 @@ const App = (() => {
                 html += `  <span class="c-amber">${String(m.id).padEnd(4)}</span><span class="c-dim">${truncated}</span>\n`;
             }
             html += '</pre>';
-            document.getElementById('main-panel').innerHTML = html;
+            showOutput(html);
             return;
         }
 
         const addMatch = args.match(/^add\s+(.+)/i);
         if (addMatch) {
             Memory.addMemory(addMatch[1]);
+            _refreshChatPrompt();
             showOutput(`<span class="c-green">Memory saved.</span>`);
             return;
         }
@@ -440,6 +570,7 @@ const App = (() => {
         const editMatch = args.match(/^edit\s+(\d+)\s+(.+)/i);
         if (editMatch) {
             Memory.editMemory(parseInt(editMatch[1]), editMatch[2]);
+            _refreshChatPrompt();
             showOutput(`<span class="c-green">Memory ${editMatch[1]} updated.</span>`);
             return;
         }
@@ -447,6 +578,7 @@ const App = (() => {
         const delMatch = args.match(/^delete\s+(\d+)/i);
         if (delMatch) {
             Memory.removeMemory(parseInt(delMatch[1]));
+            _refreshChatPrompt();
             showOutput(`<span class="c-amber">Memory ${delMatch[1]} deleted.</span>`);
             return;
         }
@@ -479,7 +611,7 @@ const App = (() => {
                 html += `<span class="${roleCls}">${msg.role === 'user' ? 'Q' : 'A'}:</span> ${truncated.replace(/</g,'&lt;')}${msg.text?.length > 80 ? '...' : ''}\n`;
             }
             html += '</pre>';
-            document.getElementById('main-panel').innerHTML = html;
+            showOutput(html);
             return;
         }
 
@@ -500,7 +632,7 @@ const App = (() => {
                 html += `<span class="${roleCls}">${msg.role === 'user' ? 'Q' : 'A'}:</span> ${(msg.text||'').slice(0,80).replace(/</g,'&lt;')}\n`;
             }
             html += '</pre>';
-            document.getElementById('main-panel').innerHTML = html;
+            showOutput(html);
             return;
         }
 
@@ -583,10 +715,16 @@ const App = (() => {
         const el = document.getElementById('clock');
         if (el) {
             const now = new Date();
-            el.textContent = now.toLocaleTimeString('en-US', {
+            const time = now.toLocaleTimeString('en-US', {
                 hour: '2-digit', minute: '2-digit', timeZone: 'America/New_York', hour12: false,
-            }) + ' ET';
+            });
+            // Green dot = data loaded, red dot = no data yet
+            const hasData = !!DATA_CACHE['quotes.json']?.data;
+            const dot = hasData ? '<span class="c-green">\u25CF</span>' : '<span class="c-red">\u25CF</span>';
+            el.innerHTML = `${time} ET ${dot}`;
         }
+        // Also check sidebar staleness
+        if (typeof Sidebar !== 'undefined' && Sidebar.checkStaleness) Sidebar.checkStaleness();
     }
 
     // --- Context menu ---
@@ -695,11 +833,109 @@ const App = (() => {
         }, 60000);
     }
 
+    // --- Chat panel ---
+    function initChatPanel() {
+        const chatInput = document.getElementById('chat-input');
+        if (chatInput) {
+            chatInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    const text = chatInput.value.trim();
+                    if (!text) return;
+                    if (typeof ChatEngine !== 'undefined') ChatEngine.sendFromInput(text);
+                    chatInput.value = '';
+                }
+            });
+        }
+        const closeBtn = document.getElementById('chat-panel-close');
+        if (closeBtn) closeBtn.addEventListener('click', () => toggleChatPanel(false));
+
+        const toggleBtn = document.getElementById('chat-toggle');
+        if (toggleBtn) toggleBtn.addEventListener('click', () => toggleChatPanel());
+
+        // Model cycle button — cycles through models
+        const modelBtn = document.getElementById('chat-btn-model');
+        if (modelBtn) {
+            modelBtn.addEventListener('click', () => {
+                const keys = Object.keys(Providers.MODELS);
+                const idx = keys.indexOf(Providers.getActive());
+                const next = keys[(idx + 1) % keys.length];
+                Providers.setActive(next);
+                updatePrompt();
+                updateChatPanelLabel();
+                _showChatNotice(`Switched to ${Providers.MODELS[next].label}`);
+            });
+        }
+
+        // Memory viewer button
+        const memBtn = document.getElementById('chat-btn-memory');
+        if (memBtn) {
+            memBtn.addEventListener('click', () => {
+                if (typeof Memory === 'undefined') return;
+                const mems = Memory.load();
+                if (!mems.length) { _showChatNotice('No memories saved.'); return; }
+                let html = '<div class="c-accent" style="font-weight:700;margin-bottom:4px">Memories</div>';
+                for (const m of mems) {
+                    html += `<div style="padding:2px 0;font-size:11px"><span class="c-amber">[${m.id}]</span> <span class="c-dim">${m.text.replace(/</g,'&lt;')}</span></div>`;
+                }
+                _showChatNotice(html);
+            });
+        }
+
+        // Clear chat button
+        const clearBtn = document.getElementById('chat-btn-clear');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => {
+                window._chatHistory = [];
+                const scroll = document.getElementById('chat-panel-scroll');
+                if (scroll) {
+                    scroll.innerHTML = '';
+                    const hint = document.createElement('div');
+                    hint.className = 'c-dim';
+                    hint.style.padding = '8px 0';
+                    hint.textContent = 'Chat cleared. Type messages below.';
+                    scroll.appendChild(hint);
+                }
+                ChatEngine._setScrollEl(scroll);
+            });
+        }
+    }
+
+    /** Show a transient notice in the chat panel. */
+    function _showChatNotice(html) {
+        const scroll = document.getElementById('chat-panel-scroll');
+        if (!scroll) return;
+        const notice = document.createElement('div');
+        notice.className = 'chat-msg';
+        notice.innerHTML = `<div style="padding:4px 0;font-size:12px">${html}</div>`;
+        scroll.appendChild(notice);
+        scroll.scrollTop = scroll.scrollHeight;
+    }
+
+    // --- Chat panel resize ---
+    function initChatResize() {
+        const handle = document.getElementById('chat-resize-handle');
+        const chatPanel = document.getElementById('chat-panel');
+        if (!handle || !chatPanel) return;
+        let dragging = false;
+        handle.addEventListener('mousedown', () => { dragging = true; });
+        document.addEventListener('mousemove', (e) => {
+            if (!dragging) return;
+            const w = Math.max(250, Math.min(700, window.innerWidth - e.clientX));
+            chatPanel.style.width = w + 'px';
+            const sidebar = document.getElementById('sidebar');
+            const sideW = sidebar.getBoundingClientRect().width;
+            document.getElementById('layout').style.gridTemplateColumns = `${sideW}px 3px 1fr 3px ${w}px`;
+        });
+        document.addEventListener('mouseup', () => { dragging = false; });
+    }
+
     // --- Init ---
     function init() {
         initSettings();
         initResize();
+        initChatResize();
         initMobileToggle();
+        initChatPanel();
         initContextMenu();
 
         const input = document.getElementById('input');
@@ -727,6 +963,9 @@ const App = (() => {
         startRefresh();
         input.focus();
 
+        // Auto-open chat panel on wide screens
+        if (isWideScreen()) toggleChatPanel(true);
+
         // Global keyboard shortcuts
         document.addEventListener('keydown', (e) => {
             if (e.target === input) return;
@@ -750,6 +989,7 @@ const App = (() => {
                     _chatMode = false;
                     updatePrompt();
                 }
+                document.getElementById('main-panel').innerHTML = '';
                 showDashboard();
                 return;
             }

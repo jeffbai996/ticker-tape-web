@@ -55,14 +55,13 @@ const Watchlist = (() => {
     /** Show current watchlist in main panel. */
     function show() {
         const list = load();
-        const panel = document.getElementById('main-panel');
         if (!list || !list.length) {
-            panel.innerHTML = '<div style="padding:8px"><span class="c-dim">No custom watchlist. Showing all pipeline symbols.</span><br><span class="c-dim">Use</span> <span class="c-green">watch SYM</span> <span class="c-dim">to add.</span></div>';
+            App.showOutput('<span class="c-dim">No custom watchlist. Showing all pipeline symbols.</span> <span class="c-dim">Use</span> <span class="c-green">watch SYM</span> <span class="c-dim">to add.</span>');
         } else {
-            let html = '<div style="padding:8px"><span class="c-accent">Custom Watchlist</span> <span class="c-dim">(' + list.length + ')</span><br><br>';
+            let html = '<span class="c-accent">Custom Watchlist</span> <span class="c-dim">(' + list.length + ')</span><br>';
             for (const sym of list) html += `<span class="c-amber">${sym}</span>  `;
-            html += '<br><br><span class="c-dim">unwatch SYM to remove. Remove all to show defaults.</span></div>';
-            panel.innerHTML = html;
+            html += '<br><span class="c-dim">unwatch SYM to remove. Remove all to show defaults.</span>';
+            App.showOutput(html);
         }
     }
 

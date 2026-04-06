@@ -5,13 +5,13 @@
 App.registerPage('heatmap', function(container, data) {
     const quotes = data['quotes.json'];
     if (!quotes || !quotes.length) {
-        container.innerHTML = '<div class="text-dim p-4">Awaiting quote data...</div>';
+        container.innerHTML = '<div class="c-dim" style="padding:16px">Awaiting quote data...</div>';
         return;
     }
 
     const sorted = [...quotes].sort((a, b) => (b.pct || 0) - (a.pct || 0));
 
-    let html = '<h5 class="text-accent mb-3">Heatmap</h5>';
+    let html = '<div class="tt-section-title">Heatmap</div>';
     html += '<div class="heatmap-grid">';
 
     for (const q of sorted) {

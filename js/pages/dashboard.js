@@ -1,9 +1,7 @@
 /**
- * dashboard.js — Main thesis-style dashboard with TUI-format header + per-symbol rows.
- * Mirrors ticker-tape's thesis.py screen closely.
- *
- * Security note: innerHTML is used to render data from our own trusted JSON pipeline
- * (yfinance market data committed by GitHub Actions). No user-generated content.
+ * dashboard.js — Thesis dashboard mirroring ticker-tape's thesis.py.
+ * Two-line-per-symbol layout: line1 = sym/name/price/change/AH, line2 = indicators.
+ * Security: innerHTML from trusted pipeline data only (yfinance via GitHub Actions).
  */
 App.registerPage('dashboard', async function(container, data) {
     const quotes = data['quotes.json'];
@@ -18,80 +16,78 @@ App.registerPage('dashboard', async function(container, data) {
         return;
     }
 
-    // Apply watchlist filter
     const filtered = typeof Watchlist !== 'undefined' ? Watchlist.filter(quotes) : quotes;
-
-    // Merge localStorage groups with pipeline buckets
     const localGroups = typeof Groups !== 'undefined' ? Groups.load() : {};
     const mergedBuckets = Object.keys(localGroups).length ? localGroups : buckets;
 
     let html = '';
 
-    // --- Thesis header (TUI-style) ---
+    // --- Thesis header ---
     const count = filtered.length;
-    const gainers = filtered.filter(q => q.pct > 0).length;
-    const losers = filtered.filter(q => q.pct < 0).length;
+    const gainers = filtered.filter(q => (q.pct || 0) > 0).length;
+    const losers = filtered.filter(q => (q.pct || 0) < 0).length;
     const avgPct = filtered.reduce((s, q) => s + (q.pct || 0), 0) / count;
     const sorted = [...filtered].sort((a, b) => (b.pct || 0) - (a.pct || 0));
     const best = sorted[0];
     const worst = sorted[sorted.length - 1];
 
-    let aboveSma50 = 0, belowSma50 = 0, aboveSma200 = 0, belowSma200 = 0;
-    let oversold = 0, overbought = 0, totalRs = 0, rsCount = 0;
-    let totalOffHigh = 0, offHighCount = 0, totalVol = 0, volCount = 0;
+    let a50 = 0, b50 = 0, a200 = 0, b200 = 0, os = 0, ob = 0;
+    let sumRs = 0, nRs = 0, sumOh = 0, nOh = 0, sumVol = 0, nVol = 0;
     for (const q of filtered) {
-        const t = tech[q.symbol];
-        if (!t) continue;
-        if (t.sma_50 != null) { if (t.current > t.sma_50) aboveSma50++; else belowSma50++; }
-        if (t.sma_200 != null) { if (t.current > t.sma_200) aboveSma200++; else belowSma200++; }
-        if (t.rsi != null && t.rsi <= 30) oversold++;
-        if (t.rsi != null && t.rsi >= 70) overbought++;
-        if (t.rs_vs_bench != null) { totalRs += t.rs_vs_bench; rsCount++; }
-        if (t.off_high != null) { totalOffHigh += t.off_high; offHighCount++; }
-        if (t.vol_ratio != null) { totalVol += t.vol_ratio; volCount++; }
+        const t = tech[q.symbol]; if (!t) continue;
+        if (t.sma_50 != null) { t.current > t.sma_50 ? a50++ : b50++; }
+        if (t.sma_200 != null) { t.current > t.sma_200 ? a200++ : b200++; }
+        if (t.rsi != null && t.rsi <= 30) os++;
+        if (t.rsi != null && t.rsi >= 70) ob++;
+        if (t.rs_vs_bench != null) { sumRs += t.rs_vs_bench; nRs++; }
+        if (t.off_high != null) { sumOh += t.off_high; nOh++; }
+        if (t.vol_ratio != null) { sumVol += t.vol_ratio; nVol++; }
     }
 
-    const avgCls = avgPct >= 0 ? 'positive' : 'negative';
-    const avgSign = avgPct >= 0 ? '+' : '';
-
+    const ac = avgPct >= 0 ? 'positive' : 'negative';
     html += '<div class="thesis-header">';
-    html += `<div class="thesis-title">== THESIS DASHBOARD ==</div>`;
-    html += `<span class="c-dim">Positions:</span> ${count}  `;
-    html += `<span class="c-dim">Avg:</span> <span class="${avgCls}">${avgSign}${avgPct.toFixed(2)}%</span>  `;
-    html += `<span class="positive">\u25B2${gainers}</span> <span class="negative">\u25BC${losers}</span>\n`;
-    html += `<span class="c-dim">Best:</span> <span class="positive">${best.symbol} +${(best.pct||0).toFixed(2)}%</span>  `;
-    html += `<span class="c-dim">Worst:</span> <span class="negative">${worst.symbol} ${(worst.pct||0).toFixed(2)}%</span>\n`;
-    html += `<span class="c-dim">SMA50:</span> <span class="positive">\u25B2${aboveSma50} above</span>  <span class="negative">\u25BC${belowSma50} below</span>\n`;
-    html += `<span class="c-dim">SMA200:</span> <span class="positive">\u25B2${aboveSma200} above</span>  <span class="negative">\u25BC${belowSma200} below</span>\n`;
-    if (offHighCount) html += `<span class="c-dim">Avg off-high:</span> <span class="negative">${(totalOffHigh/offHighCount).toFixed(0)}%H</span>\n`;
-    if (rsCount) html += `<span class="c-dim">Avg RS:</span> <span class="${totalRs/rsCount >= 0 ? 'positive' : 'negative'}">${totalRs/rsCount >= 0 ? '+' : ''}${(totalRs/rsCount).toFixed(1)}%R</span>\n`;
+    html += '<div class="thesis-title">== THESIS DASHBOARD ==</div>';
+    html += `<span class="c-dim">Positions:</span> ${count}  <span class="c-dim">Avg:</span> <span class="${ac}">${avgPct >= 0 ? '+' : ''}${avgPct.toFixed(2)}%</span>  <span class="positive">\u25B2${gainers}</span> <span class="negative">\u25BC${losers}</span>\n`;
+    html += `<span class="c-dim">Best:</span> <span class="positive">${best.symbol} +${(best.pct||0).toFixed(2)}%</span>  <span class="c-dim">Worst:</span> <span class="negative">${worst.symbol} ${(worst.pct||0).toFixed(2)}%</span>\n`;
+    html += `<span class="c-dim">SMA50:</span> <span class="positive">\u25B2${a50} above</span>  <span class="negative">\u25BC${b50} below</span>  `;
+    html += `<span class="c-dim">SMA200:</span> <span class="positive">\u25B2${a200} above</span>  <span class="negative">\u25BC${b200} below</span>\n`;
+    if (os || ob) html += `<span class="c-dim">RSI:</span> ${os ? `<span class="positive">${os} oversold</span>  ` : ''}${ob ? `<span class="negative">${ob} overbought</span>` : ''}\n`;
+    if (nVol) html += `<span class="c-dim">Vol:</span> ${(sumVol/nVol).toFixed(1)}x avg  `;
+    if (nOh) html += `<span class="c-dim">Avg off-high:</span> <span class="negative">${(sumOh/nOh).toFixed(0)}%H</span>  `;
+    if (nRs) html += `<span class="c-dim">Avg RS:</span> <span class="${sumRs/nRs >= 0 ? 'positive' : 'negative'}">${sumRs/nRs >= 0 ? '+' : ''}${(sumRs/nRs).toFixed(1)}%R</span>`;
+    html += '\n';
 
-    // Market context row — load from market.json if available
+    // Market context
     const market = data['market.json'] || await App.loadData('market.json');
     if (market) {
-        const mLookup = {};
+        const ml = {};
         for (const items of Object.values(market)) {
             if (!Array.isArray(items)) continue;
-            for (const item of items) mLookup[item.symbol] = item;
+            for (const it of items) ml[it.symbol] = it;
         }
-        const mkItems = [
-            { key: '^GSPC', label: 'SP' }, { key: '^VIX', label: 'V' },
+        const mk = [
+            { key: '^GSPC', label: 'SP' }, { key: '^IXIC', label: 'ND' },
+            { key: '^SOX', label: 'SOX' }, { key: '^VIX', label: 'V' },
             { key: 'DX-Y.NYB', label: 'DXY' }, { key: '^TNX', label: '10Y' },
             { key: 'CL=F', label: 'W' }, { key: 'GC=F', label: 'G' },
-            { key: '^SOX', label: 'SO' }, { key: 'BTC-USD', label: 'BTC' },
+            { key: 'BTC-USD', label: 'BTC' },
         ];
-        let mkLine = '<span class="c-dim">Market:</span> ';
-        for (const mi of mkItems) {
-            const item = mLookup[mi.key];
-            if (!item) continue;
-            const cls = (item.pct || 0) >= 0 ? 'positive' : 'negative';
-            mkLine += `<span class="c-dim">${mi.label}</span> <span class="${cls}">${item.pct >= 0 ? '+' : ''}${(item.pct||0).toFixed(1)}%</span>  `;
+        let line = '<span class="c-dim">Market:</span> ';
+        for (const m of mk) {
+            const it = ml[m.key]; if (!it) continue;
+            const c = (it.pct || 0) >= 0 ? 'positive' : 'negative';
+            // VIX/10Y show price not %, others show %
+            if (m.key === '^VIX' || m.key === '^TNX') {
+                line += `<span class="c-dim">${m.label}</span> <span class="${c}">${it.price?.toFixed(1)}</span>  `;
+            } else {
+                line += `<span class="c-dim">${m.label}</span> <span class="${c}">${(it.pct||0) >= 0 ? '+' : ''}${(it.pct||0).toFixed(1)}%</span>  `;
+            }
         }
-        html += mkLine;
+        html += line;
     }
     html += '</div>';
 
-    // --- Per-group or flat list ---
+    // --- Per-symbol rows (TUI two-line layout) ---
     const bucketNames = Object.keys(mergedBuckets);
     const groups = bucketNames.length
         ? bucketNames.map(name => ({ name, symbols: mergedBuckets[name] }))
@@ -100,68 +96,98 @@ App.registerPage('dashboard', async function(container, data) {
     const quoteMap = {};
     filtered.forEach(q => quoteMap[q.symbol] = q);
 
-    // Load earnings for days-until column
     const earnings = data['earnings.json'] || await App.loadData('earnings.json');
-    const earningsMap = {};
-    if (earnings) for (const e of earnings) earningsMap[e.symbol] = e;
+    const erMap = {};
+    if (earnings) for (const e of earnings) erMap[e.symbol] = e;
 
     for (const group of groups) {
         if (group.name) {
-            html += `<div class="tt-section-title" style="margin-top:12px">${group.name}</div>`;
+            html += `<div class="tt-section-title" style="margin-top:8px">${group.name}</div>`;
         }
-        html += '<table class="tt-table"><thead><tr>';
-        html += '<th>Symbol</th><th>Name</th><th>Price</th><th>Change</th>';
-        html += '<th>Sparkline</th><th>RSI</th><th>52w</th><th>Earn</th><th>SMA</th><th>Vol</th><th>Off High</th><th>RS</th>';
-        html += '</tr></thead><tbody>';
 
         for (const sym of group.symbols) {
             const q = quoteMap[sym];
             if (!q) continue;
             const t = tech[sym] || {};
             const sp = sparklines[sym];
-            const name = names[sym] || '';
-            const er = earningsMap[sym];
+            const name = (names[sym] || '').slice(0, 19);
+            const er = erMap[sym];
 
-            let extHtml = '';
-            if (q.ext_price) {
-                extHtml = ` <span class="c-purple" style="font-size:11px">${q.ext_label || 'AH'} ${Utils.fmtPrice(q.ext_price)} ${Utils.fmtPct(q.ext_pct)}</span>`;
+            // --- Line 1: Symbol  Name  Price  Change  AH ---
+            const arrow = (q.pct || 0) >= 0 ? '\u25B2' : '\u25BC';
+            const chgCls = (q.pct || 0) >= 0 ? 'positive' : 'negative';
+
+            let line1 = `<span class="c-accent" style="font-weight:700">${sym}</span>`;
+            line1 += `  <span class="c-dim" style="font-family:var(--font-ui)">${name}</span>`;
+            line1 += `  <span style="color:#fff;font-weight:700">${Utils.fmtPrice(q.price)}</span>`;
+            line1 += `  <span class="${chgCls}">${arrow}${Math.abs(q.change||0).toFixed(2)}</span>`;
+            line1 += `  <span class="${chgCls}" style="opacity:0.7">(${(q.pct||0) >= 0 ? '+' : ''}${(q.pct||0).toFixed(2)}%)</span>`;
+
+            if (q.ext_price != null) {
+                const eCls = (q.ext_pct || 0) >= 0 ? 'positive' : 'negative';
+                line1 += `  <span class="c-purple" style="font-weight:700">${q.ext_label || 'AH'}</span>`;
+                line1 += `  <span style="color:#fff">${Utils.fmtPrice(q.ext_price)}</span>`;
+                line1 += `  <span class="${eCls}">${(q.ext_pct||0) >= 0 ? '+' : ''}${(q.ext_pct||0).toFixed(1)}%</span>`;
             }
 
-            let smaHtml = '';
+            // --- Line 2: Sparkline  RSI  52w  Earn  SMA  Vol  %H  %R ---
+            const parts = [];
+
+            // Sparkline
+            parts.push(Utils.sparklineSVG(sp, 60, 14));
+
+            // RSI — "R ##" format
+            if (t.rsi != null) {
+                const rc = t.rsi >= 70 ? 'negative' : t.rsi <= 30 ? 'positive' : '';
+                parts.push(`<span class="${rc}">R ${t.rsi.toFixed(0)}</span>`);
+            }
+
+            // 52w range bar
+            parts.push(Utils.rangeBar(t.current, t.low_52w, t.high_52w, 40));
+
+            // Earnings countdown
+            if (er && er.days_until != null) {
+                const d = er.days_until;
+                if (d === 0) parts.push('<span class="negative" style="font-weight:700">TODAY</span>');
+                else if (d <= 7) parts.push(`<span class="negative" style="font-weight:700">${d}d</span>`);
+                else if (d <= 30) parts.push(`<span class="c-amber">${d}d</span>`);
+                else parts.push(`<span class="c-dim">${d}d</span>`);
+            }
+
+            // SMA crosses
             if (t.sma_50 != null) {
-                smaHtml += t.current > t.sma_50
-                    ? '<span class="positive">&gt;50</span> '
-                    : '<span class="negative">&lt;50</span> ';
+                parts.push(t.current > t.sma_50
+                    ? '<span class="positive">&gt;50</span>'
+                    : '<span class="negative">&lt;50</span>');
             }
             if (t.sma_200 != null) {
-                smaHtml += t.current > t.sma_200
+                parts.push(t.current > t.sma_200
                     ? '<span class="positive">&gt;200</span>'
-                    : '<span class="negative">&lt;200</span>';
+                    : '<span class="negative">&lt;200</span>');
             }
 
-            // Earnings days
-            let erHtml = '\u2014';
-            if (er && er.days_until != null) {
-                const erCls = er.days_until <= 7 ? 'negative' : er.days_until <= 30 ? 'c-amber' : 'c-dim';
-                erHtml = `<span class="${erCls}">${er.days_until}d</span>`;
+            // Vol ratio
+            if (t.vol_ratio != null) {
+                const vc = t.vol_ratio > 2 ? 'negative' : t.vol_ratio > 1.3 ? 'c-amber' : 'c-dim';
+                parts.push(`<span class="${vc}">${t.vol_ratio.toFixed(1)}xv</span>`);
             }
 
-            html += '<tr>';
-            html += `<td>${Utils.symLink(sym)}</td>`;
-            html += `<td class="c-dim" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;font-family:var(--font-ui)">${name}</td>`;
-            html += `<td>${Utils.fmtPrice(q.price)}${extHtml}</td>`;
-            html += `<td>${Utils.colorChange(q.change, q.pct)}</td>`;
-            html += `<td>${Utils.sparklineSVG(sp, 80, 20)}</td>`;
-            html += `<td class="${Utils.rsiColor(t.rsi)}" title="RSI: ${t.rsi != null ? t.rsi.toFixed(1) : 'N/A'}">R ${t.rsi != null ? t.rsi.toFixed(0) : '\u2014'}</td>`;
-            html += `<td>${Utils.rangeBar(t.current, t.low_52w, t.high_52w, 60)}</td>`;
-            html += `<td>${erHtml}</td>`;
-            html += `<td>${smaHtml || '\u2014'}</td>`;
-            html += `<td>${t.vol_ratio != null ? t.vol_ratio.toFixed(1) + 'x' : '\u2014'}</td>`;
-            html += `<td class="${Utils.signClass(t.off_high)}" title="Off 52w high">${t.off_high != null ? t.off_high.toFixed(0) + '%H' : '\u2014'}</td>`;
-            html += `<td class="${Utils.signClass(t.rs_vs_bench)}" title="Relative strength vs benchmark">${t.rs_vs_bench != null ? (t.rs_vs_bench > 0 ? '+' : '') + t.rs_vs_bench.toFixed(0) + '%R' : '\u2014'}</td>`;
-            html += '</tr>';
+            // Off high
+            if (t.off_high != null) {
+                const hc = t.off_high > -5 ? 'positive' : t.off_high > -20 ? 'c-amber' : 'negative';
+                parts.push(`<span class="${hc}">${t.off_high > 0 ? '+' : ''}${t.off_high.toFixed(0)}%H</span>`);
+            }
+
+            // RS vs bench
+            if (t.rs_vs_bench != null) {
+                const rsc = t.rs_vs_bench > 0 ? 'positive' : 'negative';
+                parts.push(`<span class="${rsc}">${t.rs_vs_bench > 0 ? '+' : ''}${t.rs_vs_bench.toFixed(0)}%R</span>`);
+            }
+
+            let line2 = parts.filter(Boolean).join('&nbsp;&nbsp;');
+
+            html += `<div class="dash-row"><div class="dash-line1">${line1}</div><div class="dash-line2">${line2}</div></div>`;
         }
-        html += '</tbody></table>';
     }
 
     container.innerHTML = html;

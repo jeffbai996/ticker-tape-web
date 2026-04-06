@@ -40,13 +40,13 @@ const Utils = (() => {
 
     /** Return CSS class for positive/negative */
     function signClass(n) {
-        if (n == null || n === 0) return 'text-dim';
+        if (n == null || n === 0) return 'c-dim';
         return n > 0 ? 'positive' : 'negative';
     }
 
     /** Color-coded change span: +5.23 (+1.20%) */
     function colorChange(change, pct) {
-        if (change == null) return '<span class="text-dim">\u2014</span>';
+        if (change == null) return '<span class="c-dim">\u2014</span>';
         const cls = signClass(change);
         const arrow = change >= 0 ? '\u25B2' : '\u25BC';
         const sign = change >= 0 ? '+' : '';
@@ -55,7 +55,7 @@ const Utils = (() => {
 
     /** Color-coded percentage only */
     function colorPct(pct) {
-        if (pct == null) return '<span class="text-dim">\u2014</span>';
+        if (pct == null) return '<span class="c-dim">\u2014</span>';
         const cls = signClass(pct);
         const sign = pct >= 0 ? '+' : '';
         return `<span class="${cls}">${sign}${Number(pct).toFixed(2)}%</span>`;
@@ -82,10 +82,10 @@ const Utils = (() => {
 
     /** RSI color class */
     function rsiColor(rsi) {
-        if (rsi == null) return 'text-dim';
+        if (rsi == null) return 'c-dim';
         if (rsi >= 70) return 'negative';
         if (rsi <= 30) return 'positive';
-        return 'text-light';
+        return '';
     }
 
     /** Horizontal bar chart div */
@@ -113,13 +113,13 @@ const Utils = (() => {
     /** Market state badge */
     function stateBadge(state) {
         const map = {
-            'open': ['Open', 'bg-success'],
-            'pre': ['Pre-Market', 'bg-warning text-dark'],
-            'post': ['After Hours', 'bg-info text-dark'],
-            'closed': ['Closed', 'bg-secondary'],
+            'open': ['Open', 'c-green'],
+            'pre': ['Pre-Market', 'c-amber'],
+            'post': ['After Hours', 'c-blue'],
+            'closed': ['Closed', 'c-red'],
         };
-        const [label, cls] = map[state] || ['Unknown', 'bg-secondary'];
-        return `<span class="badge ${cls}">${label}</span>`;
+        const [label, cls] = map[state] || ['Unknown', 'c-dim'];
+        return `<span class="${cls}" style="font-weight:700">${label}</span>`;
     }
 
     /** Create a clickable symbol link */

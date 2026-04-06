@@ -5,11 +5,11 @@
 App.registerPage('market', function(container, data) {
     const market = data['market.json'];
     if (!market) {
-        container.innerHTML = '<div class="text-dim p-4">Awaiting market data...</div>';
+        container.innerHTML = '<div class="c-dim" style="padding:16px">Awaiting market data...</div>';
         return;
     }
 
-    let html = '<h5 class="text-accent mb-3">Market Overview</h5>';
+    let html = '<div class="tt-section-title">Market Overview</div>';
 
     for (const [group, items] of Object.entries(market)) {
         if (!items || !items.length) continue;
@@ -21,8 +21,8 @@ App.registerPage('market', function(container, data) {
 
         for (const item of items) {
             html += '<tr>';
-            html += `<td class="text-accent">${item.symbol}</td>`;
-            html += `<td class="text-dim">${item.name || ''}</td>`;
+            html += `<td class="c-accent">${item.symbol}</td>`;
+            html += `<td class="c-dim">${item.name || ''}</td>`;
             html += `<td>${Utils.fmtPrice(item.price)}</td>`;
             html += `<td>${Utils.colorChange(item.change, item.pct)}</td>`;
             html += '</tr>';

@@ -94,9 +94,26 @@ const Sidebar = (() => {
         el.innerHTML = html;
     }
 
+    let _lastDataTime = Date.now();
+
     function renderUpdated(meta) {
         const el = document.getElementById('sidebar-updated');
-        if (meta?.quotes_timestamp) el.textContent = `Updated ${meta.quotes_timestamp}`;
+        if (meta?.quotes_timestamp) {
+            _lastDataTime = Date.now();
+            el.innerHTML = `Updated ${meta.quotes_timestamp} <span class="c-green">\u25CF</span>`;
+        }
+    }
+
+    /** Called on a timer — turns indicator red if data goes stale. */
+    function checkStaleness() {
+        const el = document.getElementById('sidebar-updated');
+        if (!el) return;
+        const age = Date.now() - _lastDataTime;
+        // Stale after 10 minutes (pipeline runs every 5 min on weekdays)
+        if (age > 600000) {
+            const text = el.textContent.replace(/\s*●.*$/, '');
+            el.innerHTML = `<span class="c-accent">${text}</span> <span class="c-red">\u25CF</span>`;
+        }
     }
 
     async function renderStatusBar() {
@@ -114,15 +131,31 @@ const Sidebar = (() => {
         if (!market) { stripEl.textContent = ''; return; }
 
         const indices = [
-            { key: 'ES=F', label: 'ES' },    { key: 'NQ=F', label: 'NQ' },
-            { key: '^HSI', label: 'H' },      { key: '^SOX', label: 'SO' },
-            { key: '^VIX', label: 'V', noArrow: true, dec: 1 },
-            { key: 'CL=F', label: 'W', noArrow: true, dec: 1 },
-            { key: 'BZ=F', label: 'B', noArrow: true, dec: 1 },
-            { key: 'GC=F', label: 'G', noArrow: true },
-            { key: 'SI=F', label: 'Si', noArrow: true, dec: 1 },
-            { key: 'NG=F', label: 'N', noArrow: true, dec: 2 },
+            // Equity indices — show price + arrow + %
+            { key: '^GSPC', label: 'SP' },
+            { key: '^IXIC', label: 'ND' },
+            { key: 'ES=F', label: 'ES' },
+            { key: 'NQ=F', label: 'NQ' },
+            { key: '^DJI', label: 'DJ' },
+            { key: '^RUT', label: 'R2K' },
+            { key: '^SOX', label: 'SOX' },
+            { key: '^HSI', label: 'HSI' },
+            { key: '^N225', label: 'NK' },
+            { key: '^KS11', label: 'KS' },
+            // Rates & Vol — show price only
+            { key: '^VIX', label: 'VIX', noArrow: true, dec: 1 },
+            { key: '^TNX', label: '10Y', noArrow: true, dec: 2 },
+            { key: 'DX-Y.NYB', label: 'DXY', noArrow: true, dec: 1 },
+            // Commodities
+            { key: 'CL=F', label: 'WTI', noArrow: true, dec: 1 },
+            { key: 'BZ=F', label: 'Brent', noArrow: true, dec: 1 },
+            { key: 'GC=F', label: 'Gold', noArrow: true, dec: 0 },
+            { key: 'SI=F', label: 'Ag', noArrow: true, dec: 1 },
             { key: 'HG=F', label: 'Cu', noArrow: true, dec: 2 },
+            { key: 'NG=F', label: 'NG', noArrow: true, dec: 2 },
+            // Crypto
+            { key: 'BTC-USD', label: 'BTC', noArrow: true, dec: 0 },
+            { key: 'ETH-USD', label: 'ETH', noArrow: true, dec: 0 },
         ];
 
         const lookup = {};
@@ -151,5 +184,5 @@ const Sidebar = (() => {
         }) + ' ET';
     }
 
-    return { render, renderStatusBar };
+    return { render, renderStatusBar, checkStaleness };
 })();

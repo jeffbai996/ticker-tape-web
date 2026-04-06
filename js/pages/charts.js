@@ -19,12 +19,12 @@ App.registerPage('charts', async function(container, data, params) {
     const chartData = data[`charts/${symbol}.json`];
 
     if (!chartData) {
-        container.innerHTML = `<div class="text-dim p-4">No chart data for ${symbol}. <a href="#/">Back</a></div>`;
+        container.innerHTML = `<div class="c-dim" style="padding:16px">No chart data for ${symbol}. <a href="#/">Back</a></div>`;
         return;
     }
 
     try { await loadLWC(); } catch {
-        container.innerHTML = '<div class="text-dim p-4">Failed to load charting library.</div>';
+        container.innerHTML = '<div class="c-dim" style="padding:16px">Failed to load charting library.</div>';
         return;
     }
 
@@ -32,15 +32,15 @@ App.registerPage('charts', async function(container, data, params) {
     const labels = { '1d': '1D', '5d': '5D', '1mo': '1M', '3mo': '3M', '1y': '1Y', '5y': '5Y' };
     let activeTF = '1mo';
 
-    let html = `<h5 class="text-accent mb-3">${Utils.symLink(symbol, 'lookup')} \u2014 Chart</h5>`;
+    let html = `<div class="tt-section-title">${Utils.symLink(symbol, 'lookup')} \u2014 Chart</div>`;
     html += '<div class="chart-container">';
     html += '<div class="chart-timeframes" id="chart-tf">';
     for (const tf of timeframes) {
         html += `<button class="btn${tf === activeTF ? ' active' : ''}" data-tf="${tf}">${labels[tf]}</button>`;
     }
     html += '</div><div id="chart-area" style="width:100%;height:400px"></div></div>';
-    html += `<div class="mt-3"><a href="#/ta/${symbol}" class="btn btn-sm btn-outline-secondary me-2">Technicals</a>`;
-    html += `<a href="#/lookup/${symbol}" class="btn btn-sm btn-outline-secondary">Fundamentals</a></div>`;
+    html += `<div style="margin-top:12px"><a href="#/ta/${symbol}" class="nav-link">Technicals</a>`;
+    html += `<a href="#/lookup/${symbol}" class="nav-link">Fundamentals</a></div>`;
 
     container.innerHTML = html;
 
