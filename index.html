@@ -4,11 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ticker-tape</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
     <!-- Status bar (top) — indices strip -->
     <div id="status-bar">
+        <span id="sidebar-toggle" title="Toggle sidebar">&#9776;</span>
         <span id="market-badge"></span>
         <span id="indices-strip"></span>
         <span id="clock"></span>
@@ -48,19 +52,23 @@
             </div>
             <div class="settings-row">
                 <label class="c-dim">Anthropic key</label>
-                <input type="password" id="key-anthropic" placeholder="sk-ant-...">
+                <input type="password" id="key-anthropic" placeholder="sk-ant-xxxx...">
             </div>
             <div class="settings-row">
                 <label class="c-dim">Google AI key</label>
-                <input type="password" id="key-google" placeholder="AIza...">
+                <input type="password" id="key-google" placeholder="AIzaKwP3x...">
             </div>
             <div class="settings-row">
                 <label class="c-dim">OpenAI key</label>
-                <input type="password" id="key-openai" placeholder="sk-...">
+                <input type="password" id="key-openai" placeholder="sk-xxxx...">
             </div>
             <div class="settings-row">
                 <label class="c-dim">Tavily key</label>
-                <input type="password" id="key-tavily" placeholder="tvly-...">
+                <input type="password" id="key-tavily" placeholder="tvly-xxxx...">
+            </div>
+            <div class="settings-row">
+                <label class="c-dim">Data proxy URL</label>
+                <input type="text" id="key-proxy" placeholder="https://your-worker.workers.dev">
             </div>
             <div class="settings-row">
                 <label class="c-dim">Profile context</label>
@@ -72,9 +80,14 @@
         </div>
     </div>
 
-    <!-- Scripts — no Bootstrap needed -->
+    <!-- Scripts: core → utilities → app → sidebar → chat → pages -->
     <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
+    <script src="js/watchlist.js"></script>
+    <script src="js/alerts.js"></script>
+    <script src="js/groups.js"></script>
+    <script src="js/journal.js"></script>
+    <script src="js/live.js"></script>
     <script src="js/app.js"></script>
     <script src="js/sidebar.js"></script>
     <script src="js/chat/markdown.js"></script>
@@ -91,6 +104,13 @@
     <script src="js/pages/lookup.js"></script>
     <script src="js/pages/charts.js"></script>
     <script src="js/pages/news.js"></script>
+    <script src="js/pages/comparison.js"></script>
+    <script src="js/pages/intraday.js"></script>
+    <script src="js/pages/valuation.js"></script>
+    <script src="js/pages/dividends.js"></script>
+    <script src="js/pages/short.js"></script>
+    <script src="js/pages/ratings.js"></script>
+    <script src="js/pages/correlation.js"></script>
     <script src="js/chat/chat.js"></script>
 </body>
 </html>
