@@ -139,10 +139,59 @@ const Utils = (() => {
         </div>`;
     }
 
+    /** Make a table sortable by clicking headers. */
+    function makeTableSortable(table) {
+        const headers = table.querySelectorAll('th');
+        let sortCol = -1, sortAsc = true;
+
+        headers.forEach((th, colIdx) => {
+            th.style.cursor = 'pointer';
+            th.addEventListener('click', () => {
+                if (sortCol === colIdx) { sortAsc = !sortAsc; }
+                else { sortCol = colIdx; sortAsc = true; }
+
+                // Update sort arrows
+                headers.forEach(h => {
+                    const arrow = h.querySelector('.sort-arrow');
+                    if (arrow) arrow.remove();
+                });
+                const arrow = document.createElement('span');
+                arrow.className = 'sort-arrow';
+                arrow.textContent = sortAsc ? ' \u25B2' : ' \u25BC';
+                th.appendChild(arrow);
+
+                // Sort rows
+                const tbody = table.querySelector('tbody');
+                if (!tbody) return;
+                const rows = Array.from(tbody.rows);
+                rows.sort((a, b) => {
+                    const aText = a.cells[colIdx]?.textContent?.trim() || '';
+                    const bText = b.cells[colIdx]?.textContent?.trim() || '';
+                    const aNum = parseFloat(aText.replace(/[^0-9.\-]/g, ''));
+                    const bNum = parseFloat(bText.replace(/[^0-9.\-]/g, ''));
+                    if (!isNaN(aNum) && !isNaN(bNum)) return sortAsc ? aNum - bNum : bNum - aNum;
+                    return sortAsc ? aText.localeCompare(bText) : bText.localeCompare(aText);
+                });
+                for (const row of rows) tbody.appendChild(row);
+            });
+        });
+    }
+
+    /** Copy table content to clipboard as TSV. */
+    function copyTableToClipboard(table) {
+        const rows = [];
+        for (const tr of table.rows) {
+            const cells = Array.from(tr.cells).map(td => td.textContent.trim());
+            rows.push(cells.join('\t'));
+        }
+        navigator.clipboard.writeText(rows.join('\n')).catch(() => {});
+    }
+
     return {
         fmtCap, fmtNum, fmtPrice, fmtPct, fmtRatio,
         signClass, colorChange, colorPct,
         sparklineSVG, rsiColor, barChart,
         timeAgo, stateBadge, symLink, rangeBar,
+        makeTableSortable, copyTableToClipboard,
     };
 })();

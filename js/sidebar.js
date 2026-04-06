@@ -1,6 +1,6 @@
 /**
  * sidebar.js — Watchlist + Pulse stats panel.
- * Mirrors the TUI's left sidebar exactly.
+ * Mirrors the TUI's left sidebar. Expanded labels for web.
  * Data source: trusted pipeline JSON (quotes, technicals, sparklines, meta).
  * All innerHTML content is built from our own yfinance data pipeline — no user input.
  */
@@ -14,8 +14,11 @@ const Sidebar = (() => {
             App.loadData('meta.json'),
         ]);
 
-        renderWatchlist(quotes, tech, sparklines, meta);
-        renderPulse(quotes);
+        // Apply watchlist filter if set
+        const filtered = typeof Watchlist !== 'undefined' ? Watchlist.filter(quotes) : quotes;
+
+        renderWatchlist(filtered, tech, sparklines, meta);
+        renderPulse(filtered);
         renderUpdated(meta);
     }
 
@@ -76,18 +79,18 @@ const Sidebar = (() => {
             `<div class="pulse-row"><span class="pulse-label">${label}</span><span class="${cls || ''}">${value}</span></div>`;
 
         let html = '<div class="pulse-title">Pulse</div>';
-        html += row('A/D', `${gainers} / ${losers}`);
-        html += row('Avg', `${avg >= 0 ? '+' : ''}${avg.toFixed(2)}%`, avg >= 0 ? 'positive' : 'negative');
-        html += row('Hi', `${best.symbol} +${(best.pct || 0).toFixed(1)}%`, 'positive');
-        html += row('Lo', `${worst.symbol} ${(worst.pct || 0).toFixed(1)}%`, 'negative');
-        html += row('Spd', `${spread.toFixed(1)}pp`);
-        if (bigDown) html += row('\u25B3', `${bigDown} down >3%`, 'negative');
-        html += row('ExtHr', `${extCount} / ${quotes.length}`);
+        html += row('Advance / Decline', `${gainers} / ${losers}`);
+        html += row('Average', `${avg >= 0 ? '+' : ''}${avg.toFixed(2)}%`, avg >= 0 ? 'positive' : 'negative');
+        html += row('High', `${best.symbol} +${(best.pct || 0).toFixed(1)}%`, 'positive');
+        html += row('Low', `${worst.symbol} ${(worst.pct || 0).toFixed(1)}%`, 'negative');
+        html += row('Spread', `${spread.toFixed(1)}pp`);
+        if (bigDown) html += row('Stress', `${bigDown} down >3%`, 'negative');
+        html += row('Extended Hours', `${extCount} / ${quotes.length}`);
         html += row('Median', `${median >= 0 ? '+' : ''}${median.toFixed(2)}%`, median >= 0 ? 'positive' : 'negative');
         html += row('Green', `${greenPct}% ${gainers > losers ? '\u25B2' : '\u25BC'}`, gainers > losers ? 'positive' : 'negative');
-        html += row('\u03C3', sigma.toFixed(2));
-        html += row('Mov >2%', `${bigMoves}/${quotes.length}`);
-        html += row('Flt <1%', `${flat}`);
+        html += row('Sigma', sigma.toFixed(2));
+        html += row('Movers >2%', `${bigMoves}/${quotes.length}`);
+        html += row('Flat <1%', `${flat}`);
         el.innerHTML = html;
     }
 
@@ -111,10 +114,15 @@ const Sidebar = (() => {
         if (!market) { stripEl.textContent = ''; return; }
 
         const indices = [
-            { key: 'ES=F', label: 'ES' }, { key: 'NQ=F', label: 'NQ' },
-            { key: '^HSI', label: 'H' }, { key: '^SOX', label: 'SO' },
-            { key: '^VIX', label: 'V', noArrow: true }, { key: 'CL=F', label: 'W', noArrow: true },
-            { key: 'BZ=F', label: 'B', noArrow: true }, { key: 'GC=F', label: 'G', noArrow: true },
+            { key: 'ES=F', label: 'ES' },    { key: 'NQ=F', label: 'NQ' },
+            { key: '^HSI', label: 'H' },      { key: '^SOX', label: 'SO' },
+            { key: '^VIX', label: 'V', noArrow: true, dec: 1 },
+            { key: 'CL=F', label: 'W', noArrow: true, dec: 1 },
+            { key: 'BZ=F', label: 'B', noArrow: true, dec: 1 },
+            { key: 'GC=F', label: 'G', noArrow: true },
+            { key: 'SI=F', label: 'Si', noArrow: true, dec: 1 },
+            { key: 'NG=F', label: 'N', noArrow: true, dec: 2 },
+            { key: 'HG=F', label: 'Cu', noArrow: true, dec: 2 },
         ];
 
         const lookup = {};
@@ -129,7 +137,8 @@ const Sidebar = (() => {
             if (!item) continue;
             const cls = (item.pct || 0) >= 0 ? 'c-green' : 'c-red';
             const arrow = (item.pct || 0) >= 0 ? '\u25B2' : '\u25BC';
-            const price = item.price >= 10000 ? Math.round(item.price) : item.price >= 100 ? item.price.toFixed(0) : item.price.toFixed(1);
+            const dec = idx.dec ?? (item.price >= 10000 ? 0 : item.price >= 100 ? 0 : 1);
+            const price = item.price.toFixed(dec);
             strip += idx.noArrow
                 ? `<span class="c-dim">${idx.label}</span> <span class="${cls}">${price}</span>  `
                 : `<span class="c-dim">${idx.label}</span> <span class="${cls}">${price} ${arrow}${Math.abs(item.pct||0).toFixed(1)}%</span>  `;

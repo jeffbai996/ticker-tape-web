@@ -16,6 +16,15 @@ const ChatEngine = (() => {
     function sendFromInput(text) {
         if (_sending) return;
         if (!_scrollEl) return;
+        // Block if no API key for active model
+        if (!Providers.hasKey()) {
+            const div = document.createElement('div');
+            div.className = 'chat-msg';
+            div.innerHTML = '<span class="negative">No API key set for ' + Providers.getActiveConfig().label + '.</span> <span class="c-dim">Type</span> <span class="c-green">settings</span> <span class="c-dim">to add one.</span>';
+            _scrollEl.appendChild(div);
+            _scrollEl.scrollTop = _scrollEl.scrollHeight;
+            return;
+        }
         _doSend(text);
     }
 
@@ -93,7 +102,15 @@ const ChatEngine = (() => {
         if (_scrollEl) _scrollEl.scrollTop = _scrollEl.scrollHeight;
     }
 
-    return { sendFromInput, _setScrollEl: (el) => { _scrollEl = el; }, _setPrompt: (p) => { _systemPrompt = p; } };
+    /** Show last N turns of history (for resume command). */
+    function showRecentHistory(n) {
+        if (!_scrollEl) return;
+        const history = window._chatHistory;
+        // Already rendered by page init — just scroll to bottom
+        _scroll();
+    }
+
+    return { sendFromInput, showRecentHistory, _setScrollEl: (el) => { _scrollEl = el; }, _setPrompt: (p) => { _systemPrompt = p; } };
 })();
 
 // Register chat as a page

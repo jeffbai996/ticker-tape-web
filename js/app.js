@@ -42,21 +42,25 @@ const App = (() => {
         'econ':        { page: 'econ',         data: ['econ.json'] },
         'commodities': { page: 'commodities',  data: ['commodities.json'] },
         'news':        { page: 'news',         data: ['news.json','meta.json'] },
+        'corr':        { page: 'correlation',  data: ['sparklines.json','meta.json'] },
     };
 
     const DYN_CMDS = [
-        { pattern: /^ta\s+(\S+)$/i,       page: 'technicals', data: ['technicals.json'], param: 'symbol' },
-        { pattern: /^news\s+(\S+)$/i,      page: 'news',       data: ['news.json','meta.json'], param: 'symbol' },
-        { pattern: /^(?:chart|c)\s+(\S+)/i, page: 'charts',    data: [], param: 'symbol' },
-        { pattern: /^lookup\s+(\S+)$/i,    page: 'lookup',     data: [], param: 'symbol' },
-        { pattern: /^([A-Z]{1,5})$/,       page: 'lookup',     data: [], param: 'symbol' },
+        { pattern: /^ta\s+(\S+)$/i,            page: 'technicals', data: ['technicals.json'], param: 'symbol' },
+        { pattern: /^news\s+(\S+)$/i,           page: 'news',       data: ['news.json','meta.json'], param: 'symbol' },
+        { pattern: /^(?:chart|c)\s+(\S+)/i,     page: 'charts',    data: [], param: 'symbol' },
+        { pattern: /^lookup\s+(\S+)$/i,         page: 'lookup',     data: [], param: 'symbol' },
+        { pattern: /^(?:intra|i)\s+(\S+)$/i,    page: 'intraday',  data: [], param: 'symbol' },
+        { pattern: /^div\s+(\S+)$/i,            page: 'dividends', data: [], param: 'symbol' },
+        { pattern: /^(?:short|si)\s+(\S+)$/i,   page: 'short',     data: [], param: 'symbol' },
+        { pattern: /^(?:rating|pt)\s+(\S+)$/i,  page: 'ratings',   data: [], param: 'symbol' },
+        { pattern: /^vs\s+(.+)$/i,              page: 'comparison', data: ['sparklines.json'], param: 'symbols' },
+        { pattern: /^screen\s+(.+)$/i,          page: 'valuation',  data: [], param: 'symbols' },
+        { pattern: /^([A-Z]{1,5})$/,            page: 'lookup',     data: [], param: 'symbol' },
     ];
 
-    // Stubs for unimplemented commands
-    const STUB_CMDS = ['vs','intra','impact','screen','insider','options','div','short','rating','corr',
-                        'watch','unwatch','wl','alert','group','journal',
-                        'ibkr','pos','acct','pnl','whatif','trades','dash',
-                        'resume','memory','history','copy','scroll','compact','clear','lang'];
+    // Deferred pipeline commands — show helpful message
+    const DEFERRED_CMDS = ['impact', 'insider', 'options'];
 
     /** Show a page view in the main panel. */
     async function showView(page, dataKeys, params) {
@@ -69,8 +73,43 @@ const App = (() => {
         const dataMap = {};
         await Promise.all(dataKeys.map(async path => { dataMap[path] = await loadData(path); }));
         if (params?.symbol) {
-            if (page === 'lookup') dataMap[`lookup/${params.symbol}.json`] = await loadData(`lookup/${params.symbol}.json`);
-            if (page === 'charts') dataMap[`charts/${params.symbol}.json`] = await loadData(`charts/${params.symbol}.json`);
+            const sym = params.symbol;
+            const needsLookup = page === 'lookup' || page === 'dividends' || page === 'short' || page === 'ratings';
+            const needsChart = page === 'charts' || page === 'intraday';
+            const needsTech = page === 'technicals';
+
+            // Try pipeline first
+            if (needsLookup) dataMap[`lookup/${sym}.json`] = await loadData(`lookup/${sym}.json`);
+            if (needsChart) dataMap[`charts/${sym}.json`] = await loadData(`charts/${sym}.json`);
+
+            // Live data fallback for missing symbols
+            if (typeof LiveData !== 'undefined' && LiveData.isConfigured()) {
+                if (needsLookup && !dataMap[`lookup/${sym}.json`]) {
+                    panel.innerHTML = '<div class="loading">Fetching live data...</div>';
+                    dataMap[`lookup/${sym}.json`] = await LiveData.fetchLookup(sym);
+                }
+                if (needsChart && !dataMap[`charts/${sym}.json`]) {
+                    panel.innerHTML = '<div class="loading">Fetching live data...</div>';
+                    dataMap[`charts/${sym}.json`] = await LiveData.fetchChart(sym);
+                }
+                if (needsTech && !dataMap['technicals.json']?.[sym]) {
+                    panel.innerHTML = '<div class="loading">Fetching live data...</div>';
+                    const liveTech = await LiveData.fetchTechnicals(sym);
+                    if (liveTech) {
+                        if (!dataMap['technicals.json']) dataMap['technicals.json'] = {};
+                        dataMap['technicals.json'][sym] = liveTech;
+                    }
+                }
+            }
+        }
+        if (params?.symbols && (page === 'valuation')) {
+            const syms = params.symbols.split(/\s+/).map(s => s.toUpperCase());
+            await Promise.all(syms.map(async s => { dataMap[`lookup/${s}.json`] = await loadData(`lookup/${s}.json`); }));
+            params.symbolList = syms;
+        }
+        if (params?.symbols && (page === 'comparison')) {
+            const parts = params.symbols.split(/\s+/).map(s => s.toUpperCase());
+            params.symbolList = parts;
         }
         try { PAGES[page](panel, dataMap, params || {}); }
         catch (e) { panel.textContent = 'Error: ' + e.message; console.error(e); }
@@ -78,7 +117,7 @@ const App = (() => {
 
     /** Show dashboard (default view). */
     function showDashboard() {
-        showView('dashboard', ['quotes.json','technicals.json','sparklines.json','meta.json']);
+        showView('dashboard', ['quotes.json','technicals.json','sparklines.json','meta.json','market.json','earnings.json']);
     }
 
     /** Enter chat mode. */
@@ -99,7 +138,7 @@ const App = (() => {
         }
     }
 
-    /** Show help screen. */
+    /** Show help screen — full TUI parity. */
     function showHelp() {
         const panel = document.getElementById('main-panel');
         _chatMode = false;
@@ -108,31 +147,58 @@ const App = (() => {
         const section = (title) => `\n<span class="c-blue">== ${title} ==</span>\n`;
         const cmd = (name, desc) => `  <span class="c-green">${name.padEnd(28)}</span><span class="c-dim">${desc}</span>\n`;
         const kcmd = (name, desc) => `  <span class="c-amber">${name.padEnd(28)}</span><span class="c-dim">${desc}</span>\n`;
+        const dcmd = (name, desc) => `  <span class="c-dim">${name.padEnd(28)}${desc}</span>\n`;
 
-        let html = '<pre style="line-height:1.5">';
+        let html = '<pre style="line-height:1.5;font-family:var(--font-mono)">';
         html += section('KEYBOARD SHORTCUTS');
         html += kcmd('t', 'Thesis dashboard (home)');
         html += kcmd('s', 'Sector heatmap');
         html += kcmd('e', 'Earnings calendar');
         html += kcmd('r', 'Refresh quotes');
         html += kcmd('?', 'This help screen');
+        html += kcmd('/', 'Focus input bar');
+        html += kcmd('Esc', 'Back to dashboard');
 
         html += section('COMMANDS');
         html += cmd('<TICKER>', 'Stock lookup (e.g. NVDA)');
         html += cmd('m, market', 'Market overview');
         html += cmd('ta <SYM>', 'Technical analysis');
         html += cmd('news <SYM>', 'News headlines');
-        html += cmd('chart <SYM> [period]', 'Price chart');
+        html += cmd('chart <SYM> [period]', 'Price chart (1d/5d/1mo/3mo/1y/5y)');
+        html += cmd('vs <SYM> <SYM> ...', 'Compare symbols (+ optional period)');
+        html += cmd('intra <SYM>', 'Intraday 5-min bars with VWAP');
+        html += cmd('screen <SYM> <SYM>', 'Valuation comparison table');
+        html += cmd('div <SYM>', 'Dividend yield, rate, ex-date, payout');
+        html += cmd('short <SYM>', 'Short interest, days to cover');
+        html += cmd('rating <SYM>', 'Analyst consensus, price targets');
+        html += cmd('corr', 'Watchlist correlation matrix');
         html += cmd('heatmap', 'Portfolio heatmap');
         html += cmd('calendar', 'Economic calendar (FOMC/CPI/NFP)');
         html += cmd('commodities', 'Commodity futures');
+        html += dcmd('impact <SYM>', 'Earnings impact history (coming soon)');
+        html += dcmd('insider <SYM>', 'Insider transactions (coming soon)');
+        html += dcmd('options <SYM> [exp]', 'Options chain with IV (coming soon)');
+
+        html += section('PORTFOLIO');
+        html += cmd('watch <SYM>', 'Add to watchlist');
+        html += cmd('unwatch <SYM>', 'Remove from watchlist');
+        html += cmd('wl', 'Show watchlist');
+        html += cmd('alert SYM >N', 'Set price alert');
+        html += cmd('alert rm N', 'Remove alert by ID');
+        html += cmd('alert', 'List all alerts');
+        html += cmd('group [name] [SYMs]', 'Manage symbol groups');
+        html += cmd('journal [cmd]', 'Trade journal (add/search/import)');
 
         html += section('AI CHAT');
         html += cmd('chat <question>', 'AI chat (multi-model)');
+        html += cmd('resume', 'Enter chat with last 5 turns');
         html += cmd('model [name]', 'Select model (flash/pro/haiku/sonnet/opus/gpt)');
+        html += cmd('memory [cmd]', 'AI memories (list/add/edit/delete)');
+        html += cmd('history [cmd]', 'Chat history (show/clear/search)');
         html += cmd('settings', 'API keys and profile');
 
-        html += section('NAVIGATION');
+        html += section('OTHER');
+        html += cmd('clear', 'Clear console');
         html += cmd('back, q', 'Return to dashboard');
         html += cmd('help, ?', 'This help screen');
 
@@ -158,6 +224,14 @@ const App = (() => {
         // Help
         if (lower === '?' || lower === 'help') { showHelp(); return; }
 
+        // Clear
+        if (lower === 'clear' || lower === 'cls') {
+            document.getElementById('main-panel').innerHTML = '';
+            _chatMode = false;
+            updatePrompt();
+            return;
+        }
+
         // Back to dashboard
         if (lower === 'q' || lower === 'quit' || lower === 'back') { showDashboard(); return; }
 
@@ -175,9 +249,8 @@ const App = (() => {
         if (modelMatch) {
             const name = modelMatch[1];
             if (!name) {
-                // List models
                 const panel = document.getElementById('main-panel');
-                let html = '<pre style="line-height:1.6">\n<span class="c-accent">== MODELS ==</span>\n';
+                let html = '<pre style="line-height:1.6;font-family:var(--font-mono)">\n<span class="c-accent">== MODELS ==</span>\n';
                 for (const [key, cfg] of Object.entries(Providers.MODELS)) {
                     const active = key === Providers.getActive() ? ' <span class="c-green">\u25C6</span>' : '  ';
                     const hasKey = Providers.hasKey(key) ? '<span class="c-green">\u2713</span>' : '<span class="c-red">\u2717</span>';
@@ -198,6 +271,97 @@ const App = (() => {
             }
         }
 
+        // Resume chat
+        if (lower === 'resume') {
+            enterChat();
+            setTimeout(() => {
+                if (typeof ChatEngine !== 'undefined' && ChatEngine.showRecentHistory) ChatEngine.showRecentHistory(5);
+            }, 100);
+            return;
+        }
+
+        // Memory CLI
+        const memMatch = trimmed.match(/^memory\s*(.*)/i);
+        if (memMatch !== null && lower.startsWith('memory')) {
+            handleMemoryCLI(memMatch[1]?.trim() || '');
+            return;
+        }
+
+        // History CLI
+        const histMatch = trimmed.match(/^history\s*(.*)/i);
+        if (histMatch !== null && lower.startsWith('history')) {
+            handleHistoryCLI(histMatch[1]?.trim() || '');
+            return;
+        }
+
+        // Watchlist commands
+        const watchMatch = trimmed.match(/^watch\s+(\S+)$/i);
+        if (watchMatch && typeof Watchlist !== 'undefined') {
+            const sym = watchMatch[1].toUpperCase();
+            // Pass cached pipeline quotes so first-use seeding works
+            const cached = DATA_CACHE['quotes.json'];
+            const pipelineQuotes = cached?.data || [];
+            const inPipeline = pipelineQuotes.some(q => q.symbol === sym);
+            Watchlist.add(sym, pipelineQuotes);
+            let msg = `<span class="c-green">Added ${sym} to watchlist</span>`;
+            if (!inPipeline) msg += `<br><span class="c-dim">${sym} not in pipeline data. Add to WATCHLIST_SYMBOLS secret for live data.</span>`;
+            showOutput(msg);
+            Sidebar.render();
+            return;
+        }
+        const unwatchMatch = trimmed.match(/^unwatch\s+(\S+)$/i);
+        if (unwatchMatch && typeof Watchlist !== 'undefined') {
+            Watchlist.remove(unwatchMatch[1].toUpperCase());
+            showOutput(`<span class="c-amber">Removed ${unwatchMatch[1].toUpperCase()} from watchlist</span>`);
+            Sidebar.render();
+            return;
+        }
+        if (lower === 'wl' && typeof Watchlist !== 'undefined') {
+            Watchlist.show();
+            return;
+        }
+
+        // Alert commands
+        const alertSetMatch = trimmed.match(/^alert\s+(\S+)\s*([><])\s*(\d+\.?\d*)$/i);
+        if (alertSetMatch && typeof Alerts !== 'undefined') {
+            Alerts.add(alertSetMatch[1].toUpperCase(), alertSetMatch[2], parseFloat(alertSetMatch[3]));
+            return;
+        }
+        const alertRmMatch = trimmed.match(/^alert\s+rm\s+(\d+)$/i);
+        if (alertRmMatch && typeof Alerts !== 'undefined') {
+            Alerts.remove(parseInt(alertRmMatch[1]));
+            return;
+        }
+        if (lower === 'alert' && typeof Alerts !== 'undefined') {
+            Alerts.list();
+            return;
+        }
+
+        // Group commands
+        const groupRmMatch = trimmed.match(/^group\s+rm\s+(\S+)$/i);
+        if (groupRmMatch && typeof Groups !== 'undefined') {
+            Groups.remove(groupRmMatch[1]);
+            showOutput(`<span class="c-amber">Removed group "${groupRmMatch[1]}"</span>`);
+            return;
+        }
+        const groupSetMatch = trimmed.match(/^group\s+(\S+)\s+(.+)$/i);
+        if (groupSetMatch && typeof Groups !== 'undefined') {
+            const syms = groupSetMatch[2].split(/\s+/).map(s => s.toUpperCase());
+            Groups.set(groupSetMatch[1], syms);
+            showOutput(`<span class="c-green">Group "${groupSetMatch[1]}": ${syms.join(', ')}</span>`);
+            return;
+        }
+        if (lower === 'group' && typeof Groups !== 'undefined') {
+            Groups.show();
+            return;
+        }
+
+        // Journal commands
+        if (lower.startsWith('journal') && typeof Journal !== 'undefined') {
+            Journal.handle(trimmed.replace(/^journal\s*/i, ''));
+            return;
+        }
+
         // Chat mode entry
         const chatMatch = trimmed.match(/^chat\s*([\s\S]*)$/i);
         if (chatMatch !== null) {
@@ -216,18 +380,18 @@ const App = (() => {
         for (const dc of DYN_CMDS) {
             const m = trimmed.match(dc.pattern);
             if (m) {
-                showView(dc.page, dc.data, { [dc.param]: m[1].toUpperCase() });
+                const params = {};
+                if (dc.param === 'symbol') params.symbol = m[1].toUpperCase();
+                if (dc.param === 'symbols') params.symbols = m[1];
+                showView(dc.page, dc.data, params);
                 return;
             }
         }
 
-        // Stub commands
-        const stubWord = lower.split(/\s+/)[0];
-        if (STUB_CMDS.includes(stubWord)) {
-            const panel = document.getElementById('main-panel');
-            panel.innerHTML = `<div style="padding:8px"><span class="c-dim">${stubWord}</span> <span class="c-amber">not yet available in web version</span></div>`;
-            _chatMode = false;
-            updatePrompt();
+        // Deferred pipeline commands
+        const deferredWord = lower.split(/\s+/)[0];
+        if (DEFERRED_CMDS.includes(deferredWord)) {
+            showOutput(`<span class="c-amber">${deferredWord}</span> <span class="c-dim">requires pipeline data — coming in a future update</span>`);
             return;
         }
 
@@ -238,8 +402,121 @@ const App = (() => {
         }
 
         // Unknown command
+        showOutput(`<span class="c-dim">Unknown command:</span> ${trimmed.replace(/</g,'&lt;')}. <span class="c-dim">Type</span> <span class="c-green">?</span> <span class="c-dim">for help.</span>`);
+    }
+
+    /** Show a quick output in main panel. */
+    function showOutput(html) {
         const panel = document.getElementById('main-panel');
-        panel.innerHTML = `<div style="padding:8px"><span class="c-dim">Unknown command:</span> ${trimmed.replace(/</g,'&lt;')}. <span class="c-dim">Type</span> <span class="c-green">?</span> <span class="c-dim">for help.</span></div>`;
+        panel.innerHTML = `<div style="padding:8px">${html}</div>`;
+        _chatMode = false;
+        updatePrompt();
+    }
+
+    // --- Memory CLI ---
+    function handleMemoryCLI(args) {
+        if (typeof Memory === 'undefined') { showOutput('<span class="c-dim">Memory module not loaded</span>'); return; }
+        const mems = Memory.load();
+
+        if (!args || args === 'list') {
+            if (!mems.length) { showOutput('<span class="c-dim">No memories saved.</span>'); return; }
+            let html = '<pre style="font-family:var(--font-mono);line-height:1.6"><span class="c-accent">== MEMORIES ==</span>\n';
+            for (const m of mems) {
+                const truncated = m.text.length > 60 ? m.text.slice(0, 60) + '...' : m.text;
+                html += `  <span class="c-amber">${String(m.id).padEnd(4)}</span><span class="c-dim">${truncated}</span>\n`;
+            }
+            html += '</pre>';
+            document.getElementById('main-panel').innerHTML = html;
+            return;
+        }
+
+        const addMatch = args.match(/^add\s+(.+)/i);
+        if (addMatch) {
+            Memory.addMemory(addMatch[1]);
+            showOutput(`<span class="c-green">Memory saved.</span>`);
+            return;
+        }
+
+        const editMatch = args.match(/^edit\s+(\d+)\s+(.+)/i);
+        if (editMatch) {
+            Memory.editMemory(parseInt(editMatch[1]), editMatch[2]);
+            showOutput(`<span class="c-green">Memory ${editMatch[1]} updated.</span>`);
+            return;
+        }
+
+        const delMatch = args.match(/^delete\s+(\d+)/i);
+        if (delMatch) {
+            Memory.removeMemory(parseInt(delMatch[1]));
+            showOutput(`<span class="c-amber">Memory ${delMatch[1]} deleted.</span>`);
+            return;
+        }
+
+        // Show single memory
+        const idMatch = args.match(/^(\d+)$/);
+        if (idMatch) {
+            const mem = mems.find(m => m.id === parseInt(idMatch[1]));
+            if (mem) showOutput(`<span class="c-accent">[${mem.id}]</span> ${mem.text}`);
+            else showOutput('<span class="c-dim">Memory not found.</span>');
+            return;
+        }
+
+        showOutput('<span class="c-dim">Usage: memory [list|add|edit ID|delete ID|ID]</span>');
+    }
+
+    // --- History CLI ---
+    function handleHistoryCLI(args) {
+        if (typeof ChatEngine === 'undefined') { showOutput('<span class="c-dim">Chat module not loaded</span>'); return; }
+        const history = window._chatHistory || [];
+
+        if (!args || args === 'show') {
+            if (!history.length) { showOutput('<span class="c-dim">No chat history.</span>'); return; }
+            let html = '<pre style="font-family:var(--font-mono);line-height:1.6"><span class="c-accent">== CHAT HISTORY ==</span>\n';
+            const recent = history.slice(-20);
+            for (let i = 0; i < recent.length; i++) {
+                const msg = recent[i];
+                const truncated = (msg.text || '').slice(0, 80);
+                const roleCls = msg.role === 'user' ? 'c-dim' : 'c-accent';
+                html += `<span class="${roleCls}">${msg.role === 'user' ? 'Q' : 'A'}:</span> ${truncated.replace(/</g,'&lt;')}${msg.text?.length > 80 ? '...' : ''}\n`;
+            }
+            html += '</pre>';
+            document.getElementById('main-panel').innerHTML = html;
+            return;
+        }
+
+        if (args === 'clear') {
+            window._chatHistory = [];
+            showOutput('<span class="c-amber">Chat history cleared.</span>');
+            return;
+        }
+
+        const searchMatch = args.match(/^search\s+(.+)/i);
+        if (searchMatch) {
+            const term = searchMatch[1].toLowerCase();
+            const results = history.filter(m => (m.text || '').toLowerCase().includes(term));
+            if (!results.length) { showOutput(`<span class="c-dim">No matches for "${searchMatch[1]}"</span>`); return; }
+            let html = `<pre style="font-family:var(--font-mono);line-height:1.6"><span class="c-accent">== SEARCH: ${searchMatch[1]} (${results.length} matches) ==</span>\n`;
+            for (const msg of results.slice(-10)) {
+                const roleCls = msg.role === 'user' ? 'c-dim' : 'c-accent';
+                html += `<span class="${roleCls}">${msg.role === 'user' ? 'Q' : 'A'}:</span> ${(msg.text||'').slice(0,80).replace(/</g,'&lt;')}\n`;
+            }
+            html += '</pre>';
+            document.getElementById('main-panel').innerHTML = html;
+            return;
+        }
+
+        const delMatch = args.match(/^delete\s+(\d+)/i);
+        if (delMatch) {
+            const idx = parseInt(delMatch[1]);
+            if (idx >= 0 && idx < history.length) {
+                history.splice(idx, 1);
+                showOutput(`<span class="c-amber">Deleted history entry ${idx}.</span>`);
+            } else {
+                showOutput('<span class="c-dim">Invalid index.</span>');
+            }
+            return;
+        }
+
+        showOutput('<span class="c-dim">Usage: history [show|clear|search TERM|delete N]</span>');
     }
 
     // --- Settings ---
@@ -256,6 +533,7 @@ const App = (() => {
         document.getElementById('key-google').value = Config.get('google');
         document.getElementById('key-openai').value = Config.get('openai');
         document.getElementById('key-tavily').value = Config.get('tavily');
+        document.getElementById('key-proxy').value = Config.get('proxy');
         document.getElementById('user-profile').value = Config.get('profile');
     }
     function initSettings() {
@@ -268,6 +546,7 @@ const App = (() => {
             Config.set('google', document.getElementById('key-google').value.trim());
             Config.set('openai', document.getElementById('key-openai').value.trim());
             Config.set('tavily', document.getElementById('key-tavily').value.trim());
+            Config.set('proxy', document.getElementById('key-proxy').value.trim());
             Config.set('profile', document.getElementById('user-profile').value.trim());
             hideSettings();
         });
@@ -288,6 +567,17 @@ const App = (() => {
         document.addEventListener('mouseup', () => { dragging = false; });
     }
 
+    // --- Mobile sidebar toggle ---
+    function initMobileToggle() {
+        const btn = document.getElementById('sidebar-toggle');
+        const sidebar = document.getElementById('sidebar');
+        if (btn) {
+            btn.addEventListener('click', () => {
+                sidebar.classList.toggle('mobile-open');
+            });
+        }
+    }
+
     // --- Clock ---
     function tickClock() {
         const el = document.getElementById('clock');
@@ -297,6 +587,56 @@ const App = (() => {
                 hour: '2-digit', minute: '2-digit', timeZone: 'America/New_York', hour12: false,
             }) + ' ET';
         }
+    }
+
+    // --- Context menu ---
+    function initContextMenu() {
+        document.addEventListener('contextmenu', (e) => {
+            const link = e.target.closest('.sym-link');
+            if (!link) return;
+            e.preventDefault();
+            const sym = link.textContent.trim();
+            removeContextMenu();
+
+            const menu = document.createElement('div');
+            menu.className = 'ctx-menu';
+            menu.style.left = e.clientX + 'px';
+            menu.style.top = e.clientY + 'px';
+
+            const items = [
+                { label: 'Lookup', cmd: sym },
+                { label: 'Technicals', cmd: `ta ${sym}` },
+                { label: 'Chart', cmd: `chart ${sym}` },
+                { label: 'News', cmd: `news ${sym}` },
+                { label: 'Intraday', cmd: `intra ${sym}` },
+                { label: 'Dividends', cmd: `div ${sym}` },
+                { label: 'Short Interest', cmd: `short ${sym}` },
+                { label: 'Analyst Ratings', cmd: `rating ${sym}` },
+                { sep: true },
+                { label: 'Add to Watchlist', cmd: `watch ${sym}` },
+            ];
+
+            for (const item of items) {
+                if (item.sep) {
+                    const sep = document.createElement('div');
+                    sep.className = 'ctx-menu-sep';
+                    menu.appendChild(sep);
+                } else {
+                    const el = document.createElement('div');
+                    el.className = 'ctx-menu-item';
+                    el.textContent = item.label;
+                    el.addEventListener('click', () => { removeContextMenu(); processInput(item.cmd); });
+                    menu.appendChild(el);
+                }
+            }
+            document.body.appendChild(menu);
+        });
+
+        document.addEventListener('click', removeContextMenu);
+    }
+
+    function removeContextMenu() {
+        document.querySelectorAll('.ctx-menu').forEach(m => m.remove());
     }
 
     // --- Hash routing (for clickable links) ---
@@ -312,10 +652,15 @@ const App = (() => {
             { pattern: /^\/econ$/,            page: 'econ',        data: ['econ.json'] },
             { pattern: /^\/commodities$/,     page: 'commodities', data: ['commodities.json'] },
             { pattern: /^\/news$/,            page: 'news',        data: ['news.json','meta.json'] },
+            { pattern: /^\/corr$/,            page: 'correlation', data: ['sparklines.json','meta.json'] },
             { pattern: /^\/chat$/,            page: null,          chat: true },
             { pattern: /^\/ta\/(.+)$/,        page: 'technicals',  data: ['technicals.json'], param: 'symbol' },
             { pattern: /^\/lookup\/(.+)$/,    page: 'lookup',      data: [],                  param: 'symbol' },
             { pattern: /^\/charts\/(.+)$/,    page: 'charts',      data: [],                  param: 'symbol' },
+            { pattern: /^\/intra\/(.+)$/,     page: 'intraday',    data: [],                  param: 'symbol' },
+            { pattern: /^\/div\/(.+)$/,       page: 'dividends',   data: [],                  param: 'symbol' },
+            { pattern: /^\/short\/(.+)$/,     page: 'short',       data: [],                  param: 'symbol' },
+            { pattern: /^\/rating\/(.+)$/,    page: 'ratings',     data: [],                  param: 'symbol' },
         ];
 
         for (const r of routes) {
@@ -340,6 +685,11 @@ const App = (() => {
                 invalidateCache();
                 Sidebar.render();
                 Sidebar.renderStatusBar();
+                // Check alerts on data refresh
+                if (typeof Alerts !== 'undefined') {
+                    const quotes = await loadData('quotes.json');
+                    if (quotes) Alerts.check(quotes);
+                }
             }
             if (meta) _lastTimestamp = meta.timestamp;
         }, 60000);
@@ -349,6 +699,8 @@ const App = (() => {
     function init() {
         initSettings();
         initResize();
+        initMobileToggle();
+        initContextMenu();
 
         const input = document.getElementById('input');
         input.addEventListener('keydown', (e) => {
@@ -356,7 +708,6 @@ const App = (() => {
                 processInput(input.value);
                 input.value = '';
             }
-            // Escape exits chat mode
             if (e.key === 'Escape' && _chatMode) {
                 _chatMode = false;
                 updatePrompt();
@@ -369,7 +720,6 @@ const App = (() => {
         Sidebar.renderStatusBar();
         Sidebar.render();
 
-        // Default: thesis dashboard
         handleHash();
 
         tickClock();
@@ -377,11 +727,35 @@ const App = (() => {
         startRefresh();
         input.focus();
 
-        // Global keyboard: typing focuses input
+        // Global keyboard shortcuts
         document.addEventListener('keydown', (e) => {
             if (e.target === input) return;
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
-            if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+            if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+            // Single-key shortcuts (only when not typing)
+            const shortcuts = { 't': 't', 's': 's', 'e': 'e', 'r': 'r', '?': '?' };
+            if (shortcuts[e.key]) {
+                e.preventDefault();
+                processInput(shortcuts[e.key]);
+                return;
+            }
+            if (e.key === '/') {
+                e.preventDefault();
+                input.focus();
+                return;
+            }
+            if (e.key === 'Escape') {
+                if (_chatMode) {
+                    _chatMode = false;
+                    updatePrompt();
+                }
+                showDashboard();
+                return;
+            }
+
+            // Any other printable key → focus input
+            if (e.key.length === 1) {
                 input.focus();
             }
         });
@@ -389,5 +763,5 @@ const App = (() => {
 
     document.addEventListener('DOMContentLoaded', init);
 
-    return { loadData, registerPage, invalidateCache, showView, showDashboard, enterChat };
+    return { loadData, registerPage, invalidateCache, showView, showDashboard, enterChat, showOutput };
 })();

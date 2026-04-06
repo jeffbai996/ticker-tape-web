@@ -8,6 +8,7 @@ const Config = (() => {
         openai: 'openai_key',
         tavily: 'tavily_key',
         profile: 'user_profile',
+        proxy: 'proxy_url',
     };
 
     function get(name) { return localStorage.getItem(KEYS[name] || name) || ''; }
