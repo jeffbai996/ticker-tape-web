@@ -3,7 +3,7 @@
 /* ── Theme ─────────────────────────────────────────── */
 @theme {
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --font-mono: 'Anthropic Sans', 'JetBrains Mono', ui-monospace, monospace;
 
   --color-surface: #18181b;
   --color-surface-hover: #27272a;
@@ -37,7 +37,7 @@
 }
 
 .ticker-scroll {
-  animation: ticker-scroll 60s linear infinite;
+  animation: ticker-scroll 30s linear infinite;
 }
 
 .ticker-scroll:hover {

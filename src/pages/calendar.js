@@ -1,24 +1,34 @@
-// Economic calendar: upcoming events color-coded by type.
+// Economic calendar: FOMC, CPI, NFP, GDP, PCE events with detail.
 
-import { loadEcon, loadMeta } from '../lib/data.js'
+import { loadEcon } from '../lib/data.js'
 import { formatDate } from '../lib/format.js'
 
-// Event type color mapping
 const TYPE_COLORS = {
-  fomc:    { bg: 'bg-red-500/15', text: 'text-red-400', label: 'FOMC' },
-  fed:     { bg: 'bg-red-500/15', text: 'text-red-400', label: 'Fed' },
-  cpi:     { bg: 'bg-amber-500/15', text: 'text-amber-400', label: 'CPI' },
-  nfp:     { bg: 'bg-amber-500/15', text: 'text-amber-400', label: 'NFP' },
-  jobs:    { bg: 'bg-amber-500/15', text: 'text-amber-400', label: 'Jobs' },
-  gdp:     { bg: 'bg-cyan-500/15', text: 'text-cyan-400', label: 'GDP' },
-  pce:     { bg: 'bg-purple-500/15', text: 'text-purple-400', label: 'PCE' },
-  ism:     { bg: 'bg-blue-500/15', text: 'text-blue-400', label: 'ISM' },
-  retail:  { bg: 'bg-blue-500/15', text: 'text-blue-400', label: 'Retail' },
-  housing: { bg: 'bg-teal-500/15', text: 'text-teal-400', label: 'Housing' },
+  FOMC: { border: 'border-l-red-500',    bg: 'bg-red-500/10',    text: 'text-red-400',    label: 'FOMC Decision' },
+  CPI:  { border: 'border-l-amber-500',  bg: 'bg-amber-500/10',  text: 'text-amber-400',  label: 'Consumer Price Index' },
+  NFP:  { border: 'border-l-amber-500',  bg: 'bg-amber-500/10',  text: 'text-amber-400',  label: 'Non-Farm Payrolls' },
+  GDP:  { border: 'border-l-cyan-500',   bg: 'bg-cyan-500/10',   text: 'text-cyan-400',   label: 'Gross Domestic Product' },
+  PCE:  { border: 'border-l-purple-500', bg: 'bg-purple-500/10', text: 'text-purple-400', label: 'Personal Consumption Expenditures' },
+}
+
+const TYPE_DESC = {
+  FOMC: 'Federal Reserve interest rate decision and monetary policy statement. Markets react sharply to rate changes and forward guidance.',
+  CPI:  'Measures change in consumer prices. Key inflation gauge watched by the Fed. Core CPI (ex food & energy) is the focus.',
+  NFP:  'Bureau of Labor Statistics jobs report. Measures payroll employment change. Unemployment rate and wage growth also reported.',
+  GDP:  'Quarterly measure of total economic output. Advance, preliminary, and final estimates released in sequence.',
+  PCE:  'The Fed\'s preferred inflation measure. Includes both goods and services. Core PCE excludes food and energy.',
+}
+
+const TYPE_IMPACT = {
+  FOMC: 'Very High',
+  CPI:  'High',
+  NFP:  'High',
+  GDP:  'Medium',
+  PCE:  'Medium-High',
 }
 
 export async function render(el) {
-  const [econ, meta] = await Promise.all([loadEcon(), loadMeta()])
+  const econ = await loadEcon()
 
   if (!econ?.length) {
     el.textContent = ''
@@ -29,116 +39,104 @@ export async function render(el) {
     return
   }
 
-  // Sort by date ascending
-  const sorted = [...econ].sort((a, b) => {
-    const da = new Date(a.date || 0)
-    const db = new Date(b.date || 0)
-    return da - db
-  })
-
   const container = document.createElement('div')
-  container.className = 'p-4 fade-in space-y-4'
+  container.className = 'p-4 fade-in'
 
   // Header
   const header = document.createElement('div')
-  header.className = 'flex items-center justify-between'
+  header.className = 'flex items-center justify-between mb-4'
   const h1 = document.createElement('h1')
   h1.className = 'text-lg font-semibold text-zinc-100'
   h1.textContent = 'Economic Calendar'
-  const ts = document.createElement('span')
-  ts.className = 'text-xs text-zinc-500'
-  ts.textContent = meta?.quotes_timestamp || ''
-  header.append(h1, ts)
+  const legend = document.createElement('div')
+  legend.className = 'flex items-center gap-3 text-[10px]'
+  for (const [type, cfg] of Object.entries(TYPE_COLORS)) {
+    const item = document.createElement('span')
+    item.className = `flex items-center gap-1 ${cfg.text}`
+    item.textContent = type
+    legend.appendChild(item)
+  }
+  header.append(h1, legend)
   container.appendChild(header)
 
-  // Group events by date
-  const grouped = new Map()
-  for (const event of sorted) {
-    const dateKey = event.date || 'Unknown'
-    if (!grouped.has(dateKey)) grouped.set(dateKey, [])
-    grouped.get(dateKey).push(event)
+  // Group by month
+  const byMonth = {}
+  for (const event of econ) {
+    const d = new Date(event.date)
+    const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    const monthLabel = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+    if (!byMonth[monthKey]) byMonth[monthKey] = { label: monthLabel, events: [] }
+    byMonth[monthKey].events.push(event)
   }
 
-  // Render date groups
-  for (const [dateKey, events] of grouped) {
-    const dateSection = document.createElement('div')
+  for (const [key, group] of Object.entries(byMonth)) {
+    const monthHeader = document.createElement('h2')
+    monthHeader.className = 'text-sm font-semibold text-zinc-400 mt-4 mb-2'
+    monthHeader.textContent = group.label
+    container.appendChild(monthHeader)
 
-    // Date label
-    const dateLabel = document.createElement('div')
-    dateLabel.className = 'text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2'
-    try {
-      const d = new Date(dateKey)
-      dateLabel.textContent = isNaN(d) ? dateKey : formatDate(d)
-    } catch {
-      dateLabel.textContent = dateKey
-    }
-    dateSection.appendChild(dateLabel)
+    for (const event of group.events) {
+      const type = event.type || 'FOMC'
+      const cfg = TYPE_COLORS[type] || TYPE_COLORS.FOMC
+      const desc = TYPE_DESC[type] || ''
+      const impact = TYPE_IMPACT[type] || 'Medium'
 
-    // Events grid
-    const eventsGrid = document.createElement('div')
-    eventsGrid.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2'
+      const d = new Date(event.date)
+      const dayOfWeek = d.toLocaleDateString('en-US', { weekday: 'long' })
+      const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 
-    for (const event of events) {
-      const colors = getTypeColors(event.type, event.event)
       const card = document.createElement('div')
-      card.className = `card p-3 border-l-2 ${colors.border}`
+      card.className = `card border-l-4 ${cfg.border} p-4 mb-2`
 
-      // Type badge
-      const typeBadge = document.createElement('span')
-      typeBadge.className = `badge ${colors.bg} ${colors.text} mb-2`
-      typeBadge.textContent = colors.label || event.type || 'Event'
+      // Top row: type badge + date + days until
+      const topRow = document.createElement('div')
+      topRow.className = 'flex items-center gap-3 mb-2'
 
-      // Event name
-      const nameEl = document.createElement('div')
-      nameEl.className = 'text-sm text-zinc-200 font-medium'
-      nameEl.textContent = event.event || event.name || '—'
+      const badge = document.createElement('span')
+      badge.className = `badge ${cfg.bg} ${cfg.text} font-semibold`
+      badge.textContent = type
 
-      // Time
-      const timeEl = document.createElement('div')
-      timeEl.className = 'text-xs text-zinc-500 mt-1 font-mono'
-      timeEl.textContent = event.time || ''
+      const dateEl = document.createElement('span')
+      dateEl.className = 'text-sm text-zinc-300'
+      dateEl.textContent = `${dayOfWeek}, ${dateStr}`
 
-      card.append(typeBadge, nameEl)
-      if (event.time) card.appendChild(timeEl)
-      eventsGrid.appendChild(card)
+      const daysEl = document.createElement('span')
+      daysEl.className = 'ml-auto text-xs font-mono'
+      if (event.days_until <= 2) {
+        daysEl.className += ' text-red-400 font-semibold'
+      } else if (event.days_until <= 7) {
+        daysEl.className += ' text-amber-400'
+      } else {
+        daysEl.className += ' text-zinc-500'
+      }
+      daysEl.textContent = event.days_until === 0 ? 'TODAY' : event.days_until === 1 ? 'TOMORROW' : `${event.days_until}d`
+
+      topRow.append(badge, dateEl, daysEl)
+
+      // Detail row: full name + impact
+      const detailRow = document.createElement('div')
+      detailRow.className = 'flex items-center gap-3 mb-1'
+
+      const fullName = document.createElement('span')
+      fullName.className = 'text-xs text-zinc-400'
+      fullName.textContent = cfg.label
+
+      const impactEl = document.createElement('span')
+      impactEl.className = 'text-[10px] text-zinc-600 ml-auto'
+      impactEl.textContent = `Impact: ${impact}`
+
+      detailRow.append(fullName, impactEl)
+
+      // Description
+      const descEl = document.createElement('p')
+      descEl.className = 'text-xs text-zinc-500 leading-relaxed'
+      descEl.textContent = desc
+
+      card.append(topRow, detailRow, descEl)
+      container.appendChild(card)
     }
-
-    dateSection.appendChild(eventsGrid)
-    container.appendChild(dateSection)
   }
 
   el.textContent = ''
   el.appendChild(container)
-}
-
-/** Match event type/name to color scheme */
-function getTypeColors(type, eventName) {
-  const t = (type || '').toLowerCase()
-  const n = (eventName || '').toLowerCase()
-
-  // Check explicit type first
-  if (TYPE_COLORS[t]) {
-    return { ...TYPE_COLORS[t], border: TYPE_COLORS[t].text.replace('text-', 'border-') }
-  }
-
-  // Infer from event name
-  for (const [key, colors] of Object.entries(TYPE_COLORS)) {
-    if (n.includes(key)) {
-      return { ...colors, border: colors.text.replace('text-', 'border-') }
-    }
-  }
-
-  // Check for partial matches
-  if (n.includes('rate') || n.includes('fed') || n.includes('fomc')) {
-    return { ...TYPE_COLORS.fomc, border: 'border-red-400' }
-  }
-  if (n.includes('inflation') || n.includes('price')) {
-    return { ...TYPE_COLORS.cpi, border: 'border-amber-400' }
-  }
-  if (n.includes('employ') || n.includes('payroll') || n.includes('labor')) {
-    return { ...TYPE_COLORS.nfp, border: 'border-amber-400' }
-  }
-
-  // Default
-  return { bg: 'bg-zinc-800', text: 'text-zinc-400', label: type || 'Event', border: 'border-zinc-600' }
 }

@@ -21,7 +21,7 @@ export function initChatPanel(el) {
 
 function buildPanel() {
   panelEl.textContent = ''
-  panelEl.className = 'w-[360px] bg-zinc-900/50 border-l border-zinc-800 flex flex-col overflow-hidden shrink-0 hidden transition-all duration-200'
+  panelEl.className = 'w-[360px] max-w-full max-xl:fixed max-xl:right-0 max-xl:top-8 max-xl:bottom-0 max-xl:z-40 bg-zinc-900 border-l border-zinc-800 flex flex-col overflow-hidden shrink-0 hidden transition-all duration-200'
 
   // Header
   const header = document.createElement('div')
@@ -57,7 +57,7 @@ function buildPanel() {
 
   // Welcome message
   const welcome = document.createElement('div')
-  welcome.className = 'text-xs text-zinc-500 text-center py-8'
+  welcome.className = 'text-xs text-zinc-500 text-center py-4'
   welcome.textContent = 'Ask about any symbol, market conditions, or trading ideas.'
   messagesEl.appendChild(welcome)
 

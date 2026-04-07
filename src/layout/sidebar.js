@@ -17,6 +17,7 @@ const NAV_ITEMS = [
   { id: 'commodities', label: 'Commodities',     icon: '🛢' },
   { id: 'calendar',    label: 'Econ Calendar',   icon: '📋' },
   { id: 'news',        label: 'News',            icon: '📰' },
+  { id: 'terminal',    label: 'Terminal',        icon: '>' },
 ]
 
 export function initSidebar(el) {
