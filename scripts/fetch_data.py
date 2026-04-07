@@ -23,8 +23,10 @@ ET = ZoneInfo("America/New_York")
 RS_BENCHMARK = "QQQ"
 
 # ── Symbols from env ────────────────────────────────────────
-SYMBOLS: list[str] = json.loads(os.environ.get("WATCHLIST_SYMBOLS", '["AAPL","MSFT","GOOG","AMZN","NVDA"]'))
-BUCKETS: dict[str, list[str]] = json.loads(os.environ.get("THESIS_BUCKETS", "{}"))
+_sym_raw = os.environ.get("WATCHLIST_SYMBOLS", "").strip()
+SYMBOLS: list[str] = json.loads(_sym_raw) if _sym_raw else ["AAPL", "MSFT", "GOOG", "AMZN", "NVDA"]
+_buck_raw = os.environ.get("THESIS_BUCKETS", "").strip()
+BUCKETS: dict[str, list[str]] = json.loads(_buck_raw) if _buck_raw else {}
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "public", "data")
 
 # ── Sector ETFs ─────────────────────────────────────────────
