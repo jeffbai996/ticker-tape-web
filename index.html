@@ -1,138 +1,15 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ticker-tape</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ticker Tape</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <script type="module" src="/src/main.js"></script>
 </head>
-<body>
-    <!-- Status bar (top) — indices strip -->
-    <div id="status-bar">
-        <span id="sidebar-toggle" title="Toggle sidebar">&#9776;</span>
-        <span id="market-badge"></span>
-        <span id="indices-strip"></span>
-        <span id="chat-toggle" class="c-dim" title="Toggle chat panel" style="cursor:pointer;margin-left:8px;font-size:11px;display:none">[chat]</span>
-        <span id="clock"></span>
-    </div>
-
-    <!-- Three-panel layout -->
-    <div id="layout">
-        <!-- Sidebar (left) — watchlist + pulse -->
-        <div id="sidebar">
-            <div id="sidebar-header">
-                <span class="c-accent">Watchlist</span>
-                <div id="sidebar-updated" class="c-dim"></div>
-            </div>
-            <div id="watchlist"></div>
-            <div id="pulse"></div>
-        </div>
-
-        <!-- Resize handle -->
-        <div id="resize-handle"></div>
-
-        <!-- Main panel — terminal views -->
-        <div id="main-panel"></div>
-
-        <!-- Chat resize handle -->
-        <div id="chat-resize-handle"></div>
-
-        <!-- Chat panel (persistent on desktop) -->
-        <div id="chat-panel" class="chat-panel-hidden">
-            <div id="chat-panel-header">
-                <span class="c-accent" style="font-weight:700">Chat</span>
-                <span id="chat-model-label" class="c-dim" style="font-size:11px"></span>
-                <span style="flex:1"></span>
-                <span id="chat-btn-model" class="chat-header-btn" title="Switch model">model</span>
-                <span id="chat-btn-memory" class="chat-header-btn" title="View memories">mem</span>
-                <span id="chat-btn-clear" class="chat-header-btn" title="Clear chat">clear</span>
-                <span id="chat-panel-close" class="chat-header-btn" title="Close panel">&times;</span>
-            </div>
-            <div id="chat-panel-scroll" class="chat-scroll"></div>
-            <div id="chat-panel-input-bar">
-                <span id="chat-input-model" class="c-accent" style="font-size:11px;margin-right:4px;font-family:var(--font-mono);flex-shrink:0"></span>
-                <input type="text" id="chat-input" placeholder="ask anything..." autocomplete="off" spellcheck="false">
-            </div>
-        </div>
-    </div>
-
-    <!-- Input bar (bottom) — always visible -->
-    <div id="input-bar">
-        <span id="input-model" class="c-accent">ticker&gt;</span>
-        <input type="text" id="input" placeholder="type command or symbol..." autocomplete="off" spellcheck="false">
-    </div>
-
-    <!-- Settings modal (minimal, no Bootstrap) -->
-    <div id="settings-overlay" class="hidden" style="display:none">
-        <div id="settings-box">
-            <div class="settings-header">
-                <span class="c-accent">Settings</span>
-                <span id="settings-close" class="c-dim" style="cursor:pointer">[x]</span>
-            </div>
-            <div class="settings-row">
-                <label class="c-dim">Anthropic key</label>
-                <input type="password" id="key-anthropic" placeholder="sk-ant-xxxx...">
-            </div>
-            <div class="settings-row">
-                <label class="c-dim">Google AI key</label>
-                <input type="password" id="key-google" placeholder="AIzaKwP3x...">
-            </div>
-            <div class="settings-row">
-                <label class="c-dim">OpenAI key</label>
-                <input type="password" id="key-openai" placeholder="sk-xxxx...">
-            </div>
-            <div class="settings-row">
-                <label class="c-dim">Tavily key</label>
-                <input type="password" id="key-tavily" placeholder="tvly-xxxx...">
-            </div>
-            <div class="settings-row">
-                <label class="c-dim">Data proxy URL</label>
-                <input type="text" id="key-proxy" placeholder="https://your-worker.workers.dev">
-            </div>
-            <div class="settings-row">
-                <label class="c-dim">Profile context</label>
-                <textarea id="user-profile" rows="3" placeholder="e.g. I'm a trader focused on semiconductors..."></textarea>
-            </div>
-            <div style="text-align:right;margin-top:8px">
-                <button id="btn-save-settings" class="btn-accent">Save</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Scripts: core → utilities → app → sidebar → chat → pages -->
-    <script src="js/config.js"></script>
-    <script src="js/utils.js"></script>
-    <script src="js/watchlist.js"></script>
-    <script src="js/alerts.js"></script>
-    <script src="js/groups.js"></script>
-    <script src="js/journal.js"></script>
-    <script src="js/live.js"></script>
-    <script src="js/app.js"></script>
-    <script src="js/sidebar.js"></script>
-    <script src="js/chat/markdown.js"></script>
-    <script src="js/chat/memory.js"></script>
-    <script src="js/chat/providers.js"></script>
-    <script src="js/pages/dashboard.js"></script>
-    <script src="js/pages/market.js"></script>
-    <script src="js/pages/sectors.js"></script>
-    <script src="js/pages/heatmap.js"></script>
-    <script src="js/pages/earnings.js"></script>
-    <script src="js/pages/econ.js"></script>
-    <script src="js/pages/commodities.js"></script>
-    <script src="js/pages/technicals.js"></script>
-    <script src="js/pages/lookup.js"></script>
-    <script src="js/pages/charts.js"></script>
-    <script src="js/pages/news.js"></script>
-    <script src="js/pages/comparison.js"></script>
-    <script src="js/pages/intraday.js"></script>
-    <script src="js/pages/valuation.js"></script>
-    <script src="js/pages/dividends.js"></script>
-    <script src="js/pages/short.js"></script>
-    <script src="js/pages/ratings.js"></script>
-    <script src="js/pages/correlation.js"></script>
-    <script src="js/chat/chat.js"></script>
+<body class="bg-zinc-950 text-zinc-50 font-sans antialiased overflow-hidden h-screen">
+  <div id="app" class="h-screen flex flex-col"></div>
 </body>
 </html>
