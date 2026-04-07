@@ -57,7 +57,7 @@ from data import (  # noqa: E402
 from econ_calendar import get_upcoming  # noqa: E402
 
 # --- Output directory ---
-DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+DATA_DIR = Path(__file__).resolve().parent.parent / "public" / "data"
 CHARTS_DIR = DATA_DIR / "charts"
 LOOKUP_DIR = DATA_DIR / "lookup"
 DATA_DIR.mkdir(exist_ok=True)
