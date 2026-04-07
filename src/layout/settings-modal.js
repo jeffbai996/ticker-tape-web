@@ -48,6 +48,36 @@ function openSettings() {
     form.appendChild(group)
   }
 
+  // Default chat model
+  const modelGroup = document.createElement('div')
+  const modelLabel = document.createElement('label')
+  modelLabel.className = 'block text-xs text-zinc-500 mb-1'
+  modelLabel.textContent = 'Default Chat Model'
+  const modelSelect = document.createElement('select')
+  modelSelect.className = 'w-full bg-zinc-800 border border-zinc-700 rounded-md px-3 py-1.5 text-sm text-zinc-200 focus:outline-none focus:border-zinc-500'
+  const models = [
+    { key: 'flash', label: 'Gemini Flash' },
+    { key: 'pro', label: 'Gemini Pro' },
+    { key: 'haiku', label: 'Haiku 4.5' },
+    { key: 'sonnet', label: 'Sonnet 4.6' },
+    { key: 'opus', label: 'Opus 4.6' },
+    { key: 'gpt', label: 'GPT-5.4' },
+    { key: 'gpt-mini', label: 'GPT-5.4 Mini' },
+  ]
+  const currentModel = localStorage.getItem('default_model') || 'flash'
+  for (const m of models) {
+    const opt = document.createElement('option')
+    opt.value = m.key
+    opt.textContent = m.label
+    opt.selected = m.key === currentModel
+    modelSelect.appendChild(opt)
+  }
+  modelSelect.addEventListener('change', () => {
+    localStorage.setItem('default_model', modelSelect.value)
+  })
+  modelGroup.append(modelLabel, modelSelect)
+  form.appendChild(modelGroup)
+
   const closeBtn = document.createElement('button')
   closeBtn.className = 'mt-4 w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-md px-4 py-2 text-sm transition-colors'
   closeBtn.textContent = 'Close'

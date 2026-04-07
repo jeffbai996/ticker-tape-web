@@ -39,6 +39,10 @@ export async function render(el) {
   ts.textContent = meta?.quotes_timestamp || ''
   header.append(h1, ts)
 
+  // Portfolio summary bar (ported from TUI thesis screen)
+  const summary = buildSummaryBar(quotes, technicals)
+  if (summary) container.appendChild(summary)
+
   // Card grid
   const grid = document.createElement('div')
   grid.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3'
@@ -58,7 +62,7 @@ export async function render(el) {
     const row1 = document.createElement('div')
     row1.className = 'flex items-center gap-2'
     const sym = document.createElement('span')
-    sym.className = 'font-mono text-sm font-semibold text-amber-400'
+    sym.className = 'font-mono text-sm font-semibold text-accent'
     sym.textContent = q.symbol
     const nm = document.createElement('span')
     nm.className = 'text-xs text-zinc-500 truncate'
@@ -69,7 +73,7 @@ export async function render(el) {
     const row2 = document.createElement('div')
     row2.className = 'flex items-baseline gap-2 flex-wrap'
     const price = document.createElement('span')
-    price.className = 'font-mono text-xl font-bold text-zinc-100'
+    price.className = 'font-mono text-xl font-extrabold text-zinc-100'
     price.textContent = fmtPrice(q.price)
     const changeDollar = document.createElement('span')
     changeDollar.className = `font-mono text-sm ${colorClass}`
@@ -122,7 +126,7 @@ export async function render(el) {
       extLabel.style.color = '#c864ff'
       extLabel.textContent = q.ext_label
       const extPrice = document.createElement('span')
-      extPrice.className = 'font-mono text-zinc-400'
+      extPrice.className = 'font-mono font-bold text-zinc-400'
       extPrice.textContent = fmtPrice(q.ext_price)
       const extChange = document.createElement('span')
       extChange.className = `font-mono ${changeColor(q.ext_pct)}`
@@ -139,4 +143,72 @@ export async function render(el) {
   container.append(header, grid)
   el.textContent = ''
   el.appendChild(container)
+}
+
+function buildSummaryBar(quotes, technicals) {
+  if (!quotes?.length) return null
+
+  const pcts = quotes.map(q => q.pct).filter(p => p != null)
+  const adv = pcts.filter(p => p > 0).length
+  const dec = pcts.filter(p => p < 0).length
+  const avg = pcts.length ? (pcts.reduce((a, b) => a + b, 0) / pcts.length) : 0
+
+  // SMA breadth from technicals
+  let above50 = 0, below50 = 0, above200 = 0, below200 = 0
+  let oversold = 0, overbought = 0
+  const offHighs = []
+
+  if (technicals) {
+    for (const sym of Object.keys(technicals)) {
+      const ta = technicals[sym]
+      if (ta.current && ta.sma_50) {
+        if (ta.current >= ta.sma_50) above50++; else below50++
+      }
+      if (ta.current && ta.sma_200) {
+        if (ta.current >= ta.sma_200) above200++; else below200++
+      }
+      if (ta.rsi != null) {
+        if (ta.rsi <= 30) oversold++
+        if (ta.rsi >= 70) overbought++
+      }
+      if (ta.off_high != null) offHighs.push(ta.off_high)
+    }
+  }
+
+  const avgOffHigh = offHighs.length ? (offHighs.reduce((a, b) => a + b, 0) / offHighs.length) : null
+
+  const bar = document.createElement('div')
+  bar.className = 'card p-3 mb-4 flex flex-wrap items-center gap-x-6 gap-y-1 text-xs'
+
+  const items = [
+    { label: `${quotes.length} symbols`, cls: 'text-zinc-400' },
+    { label: `Avg ${fmtPct(avg)}`, cls: changeColor(avg) },
+    { label: `▲${adv}`, cls: 'text-positive' },
+    { label: `▼${dec}`, cls: 'text-negative' },
+  ]
+
+  if (above50 + below50 > 0) {
+    items.push({ label: `SMA50: ▲${above50} ▼${below50}`, cls: 'text-zinc-400' })
+  }
+  if (above200 + below200 > 0) {
+    items.push({ label: `SMA200: ▲${above200} ▼${below200}`, cls: 'text-zinc-400' })
+  }
+  if (oversold > 0) {
+    items.push({ label: `${oversold} oversold`, cls: 'text-positive' })
+  }
+  if (overbought > 0) {
+    items.push({ label: `${overbought} overbought`, cls: 'text-negative' })
+  }
+  if (avgOffHigh != null) {
+    items.push({ label: `${avgOffHigh.toFixed(1)}% off highs`, cls: 'text-zinc-500' })
+  }
+
+  for (const item of items) {
+    const span = document.createElement('span')
+    span.className = `font-mono ${item.cls}`
+    span.textContent = item.label
+    bar.appendChild(span)
+  }
+
+  return bar
 }
