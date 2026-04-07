@@ -97,7 +97,7 @@ export function sparklineSVG(prices, { width = 80, height = 24, color = null } =
     return `${x.toFixed(1)},${y.toFixed(1)}`
   }).join(' ')
 
-  return `<svg class="sparkline" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+  return `<svg class="sparkline" width="100%" height="${height}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
     <polyline fill="none" stroke="${strokeColor}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" points="${points}" />
   </svg>`
 }

@@ -2,6 +2,7 @@
 // Routes: #/page or #/page/SYMBOL
 
 import { setState } from './state.js'
+import { BLOOMBERG_SHORTCUTS } from './layout/command-palette.js'
 
 const routes = {}
 let mainEl = null
@@ -22,8 +23,12 @@ export function initRouter() {
 async function handleRoute() {
   const hash = window.location.hash || '#/'
   const parts = hash.replace('#/', '').split('/')
-  const page = parts[0] || 'dashboard'
-  const param = parts.slice(1).join('/') || null
+  let page = parts[0] || 'dashboard'
+  let param = parts.slice(1).join('/') || null
+
+  // Resolve Bloomberg shortcuts (e.g. #/wei → market, #/fa/NVDA → lookup/NVDA)
+  const resolved = BLOOMBERG_SHORTCUTS[page.toLowerCase()]
+  if (resolved) page = resolved
 
   setState({ currentPage: page, currentSymbol: param })
 

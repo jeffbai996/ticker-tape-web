@@ -78,9 +78,9 @@ export async function render(el) {
 
     // Row 3: Sparkline
     const row3 = document.createElement('div')
-    row3.className = 'h-6'
+    row3.className = 'h-7 overflow-hidden'
     if (spark) {
-      row3.innerHTML = sparklineSVG(spark, { width: 200, height: 24 })
+      row3.innerHTML = sparklineSVG(spark, { width: 400, height: 28 })
     }
 
     // Row 4: Indicators

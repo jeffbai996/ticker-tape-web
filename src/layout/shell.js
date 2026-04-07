@@ -83,7 +83,7 @@ function buildShellHTML() {
     <div class="flex flex-1 overflow-hidden">
       <aside id="sidebar" class="w-60 bg-zinc-900/50 border-r border-zinc-800 flex flex-col overflow-hidden shrink-0 transition-all duration-200 max-lg:w-14 max-md:hidden"></aside>
       <main id="main-content" class="flex-1 overflow-y-auto overflow-x-hidden"></main>
-      <aside id="chat-panel" class="w-[360px] bg-zinc-900/50 border-l border-zinc-800 flex-col overflow-hidden shrink-0 hidden transition-all duration-200"></aside>
+      <aside id="chat-panel" class="w-[360px] max-w-full max-xl:fixed max-xl:right-0 max-xl:top-8 max-xl:bottom-0 max-xl:z-40 bg-zinc-900 border-l border-zinc-800 flex-col overflow-hidden shrink-0 hidden transition-all duration-200"></aside>
     </div>
     <nav id="mobile-nav" class="h-14 bg-zinc-900 border-t border-zinc-800 items-center justify-around shrink-0 hidden max-md:flex"></nav>
     <div id="command-palette" class="hidden"></div>

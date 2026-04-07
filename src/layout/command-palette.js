@@ -9,32 +9,64 @@ let resultsEl = null
 let selectedIdx = 0
 let currentItems = []
 
+// Bloomberg-style abbreviations included in keys for quick navigation
 const PAGES = [
-  { id: 'dashboard',   label: 'Dashboard',        desc: 'Portfolio overview',       keys: 'dashboard home thesis t' },
-  { id: 'market',      label: 'Market Overview',   desc: 'Indices, rates, FX',       keys: 'market m indices' },
-  { id: 'sectors',     label: 'Sectors',           desc: 'Sector ETF performance',   keys: 'sectors s xlk smh' },
-  { id: 'earnings',    label: 'Earnings',          desc: 'Earnings calendar',        keys: 'earnings e eps' },
-  { id: 'heatmap',     label: 'Heatmap',           desc: 'Watchlist heatmap',        keys: 'heatmap hm heat' },
-  { id: 'commodities', label: 'Commodities',       desc: 'Futures prices',           keys: 'commodities com oil gold' },
-  { id: 'calendar',    label: 'Econ Calendar',     desc: 'FOMC, CPI, NFP, GDP',      keys: 'calendar cal econ fomc cpi' },
-  { id: 'correlation', label: 'Correlation',       desc: 'Correlation matrix',       keys: 'correlation cor matrix' },
-  { id: 'comparison',  label: 'Comparison',        desc: 'Multi-symbol comparison',  keys: 'comparison compare vs' },
-  { id: 'valuation',   label: 'Valuation',         desc: 'Multi-stock valuation',    keys: 'valuation val pe ps' },
-  { id: 'news',        label: 'News',              desc: 'Headlines',                keys: 'news n headlines' },
+  { id: 'dashboard',   label: 'Dashboard',        desc: 'Portfolio overview',       keys: 'dashboard home thesis t port' },
+  { id: 'market',      label: 'Market Overview',   desc: 'Indices, rates, FX',       keys: 'market m indices wei wcix' },
+  { id: 'sectors',     label: 'Sectors',           desc: 'Sector ETF performance',   keys: 'sectors s xlk smh secf bi' },
+  { id: 'earnings',    label: 'Earnings',          desc: 'Earnings calendar',        keys: 'earnings e eps ee ern' },
+  { id: 'heatmap',     label: 'Heatmap',           desc: 'Watchlist heatmap',        keys: 'heatmap hm heat imap' },
+  { id: 'commodities', label: 'Commodities',       desc: 'Futures prices',           keys: 'commodities com oil gold cmdx' },
+  { id: 'calendar',    label: 'Econ Calendar',     desc: 'FOMC, CPI, NFP, GDP',      keys: 'calendar cal econ fomc cpi eco ecow' },
+  { id: 'correlation', label: 'Correlation',       desc: 'Correlation matrix',       keys: 'correlation cor matrix corr' },
+  { id: 'comparison',  label: 'Comparison',        desc: 'Multi-symbol comparison',  keys: 'comparison compare vs comp' },
+  { id: 'valuation',   label: 'Valuation',         desc: 'Multi-stock valuation',    keys: 'valuation val pe ps rvp' },
+  { id: 'news',        label: 'News',              desc: 'Headlines',                keys: 'news n headlines top nws' },
+  { id: 'terminal',    label: 'Terminal',          desc: 'Bloomberg-style CLI',       keys: 'terminal term cli cmd' },
 ]
 
 const SYMBOL_PAGES = [
-  { id: 'lookup',     label: 'Lookup',         desc: 'Symbol fundamentals',    keys: 'lookup l fundamentals info' },
-  { id: 'chart',      label: 'Chart',          desc: 'Candlestick chart',      keys: 'chart c candle' },
-  { id: 'technicals', label: 'Technicals',     desc: 'SMA / RSI / MACD',       keys: 'technicals ta rsi macd' },
-  { id: 'intraday',   label: 'Intraday',       desc: '5-min bars + VWAP',      keys: 'intraday id vwap' },
-  { id: 'dividends',  label: 'Dividends',      desc: 'Yield, ex-date, payout', keys: 'dividends div yield' },
+  { id: 'lookup',     label: 'Lookup',         desc: 'Symbol fundamentals',    keys: 'lookup l fundamentals info des fa' },
+  { id: 'chart',      label: 'Chart',          desc: 'Candlestick chart',      keys: 'chart c candle gp gpx' },
+  { id: 'technicals', label: 'Technicals',     desc: 'SMA / RSI / MACD',       keys: 'technicals ta rsi macd tav' },
+  { id: 'intraday',   label: 'Intraday',       desc: '5-min bars + VWAP',      keys: 'intraday id vwap gip' },
+  { id: 'dividends',  label: 'Dividends',      desc: 'Yield, ex-date, payout', keys: 'dividends div yield dvd' },
   { id: 'short',      label: 'Short Interest',  desc: 'Short data',            keys: 'short shorts si' },
-  { id: 'ratings',    label: 'Ratings',         desc: 'Analyst consensus',     keys: 'ratings rat analyst' },
+  { id: 'ratings',    label: 'Ratings',         desc: 'Analyst consensus',     keys: 'ratings rat analyst anr' },
   { id: 'insider',    label: 'Insider',         desc: 'Insider transactions',  keys: 'insider ins' },
   { id: 'impact',     label: 'Impact',          desc: 'Earnings impact',       keys: 'impact imp earnings' },
-  { id: 'options',    label: 'Options',         desc: 'Options chain',         keys: 'options opt chain iv' },
+  { id: 'options',    label: 'Options',         desc: 'Options chain',         keys: 'options opt chain iv omon' },
 ]
+
+// Bloomberg shortcut map — direct command → page resolution
+const BLOOMBERG_SHORTCUTS = {
+  wei:  'market',     // World Equity Indices
+  wcix: 'market',     // World Currency Indices
+  top:  'news',       // Top News
+  nws:  'news',       // News
+  eco:  'calendar',   // Economic Calendar
+  ecow: 'calendar',   // Economic Calendar Weekly
+  ee:   'earnings',   // Earnings Estimates
+  ern:  'earnings',   // Earnings
+  fa:   'lookup',     // Financial Analysis (needs symbol)
+  des:  'lookup',     // Description (needs symbol)
+  gp:   'chart',      // Graph/Price (needs symbol)
+  gpx:  'chart',      // Graph Extended
+  gip:  'intraday',   // Graph Intraday
+  tav:  'technicals', // Technical Analysis
+  dvd:  'dividends',  // Dividends
+  anr:  'ratings',    // Analyst Recommendations
+  omon: 'options',    // Options Monitor
+  port: 'dashboard',  // Portfolio
+  comp: 'comparison', // Comparative Returns
+  corr: 'correlation',// Correlation
+  rvp:  'valuation',  // Relative Value/Performance
+  secf: 'sectors',    // Sector Finder
+  imap: 'heatmap',    // Industry Map
+  cmdx: 'commodities',// Commodity Index
+}
+
+export { BLOOMBERG_SHORTCUTS }
 
 export function initCommandPalette(el) {
   paletteEl = el
