@@ -37,7 +37,7 @@
 }
 
 .ticker-scroll {
-  animation: ticker-scroll 30s linear infinite;
+  animation: ticker-scroll 45s linear infinite;
   min-width: max-content;
 }
 

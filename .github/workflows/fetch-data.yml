@@ -19,20 +19,16 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Clone ticker-tape
-        run: git clone --depth 1 https://github.com/jeffbai996/ticker-tape.git /tmp/ticker-tape
       - name: Install dependencies
-        run: pip install -q -r scripts/requirements.txt -r /tmp/ticker-tape/requirements.txt
+        run: pip install -q -r scripts/requirements.txt
       - name: Fetch market data
         run: python scripts/fetch_data.py
         env:
-          TICKER_TAPE_DIR: /tmp/ticker-tape
           WATCHLIST_SYMBOLS: ${{ secrets.WATCHLIST_SYMBOLS }}
           THESIS_BUCKETS: ${{ secrets.THESIS_BUCKETS }}
       - name: Fetch fundamentals
         run: python scripts/fetch_lookup.py
         env:
-          TICKER_TAPE_DIR: /tmp/ticker-tape
           WATCHLIST_SYMBOLS: ${{ secrets.WATCHLIST_SYMBOLS }}
       - name: Commit data
         run: |
