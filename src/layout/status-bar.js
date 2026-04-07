@@ -87,7 +87,7 @@ async function refresh() {
       + `</span>`
   }).join('')
 
-  tickerEl.innerHTML = `<div class="ticker-scroll flex items-center h-full whitespace-nowrap">${items}${items}</div>`
+  tickerEl.innerHTML = `<div class="ticker-scroll flex items-center h-full whitespace-nowrap">${items}<span class="px-8"></span>${items}<span class="px-8"></span></div>`
 }
 
 function startClock() {

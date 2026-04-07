@@ -65,16 +65,19 @@ export async function render(el) {
     nm.textContent = name
     row1.append(sym, nm)
 
-    // Row 2: Price + change
+    // Row 2: Price + change ($ unbold) + % (bold)
     const row2 = document.createElement('div')
-    row2.className = 'flex items-baseline gap-2'
+    row2.className = 'flex items-baseline gap-2 flex-wrap'
     const price = document.createElement('span')
-    price.className = 'font-mono text-xl font-semibold text-zinc-100'
+    price.className = 'font-mono text-xl font-bold text-zinc-100'
     price.textContent = fmtPrice(q.price)
-    const change = document.createElement('span')
-    change.className = `font-mono text-sm ${colorClass}`
-    change.textContent = `${fmtChange(q.change)}  ${fmtPct(q.pct)}`
-    row2.append(price, change)
+    const changeDollar = document.createElement('span')
+    changeDollar.className = `font-mono text-sm ${colorClass}`
+    changeDollar.textContent = fmtChange(q.change)
+    const changePct = document.createElement('span')
+    changePct.className = `font-mono text-sm font-semibold ${colorClass}`
+    changePct.textContent = fmtPct(q.pct)
+    row2.append(price, changeDollar, changePct)
 
     // Row 3: Sparkline
     const row3 = document.createElement('div')
@@ -110,12 +113,13 @@ export async function render(el) {
       row4.appendChild(earnBadge)
     }
 
-    // Row 5: Extended hours
+    // Row 5: Extended hours — purple label like TUI (#c864ff)
     if (q.ext_price && q.ext_label) {
       const row5 = document.createElement('div')
       row5.className = 'flex items-center gap-2 text-xs'
       const extLabel = document.createElement('span')
-      extLabel.className = 'text-zinc-600'
+      extLabel.className = 'font-semibold'
+      extLabel.style.color = '#c864ff'
       extLabel.textContent = q.ext_label
       const extPrice = document.createElement('span')
       extPrice.className = 'font-mono text-zinc-400'

@@ -1,14 +1,86 @@
 // Terminal mode: Bloomberg-style command interface.
-// Type commands directly like a Bloomberg terminal.
+// Mirrors the exact alias map from ticker-tape TUI (app.py/command_bar.py).
 
 import { go } from '../router.js'
 import { BLOOMBERG_SHORTCUTS } from '../layout/command-palette.js'
-import { loadMeta } from '../lib/data.js'
 
 let historyEl = null
 let inputEl = null
 const cmdHistory = []
 let historyIdx = -1
+
+// Exact alias map from TUI command_bar.py
+const ALIASES = {
+  t: 'dashboard',
+  m: 'market',
+  s: 'sectors',
+  e: 'earnings',
+  er: 'earnings',
+  ta: 'technicals',    // needs symbol
+  n: 'news',
+  h: 'help',
+  '?': 'help',
+  q: 'dashboard',      // exit terminal
+  quit: 'dashboard',
+  exit: 'dashboard',
+  w: 'watch',
+  uw: 'unwatch',
+  wl: 'watchlist',
+  c: 'compact',        // not applicable in web
+  chart: 'chart',      // needs symbol
+  vs: 'comparison',
+  i: 'intraday',       // needs symbol
+  intra: 'intraday',
+  impact: 'impact',
+  ei: 'impact',
+  hm: 'heatmap',
+  cal: 'calendar',
+  calendar: 'calendar',
+  commodities: 'commodities',
+  commod: 'commodities',
+  cm: 'commodities',
+  insider: 'insider',  // needs symbol
+  options: 'options',  // needs symbol
+  opt: 'options',
+  chain: 'options',
+  corr: 'correlation',
+  correlation: 'correlation',
+  div: 'dividends',    // needs symbol
+  dividend: 'dividends',
+  short: 'short',      // needs symbol
+  si: 'short',
+  rating: 'ratings',   // needs symbol
+  ratings: 'ratings',
+  pt: 'ratings',
+  lookup: 'lookup',    // needs symbol
+  j: 'journal',
+  journal: 'journal',
+}
+
+// Commands that need a symbol argument
+const NEEDS_SYMBOL = new Set([
+  'technicals', 'chart', 'intraday', 'insider', 'options',
+  'dividends', 'short', 'ratings', 'lookup',
+])
+
+// IBKR-only commands
+const IBKR_COMMANDS = new Set([
+  'pos', 'positions', 'acct', 'account', 'pnl',
+  'trades', 'margin', 'whatif',
+])
+
+// Commands handled locally (not navigation)
+const LOCAL_COMMANDS = new Set([
+  'help', 'watch', 'unwatch', 'watchlist', 'compact', 'journal',
+])
+
+// Page names that can be typed directly
+const PAGE_NAMES = new Set([
+  'dashboard', 'market', 'sectors', 'earnings', 'heatmap', 'commodities',
+  'calendar', 'correlation', 'comparison', 'valuation', 'news',
+  'lookup', 'chart', 'technicals', 'intraday', 'dividends', 'short', 'ratings',
+  'insider', 'impact', 'options', 'terminal',
+])
 
 export async function render(el) {
   const container = document.createElement('div')
@@ -30,8 +102,8 @@ export async function render(el) {
   historyEl.className = 'flex-1 overflow-y-auto p-4 font-mono text-sm space-y-1'
 
   // Welcome
-  appendOutput('ticker-tape terminal v2.0', 'text-amber-400')
-  appendOutput('Type commands to navigate. Bloomberg shortcuts supported.', 'text-zinc-500')
+  appendOutput('ticker-tape terminal v2.1', 'text-amber-400')
+  appendOutput('Type commands to navigate. TUI aliases + Bloomberg shortcuts supported.', 'text-zinc-500')
   appendOutput('─────────────────────────────────────────', 'text-zinc-800')
   appendOutput('')
 
@@ -104,61 +176,78 @@ async function executeCommand(raw) {
   const cmd = parts[0]
   const arg = parts.slice(1).join(' ').toUpperCase() || null
 
-  // Special commands
-  if (cmd === 'help' || cmd === '?') {
-    showHelp()
-    return
-  }
+  // Clear terminal
   if (cmd === 'clear' || cmd === 'cls') {
     historyEl.textContent = ''
     return
   }
-  if (cmd === 'exit' || cmd === 'quit' || cmd === 'q') {
-    go('dashboard')
+
+  // Chat/AI — show message
+  if (cmd === 'chat' || cmd === 'ai') {
+    appendOutput('Use the chat panel (toggle with sidebar button).', 'text-zinc-500')
     return
   }
 
-  // Check Bloomberg shortcuts
-  const resolved = BLOOMBERG_SHORTCUTS[cmd]
-  if (resolved) {
-    appendOutput(`→ ${resolved}${arg ? '/' + arg : ''}`, 'text-zinc-500')
-    go(resolved, arg)
+  // IBKR commands — can't run in web
+  if (IBKR_COMMANDS.has(cmd)) {
+    appendOutput(`IBKR commands require live connection. Use ticker-tape TUI.`, 'text-yellow-500')
     return
   }
 
-  // Check if it's a direct page name
-  const pageNames = ['dashboard', 'market', 'sectors', 'earnings', 'heatmap', 'commodities',
-    'calendar', 'correlation', 'comparison', 'valuation', 'news',
-    'lookup', 'chart', 'technicals', 'intraday', 'dividends', 'short', 'ratings',
-    'insider', 'impact', 'options', 'terminal']
-  if (pageNames.includes(cmd)) {
-    appendOutput(`→ ${cmd}${arg ? '/' + arg : ''}`, 'text-zinc-500')
+  // Check Bloomberg shortcuts first
+  const bloomberg = BLOOMBERG_SHORTCUTS[cmd]
+  if (bloomberg) {
+    go(bloomberg, arg)
+    return
+  }
+
+  // Check TUI alias map
+  const aliased = ALIASES[cmd]
+  if (aliased) {
+    // Help
+    if (aliased === 'help') {
+      showHelp()
+      return
+    }
+    // Exit variants (q, quit, exit → dashboard)
+    if (cmd === 'q' || cmd === 'quit' || cmd === 'exit') {
+      go('dashboard')
+      return
+    }
+    // Local commands that don't navigate
+    if (LOCAL_COMMANDS.has(aliased)) {
+      if (aliased === 'watch' || aliased === 'unwatch' || aliased === 'watchlist') {
+        appendOutput(`Watchlist: use sidebar or command palette.`, 'text-zinc-500')
+      } else if (aliased === 'compact') {
+        appendOutput(`Compact mode not applicable in web.`, 'text-zinc-500')
+      } else if (aliased === 'journal') {
+        appendOutput(`Journal not yet available in web.`, 'text-zinc-500')
+      }
+      return
+    }
+    // Commands that need a symbol
+    if (NEEDS_SYMBOL.has(aliased) && !arg) {
+      appendOutput(`${cmd} requires a symbol. Usage: ${cmd} NVDA`, 'text-yellow-500')
+      return
+    }
+    go(aliased, arg)
+    return
+  }
+
+  // Direct page name
+  if (PAGE_NAMES.has(cmd)) {
+    if (NEEDS_SYMBOL.has(cmd) && !arg) {
+      appendOutput(`${cmd} requires a symbol. Usage: ${cmd} NVDA`, 'text-yellow-500')
+      return
+    }
     go(cmd, arg)
     return
   }
 
-  // Short aliases
-  const aliases = { t: 'dashboard', m: 'market', s: 'sectors', e: 'earnings',
-    hm: 'heatmap', com: 'commodities', cal: 'calendar', cor: 'correlation',
-    vs: 'comparison', val: 'valuation', n: 'news', l: 'lookup', c: 'chart',
-    ta: 'technicals', id: 'intraday', div: 'dividends', si: 'short',
-    rat: 'ratings', ins: 'insider', imp: 'impact', opt: 'options' }
-  if (aliases[cmd]) {
-    appendOutput(`→ ${aliases[cmd]}${arg ? '/' + arg : ''}`, 'text-zinc-500')
-    go(aliases[cmd], arg)
-    return
-  }
-
-  // Check if it looks like a symbol (1-5 uppercase)
+  // Symbol lookup: 1-5 uppercase alpha
   if (/^[A-Z]{1,5}$/i.test(cmd)) {
-    const meta = await loadMeta()
-    const names = meta?.names || {}
-    const sym = cmd.toUpperCase()
-    if (names[sym]) {
-      appendOutput(`→ lookup/${sym} (${names[sym]})`, 'text-zinc-500')
-      go('lookup', sym)
-      return
-    }
+    go('lookup', cmd.toUpperCase())
+    return
   }
 
   appendOutput(`Unknown command: ${cmd}. Type 'help' for available commands.`, 'text-red-400')
@@ -168,33 +257,58 @@ function showHelp() {
   const lines = [
     '',
     'NAVIGATION',
-    '  t, dashboard     Portfolio overview',
-    '  m, market, WEI   Market overview / World Equity Indices',
-    '  s, sectors       Sector ETF performance',
-    '  e, earnings, EE  Earnings calendar',
-    '  hm, heatmap      Watchlist heatmap',
-    '  com, CMDX        Commodities / futures',
-    '  cal, ECO         Economic calendar',
-    '  cor, CORR        Correlation matrix',
-    '  vs, COMP         Multi-symbol comparison',
-    '  val, RVP         Valuation comparison',
-    '  n, news, TOP     News headlines',
+    '  t              Dashboard / thesis overview',
+    '  m, market      Market overview / World Equity Indices',
+    '  s, sectors     Sector ETF performance',
+    '  e, er          Earnings calendar',
+    '  hm             Heatmap',
+    '  cm, commod     Commodities / futures',
+    '  cal            Economic calendar',
+    '  corr           Correlation matrix',
+    '  vs             Multi-symbol comparison',
+    '  n              News headlines',
+    '  impact, ei     Earnings impact',
     '',
     'SYMBOL COMMANDS (append symbol)',
-    '  l, FA, DES       Lookup / fundamentals     e.g. FA NVDA',
-    '  c, GP            Chart                     e.g. GP AAPL',
-    '  ta, TAV          Technicals                e.g. TAV MSFT',
-    '  id, GIP          Intraday                  e.g. GIP GOOG',
-    '  div, DVD         Dividends                 e.g. DVD AAPL',
-    '  si               Short interest',
-    '  rat, ANR          Analyst ratings',
-    '  opt, OMON         Options chain',
+    '  ta             Technicals              e.g. ta NVDA',
+    '  chart          Chart                   e.g. chart AAPL',
+    '  i, intra       Intraday                e.g. i GOOG',
+    '  div            Dividends               e.g. div AAPL',
+    '  si, short      Short interest           e.g. si TSLA',
+    '  rating, pt     Analyst ratings          e.g. rating MSFT',
+    '  insider        Insider transactions     e.g. insider NVDA',
+    '  opt, options   Options chain            e.g. opt AAPL',
+    '  lookup         Symbol lookup            e.g. lookup NVDA',
+    '',
+    'BLOOMBERG SHORTCUTS',
+    '  WEI WCIX       Market          TOP NWS  News',
+    '  EE ERN         Earnings        ECO ECOW Calendar',
+    '  FA DES         Lookup          GP GPX   Chart',
+    '  GIP            Intraday        TAV      Technicals',
+    '  DVD            Dividends       ANR      Ratings',
+    '  OMON           Options         CORR     Correlation',
+    '  COMP           Comparison      RVP      Valuation',
+    '  SECF           Sectors         IMAP     Heatmap',
+    '  CMDX           Commodities     PORT     Dashboard',
+    '',
+    'WATCHLIST',
+    '  w SYMBOL       Add to watchlist (use sidebar)',
+    '  uw SYMBOL      Remove from watchlist',
+    '  wl             Show watchlist',
+    '',
+    'IBKR (requires TUI)',
+    '  pos            Positions',
+    '  acct           Account summary',
+    '  pnl            P&L breakdown',
+    '  trades         Recent trades',
+    '  margin         Margin details',
+    '  whatif         What-if scenarios',
     '',
     'TERMINAL',
-    '  help, ?          Show this help',
-    '  clear, cls       Clear terminal',
-    '  exit, q          Return to dashboard',
-    '  NVDA             Type any symbol to look it up',
+    '  h, ?           Show this help',
+    '  clear, cls     Clear terminal',
+    '  q, quit, exit  Return to dashboard',
+    '  NVDA           Type any symbol to look it up',
     '',
   ]
   for (const line of lines) {
