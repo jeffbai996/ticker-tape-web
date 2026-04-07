@@ -23,7 +23,7 @@ config.SYMBOLS = json.loads(
 
 from data import fetch_stock_info  # noqa: E402
 
-LOOKUP_DIR = Path(__file__).resolve().parent.parent / "data" / "lookup"
+LOOKUP_DIR = Path(__file__).resolve().parent.parent / "public" / "data" / "lookup"
 LOOKUP_DIR.mkdir(parents=True, exist_ok=True)
 
 
