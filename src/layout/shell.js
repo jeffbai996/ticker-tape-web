@@ -3,10 +3,10 @@
 
 import { initStatusBar } from './status-bar.js'
 import { initSidebar } from './sidebar.js'
-import { setMainElement } from '../router.js'
+import { setMainElement, go } from '../router.js'
 import { registerPages } from '../pages/index.js'
 import { setState } from '../state.js'
-import { initCommandPalette } from './command-palette.js'
+import { initCommandPalette, BLOOMBERG_SHORTCUTS } from './command-palette.js'
 import { initSettingsModal } from './settings-modal.js'
 import { initChatPanel } from '../chat/panel.js'
 
@@ -26,6 +26,9 @@ export function initShell(app) {
   initSettingsModal()
   initChatPanel(document.getElementById('chat-panel'))
   initMobileNav(document.getElementById('mobile-nav'))
+
+  // Command buffer — Bloomberg-style keyboard input
+  initCommandBuffer()
 
   // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
@@ -75,6 +78,127 @@ function initMobileNav(nav) {
     }
     nav.appendChild(btn)
   }
+}
+
+function initCommandBuffer() {
+  let commandBuffer = ''
+
+  // Overlay element
+  const overlay = document.createElement('div')
+  overlay.className = 'fixed bottom-4 left-1/2 -translate-x-1/2 bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 font-mono text-amber-400 text-sm z-50 shadow-lg hidden'
+  document.body.appendChild(overlay)
+
+  // Quick aliases — same as TUI single/short commands
+  const ALIASES = {
+    t: 'dashboard', m: 'market', s: 'sectors', e: 'earnings',
+    hm: 'heatmap', com: 'commodities', cal: 'calendar', cor: 'correlation',
+    vs: 'comparison', val: 'valuation', n: 'news', ta: 'technicals',
+    c: 'chart', id: 'intraday', div: 'dividends', si: 'short',
+    rat: 'ratings', l: 'lookup',
+  }
+
+  const PAGE_NAMES = new Set([
+    'dashboard', 'market', 'sectors', 'earnings', 'heatmap', 'commodities',
+    'calendar', 'correlation', 'comparison', 'valuation', 'news',
+    'lookup', 'chart', 'technicals', 'intraday', 'dividends', 'short', 'ratings',
+    'insider', 'impact', 'options', 'terminal',
+  ])
+
+  function updateOverlay() {
+    if (commandBuffer.length === 0) {
+      overlay.classList.add('hidden')
+      return
+    }
+    overlay.classList.remove('hidden')
+    overlay.textContent = ''
+    const gt = document.createElement('span')
+    gt.className = 'text-zinc-500 mr-1'
+    gt.textContent = '>'
+    const text = document.createElement('span')
+    text.textContent = commandBuffer
+    const cursor = document.createElement('span')
+    cursor.className = 'animate-pulse'
+    cursor.textContent = '_'
+    overlay.append(gt, text, cursor)
+  }
+
+  function dispatchBuffer() {
+    const raw = commandBuffer.trim()
+    commandBuffer = ''
+    updateOverlay()
+    if (!raw) return
+
+    const parts = raw.split(/\s+/)
+    const cmd = parts[0].toLowerCase()
+    const arg = parts.slice(1).join(' ').toUpperCase() || null
+
+    // Bloomberg shortcuts first
+    const bloomberg = BLOOMBERG_SHORTCUTS[cmd]
+    if (bloomberg) { go(bloomberg, arg); return }
+
+    // Direct page names
+    if (PAGE_NAMES.has(cmd)) { go(cmd, arg); return }
+
+    // Short aliases
+    if (ALIASES[cmd]) { go(ALIASES[cmd], arg); return }
+
+    // Symbol lookup: 1-5 alpha uppercase
+    if (/^[A-Z]{1,5}$/i.test(raw) && !arg) {
+      go('lookup', raw.toUpperCase())
+      return
+    }
+
+    // If first word is an alias and has a symbol after it
+    const aliased = ALIASES[cmd] || BLOOMBERG_SHORTCUTS[cmd]
+    if (aliased && arg) { go(aliased, arg); return }
+
+    // Fallback: open command palette with the text
+    // (unrecognized command, let palette fuzzy-match)
+    go('terminal')
+  }
+
+  document.addEventListener('keydown', (e) => {
+    // Ignore when typing in form elements
+    const tag = e.target.tagName
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+
+    // Ignore when command palette is open
+    const palette = document.getElementById('command-palette')
+    if (palette && !palette.classList.contains('hidden')) return
+
+    // Ignore modifier combos (except shift for uppercase)
+    if (e.metaKey || e.ctrlKey || e.altKey) return
+
+    if (e.key === 'Backspace') {
+      e.preventDefault()
+      commandBuffer = commandBuffer.slice(0, -1)
+      updateOverlay()
+      return
+    }
+
+    if (e.key === 'Enter' && commandBuffer.length > 0) {
+      e.preventDefault()
+      dispatchBuffer()
+      return
+    }
+
+    if (e.key === 'Escape') {
+      if (commandBuffer.length > 0) {
+        e.preventDefault()
+        e.stopPropagation()
+        commandBuffer = ''
+        updateOverlay()
+        return
+      }
+    }
+
+    // Single printable character (alphanumeric, space, common symbols)
+    if (e.key.length === 1 && /[a-zA-Z0-9 ]/.test(e.key)) {
+      e.preventDefault()
+      commandBuffer += e.key.toUpperCase()
+      updateOverlay()
+    }
+  })
 }
 
 function buildShellHTML() {
