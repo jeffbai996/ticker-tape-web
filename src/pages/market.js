@@ -37,7 +37,7 @@ export async function render(el) {
     section.className = 'card p-3'
 
     const catTitle = document.createElement('h2')
-    catTitle.className = 'text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2'
+    catTitle.className = 'text-xs font-semibold uppercase tracking-wider text-info mb-2'
     catTitle.textContent = cat
 
     const grid = document.createElement('div')
@@ -51,17 +51,16 @@ export async function render(el) {
       name.className = 'text-xs text-zinc-400 truncate'
       name.textContent = item.name
 
-      const priceRow = document.createElement('div')
-      priceRow.className = 'flex items-baseline justify-between gap-1 mt-0.5'
-      const priceEl = document.createElement('span')
-      priceEl.className = 'font-mono text-sm font-medium'
-      priceEl.textContent = fmtPrice(item.price, item.price < 10 ? 4 : 2)
-      const pctEl = document.createElement('span')
-      pctEl.className = `font-mono text-xs ${changeColor(item.pct)}`
+      const priceEl = document.createElement('div')
+      priceEl.className = 'font-mono text-sm font-semibold mt-0.5'
+      // Compact formatting for large numbers
+      const p = item.price
+      priceEl.textContent = p >= 10000 ? Math.round(p).toLocaleString() : fmtPrice(p, p < 10 ? 4 : 2)
+      const pctEl = document.createElement('div')
+      pctEl.className = `font-mono text-xs font-semibold ${changeColor(item.pct)}`
       pctEl.textContent = fmtPct(item.pct)
-      priceRow.append(priceEl, pctEl)
 
-      tile.append(name, priceRow)
+      tile.append(name, priceEl, pctEl)
       grid.appendChild(tile)
     }
 

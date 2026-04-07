@@ -8,10 +8,10 @@
   --color-surface: #18181b;
   --color-surface-hover: #27272a;
   --color-border-subtle: #27272a;
-  --color-positive: #22c55e;
-  --color-negative: #ef4444;
-  --color-accent: #f59e0b;
-  --color-info: #3b82f6;
+  --color-positive: #2ecc71;
+  --color-negative: #ff3232;
+  --color-accent: #ffc800;
+  --color-info: #00c8ff;
   --color-pre-market: #a855f7;
   --color-after-hours: #3b82f6;
 }
@@ -50,10 +50,10 @@
 
 /* ── Card hover ────────────────────────────────────── */
 .card {
-  @apply bg-surface border border-zinc-800 rounded-lg transition-colors duration-150;
+  @apply bg-surface border border-zinc-700/50 rounded-lg transition-colors duration-150;
 }
 .card:hover {
-  @apply border-zinc-600;
+  @apply border-zinc-500;
 }
 .card-clickable {
   @apply cursor-pointer;

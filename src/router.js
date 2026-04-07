@@ -32,10 +32,13 @@ async function handleRoute() {
 
   setState({ currentPage: page, currentSymbol: param })
 
-  // Highlight active nav
+  // Highlight active nav with accent border
   document.querySelectorAll('[data-nav]').forEach(el => {
-    el.classList.toggle('bg-zinc-800', el.dataset.nav === page)
-    el.classList.toggle('text-amber-400', el.dataset.nav === page)
+    const active = el.dataset.nav === page
+    el.classList.toggle('bg-zinc-800/50', active)
+    el.classList.toggle('text-accent', active)
+    el.classList.toggle('border-l-2', active)
+    el.classList.toggle('border-accent', active)
   })
 
   if (!mainEl) return
