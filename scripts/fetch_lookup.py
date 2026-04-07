@@ -1,52 +1,55 @@
-"""Fetch per-symbol fundamentals (slower, run less frequently).
+"""Self-contained per-symbol fundamentals fetcher for ticker-tape-web.
 
-Writes data/lookup/{SYMBOL}.json for each watchlist symbol.
+Writes yf.Ticker(sym).info to public/data/lookup/{SYM}.json.
+No dependency on the ticker-tape TUI repo.
 """
 
 import json
 import logging
 import os
-import sys
-from pathlib import Path
+import time
 
-logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+import yfinance as yf
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 
-TT_DIR = os.environ.get("TICKER_TAPE_DIR", "/tmp/ticker-tape")
-sys.path.insert(0, TT_DIR)
-
-import config  # noqa: E402
-
-config.SYMBOLS = json.loads(
-    os.environ.get("WATCHLIST_SYMBOLS", '["AAPL","MSFT","GOOG","AMZN","NVDA"]')
-)
-
-from data import fetch_stock_info  # noqa: E402
-
-LOOKUP_DIR = Path(__file__).resolve().parent.parent / "public" / "data" / "lookup"
-LOOKUP_DIR.mkdir(parents=True, exist_ok=True)
+SYMBOLS: list[str] = json.loads(os.environ.get("WATCHLIST_SYMBOLS", '["AAPL","MSFT","GOOG","AMZN","NVDA"]'))
+DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "public", "data", "lookup")
 
 
 def main() -> None:
-    for sym in config.SYMBOLS:
-        log.info("Fetching lookup: %s", sym)
+    os.makedirs(DATA_DIR, exist_ok=True)
+    log.info("Fetching fundamentals for %d symbols", len(SYMBOLS))
+
+    for sym in SYMBOLS:
         try:
-            info = fetch_stock_info(sym)
-            if info:
-                # Filter to serializable values
-                clean = {}
-                for k, v in info.items():
-                    if isinstance(v, (int, float, str, bool, type(None))):
+            time.sleep(0.1)
+            info = yf.Ticker(sym).info
+            if not info:
+                log.warning("No info for %s", sym)
+                continue
+
+            # Filter to JSON-serializable values only
+            clean = {}
+            for k, v in info.items():
+                if isinstance(v, (str, int, float, bool, type(None))):
+                    clean[k] = v
+                elif isinstance(v, (list, dict)):
+                    try:
+                        json.dumps(v)
                         clean[k] = v
-                    elif isinstance(v, list):
-                        clean[k] = v
-                out = LOOKUP_DIR / f"{sym}.json"
-                out.write_text(json.dumps(clean, default=str, ensure_ascii=False))
-                log.info("  %s: %d fields", sym, len(clean))
-            else:
-                log.warning("  %s: no data", sym)
+                    except (TypeError, ValueError):
+                        pass
+
+            path = os.path.join(DATA_DIR, f"{sym}.json")
+            with open(path, "w") as f:
+                json.dump(clean, f, separators=(",", ":"))
+            log.info("Wrote %s", path)
         except Exception as e:
-            log.warning("  %s failed: %s", sym, e)
+            log.warning("Failed for %s: %s", sym, e)
+
+    log.info("Done.")
 
 
 if __name__ == "__main__":
