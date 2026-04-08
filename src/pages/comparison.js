@@ -73,12 +73,15 @@ export async function render(el, param) {
       const priceRow = document.createElement('div')
       priceRow.className = 'flex items-baseline gap-2 mt-1'
       const priceEl = document.createElement('span')
-      priceEl.className = 'font-mono text-lg font-semibold text-zinc-100'
+      priceEl.className = 'font-mono text-lg font-extrabold text-zinc-100'
       priceEl.textContent = fmtPrice(q.price)
       const chgEl = document.createElement('span')
       chgEl.className = `font-mono text-xs ${changeColor(q.pct)}`
-      chgEl.textContent = `${fmtChange(q.change)} ${fmtPct(q.pct)}`
-      priceRow.append(priceEl, chgEl)
+      chgEl.textContent = fmtChange(q.change)
+      const pctEl = document.createElement('span')
+      pctEl.className = `font-mono text-xs font-semibold ${changeColor(q.pct)}`
+      pctEl.textContent = fmtPct(q.pct)
+      priceRow.append(priceEl, chgEl, pctEl)
       card.append(symEl, priceRow)
     } else {
       card.appendChild(symEl)
