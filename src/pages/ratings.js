@@ -46,12 +46,15 @@ export async function render(el, symbol) {
 
   if (quote) {
     const priceEl = document.createElement('span')
-    priceEl.className = 'font-mono text-xl font-semibold text-zinc-100 ml-auto'
+    priceEl.className = 'font-mono text-xl font-extrabold text-zinc-100 ml-auto'
     priceEl.textContent = fmtPrice(quote.price)
     const chgEl = document.createElement('span')
     chgEl.className = `font-mono text-sm ${changeColor(quote.pct)}`
-    chgEl.textContent = `${fmtChange(quote.change)}  ${fmtPct(quote.pct)}`
-    header.append(priceEl, chgEl)
+    chgEl.textContent = fmtChange(quote.change)
+    const pctEl = document.createElement('span')
+    pctEl.className = `font-mono text-sm font-semibold ${changeColor(quote.pct)}`
+    pctEl.textContent = fmtPct(quote.pct)
+    header.append(priceEl, chgEl, pctEl)
   }
 
   // Nav buttons

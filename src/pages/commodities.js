@@ -55,7 +55,7 @@ export async function render(el) {
 
     // Price
     const priceEl = document.createElement('div')
-    priceEl.className = 'font-mono text-2xl font-semibold text-zinc-100 mt-2'
+    priceEl.className = 'font-mono text-2xl font-extrabold text-zinc-100 mt-2'
     priceEl.textContent = fmtPrice(item.price, item.price < 10 ? 4 : 2)
 
     // Change row

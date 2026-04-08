@@ -52,7 +52,7 @@ export async function render(el) {
       name.textContent = item.name
 
       const priceEl = document.createElement('div')
-      priceEl.className = 'font-mono text-sm font-semibold mt-0.5'
+      priceEl.className = 'font-mono text-sm font-extrabold mt-0.5'
       // Compact formatting for large numbers
       const p = item.price
       priceEl.textContent = p >= 10000 ? Math.round(p).toLocaleString() : fmtPrice(p, p < 10 ? 4 : 2)

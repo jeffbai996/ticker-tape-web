@@ -54,7 +54,7 @@ export async function render(el) {
     const priceRow = document.createElement('div')
     priceRow.className = 'flex items-baseline justify-between mt-2'
     const priceEl = document.createElement('span')
-    priceEl.className = 'font-mono text-lg font-semibold text-zinc-100'
+    priceEl.className = 'font-mono text-lg font-extrabold text-zinc-100'
     priceEl.textContent = fmtPrice(item.price)
     const pctEl = document.createElement('span')
     pctEl.className = `font-mono text-sm font-semibold ${changeColor(item.pct)}`
