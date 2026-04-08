@@ -4,21 +4,41 @@
 import { loadQuotes, loadSparklines, loadMeta } from '../lib/data.js'
 import { fmtPrice, fmtPct, changeColor, sparklineSVG, esc } from '../lib/format.js'
 import { addToWatchlist } from '../lib/watchlist.js'
+import { startPolling, onLiveUpdate, addSymbols } from '../lib/live.js'
+import { evaluateAlerts } from '../lib/alerts.js'
+import { notifyAlert } from '../lib/toast.js'
 import { go } from '../router.js'
 
 let watchlistEl = null
 let pulseEl = null
 
+// Lucide-style SVG icons (16x16, stroke-based, inherits currentColor)
+const svg = (d) => `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`
+
+const NAV_ICONS = {
+  dashboard:   svg('<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>'),
+  market:      svg('<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>'),
+  sectors:     svg('<path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/>'),
+  earnings:    svg('<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>'),
+  heatmap:     svg('<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-2-3.46-2-5.5a5.5 5.5 0 0 1 11 0c0 2.04-.93 3.36-2 5.5-.5 1-1 1.62-1 3a2.5 2.5 0 0 0 2.5 2.5"/><path d="M12 21v-7"/>'),
+  commodities: svg('<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>'),
+  calendar:    svg('<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M10 16l2 2 4-4"/>'),
+  news:        svg('<path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/>'),
+  terminal:    svg('<polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>'),
+}
+
+const SEARCH_SVG = svg('<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>')
+
 const NAV_ITEMS = [
-  { id: 'dashboard',   label: 'Dashboard',      icon: '▦' },
-  { id: 'market',      label: 'Market',          icon: '↗' },
-  { id: 'sectors',     label: 'Sectors',         icon: '▤' },
-  { id: 'earnings',    label: 'Earnings',        icon: '📅' },
-  { id: 'heatmap',     label: 'Heatmap',         icon: '🔥' },
-  { id: 'commodities', label: 'Commodities',     icon: '🛢' },
-  { id: 'calendar',    label: 'Econ Calendar',   icon: '📋' },
-  { id: 'news',        label: 'News',            icon: '📰' },
-  { id: 'terminal',    label: 'Terminal',        icon: '>' },
+  { id: 'dashboard',   label: 'Dashboard' },
+  { id: 'market',      label: 'Market' },
+  { id: 'sectors',     label: 'Sectors' },
+  { id: 'earnings',    label: 'Earnings' },
+  { id: 'heatmap',     label: 'Heatmap' },
+  { id: 'commodities', label: 'Commodities' },
+  { id: 'calendar',    label: 'Econ Calendar' },
+  { id: 'news',        label: 'News' },
+  { id: 'terminal',    label: 'Terminal' },
 ]
 
 export function initSidebar(el) {
@@ -30,8 +50,11 @@ export function initSidebar(el) {
     btn.dataset.nav = item.id
     btn.className = 'w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors'
     const iconSpan = document.createElement('span')
-    iconSpan.className = 'w-4 text-center shrink-0 text-xs'
-    iconSpan.textContent = item.icon
+    iconSpan.className = 'w-4 text-center shrink-0 flex items-center justify-center'
+    // SVG icons from our pre-defined set — safe static content
+    /* eslint-disable no-unsanitized/property */
+    iconSpan.innerHTML = NAV_ICONS[item.id] || ''
+    /* eslint-enable no-unsanitized/property */
     const labelSpan = document.createElement('span')
     labelSpan.className = 'max-lg:hidden'
     labelSpan.textContent = item.label
@@ -44,8 +67,10 @@ export function initSidebar(el) {
   const cmdHint = document.createElement('button')
   cmdHint.className = 'w-full flex items-center gap-2 px-2.5 py-1.5 mt-1 rounded-md text-xs text-zinc-600 hover:text-zinc-400 hover:bg-zinc-800/50 transition-colors'
   const searchIcon = document.createElement('span')
-  searchIcon.className = 'w-4 text-center shrink-0'
-  searchIcon.textContent = '🔍'
+  searchIcon.className = 'w-4 text-center shrink-0 flex items-center justify-center'
+  /* eslint-disable no-unsanitized/property */
+  searchIcon.innerHTML = SEARCH_SVG
+  /* eslint-enable no-unsanitized/property */
   const searchLabel = document.createElement('span')
   searchLabel.className = 'max-lg:hidden'
   searchLabel.textContent = 'Search'
@@ -85,6 +110,17 @@ export function initSidebar(el) {
 
   refreshWatchlist()
   setInterval(refreshWatchlist, 30_000)
+
+  // Start live polling with watchlist symbols
+  loadMeta().then(meta => {
+    if (meta?.symbols?.length) startPolling(meta.symbols)
+  })
+
+  // Instant refresh when live data arrives
+  onLiveUpdate(() => {
+    refreshWatchlist()
+    document.dispatchEvent(new Event('live-data-update'))
+  })
 }
 
 function showAddInput(headerEl) {
@@ -101,6 +137,7 @@ function showAddInput(headerEl) {
       const sym = input.value.trim()
       if (sym) {
         addToWatchlist(sym)
+        addSymbols([sym.toUpperCase()])
         refreshWatchlist()
       }
       input.remove()
@@ -124,7 +161,7 @@ async function refreshWatchlist() {
   watchlistEl.textContent = ''
   for (const q of quotes) {
     const row = document.createElement('button')
-    row.className = 'w-full flex items-center gap-1.5 px-2 py-1 rounded hover:bg-zinc-800/50 transition-colors cursor-pointer'
+    row.className = 'w-full flex items-center gap-1.5 px-2 py-1 rounded hover:bg-zinc-800/50 transition-colors cursor-pointer overflow-hidden'
     row.addEventListener('click', () => go('lookup', q.symbol))
 
     const colorClass = changeColor(q.pct)
@@ -134,12 +171,19 @@ async function refreshWatchlist() {
     row.innerHTML = `<span class="font-mono text-xs font-bold text-zinc-300 w-10 shrink-0">${esc(q.symbol)}</span>`
       + `<span class="max-lg:hidden flex-1 min-w-0 overflow-hidden h-3.5">${sparkHTML}</span>`
       + `<span class="max-lg:hidden flex flex-col items-end shrink-0">`
-      + `<span class="font-mono text-xs text-zinc-300">${fmtPrice(q.price)}</span>`
-      + `<span class="font-mono text-[10px] ${colorClass}">${fmtPct(q.pct)}</span></span>`
+      + `<span class="font-mono text-xs font-bold text-zinc-300">${fmtPrice(q.price)}</span>`
+      + `<span class="font-mono text-[10px] font-semibold ${colorClass}">${fmtPct(q.pct)}</span></span>`
     watchlistEl.appendChild(row)
   }
 
   buildPulse(quotes)
+
+  // Evaluate price alerts on each refresh
+  const triggered = evaluateAlerts(quotes)
+  for (const alert of triggered) {
+    const quote = quotes.find(q => q.symbol === alert.symbol)
+    notifyAlert(alert, quote?.price ?? 0)
+  }
 }
 
 function buildPulse(quotes) {

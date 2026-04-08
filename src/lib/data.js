@@ -1,5 +1,8 @@
 // Data fetching layer with TTL cache.
-// All data comes from pre-built JSON files in /data/ (populated by GitHub Actions).
+// Static data from pre-built JSON files in /data/ (populated by GitHub Actions).
+// Live quotes merged transparently from CF Worker when available.
+
+import { getLiveQuotes } from './live.js'
 
 const cache = new Map()
 const TTL = 30_000 // 30 seconds
@@ -24,8 +27,16 @@ export async function fetchData(path) {
   }
 }
 
-// Convenience loaders
-export const loadQuotes     = () => fetchData('quotes.json')
+// Quotes: merge live data on top of static pipeline data.
+// Any page calling loadQuotes() automatically gets live prices when available.
+export async function loadQuotes() {
+  const staticQ = await fetchData('quotes.json')
+  const liveMap = getLiveQuotes()
+  if (!liveMap?.size) return staticQ
+  if (!staticQ) return Array.from(liveMap.values())
+  return staticQ.map(sq => liveMap.get(sq.symbol) || sq)
+}
+
 export const loadMeta       = () => fetchData('meta.json')
 export const loadMarket     = () => fetchData('market.json')
 export const loadTechnicals = () => fetchData('technicals.json')
