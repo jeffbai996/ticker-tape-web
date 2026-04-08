@@ -6,6 +6,10 @@ import { formatMemoriesForPrompt } from './memory.js'
 import { loadQuotes, loadMeta, loadTechnicals } from '../lib/data.js'
 import { fmtPrice, fmtPct } from '../lib/format.js'
 import { getState } from '../state.js'
+import { getItem, setItem } from '../lib/storage.js'
+
+const HISTORY_KEY = 'chat_history'
+const MAX_HISTORY = 50
 
 let panelEl = null
 let messagesEl = null
@@ -14,8 +18,30 @@ let currentModel = 'flash'
 let chatHistory = []   // { role, content }
 let isStreaming = false
 
+function loadChatHistory() {
+  chatHistory = getItem(HISTORY_KEY, []).slice(-MAX_HISTORY)
+}
+
+function saveChatHistory() {
+  setItem(HISTORY_KEY, chatHistory.slice(-MAX_HISTORY))
+}
+
+export function clearChatHistory() {
+  chatHistory = []
+  setItem(HISTORY_KEY, [])
+  if (messagesEl) {
+    messagesEl.textContent = ''
+    const welcome = document.createElement('div')
+    welcome.className = 'text-xs text-zinc-500 text-center py-4'
+    welcome.textContent = 'Ask about any symbol, market conditions, or trading ideas.'
+    messagesEl.appendChild(welcome)
+  }
+}
+
 export function initChatPanel(el) {
   panelEl = el
+  loadChatHistory()
+  currentModel = localStorage.getItem('default_model') || 'flash'
   buildPanel()
 }
 
@@ -49,17 +75,29 @@ function buildPanel() {
   closeBtn.textContent = '×'
   closeBtn.addEventListener('click', () => document.dispatchEvent(new Event('toggle-chat')))
 
-  header.append(title, modelSelect, closeBtn)
+  const clearBtn = document.createElement('button')
+  clearBtn.className = 'text-zinc-600 hover:text-zinc-400 text-xs transition-colors'
+  clearBtn.textContent = 'Clear'
+  clearBtn.title = 'Clear chat history'
+  clearBtn.addEventListener('click', clearChatHistory)
+
+  header.append(title, modelSelect, clearBtn, closeBtn)
 
   // Messages area
   messagesEl = document.createElement('div')
   messagesEl.className = 'flex-1 overflow-y-auto p-3 space-y-3'
 
-  // Welcome message
-  const welcome = document.createElement('div')
-  welcome.className = 'text-xs text-zinc-500 text-center py-4'
-  welcome.textContent = 'Ask about any symbol, market conditions, or trading ideas.'
-  messagesEl.appendChild(welcome)
+  // Render existing chat history or show welcome
+  if (chatHistory.length) {
+    for (const msg of chatHistory) {
+      appendMessage(msg.role, msg.content)
+    }
+  } else {
+    const welcome = document.createElement('div')
+    welcome.className = 'text-xs text-zinc-500 text-center py-4'
+    welcome.textContent = 'Ask about any symbol, market conditions, or trading ideas.'
+    messagesEl.appendChild(welcome)
+  }
 
   // Input area
   const inputArea = document.createElement('div')
@@ -97,8 +135,9 @@ async function sendMessage() {
   inputEl.value = ''
   isStreaming = true
 
-  // Add user message
+  // Add user message + persist
   chatHistory.push({ role: 'user', content: text })
+  saveChatHistory()
   appendMessage('user', text)
 
   // Build system prompt with context
@@ -133,6 +172,7 @@ async function sendMessage() {
 
   if (fullText) {
     chatHistory.push({ role: 'assistant', content: fullText })
+    saveChatHistory()
   }
   isStreaming = false
 }

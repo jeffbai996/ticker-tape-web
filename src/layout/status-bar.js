@@ -3,11 +3,13 @@
 
 import { loadMarket, loadMeta } from '../lib/data.js'
 import { fmtPrice, fmtPct, changeColor, formatTime } from '../lib/format.js'
+import { addSymbols, getLiveQuotes, getStaleness, isLiveAvailable, onLiveUpdate } from '../lib/live.js'
 
 let barEl = null
 let tickerEl = null
 let stateEl = null
 let clockEl = null
+let freshnessEl = null
 
 const STATUS_COLORS = {
   pre:    'bg-purple-500/20 text-purple-400',
@@ -36,6 +38,11 @@ export function initStatusBar(el) {
   const rightSide = document.createElement('div')
   rightSide.className = 'flex items-center gap-2 px-3 shrink-0 border-l border-zinc-800 h-full'
 
+  // Staleness indicator dot
+  freshnessEl = document.createElement('span')
+  freshnessEl.className = 'w-2 h-2 rounded-full bg-zinc-600 shrink-0'
+  freshnessEl.title = 'No live data configured'
+
   clockEl = document.createElement('span')
   clockEl.className = 'font-mono text-zinc-500 whitespace-nowrap'
   clockEl.textContent = '--:--:-- ET'
@@ -52,12 +59,15 @@ export function initStatusBar(el) {
   settingsBtn.innerHTML = SETTINGS_SVG
   settingsBtn.addEventListener('click', () => document.dispatchEvent(new Event('open-settings')))
 
-  rightSide.append(clockEl, chatBtn, settingsBtn)
+  rightSide.append(freshnessEl, clockEl, chatBtn, settingsBtn)
   barEl.append(stateEl, tickerEl, rightSide)
 
   refresh()
   startClock()
   setInterval(refresh, 30_000)
+
+  // Re-render ticker when live data arrives
+  onLiveUpdate(() => refresh())
 }
 
 async function refresh() {
@@ -70,6 +80,9 @@ async function refresh() {
     stateEl.textContent = label
   }
 
+  // Update staleness indicator
+  updateFreshness()
+
   if (!market) return
 
   const picks = []
@@ -77,21 +90,51 @@ async function refresh() {
     if (market[cat]) picks.push(...market[cat])
   }
 
-  // Build ticker items — data from our own JSON, safe to render
-  const items = picks.map(item => {
+  // Register market overview symbols for live polling
+  const marketSymbols = picks.map(p => p.symbol).filter(Boolean)
+  if (marketSymbols.length) addSymbols(marketSymbols)
+
+  // Merge live data on top of static market.json prices
+  const liveMap = getLiveQuotes()
+  const merged = picks.map(item => {
+    const live = liveMap.get(item.symbol)
+    if (!live) return item
+    return { ...item, price: live.price, pct: live.pct, change: live.change }
+  })
+
+  // Build ticker items — data from our own JSON + live overlay, safe to render
+  const items = merged.map(item => {
     const color = changeColor(item.pct)
     return `<span class="inline-flex items-center gap-1.5 px-3 whitespace-nowrap">`
       + `<span class="text-zinc-500">${item.name}</span>`
-      + `<span class="font-mono ${color}">${fmtPrice(item.price, item.price < 10 ? 4 : 2)}</span>`
-      + `<span class="font-mono ${color}">${fmtPct(item.pct)}</span>`
+      + `<span class="font-mono font-bold ${color}">${fmtPrice(item.price, item.price < 10 ? 4 : 2)}</span>`
+      + `<span class="font-mono font-semibold ${color}">${fmtPct(item.pct)}</span>`
       + `</span>`
   }).join('')
 
   tickerEl.innerHTML = `<div class="ticker-scroll flex items-center h-full whitespace-nowrap">${items}<span class="px-8"></span>${items}<span class="px-8"></span></div>`
 }
 
+const FRESHNESS_STYLES = {
+  live:    { cls: 'bg-green-500', title: 'Live data' },
+  delayed: { cls: 'bg-yellow-500', title: 'Data delayed' },
+  stale:   { cls: 'bg-red-500', title: 'Data stale' },
+  none:    { cls: 'bg-zinc-600', title: 'No live data — set proxy URL in Settings' },
+}
+
+function updateFreshness() {
+  if (!freshnessEl) return
+  const state = getStaleness()
+  const style = FRESHNESS_STYLES[state] || FRESHNESS_STYLES.none
+  freshnessEl.className = `w-2 h-2 rounded-full shrink-0 ${style.cls}`
+  freshnessEl.title = style.title
+}
+
 function startClock() {
-  const tick = () => { clockEl.textContent = formatTime(new Date()) + ' ET' }
+  const tick = () => {
+    clockEl.textContent = formatTime(new Date()) + ' ET'
+    updateFreshness()
+  }
   tick()
   setInterval(tick, 1000)
 }

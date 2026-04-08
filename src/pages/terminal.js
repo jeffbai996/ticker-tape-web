@@ -24,6 +24,26 @@ let chatModel = 'haiku'
 let chatMessages = []
 let streaming = false
 
+// ── Output buffer persistence ────────────────────────
+const OUTPUT_KEY = 'terminal_buffer'
+const MAX_BUFFER = 200
+let outputBuffer = []
+
+function saveBuffer() {
+  try {
+    sessionStorage.setItem(OUTPUT_KEY, JSON.stringify(outputBuffer.slice(-MAX_BUFFER)))
+  } catch { /* ignore quota errors */ }
+}
+
+function loadBuffer() {
+  try {
+    const raw = sessionStorage.getItem(OUTPUT_KEY)
+    outputBuffer = raw ? JSON.parse(raw) : []
+  } catch {
+    outputBuffer = []
+  }
+}
+
 // ── Alias map (TUI command_bar.py) ───────────────────
 const ALIASES = {
   t: 'thesis', thesis: 'thesis',
@@ -115,11 +135,27 @@ export async function render(el) {
   historyEl.className = 'flex-1 overflow-y-auto p-4 font-mono text-sm space-y-0'
   historyEl.style.lineHeight = '1.4'
 
-  // Welcome
-  appendOutput('ticker-tape terminal v2.0', '#ffc800')
-  appendOutput('Command mode. Type help for commands, chat for AI mode.', '#888')
-  appendOutput('─'.repeat(50), '#333')
-  appendOutput('')
+  // Restore previous session or show welcome
+  loadBuffer()
+  if (outputBuffer.length) {
+    for (const entry of outputBuffer) {
+      const line = document.createElement('div')
+      line.style.color = entry.color || '#e0e0e0'
+      line.style.whiteSpace = 'pre-wrap'
+      line.style.fontFamily = '"JetBrains Mono", monospace'
+      line.style.fontSize = '13px'
+      line.textContent = entry.text
+      historyEl.appendChild(line)
+    }
+    appendOutput('')
+    appendOutput('── session restored ──', '#555')
+    appendOutput('')
+  } else {
+    appendOutput('ticker-tape terminal v2.0', '#ffc800')
+    appendOutput('Command mode. Type help for commands, chat for AI mode.', '#888')
+    appendOutput('─'.repeat(50), '#333')
+    appendOutput('')
+  }
 
   // Input area
   const inputRow = document.createElement('div')
@@ -160,6 +196,11 @@ function appendOutput(text, color = '#e0e0e0') {
   line.textContent = text
   historyEl.appendChild(line)
   historyEl.scrollTop = historyEl.scrollHeight
+
+  // Persist to session buffer
+  outputBuffer.push({ text, color })
+  if (outputBuffer.length > MAX_BUFFER) outputBuffer = outputBuffer.slice(-MAX_BUFFER)
+  saveBuffer()
 }
 
 function appendLines(lines) {
@@ -240,6 +281,8 @@ async function executeCommand(raw) {
   // ── Clear ──
   if (aliased === 'clear') {
     historyEl.textContent = ''
+    outputBuffer = []
+    saveBuffer()
     return
   }
 
