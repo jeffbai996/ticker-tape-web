@@ -1,5 +1,7 @@
 // Settings modal: API keys for AI chat, preferences.
 
+import { reinitPolling } from '../lib/live.js'
+
 export function initSettingsModal() {
   document.addEventListener('open-settings', () => openSettings())
 }
@@ -43,6 +45,8 @@ function openSettings() {
     input.addEventListener('change', () => {
       if (input.value) localStorage.setItem(k.key, input.value)
       else localStorage.removeItem(k.key)
+      // Restart live polling if proxy URL changed
+      if (k.key === 'proxy_url') reinitPolling()
     })
     group.append(label, input)
     form.appendChild(group)
