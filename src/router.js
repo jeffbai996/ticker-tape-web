@@ -32,6 +32,14 @@ async function handleRoute() {
 
   setState({ currentPage: page, currentSymbol: param })
 
+  // Update document title
+  if (page === 'dashboard' || page === '') {
+    document.title = 'ticker-tape'
+  } else {
+    const name = page.charAt(0).toUpperCase() + page.slice(1)
+    document.title = `${name} | ticker-tape`
+  }
+
   // Highlight active nav with accent border
   document.querySelectorAll('[data-nav]').forEach(el => {
     const active = el.dataset.nav === page

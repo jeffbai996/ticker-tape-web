@@ -1,8 +1,8 @@
 // Sidebar: navigation + watchlist + market pulse.
 // innerHTML: renders data from our own JSON files, not user input.
 
-import { loadQuotes, loadSparklines, loadMeta } from '../lib/data.js'
-import { fmtPrice, fmtPct, changeColor, sparklineSVG, esc } from '../lib/format.js'
+import { loadQuotes, loadMeta } from '../lib/data.js'
+import { fmtPrice, fmtPct, changeColor, esc } from '../lib/format.js'
 import { addToWatchlist } from '../lib/watchlist.js'
 import { startPolling, onLiveUpdate, addSymbols } from '../lib/live.js'
 import { evaluateAlerts } from '../lib/alerts.js'
@@ -24,6 +24,7 @@ const NAV_ICONS = {
   commodities: svg('<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>'),
   calendar:    svg('<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M10 16l2 2 4-4"/>'),
   news:        svg('<path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/>'),
+  journal:     svg('<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/><path d="M8 7h6"/><path d="M8 11h8"/>'),
   terminal:    svg('<polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>'),
 }
 
@@ -38,6 +39,7 @@ const NAV_ITEMS = [
   { id: 'commodities', label: 'Commodities' },
   { id: 'calendar',    label: 'Econ Calendar' },
   { id: 'news',        label: 'News' },
+  { id: 'journal',     label: 'Journal' },
   { id: 'terminal',    label: 'Terminal' },
 ]
 
@@ -153,26 +155,38 @@ function showAddInput(headerEl) {
 }
 
 async function refreshWatchlist() {
-  const [quotes, sparklines, meta] = await Promise.all([
-    loadQuotes(), loadSparklines(), loadMeta()
-  ])
+  const [quotes, meta] = await Promise.all([loadQuotes(), loadMeta()])
   if (!quotes) return
 
   watchlistEl.textContent = ''
   for (const q of quotes) {
     const row = document.createElement('button')
-    row.className = 'w-full flex items-center gap-1.5 px-2 py-1 rounded hover:bg-zinc-800/50 transition-colors cursor-pointer overflow-hidden'
+    row.className = 'w-full flex items-center gap-1 px-2 py-1 rounded hover:bg-zinc-800/50 transition-colors cursor-pointer'
     row.addEventListener('click', () => go('lookup', q.symbol))
 
     const colorClass = changeColor(q.pct)
-    const spark = sparklines?.[q.symbol]
-    const sparkHTML = spark ? sparklineSVG(spark, { width: 60, height: 14 }) : ''
 
-    row.innerHTML = `<span class="font-mono text-xs font-bold text-zinc-300 w-10 shrink-0">${esc(q.symbol)}</span>`
-      + `<span class="max-lg:hidden flex-1 min-w-0 overflow-hidden h-3.5">${sparkHTML}</span>`
-      + `<span class="max-lg:hidden flex flex-col items-end shrink-0">`
-      + `<span class="font-mono text-xs font-bold text-zinc-300">${fmtPrice(q.price)}</span>`
-      + `<span class="font-mono text-[10px] font-semibold ${colorClass}">${fmtPct(q.pct)}</span></span>`
+    // Symbol — always visible
+    const symSpan = document.createElement('span')
+    symSpan.className = 'font-mono text-xs font-bold text-zinc-300 w-10 shrink-0'
+    symSpan.textContent = q.symbol
+
+    // Compact pct for collapsed sidebar (max-lg only)
+    const compactPct = document.createElement('span')
+    compactPct.className = `font-mono text-[9px] font-semibold ${colorClass} lg:hidden`
+    compactPct.textContent = fmtPct(q.pct)
+
+    // Price — hidden on collapsed sidebar
+    const priceSpan = document.createElement('span')
+    priceSpan.className = 'font-mono text-xs text-zinc-300 ml-auto max-lg:hidden'
+    priceSpan.textContent = fmtPrice(q.price)
+
+    // Pct — hidden on collapsed sidebar
+    const pctSpan = document.createElement('span')
+    pctSpan.className = `font-mono text-[10px] font-semibold ${colorClass} w-14 text-right max-lg:hidden`
+    pctSpan.textContent = fmtPct(q.pct)
+
+    row.append(symSpan, compactPct, priceSpan, pctSpan)
     watchlistEl.appendChild(row)
   }
 

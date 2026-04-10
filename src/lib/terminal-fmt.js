@@ -1,4 +1,7 @@
-// Terminal text formatters: each function returns [{ text, color }] for inline rendering.
+// Terminal text formatters.
+// Return arrays of lines. Each line is either:
+//   { text, color }              — single-color line (legacy, still supported)
+//   [{ text, color }, ...]       — rich line with inline colored segments
 // Colors: #ffc800 accent, #00c8ff info, #2ecc71 positive, #ff3232 negative,
 //         #c864ff extended hours, #e0e0e0 default, #888 dimmed, white prices.
 
@@ -17,6 +20,8 @@ const C = {
 }
 
 function line(text, color = C.text) { return { text, color } }
+function seg(text, color = C.text) { return { text, color } }
+function rich(...segments) { return segments }
 function blank() { return line('') }
 function divider(label) {
   const pad = label ? ` ${label} ` : ''
@@ -27,8 +32,20 @@ function changeColor(n) { return n > 0 ? C.pos : n < 0 ? C.neg : C.text }
 function pad(s, len) { return String(s).padEnd(len) }
 function rpad(s, len) { return String(s).padStart(len) }
 
+function unicodeSparkline(prices) {
+  if (!prices?.length) return ''
+  const bars = '▁▂▃▄▅▆▇█'
+  const sampled = prices.length > 20
+    ? Array.from({ length: 20 }, (_, i) => prices[Math.floor(i * prices.length / 20)])
+    : prices
+  const min = Math.min(...sampled)
+  const max = Math.max(...sampled)
+  const range = max - min || 1
+  return sampled.map(p => bars[Math.min(7, Math.round(((p - min) / range) * 7))]).join('')
+}
+
 // ── Thesis Overview ──────────────────────────────────
-export function fmtThesis(quotes, technicals, earnings) {
+export function fmtThesis(quotes, technicals, earnings, sparklines) {
   const lines = []
   if (!quotes?.length) { lines.push(line('No quote data available.', C.dim)); return lines }
 
@@ -36,9 +53,13 @@ export function fmtThesis(quotes, technicals, earnings) {
   const up = quotes.filter(q => q.pct > 0).length
   const down = quotes.filter(q => q.pct < 0).length
   const avg = quotes.reduce((s, q) => s + (q.pct || 0), 0) / quotes.length
-  lines.push(line(
-    `${quotes.length} symbols | Avg ${fmtPct(avg)} | ▲${up} ▼${down}`,
-    C.accent
+  lines.push(rich(
+    seg(`${quotes.length} symbols`, C.accent),
+    seg('  |  ', C.dim),
+    seg(`Avg ${fmtPct(avg)}`, changeColor(avg)),
+    seg('  |  ', C.dim),
+    seg(`▲${up}`, C.pos),
+    seg(` ▼${down}`, C.neg),
   ))
   lines.push(blank())
 
@@ -46,27 +67,49 @@ export function fmtThesis(quotes, technicals, earnings) {
     const sym = q.symbol
     const ta = technicals?.[sym]
     const er = earnings?.find(e => e.symbol === sym)
+    const cc = changeColor(q.pct)
 
     // Line 1: SYMBOL  NAME
-    lines.push(line(`${pad(sym, 6)}${q.name || sym}`, C.accent))
+    lines.push(rich(
+      seg(pad(sym, 6), C.accent),
+      seg(q.name || sym, C.dim),
+    ))
 
-    // Line 2: price  change  pct    RSI  signals
-    let detail = `  ${fmtPrice(q.price)}  ${fmtChange(q.change)}  ${fmtPct(q.pct)}`
-    if (ta) {
-      detail += `    RSI ${Math.round(ta.rsi || 0)}`
-      if (ta.trend_signals?.length) detail += `  ${ta.trend_signals.join('  ')}`
+    // Line 2: price  change  pct  |  RSI  signals
+    const segs = [
+      seg(`  ${fmtPrice(q.price)}`, C.white),
+      seg(`  ${fmtChange(q.change)}`, cc),
+      seg(`  ${fmtPct(q.pct)}`, cc),
+    ]
+    if (ta?.rsi != null) {
+      const rsi = Math.round(ta.rsi)
+      const rc = rsi >= 70 ? C.neg : rsi <= 30 ? C.pos : C.dim
+      segs.push(seg('    RSI ', C.dim), seg(String(rsi), rc))
     }
-    lines.push(line(detail, changeColor(q.pct)))
+    if (ta?.trend_signals?.length) {
+      segs.push(seg('  ' + ta.trend_signals.join('  '), C.info))
+    }
+    lines.push(rich(...segs))
 
-    // Line 3: extended hours + earnings
-    let extLine = ''
+    // Line 3: sparkline
+    const spark = sparklines?.[sym]
+    if (spark?.length) {
+      lines.push(rich(seg('  ', C.dim), seg(unicodeSparkline(spark), cc)))
+    }
+
+    // Line 4: extended hours + earnings
+    const extSegs = []
     if (q.ext_price != null) {
-      extLine += `  ${q.ext_label || 'AH'} ${fmtPrice(q.ext_price)}  ${fmtPct(q.ext_pct)}`
+      extSegs.push(
+        seg(`  ${q.ext_label || 'AH'} `, C.ext),
+        seg(fmtPrice(q.ext_price), C.ext),
+        seg(`  ${fmtPct(q.ext_pct)}`, C.ext),
+      )
     }
     if (er) {
-      extLine += `    EPS ${er.days_until}d`
+      extSegs.push(seg(`    EPS ${er.days_until}d`, C.info))
     }
-    if (extLine) lines.push(line(extLine, C.ext))
+    if (extSegs.length) lines.push(rich(...extSegs))
 
     lines.push(blank())
   }
@@ -81,10 +124,11 @@ export function fmtMarket(market) {
   for (const [category, items] of Object.entries(market)) {
     lines.push(line(category, C.info))
     for (const item of items) {
-      const name = pad(item.name || item.symbol, 18)
-      const price = rpad(fmtPrice(item.price, item.price < 10 ? 4 : 2), 12)
-      const pct = fmtPct(item.pct)
-      lines.push(line(`  ${name}${price}${pct}`, changeColor(item.pct)))
+      lines.push(rich(
+        seg(`  ${pad(item.name || item.symbol, 18)}`, C.dim),
+        seg(rpad(fmtPrice(item.price, item.price < 10 ? 4 : 2), 12), C.white),
+        seg(fmtPct(item.pct), changeColor(item.pct)),
+      ))
     }
     lines.push(blank())
   }
@@ -92,6 +136,10 @@ export function fmtMarket(market) {
 }
 
 // ── Technicals ───────────────────────────────────────
+function kv(label, value, valueColor = C.text) {
+  return rich(seg(`  ${pad(label, 14)}`, C.dim), seg(value, valueColor))
+}
+
 export function fmtTechnicals(ta, symbol) {
   const lines = []
   if (!ta) { lines.push(line(`No technicals for ${symbol}.`, C.dim)); return lines }
@@ -101,7 +149,7 @@ export function fmtTechnicals(ta, symbol) {
 
   // Moving Averages
   lines.push(divider('Moving Averages'))
-  lines.push(line(`  Current     ${fmtPrice(ta.current)}`, C.white))
+  lines.push(kv('Current', fmtPrice(ta.current), C.white))
   const smas = [
     { label: 'SMA 20', val: ta.sma_20 },
     { label: 'SMA 50', val: ta.sma_50 },
@@ -111,9 +159,10 @@ export function fmtTechnicals(ta, symbol) {
     if (sma.val == null) continue
     const diff = ((ta.current - sma.val) / sma.val) * 100
     const rel = diff >= 0 ? 'above' : 'below'
-    lines.push(line(
-      `  ${pad(sma.label, 12)}${fmtPrice(sma.val)}  ${fmtPct(diff)} ${rel}`,
-      changeColor(diff)
+    lines.push(rich(
+      seg(`  ${pad(sma.label, 14)}`, C.dim),
+      seg(fmtPrice(sma.val), changeColor(diff)),
+      seg(`  ${fmtPct(diff)} ${rel}`, changeColor(diff)),
     ))
   }
   lines.push(blank())
@@ -121,43 +170,42 @@ export function fmtTechnicals(ta, symbol) {
   // Momentum
   lines.push(divider('Momentum'))
   const rsi = ta.rsi != null ? Math.round(ta.rsi) : null
-  const rsiLabel = rsi == null ? '' : rsi >= 70 ? 'Overbought' : rsi <= 30 ? 'Oversold' : 'Neutral'
-  const rsiColor = rsi == null ? C.dim : rsi >= 70 ? C.neg : rsi <= 30 ? C.pos : C.text
-  if (rsi != null) lines.push(line(`  RSI (14)    ${rsi}  ${rsiLabel}`, rsiColor))
-  if (ta.macd != null) lines.push(line(`  MACD        ${ta.macd.toFixed(3)}`, C.text))
-  if (ta.macd_signal != null) lines.push(line(`  Signal      ${ta.macd_signal.toFixed(3)}`, C.text))
+  const rsiLbl = rsi == null ? '' : rsi >= 70 ? 'Overbought' : rsi <= 30 ? 'Oversold' : 'Neutral'
+  const rc = rsi == null ? C.dim : rsi >= 70 ? C.neg : rsi <= 30 ? C.pos : C.text
+  if (rsi != null) lines.push(rich(seg('  RSI (14)    ', C.dim), seg(String(rsi), rc), seg(`  ${rsiLbl}`, rc)))
+  if (ta.macd != null) lines.push(kv('MACD', ta.macd.toFixed(3)))
+  if (ta.macd_signal != null) lines.push(kv('Signal', ta.macd_signal.toFixed(3)))
   if (ta.macd_histogram != null) {
     const h = ta.macd_histogram
-    lines.push(line(`  Histogram   ${h > 0 ? '+' : ''}${h.toFixed(3)}`, changeColor(h)))
+    lines.push(kv('Histogram', `${h > 0 ? '+' : ''}${h.toFixed(3)}`, changeColor(h)))
   }
-  if (ta.macd_crossover) lines.push(line(`  Crossover   ${ta.macd_crossover}`, C.info))
+  if (ta.macd_crossover) lines.push(kv('Crossover', ta.macd_crossover, C.info))
   lines.push(blank())
 
   // Volatility
   lines.push(divider('Volatility'))
-  if (ta.bb_upper != null) lines.push(line(`  BB Upper    ${fmtPrice(ta.bb_upper)}`, C.text))
-  if (ta.bb_lower != null) lines.push(line(`  BB Lower    ${fmtPrice(ta.bb_lower)}`, C.text))
+  if (ta.bb_upper != null) lines.push(kv('BB Upper', fmtPrice(ta.bb_upper)))
+  if (ta.bb_lower != null) lines.push(kv('BB Lower', fmtPrice(ta.bb_lower)))
   if (ta.atr != null) {
     const atrPct = ta.atr_pct != null ? `  (${ta.atr_pct.toFixed(2)}%)` : ''
-    lines.push(line(`  ATR         ${ta.atr.toFixed(2)}${atrPct}`, C.text))
+    lines.push(kv('ATR', `${ta.atr.toFixed(2)}${atrPct}`))
   }
-  if (ta.vol_ratio != null) lines.push(line(`  Vol Ratio   ${ta.vol_ratio.toFixed(2)}x`, C.text))
+  if (ta.vol_ratio != null) lines.push(kv('Vol Ratio', `${ta.vol_ratio.toFixed(2)}x`))
   lines.push(blank())
 
   // Range
   lines.push(divider('Range'))
-  if (ta.high_52w != null) lines.push(line(
-    `  52w High    ${fmtPrice(ta.high_52w)}  ${fmtPct(ta.off_high)} off`,
-    C.neg
+  if (ta.high_52w != null) lines.push(rich(
+    seg('  52w High    ', C.dim),
+    seg(fmtPrice(ta.high_52w), C.neg),
+    seg(`  ${fmtPct(ta.off_high)} off`, C.neg),
   ))
-  if (ta.low_52w != null) lines.push(line(
-    `  52w Low     ${fmtPrice(ta.low_52w)}  ${fmtPct(ta.off_low)} off`,
-    C.pos
+  if (ta.low_52w != null) lines.push(rich(
+    seg('  52w Low     ', C.dim),
+    seg(fmtPrice(ta.low_52w), C.pos),
+    seg(`  ${fmtPct(ta.off_low)} off`, C.pos),
   ))
-  if (ta.rs_vs_bench != null) lines.push(line(
-    `  RS vs QQQ   ${fmtPct(ta.rs_vs_bench)}`,
-    changeColor(ta.rs_vs_bench)
-  ))
+  if (ta.rs_vs_bench != null) lines.push(kv('RS vs QQQ', fmtPct(ta.rs_vs_bench), changeColor(ta.rs_vs_bench)))
 
   // Signals
   if (ta.trend_signals?.length) {
@@ -174,75 +222,81 @@ export function fmtLookup(data, symbol, name) {
   if (!data) { lines.push(line(`No data for ${symbol}.`, C.dim)); return lines }
 
   const n = data.longName || data.shortName || name || symbol
-  lines.push(line(`${symbol}  ${n}`, C.accent))
+  lines.push(rich(seg(symbol, C.accent), seg('  ' + n, C.dim)))
   lines.push(line(`${data.sector || ''} | ${data.industry || ''}`, C.info))
   lines.push(blank())
 
   // Price info
   lines.push(divider('Price'))
-  lines.push(line(`  Price           ${fmtPrice(data.currentPrice || data.regularMarketPrice)}`, C.white))
+  lines.push(kv('Price', fmtPrice(data.currentPrice || data.regularMarketPrice), C.white))
   if (data.regularMarketChange != null) {
-    lines.push(line(
-      `  Change          ${fmtChange(data.regularMarketChange)}  ${fmtPct(data.regularMarketChangePercent)}`,
-      changeColor(data.regularMarketChange)
+    const cc = changeColor(data.regularMarketChange)
+    lines.push(rich(
+      seg('  Change        ', C.dim),
+      seg(fmtChange(data.regularMarketChange), cc),
+      seg(`  ${fmtPct(data.regularMarketChangePercent)}`, cc),
     ))
   }
   if (data.postMarketPrice != null) {
-    lines.push(line(
-      `  After Hours     ${fmtPrice(data.postMarketPrice)}  ${fmtPct(data.postMarketChangePercent)}`,
-      C.ext
+    lines.push(rich(
+      seg('  After Hours   ', C.dim),
+      seg(fmtPrice(data.postMarketPrice), C.ext),
+      seg(`  ${fmtPct(data.postMarketChangePercent)}`, C.ext),
     ))
   }
   lines.push(blank())
 
   // Valuation
   lines.push(divider('Valuation'))
-  if (data.marketCap != null) lines.push(line(`  Market Cap      ${fmtCap(data.marketCap)}`, C.text))
-  if (data.trailingPE != null) lines.push(line(`  P/E (TTM)       ${data.trailingPE.toFixed(2)}`, C.text))
-  if (data.forwardPE != null) lines.push(line(`  P/E (Fwd)       ${data.forwardPE.toFixed(2)}`, C.text))
-  if (data.priceToSalesTrailing12Months != null) lines.push(line(`  P/S             ${data.priceToSalesTrailing12Months.toFixed(2)}`, C.text))
-  if (data.priceToBook != null) lines.push(line(`  P/B             ${data.priceToBook.toFixed(2)}`, C.text))
-  if (data.trailingPegRatio != null) lines.push(line(`  PEG             ${data.trailingPegRatio.toFixed(2)}`, C.text))
-  if (data.enterpriseToRevenue != null) lines.push(line(`  EV/Revenue      ${data.enterpriseToRevenue.toFixed(2)}`, C.text))
-  if (data.enterpriseToEbitda != null) lines.push(line(`  EV/EBITDA       ${data.enterpriseToEbitda.toFixed(2)}`, C.text))
+  if (data.marketCap != null) lines.push(kv('Market Cap', fmtCap(data.marketCap)))
+  if (data.trailingPE != null) lines.push(kv('P/E (TTM)', data.trailingPE.toFixed(2)))
+  if (data.forwardPE != null) lines.push(kv('P/E (Fwd)', data.forwardPE.toFixed(2)))
+  if (data.priceToSalesTrailing12Months != null) lines.push(kv('P/S', data.priceToSalesTrailing12Months.toFixed(2)))
+  if (data.priceToBook != null) lines.push(kv('P/B', data.priceToBook.toFixed(2)))
+  if (data.trailingPegRatio != null) lines.push(kv('PEG', data.trailingPegRatio.toFixed(2)))
+  if (data.enterpriseToRevenue != null) lines.push(kv('EV/Revenue', data.enterpriseToRevenue.toFixed(2)))
+  if (data.enterpriseToEbitda != null) lines.push(kv('EV/EBITDA', data.enterpriseToEbitda.toFixed(2)))
   lines.push(blank())
 
   // Financials
   lines.push(divider('Financials'))
-  if (data.totalRevenue != null) lines.push(line(`  Revenue         ${fmtCap(data.totalRevenue)}`, C.text))
-  if (data.grossMargins != null) lines.push(line(`  Gross Margin    ${(data.grossMargins * 100).toFixed(1)}%`, C.text))
-  if (data.operatingMargins != null) lines.push(line(`  Op Margin       ${(data.operatingMargins * 100).toFixed(1)}%`, C.text))
-  if (data.profitMargins != null) lines.push(line(`  Net Margin      ${(data.profitMargins * 100).toFixed(1)}%`, C.text))
-  if (data.returnOnEquity != null) lines.push(line(`  ROE             ${(data.returnOnEquity * 100).toFixed(1)}%`, C.text))
-  if (data.revenueGrowth != null) lines.push(line(`  Rev Growth      ${fmtPct(data.revenueGrowth * 100)}`, changeColor(data.revenueGrowth)))
-  if (data.earningsGrowth != null) lines.push(line(`  EPS Growth      ${fmtPct(data.earningsGrowth * 100)}`, changeColor(data.earningsGrowth)))
+  if (data.totalRevenue != null) lines.push(kv('Revenue', fmtCap(data.totalRevenue)))
+  if (data.grossMargins != null) lines.push(kv('Gross Margin', `${(data.grossMargins * 100).toFixed(1)}%`))
+  if (data.operatingMargins != null) lines.push(kv('Op Margin', `${(data.operatingMargins * 100).toFixed(1)}%`))
+  if (data.profitMargins != null) lines.push(kv('Net Margin', `${(data.profitMargins * 100).toFixed(1)}%`))
+  if (data.returnOnEquity != null) lines.push(kv('ROE', `${(data.returnOnEquity * 100).toFixed(1)}%`))
+  if (data.revenueGrowth != null) lines.push(kv('Rev Growth', fmtPct(data.revenueGrowth * 100), changeColor(data.revenueGrowth)))
+  if (data.earningsGrowth != null) lines.push(kv('EPS Growth', fmtPct(data.earningsGrowth * 100), changeColor(data.earningsGrowth)))
   lines.push(blank())
 
   // Balance Sheet
   lines.push(divider('Balance Sheet'))
-  if (data.totalCash != null) lines.push(line(`  Cash            ${fmtCap(data.totalCash)}`, C.text))
-  if (data.totalDebt != null) lines.push(line(`  Debt            ${fmtCap(data.totalDebt)}`, C.text))
-  if (data.debtToEquity != null) lines.push(line(`  D/E             ${data.debtToEquity.toFixed(2)}`, C.text))
-  if (data.currentRatio != null) lines.push(line(`  Current Ratio   ${data.currentRatio.toFixed(2)}`, C.text))
-  if (data.quickRatio != null) lines.push(line(`  Quick Ratio     ${data.quickRatio.toFixed(2)}`, C.text))
+  if (data.totalCash != null) lines.push(kv('Cash', fmtCap(data.totalCash)))
+  if (data.totalDebt != null) lines.push(kv('Debt', fmtCap(data.totalDebt)))
+  if (data.debtToEquity != null) lines.push(kv('D/E', data.debtToEquity.toFixed(2)))
+  if (data.currentRatio != null) lines.push(kv('Current Ratio', data.currentRatio.toFixed(2)))
+  if (data.quickRatio != null) lines.push(kv('Quick Ratio', data.quickRatio.toFixed(2)))
   lines.push(blank())
 
   // Shares & Short
   lines.push(divider('Shares'))
-  if (data.sharesOutstanding != null) lines.push(line(`  Shares Out      ${fmtCompact(data.sharesOutstanding)}`, C.text))
-  if (data.floatShares != null) lines.push(line(`  Float           ${fmtCompact(data.floatShares)}`, C.text))
-  if (data.shortPercentOfFloat != null) lines.push(line(`  Short % Float   ${(data.shortPercentOfFloat * 100).toFixed(2)}%`, C.text))
-  if (data.heldPercentInsiders != null) lines.push(line(`  Insider %       ${(data.heldPercentInsiders * 100).toFixed(1)}%`, C.text))
-  if (data.heldPercentInstitutions != null) lines.push(line(`  Inst %          ${(data.heldPercentInstitutions * 100).toFixed(1)}%`, C.text))
+  if (data.sharesOutstanding != null) lines.push(kv('Shares Out', fmtCompact(data.sharesOutstanding)))
+  if (data.floatShares != null) lines.push(kv('Float', fmtCompact(data.floatShares)))
+  if (data.shortPercentOfFloat != null) lines.push(kv('Short % Float', `${(data.shortPercentOfFloat * 100).toFixed(2)}%`))
+  if (data.heldPercentInsiders != null) lines.push(kv('Insider %', `${(data.heldPercentInsiders * 100).toFixed(1)}%`))
+  if (data.heldPercentInstitutions != null) lines.push(kv('Inst %', `${(data.heldPercentInstitutions * 100).toFixed(1)}%`))
   lines.push(blank())
 
   // Analyst
   lines.push(divider('Analyst'))
-  if (data.recommendationKey) lines.push(line(`  Rating          ${data.recommendationKey.replace('_', ' ').toUpperCase()}`, C.info))
-  if (data.numberOfAnalystOpinions) lines.push(line(`  Analysts        ${data.numberOfAnalystOpinions}`, C.text))
-  if (data.targetMeanPrice != null) lines.push(line(`  Target (mean)   ${fmtPrice(data.targetMeanPrice)}`, C.text))
+  if (data.recommendationKey) lines.push(kv('Rating', data.recommendationKey.replace('_', ' ').toUpperCase(), C.info))
+  if (data.numberOfAnalystOpinions) lines.push(kv('Analysts', String(data.numberOfAnalystOpinions)))
+  if (data.targetMeanPrice != null) lines.push(kv('Target (mean)', fmtPrice(data.targetMeanPrice)))
   if (data.targetHighPrice != null && data.targetLowPrice != null) {
-    lines.push(line(`  Range           ${fmtPrice(data.targetLowPrice)} — ${fmtPrice(data.targetHighPrice)}`, C.text))
+    lines.push(rich(
+      seg('  Range         ', C.dim),
+      seg(`${fmtPrice(data.targetLowPrice)} — ${fmtPrice(data.targetHighPrice)}`, C.text),
+    ))
   }
 
   return lines
