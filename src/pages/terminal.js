@@ -4,7 +4,7 @@
 import { go } from '../router.js'
 import { BLOOMBERG_SHORTCUTS } from '../layout/command-palette.js'
 import { loadQuotes, loadTechnicals, loadEarnings, loadMarket, loadNews,
-         loadCommodities, loadEcon, loadLookup, loadMeta } from '../lib/data.js'
+         loadCommodities, loadEcon, loadLookup, loadMeta, loadSparklines } from '../lib/data.js'
 import { loadAlerts, addAlert, removeAlert } from '../lib/alerts.js'
 import { addToWatchlist, removeFromWatchlist, getWatchlistFilter } from '../lib/watchlist.js'
 import { loadMemories, saveMemory, removeMemory } from '../chat/memory.js'
@@ -83,14 +83,13 @@ const ALIASES = {
   margin: 'margin',
   whatif: 'whatif',
   model: 'model',
-  copy: 'copy',
 }
 
 // Commands rendered inline (not navigation)
 const INLINE_COMMANDS = new Set([
   'thesis', 'market', 'technicals', 'news', 'earnings', 'lookup',
   'calendar', 'commodities', 'watchlist', 'alert', 'memory', 'journal',
-  'help', 'chat', 'clear', 'quit', 'watch', 'unwatch', 'model', 'copy',
+  'help', 'chat', 'clear', 'quit', 'watch', 'unwatch', 'model',
 ])
 
 // Commands that navigate away
@@ -139,13 +138,19 @@ export async function render(el) {
   loadBuffer()
   if (outputBuffer.length) {
     for (const entry of outputBuffer) {
-      const line = document.createElement('div')
-      line.style.color = entry.color || '#e0e0e0'
-      line.style.whiteSpace = 'pre-wrap'
-      line.style.fontFamily = '"JetBrains Mono", monospace'
-      line.style.fontSize = '13px'
-      line.textContent = entry.text
-      historyEl.appendChild(line)
+      const div = createTermDiv()
+      if (entry.segments) {
+        for (const s of entry.segments) {
+          const span = document.createElement('span')
+          span.style.color = s.color || '#e0e0e0'
+          span.textContent = s.text
+          div.appendChild(span)
+        }
+      } else {
+        div.style.color = entry.color || '#e0e0e0'
+        div.textContent = entry.text
+      }
+      historyEl.appendChild(div)
     }
     appendOutput('')
     appendOutput('── session restored ──', '#555')
@@ -187,24 +192,54 @@ export async function render(el) {
 }
 
 // ── Output helpers ───────────────────────────────────
+const TERM_FONT = '"JetBrains Mono", monospace'
+const TERM_SIZE = '13px'
+
+function createTermDiv() {
+  const div = document.createElement('div')
+  div.style.whiteSpace = 'pre-wrap'
+  div.style.fontFamily = TERM_FONT
+  div.style.fontSize = TERM_SIZE
+  return div
+}
+
 function appendOutput(text, color = '#e0e0e0') {
-  const line = document.createElement('div')
-  line.style.color = color
-  line.style.whiteSpace = 'pre-wrap'
-  line.style.fontFamily = '"JetBrains Mono", monospace'
-  line.style.fontSize = '13px'
-  line.textContent = text
-  historyEl.appendChild(line)
+  const div = createTermDiv()
+  div.style.color = color
+  div.textContent = text
+  historyEl.appendChild(div)
   historyEl.scrollTop = historyEl.scrollHeight
 
-  // Persist to session buffer
   outputBuffer.push({ text, color })
   if (outputBuffer.length > MAX_BUFFER) outputBuffer = outputBuffer.slice(-MAX_BUFFER)
   saveBuffer()
 }
 
+function appendRichLine(segments) {
+  const div = createTermDiv()
+  for (const s of segments) {
+    const span = document.createElement('span')
+    span.style.color = s.color || '#e0e0e0'
+    span.textContent = s.text
+    div.appendChild(span)
+  }
+  historyEl.appendChild(div)
+  historyEl.scrollTop = historyEl.scrollHeight
+
+  outputBuffer.push({ segments })
+  if (outputBuffer.length > MAX_BUFFER) outputBuffer = outputBuffer.slice(-MAX_BUFFER)
+  saveBuffer()
+}
+
 function appendLines(lines) {
-  for (const l of lines) appendOutput(l.text, l.color)
+  for (const l of lines) {
+    if (Array.isArray(l)) appendRichLine(l)
+    else appendOutput(l.text, l.color)
+  }
+}
+
+function lineToText(l) {
+  return Array.isArray(l) ? l.map(s => s.text).join('') : l.text
 }
 
 function updatePrompt() {
@@ -320,18 +355,6 @@ async function executeCommand(raw) {
     return
   }
 
-  // ── Copy ──
-  if (aliased === 'copy') {
-    const text = Array.from(historyEl.children).map(el => el.textContent).join('\n')
-    try {
-      await navigator.clipboard.writeText(text)
-      appendOutput('Terminal output copied to clipboard.', '#2ecc71')
-    } catch {
-      appendOutput('Failed to copy to clipboard.', '#ff3232')
-    }
-    return
-  }
-
   // ── Inline data commands ──
   if (aliased === 'thesis') { await renderThesis(); return }
   if (aliased === 'market') { await renderMarket(); return }
@@ -431,8 +454,8 @@ async function executeCommand(raw) {
 async function renderThesis() {
   appendOutput('Loading thesis...', '#888')
   try {
-    const [quotes, technicals, earnings, meta] = await Promise.all([
-      loadQuotes(), loadTechnicals(), loadEarnings(), loadMeta()
+    const [quotes, technicals, earnings, meta, sparklines] = await Promise.all([
+      loadQuotes(), loadTechnicals(), loadEarnings(), loadMeta(), loadSparklines()
     ])
     // Enrich quotes with names from meta
     if (quotes && meta?.names) {
@@ -441,7 +464,7 @@ async function renderThesis() {
       }
     }
     removeLastLine()
-    appendLines(fmt.fmtThesis(quotes, technicals, earnings))
+    appendLines(fmt.fmtThesis(quotes, technicals, earnings, sparklines))
   } catch (err) {
     removeLastLine()
     appendOutput(`Error: ${err.message}`, '#ff3232')
@@ -540,6 +563,7 @@ async function renderCommodities() {
 
 function removeLastLine() {
   if (historyEl.lastChild) historyEl.removeChild(historyEl.lastChild)
+  if (outputBuffer.length) outputBuffer.pop()
 }
 
 // ── Alert handler ────────────────────────────────────
@@ -718,11 +742,8 @@ async function handleChatInput(raw) {
 
   streaming = true
   let responseText = ''
-  const responseLine = document.createElement('div')
+  const responseLine = createTermDiv()
   responseLine.style.color = '#e0e0e0'
-  responseLine.style.whiteSpace = 'pre-wrap'
-  responseLine.style.fontFamily = '"JetBrains Mono", monospace'
-  responseLine.style.fontSize = '13px'
   responseLine.textContent = 'A: '
   historyEl.appendChild(responseLine)
 
@@ -768,7 +789,7 @@ async function handleSlashCommand(raw) {
       const taLines = fmt.fmtTechnicals(ta, arg)
       appendLines(taLines)
       // Inject as context
-      const contextText = taLines.map(l => l.text).join('\n')
+      const contextText = taLines.map(lineToText).join('\n')
       chatMessages.push({
         role: 'user',
         content: `[Technical analysis data for ${arg}]:\n${contextText}\n\nAnalyze the above technicals.`
@@ -787,7 +808,7 @@ async function handleSlashCommand(raw) {
       removeLastLine()
       const newsLines = fmt.fmtNews(news, arg)
       appendLines(newsLines)
-      const contextText = newsLines.map(l => l.text).join('\n')
+      const contextText = newsLines.map(lineToText).join('\n')
       chatMessages.push({
         role: 'user',
         content: `[Recent news for ${arg}]:\n${contextText}\n\nSummarize the key themes.`
@@ -813,7 +834,7 @@ async function handleSlashCommand(raw) {
       const name = meta?.names?.[sym] || data.longName || sym
       const lookupLines = fmt.fmtLookup(data, sym, name)
       appendLines(lookupLines)
-      const contextText = lookupLines.map(l => l.text).join('\n')
+      const contextText = lookupLines.map(lineToText).join('\n')
       chatMessages.push({
         role: 'user',
         content: `[Fundamental data for ${sym}]:\n${contextText}\n\nAnalyze the above fundamentals.`
@@ -904,7 +925,6 @@ function showHelp() {
     ]},
     { title: 'TERMINAL', items: [
       ['clear, cls',       'Clear terminal output'],
-      ['copy',             'Copy terminal output to clipboard'],
       ['q, quit, exit',    'Return to dashboard'],
       ['Esc',              'Exit terminal (or exit chat mode)'],
     ]},

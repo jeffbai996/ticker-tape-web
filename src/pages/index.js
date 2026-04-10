@@ -23,6 +23,7 @@ import { render as ratings } from './ratings.js'
 import { render as insider } from './insider.js'
 import { render as impact } from './impact.js'
 import { render as options } from './options.js'
+import { render as journal } from './journal.js'
 import { render as terminal } from './terminal.js'
 
 export function registerPages() {
@@ -48,5 +49,6 @@ export function registerPages() {
   registerPage('insider', insider)
   registerPage('impact', impact)
   registerPage('options', options)
+  registerPage('journal', journal)
   registerPage('terminal', terminal)
 }

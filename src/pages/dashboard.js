@@ -1,10 +1,16 @@
 // Dashboard: thesis overview — card grid of all watched symbols.
+// Re-renders on live data updates.
 
 import { loadQuotes, loadSparklines, loadTechnicals, loadEarnings, loadMeta } from '../lib/data.js'
 import { fmtPrice, fmtChange, fmtPct, changeColor, rsiColor, sparklineSVG, esc, fmtCap } from '../lib/format.js'
 import { go } from '../router.js'
 
+let _liveCleanup = null
+let _rendering = false
+
 export async function render(el) {
+  if (_rendering) return
+  _rendering = true
   const [quotes, sparklines, technicals, earnings, meta] = await Promise.all([
     loadQuotes(), loadSparklines(), loadTechnicals(), loadEarnings(), loadMeta()
   ])
@@ -15,6 +21,7 @@ export async function render(el) {
     msg.className = 'p-6 text-zinc-500'
     msg.textContent = 'No data available. Waiting for data pipeline...'
     el.appendChild(msg)
+    _rendering = false
     return
   }
 
@@ -143,6 +150,13 @@ export async function render(el) {
   container.append(header, grid)
   el.textContent = ''
   el.appendChild(container)
+
+  // Re-render when live data arrives
+  if (_liveCleanup) document.removeEventListener('live-data-update', _liveCleanup)
+  _liveCleanup = () => render(el)
+  document.addEventListener('live-data-update', _liveCleanup)
+
+  _rendering = false
 }
 
 function buildSummaryBar(quotes, technicals) {
