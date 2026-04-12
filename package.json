@@ -6,12 +6,20 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.2",
     "lightweight-charts": "^5.1.0",
     "tailwindcss": "^4.2.2",
     "vite": "^8.0.5"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^4.1.4",
+    "jsdom": "^29.0.2",
+    "vitest": "^4.1.4"
   }
 }

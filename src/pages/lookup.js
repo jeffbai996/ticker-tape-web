@@ -55,6 +55,24 @@ export async function render(el, symbol) {
     pctEl.className = `font-mono text-sm font-semibold ${changeColor(quote.pct)}`
     pctEl.textContent = fmtPct(quote.pct)
     header.append(priceEl, chgEl, pctEl)
+
+    // Extended hours block — matches TUI lookup display
+    if (quote.ext_price != null && quote.ext_label) {
+      const extRow = document.createElement('div')
+      extRow.className = 'w-full flex items-center gap-2 mt-1'
+      const extLabel = document.createElement('span')
+      extLabel.className = 'text-xs font-semibold'
+      extLabel.style.color = '#c864ff'
+      extLabel.textContent = quote.ext_label
+      const extPrice = document.createElement('span')
+      extPrice.className = 'font-mono text-sm font-bold text-zinc-300'
+      extPrice.textContent = fmtPrice(quote.ext_price)
+      const extPct = document.createElement('span')
+      extPct.className = `font-mono text-xs ${changeColor(quote.ext_pct)}`
+      extPct.textContent = fmtPct(quote.ext_pct)
+      extRow.append(extLabel, extPrice, extPct)
+      header.appendChild(extRow)
+    }
   }
 
   // Quick nav

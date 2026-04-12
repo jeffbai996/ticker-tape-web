@@ -171,6 +171,7 @@ function buildSummaryBar(quotes, technicals) {
   let above50 = 0, below50 = 0, above200 = 0, below200 = 0
   let oversold = 0, overbought = 0
   const offHighs = []
+  let highVol = 0
 
   if (technicals) {
     for (const sym of Object.keys(technicals)) {
@@ -186,6 +187,8 @@ function buildSummaryBar(quotes, technicals) {
         if (ta.rsi >= 70) overbought++
       }
       if (ta.off_high != null) offHighs.push(ta.off_high)
+      // High volume: ratio >= 1.5x average is a notable activity signal
+      if (ta.vol_ratio != null && ta.vol_ratio >= 1.5) highVol++
     }
   }
 
@@ -212,6 +215,9 @@ function buildSummaryBar(quotes, technicals) {
   }
   if (overbought > 0) {
     items.push({ label: `${overbought} overbought`, cls: 'text-negative' })
+  }
+  if (highVol > 0) {
+    items.push({ label: `${highVol} high vol`, cls: highVol >= 3 ? 'text-accent' : 'text-zinc-400' })
   }
   if (avgOffHigh != null) {
     items.push({ label: `${avgOffHigh.toFixed(1)}% off highs`, cls: 'text-zinc-500' })
