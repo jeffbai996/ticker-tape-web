@@ -4,7 +4,7 @@
 import { loadQuotes, loadMeta } from '../lib/data.js'
 import { fmtPrice, fmtPct, changeColor, esc } from '../lib/format.js'
 import { addToWatchlist } from '../lib/watchlist.js'
-import { startPolling, onLiveUpdate, addSymbols } from '../lib/live.js'
+import { startPolling, onLiveUpdate, addSymbols, getStaleness } from '../lib/live.js'
 import { evaluateAlerts } from '../lib/alerts.js'
 import { notifyAlert } from '../lib/toast.js'
 import { go } from '../router.js'
@@ -223,7 +223,11 @@ function buildPulse(quotes) {
   const extUp = extPcts.filter(p => p > 0).length
   const extDn = extPcts.filter(p => p < 0).length
 
-  let html = `<div class="text-[10px] font-semibold uppercase tracking-wider text-zinc-600 mb-1">Pulse</div>`
+  const staleness = getStaleness()
+  const dotColor = staleness === 'live' ? 'bg-green-500' : staleness === 'delayed' ? 'bg-amber-400' : 'bg-zinc-600'
+  const dotTitle = staleness === 'live' ? 'Live' : staleness === 'delayed' ? 'Delayed' : staleness === 'none' ? 'No live feed' : 'Stale'
+
+  let html = `<div class="text-[10px] font-semibold uppercase tracking-wider text-zinc-600 mb-1 flex items-center gap-1.5">Pulse<span class="w-1.5 h-1.5 rounded-full ${dotColor}" title="${dotTitle}"></span></div>`
     + `<div class="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px]">`
     + `<span class="text-zinc-500">Adv / Dec</span>`
     + `<span class="text-right font-mono"><span class="text-positive">${adv}</span> / <span class="text-negative">${dec}</span></span>`
