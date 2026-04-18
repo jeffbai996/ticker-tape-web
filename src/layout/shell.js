@@ -101,7 +101,7 @@ function initCommandBuffer() {
     'dashboard', 'market', 'sectors', 'earnings', 'heatmap', 'commodities',
     'calendar', 'correlation', 'comparison', 'valuation', 'news',
     'lookup', 'chart', 'technicals', 'intraday', 'dividends', 'short', 'ratings',
-    'insider', 'impact', 'options', 'terminal',
+    'insider', 'impact', 'options', 'terminal', 'alerts',
   ])
 
   function updateOverlay() {
