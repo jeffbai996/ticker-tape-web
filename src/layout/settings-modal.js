@@ -1,6 +1,7 @@
 // Settings modal: API keys for AI chat, preferences.
 
 import { reinitPolling } from '../lib/live.js'
+import { forceShowOnboarding } from './onboarding.js'
 
 export function initSettingsModal() {
   document.addEventListener('open-settings', () => openSettings())
@@ -82,12 +83,20 @@ function openSettings() {
   modelGroup.append(modelLabel, modelSelect)
   form.appendChild(modelGroup)
 
+  const resetOnboardBtn = document.createElement('button')
+  resetOnboardBtn.className = 'mt-4 w-full bg-zinc-800/50 hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300 rounded-md px-4 py-2 text-xs transition-colors'
+  resetOnboardBtn.textContent = 'Reset onboarding prompt'
+  resetOnboardBtn.addEventListener('click', () => {
+    overlay.remove()
+    forceShowOnboarding()
+  })
+
   const closeBtn = document.createElement('button')
-  closeBtn.className = 'mt-4 w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-md px-4 py-2 text-sm transition-colors'
+  closeBtn.className = 'mt-2 w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-md px-4 py-2 text-sm transition-colors'
   closeBtn.textContent = 'Close'
   closeBtn.addEventListener('click', () => overlay.remove())
 
-  modal.append(title, form, closeBtn)
+  modal.append(title, form, resetOnboardBtn, closeBtn)
   overlay.appendChild(modal)
   overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove() })
   document.body.appendChild(overlay)
