@@ -26,6 +26,7 @@ const NAV_ICONS = {
   news:        svg('<path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/>'),
   journal:     svg('<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/><path d="M8 7h6"/><path d="M8 11h8"/>'),
   terminal:    svg('<polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>'),
+  alerts:      svg('<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>'),
 }
 
 const SEARCH_SVG = svg('<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>')
@@ -40,6 +41,7 @@ const NAV_ITEMS = [
   { id: 'calendar',    label: 'Econ Calendar' },
   { id: 'news',        label: 'News' },
   { id: 'journal',     label: 'Journal' },
+  { id: 'alerts',      label: 'Alerts' },
   { id: 'terminal',    label: 'Terminal' },
 ]
 

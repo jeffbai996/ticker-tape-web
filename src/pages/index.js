@@ -25,6 +25,7 @@ import { render as impact } from './impact.js'
 import { render as options } from './options.js'
 import { render as journal } from './journal.js'
 import { render as terminal } from './terminal.js'
+import { render as alerts } from './alerts.js'
 
 export function registerPages() {
   registerPage('', dashboard)
@@ -51,4 +52,5 @@ export function registerPages() {
   registerPage('options', options)
   registerPage('journal', journal)
   registerPage('terminal', terminal)
+  registerPage('alerts', alerts)
 }
