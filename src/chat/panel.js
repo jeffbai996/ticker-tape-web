@@ -3,6 +3,7 @@
 import { streamChat, getModelList } from './providers.js'
 import { markdownToHTML } from './markdown.js'
 import { formatMemoriesForPrompt } from './memory.js'
+import { tavilySearch, formatResultsForPrompt, isSearchAvailable } from './search.js'
 import { loadQuotes, loadMeta, loadTechnicals } from '../lib/data.js'
 import { fmtPrice, fmtPct } from '../lib/format.js'
 import { getState } from '../state.js'
@@ -14,9 +15,11 @@ const MAX_HISTORY = 50
 let panelEl = null
 let messagesEl = null
 let inputEl = null
+let searchToggleEl = null
 let currentModel = 'flash'
 let chatHistory = []   // { role, content }
 let isStreaming = false
+let webSearchEnabled = false
 
 function loadChatHistory() {
   chatHistory = getItem(HISTORY_KEY, []).slice(-MAX_HISTORY)
@@ -125,6 +128,27 @@ function buildPanel() {
   inputRow.append(inputEl, sendBtn)
   inputArea.appendChild(inputRow)
 
+  // Web-search toggle (below the input)
+  const toggleRow = document.createElement('label')
+  toggleRow.className = 'flex items-center gap-1.5 mt-1.5 px-1 text-[11px] text-zinc-500 cursor-pointer hover:text-zinc-300 transition-colors select-none'
+  toggleRow.title = isSearchAvailable()
+    ? 'Run a web search before each message and inject results as context.'
+    : 'Add a Tavily API key in Settings to enable web search.'
+  searchToggleEl = document.createElement('input')
+  searchToggleEl.type = 'checkbox'
+  searchToggleEl.className = 'accent-amber-500'
+  searchToggleEl.disabled = !isSearchAvailable()
+  searchToggleEl.checked = false
+  searchToggleEl.addEventListener('change', () => {
+    webSearchEnabled = searchToggleEl.checked
+  })
+  const toggleLabel = document.createElement('span')
+  toggleLabel.textContent = isSearchAvailable()
+    ? 'Web search'
+    : 'Web search (add Tavily key)'
+  toggleRow.append(searchToggleEl, toggleLabel)
+  inputArea.appendChild(toggleRow)
+
   panelEl.append(header, messagesEl, inputArea)
 }
 
@@ -140,8 +164,18 @@ async function sendMessage() {
   saveChatHistory()
   appendMessage('user', text)
 
+  // Optional pre-flight web search. Failure is non-fatal — we just
+  // proceed without the extra context.
+  let searchBlock = ''
+  if (webSearchEnabled && isSearchAvailable()) {
+    const searchStatus = appendSearchStatus()
+    const results = await tavilySearch(text)
+    searchStatus.remove()
+    searchBlock = formatResultsForPrompt(results)
+  }
+
   // Build system prompt with context
-  const systemPrompt = await buildSystemPrompt()
+  const systemPrompt = (await buildSystemPrompt()) + searchBlock
 
   // Create assistant message container
   const { msgEl, contentEl, thinkingEl } = appendStreamMessage()
@@ -175,6 +209,18 @@ async function sendMessage() {
     saveChatHistory()
   }
   isStreaming = false
+}
+
+function appendSearchStatus() {
+  const wrapper = document.createElement('div')
+  wrapper.className = 'flex justify-start'
+  const bubble = document.createElement('div')
+  bubble.className = 'bg-zinc-800/50 text-zinc-500 italic rounded-lg px-3 py-1.5 text-xs'
+  bubble.textContent = '🔎 Searching the web…'
+  wrapper.appendChild(bubble)
+  messagesEl.appendChild(wrapper)
+  messagesEl.scrollTop = messagesEl.scrollHeight
+  return wrapper
 }
 
 function appendMessage(role, content) {
