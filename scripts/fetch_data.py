@@ -752,6 +752,187 @@ def fetch_news(symbols: list[str]) -> dict[str, list[dict]]:
     return result
 
 
+# Impact data ages slowly (new row only after earnings). Skip per-symbol refresh
+# unless the JSON is older than this threshold.
+IMPACT_TTL_SECONDS = 6 * 60 * 60
+
+
+def _impact_is_fresh(symbol: str) -> bool:
+    path = os.path.join(DATA_DIR, "impact", f"{symbol}.json")
+    if not os.path.exists(path):
+        return False
+    age = _time.time() - os.path.getmtime(path)
+    return age < IMPACT_TTL_SECONDS
+
+
+def _price_move_pct(hist, earn_date) -> float | None:
+    """Close on/before earn_date vs next bar close, as percent."""
+    if hist is None or len(hist) < 2:
+        return None
+    dates_list = [d.date() if hasattr(d, "date") else d for d in hist.index]
+    before_idx = None
+    after_idx = None
+    for i, d in enumerate(dates_list):
+        if d <= earn_date:
+            before_idx = i
+        elif before_idx is not None and after_idx is None:
+            after_idx = i
+            break
+    if before_idx is None or after_idx is None:
+        return None
+    close_before = hist["Close"].iloc[before_idx]
+    close_after = hist["Close"].iloc[after_idx]
+    if close_before == 0:
+        return None
+    return ((close_after - close_before) / close_before) * 100
+
+
+def _price_move_n_day(hist, earn_date, days: int) -> float | None:
+    """Close on/before earn_date vs close ~days bars later."""
+    if hist is None or len(hist) < 2:
+        return None
+    dates_list = [d.date() if hasattr(d, "date") else d for d in hist.index]
+    before_idx = None
+    for i, d in enumerate(dates_list):
+        if d <= earn_date:
+            before_idx = i
+        else:
+            break
+    if before_idx is None:
+        return None
+    target_idx = min(before_idx + days, len(hist) - 1)
+    if target_idx == before_idx:
+        return None
+    close_before = hist["Close"].iloc[before_idx]
+    close_after = hist["Close"].iloc[target_idx]
+    if close_before == 0:
+        return None
+    return ((close_after - close_before) / close_before) * 100
+
+
+def fetch_impact(symbol: str, limit: int = 12) -> dict | None:
+    """Earnings-move history for one symbol: past EPS surprises + 1d/5d price moves.
+
+    Ported from ticker-tape/data.py:1101. Writes peers reaction from BUCKETS.
+    """
+    try:
+        t = yf.Ticker(symbol)
+        df = t.get_earnings_dates(limit=20)
+        if df is None or df.empty:
+            return None
+
+        # One history pull covers every earnings date in the window.
+        try:
+            full_hist = t.history(period="5y", interval="1d")
+        except Exception:
+            full_hist = None
+
+        # Peer set from BUCKETS
+        sym_upper = symbol.upper()
+        peer_syms: list[str] = []
+        for bucket in BUCKETS.values():
+            if sym_upper in bucket:
+                peer_syms = [s for s in bucket if s != sym_upper]
+                break
+        peer_hists: dict[str, "pd.DataFrame"] = {}
+        for peer in peer_syms[:6]:  # cap peer chain length
+            try:
+                peer_hists[peer] = yf.Ticker(peer).history(period="5y", interval="1d")
+            except Exception:
+                peer_hists[peer] = None  # type: ignore[assignment]
+
+        today = date.today()
+        events: list[dict] = []
+        for idx, row in df.iterrows():
+            dt = idx.to_pydatetime() if hasattr(idx, "to_pydatetime") else idx
+            earn_date = dt.date() if hasattr(dt, "date") else dt
+            if earn_date >= today:
+                continue
+            reported = row.get("Reported EPS")
+            if reported is None or (isinstance(reported, float) and np.isnan(reported)):
+                continue
+
+            eps_est = row.get("EPS Estimate")
+            surprise = row.get("Surprise(%)")
+
+            move_1d = _price_move_pct(full_hist, earn_date)
+            move_5d = _price_move_n_day(full_hist, earn_date, 5)
+
+            peers = []
+            for peer, ph in peer_hists.items():
+                pm = _price_move_pct(ph, earn_date)
+                if pm is not None:
+                    peers.append({"sym": peer, "move": round(pm, 3)})
+
+            events.append({
+                "date": str(earn_date),
+                "eps_est": _safe_float(eps_est),
+                "eps_actual": _safe_float(reported),
+                "surprise_pct": _safe_float(surprise),
+                "move_1d": round(move_1d, 3) if move_1d is not None else None,
+                "move_5d": round(move_5d, 3) if move_5d is not None else None,
+                "peers": peers,
+            })
+
+            if len(events) >= limit:
+                break
+
+        if not events:
+            return None
+
+        # Summary (most recent first in events, streak counted from top)
+        beat_streak = 0
+        for ev in events:
+            if ev.get("surprise_pct") is not None and ev["surprise_pct"] > 0:
+                beat_streak += 1
+            else:
+                break
+        surprises = [ev["surprise_pct"] for ev in events if ev.get("surprise_pct") is not None]
+        moves = [ev["move_1d"] for ev in events if ev.get("move_1d") is not None]
+        total = len(surprises)
+        beats = sum(1 for s in surprises if s > 0)
+
+        return {
+            "symbol": sym_upper,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "events": events,
+            "summary": {
+                "beat_streak": beat_streak,
+                "beat_rate": round(beats / total, 3) if total else None,
+                "beats": beats,
+                "total": total,
+                "avg_surprise": round(sum(surprises) / len(surprises), 3) if surprises else None,
+                "avg_abs_move": round(sum(abs(m) for m in moves) / len(moves), 3) if moves else None,
+                "avg_move": round(sum(moves) / len(moves), 3) if moves else None,
+            },
+        }
+    except Exception as e:
+        log.warning("fetch_impact failed for %s: %s", symbol, e)
+        return None
+
+
+def fetch_impact_batch(symbols: list[str]) -> dict[str, dict]:
+    """Fetch impact for any symbol whose cached JSON is older than the TTL."""
+    os.makedirs(os.path.join(DATA_DIR, "impact"), exist_ok=True)
+    stale = [s for s in symbols if not _impact_is_fresh(s)]
+    if not stale:
+        log.info("Impact cache fresh for all %d symbols — skipping", len(symbols))
+        return {}
+    log.info("Refreshing impact for %d stale symbols: %s", len(stale), stale)
+    results: dict[str, dict] = {}
+    with ThreadPoolExecutor(max_workers=4) as ex:
+        futures = {ex.submit(fetch_impact, s): s for s in stale}
+        for fut in as_completed(futures):
+            sym = futures[fut]
+            try:
+                data = fut.result()
+                if data:
+                    results[sym] = data
+            except Exception as e:
+                log.warning("fetch_impact future failed for %s: %s", sym, e)
+    return results
+
+
 def fetch_charts(symbols: list[str]) -> dict[str, dict]:
     """Fetch OHLCV chart data for 6 timeframes per symbol."""
     timeframes = [
@@ -861,6 +1042,12 @@ def main() -> None:
     charts = fetch_charts(SYMBOLS)
     for sym, data in charts.items():
         _write(f"charts/{sym}.json", data)
+
+    # Impact (earnings-move history) — 6h TTL skip-if-fresh.
+    log.info("Fetching impact (earnings history)...")
+    impacts = fetch_impact_batch(SYMBOLS)
+    for sym, data in impacts.items():
+        _write(f"impact/{sym}.json", data)
 
     log.info("Done. All data written to %s", DATA_DIR)
 
