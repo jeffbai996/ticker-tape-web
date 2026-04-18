@@ -50,6 +50,7 @@ export const loadCorrelation = () => fetchData('correlation.json')
 
 export const loadChart  = (sym) => fetchData(`charts/${sym}.json`)
 export const loadLookup = (sym) => fetchData(`lookup/${sym}.json`)
+export const loadImpact = (sym) => fetchData(`impact/${sym}.json`)
 
 // Invalidate specific cache entry
 export function invalidate(path) {
