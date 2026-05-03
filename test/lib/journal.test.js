@@ -99,9 +99,9 @@ describe('symbol extraction edge cases', () => {
     expect(e.symbols).toHaveLength(0)
   })
   it('extracts 2-5 letter uppercase words', () => {
-    const e = addEntry('Check MU and LRCX today')
-    expect(e.symbols).toContain('MU')
-    expect(e.symbols).toContain('LRCX')
+    const e = addEntry('Check AAPL and MSFT today')
+    expect(e.symbols).toContain('AAPL')
+    expect(e.symbols).toContain('MSFT')
   })
   it('ignores lowercase words', () => {
     const e = addEntry('nvda aapl are lowercase')
