@@ -88,9 +88,9 @@ describe('groups', () => {
     expect(loadGroups()).toEqual({})
   })
   it('saves a group with uppercased symbols', () => {
-    saveGroup('semis', ['nvda', 'amd', 'mu'])
+    saveGroup('semis', ['nvda', 'amd', 'intc'])
     const groups = loadGroups()
-    expect(groups['semis']).toEqual(['NVDA', 'AMD', 'MU'])
+    expect(groups['semis']).toEqual(['NVDA', 'AMD', 'INTC'])
   })
   it('overwrites existing group with same name', () => {
     saveGroup('semis', ['NVDA'])
