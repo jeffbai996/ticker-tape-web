@@ -12,8 +12,10 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@preact/preset-vite": "^2.10.5",
     "@tailwindcss/vite": "^4.2.2",
     "lightweight-charts": "^5.1.0",
+    "preact": "^10.29.4",
     "tailwindcss": "^4.2.2",
     "vite": "^8.0.5"
   },
