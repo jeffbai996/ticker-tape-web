@@ -1,139 +1,76 @@
-# ticker-tape-web v2
+# ticker-tape-web v3
 
-Modern web dashboard for market data — Bloomberg-inspired dark theme, built with Vite + Tailwind CSS v4. Deployed on GitHub Pages, data refreshed via GitHub Actions every 5 minutes.
+Public showcase dashboard — a browser-native rebuild of the ticker-tape TUI's feature surface. Preact + Vite + Tailwind v4, deployed on GitHub Pages. Rebuild in progress per HANDOFF_SPEC (2026-07-03); phases below.
 
-## Architecture
+## THE RULE (read before touching anything)
 
-```
-GitHub Actions (cron, every 5 min on weekdays)
-  scripts/fetch_data.py       <- yfinance: quotes, indices, sectors, earnings, charts
-  scripts/fetch_lookup.py     <- per-symbol fundamentals (runs less frequently)
-  -> commits public/data/*.json to main branch
-  -> triggers deploy workflow
+**This repo is PUBLIC. No real account data, real positions, real NLV/margin numbers, thesis names, or the owner's actual held tickers may ever appear in source, tests, fixtures, committed JSON, code comments, or runtime API responses — even transiently, even as an example.** Portfolio-shaped features (positions, sizing, carry, cockpit, timeline) run on **synthetic demo data only**, clearly labeled "DEMO — NOT REAL POSITIONS" in the UI. Public market data on generic tickers (AAPL/MSFT/NVDA/GOOGL/AMZN/TSLA/SPY/QQQ class) is fine — the market isn't the leak, positions in it are.
 
-Deploy workflow (on push to main)
-  npm ci && npm run build     <- Vite builds src/ -> dist/
-  dist/ deployed to GitHub Pages
+Corollaries:
+- No live broker calls of any kind, client or Worker side. No broker credentials anywhere.
+- No trade execution UI, not even decorative.
+- API keys never in localStorage or any browser storage. AI chat goes through the Cloudflare Worker proxy (Phase 3), keys as Worker secrets.
+- No GitHub Secrets carrying real symbol lists into the build. The pipeline's symbol set is hardcoded generic in `scripts/`.
+- Demo account stays obviously fake: round $50K NLV, 1.0x leverage. Don't "improve realism."
 
-Browser (pull)
-  Loads dist/data/*.json with cache-busting
-  AI chat calls Anthropic/Google/OpenAI APIs directly from browser
-  API keys stored in localStorage (never committed)
-```
+## Build Phases
+
+- **Phase 0 (done):** Preact shell, hash router, Operator design tokens, placeholder pages, Pages deploy.
+- **Phase 1:** public-safe pages (~24 features) on the static JSON pipeline; i18n (en/zh-CN) infrastructure.
+- **Phase 2:** demo-portfolio generator + Portfolio section (positions, sizing, carry, cockpit, timeline).
+- **Phase 3:** AI chat via Worker proxy (rate-limited, spend-capped).
+- **Phase 4:** interaction polish — research drawer, drag-resize, crosshair sync, mobile.
+- **Phase 5 (optional):** live-push quotes for in-view symbols.
 
 ## Tech Stack
 
 | Layer | Choice |
 |-------|--------|
+| Framework | Preact (hooks, JSX via @preact/preset-vite) |
 | Build | Vite 8 |
-| CSS | Tailwind CSS v4 (CSS-first config, @tailwindcss/vite plugin) |
-| JS | Vanilla ES6+ modules (no framework) |
+| CSS | Tailwind CSS v4 (CSS-first config, tokens in `src/styles/main.css`) |
 | Charts | lightweight-charts (TradingView) |
-| Fonts | Inter (UI) + JetBrains Mono (data) |
-| Deploy | GitHub Pages via Actions |
+| Fonts | Plus Jakarta Sans (UI) + JetBrains Mono (data, tabular-nums) |
+| Tests | Vitest + jsdom (pure logic in `src/lib/` — that's the layer to test) |
+| Deploy | GitHub Pages via Actions (`deploy.yml`, push to main) |
+
+## Design System — Operator language
+
+Flat, near-black, hairline borders. Tokens live in `@theme` in `src/styles/main.css`; use the Tailwind classes, don't hardcode hex in components.
+
+- **Surfaces:** `surface-0` #050609 (canvas) → `surface-1` #0b0d11 (rails/cards) → `surface-2` #12141a (hover) → `surface-3` #1a1d24 (active/popover)
+- **Text:** `ink` #e7ecf3, `ink-2` #a6adb6, `muted` #79828d
+- **Borders:** `line` (white 10%), `line-2` (white 14%), 1px always
+- **Accent:** `accent` #b8c0cc (neutral gray — not purple, not amber), `accent-soft` wash for active nav
+- **P&L / live:** `up` #3fb950, `down` #f85149 — reserved for semantics, never decoration
+- **No glows, no gradients, no soft shadows.** Radii 10–16px.
+- Dark-only for now.
 
 ## Repo Structure
 
 ```
-ticker-tape-web/
-├── .github/workflows/
-│   ├── fetch-data.yml          <- cron: every 5 min weekdays, hourly weekends
-│   └── deploy.yml              <- npm build + deploy dist/ to Pages
-├── scripts/
-│   ├── fetch_data.py           <- bulk quotes, indices, technicals -> public/data/
-│   ├── fetch_lookup.py         <- per-symbol fundamentals -> public/data/lookup/
-│   └── requirements.txt
-├── worker/                     <- Cloudflare Worker (Yahoo Finance CORS proxy)
-├── public/data/                <- JSON data files (populated by Actions)
-│   ├── quotes.json, market.json, technicals.json, sparklines.json
-│   ├── earnings.json, sectors.json, news.json, commodities.json, econ.json
-│   ├── charts/{SYMBOL}.json    <- OHLCV by timeframe
-│   └── lookup/{SYMBOL}.json    <- Fundamentals
-├── src/
-│   ├── main.js                 <- Entry point
-│   ├── router.js               <- Hash-based SPA router
-│   ├── state.js                <- Simple reactive state (EventTarget)
-│   ├── layout/
-│   │   ├── shell.js            <- App shell (sidebar + main + chat)
-│   │   ├── sidebar.js          <- Nav + watchlist + pulse
-│   │   ├── status-bar.js       <- Scrolling indices + market state + clock
-│   │   ├── command-palette.js  <- Cmd+K fuzzy search
-│   │   └── settings-modal.js   <- API keys + preferences
-│   ├── pages/ (21 modules)
-│   │   ├── dashboard.js        <- Thesis card grid (landing page)
-│   │   ├── market.js           <- Indices + breadth + sentiment
-│   │   ├── chart.js            <- Candlestick (lightweight-charts)
-│   │   ├── lookup.js           <- Fundamentals deep dive
-│   │   ├── technicals.js       <- SMA/RSI/MACD/BB/ATR/RS
-│   │   ├── sectors.js, earnings.js, news.js, heatmap.js
-│   │   ├── intraday.js, comparison.js, correlation.js, valuation.js
-│   │   ├── calendar.js, commodities.js
-│   │   ├── dividends.js, short.js, ratings.js
-│   │   ├── insider.js, impact.js, options.js (placeholders)
-│   │   └── index.js            <- Page registry
-│   ├── chat/
-│   │   ├── panel.js            <- Chat UI + streaming
-│   │   ├── providers.js        <- Anthropic/Google/OpenAI streaming
-│   │   ├── markdown.js         <- MD -> HTML renderer
-│   │   └── memory.js           <- Persistent memories (localStorage)
-│   ├── lib/
-│   │   ├── data.js             <- Fetch + cache data/*.json
-│   │   ├── format.js           <- Price, %, cap, sparkline formatters
-│   │   ├── alerts.js           <- Price alert engine
-│   │   ├── watchlist.js        <- Symbol list + groups
-│   │   ├── journal.js          <- Trade journal
-│   │   └── storage.js          <- localStorage wrapper
-│   └── styles/
-│       └── main.css            <- Tailwind imports + custom theme
-├── index.html                  <- Vite entry
-├── vite.config.js              <- Vite config (base path, Tailwind plugin)
-└── package.json
+src/
+├── main.jsx                <- entry, mounts App
+├── app.jsx                 <- shell: StatusBar / Sidebar / routed Page
+├── lib/                    <- pure logic, tested (route.js, nav.js, ...)
+├── components/             <- shell components (StatusBar, Sidebar, Placeholder)
+├── pages/                  <- one module per section
+└── styles/main.css         <- Tailwind import + @theme tokens
+scripts/                    <- yfinance data pipeline (Phase 1 rebuild pending)
+worker/                     <- Cloudflare Worker: Yahoo CORS proxy, later AI chat proxy
+test/lib/                   <- Vitest specs for src/lib
 ```
 
-## Design System
+## Routing
 
-- **Background:** zinc-950 (#09090b)
-- **Surface (cards):** zinc-900 (#18181b), class: `card`
-- **Border:** zinc-800 (#27272a)
-- **Text:** zinc-50 primary, zinc-400 secondary, zinc-500 muted
-- **Accent:** amber-500 (#f59e0b) — Bloomberg orange
-- **Positive/Negative:** green-500 / red-500
-- **Data font:** JetBrains Mono with tabular-nums
-- **UI font:** Inter
-
-## Pages & Routes
-
-| Route | Page | Data Source |
-|-------|------|-------------|
-| `#/` or `#/dashboard` | Dashboard (thesis cards) | quotes, sparklines, technicals, earnings |
-| `#/market` | Market overview | market.json |
-| `#/chart/SYM` | Candlestick chart | charts/SYM.json |
-| `#/lookup/SYM` | Fundamentals | lookup/SYM.json |
-| `#/technicals/SYM` | Technical analysis | technicals.json |
-| `#/sectors` | Sector heatmap | sectors.json |
-| `#/earnings` | Earnings calendar | earnings.json |
-| `#/news` or `#/news/SYM` | Headlines | news.json |
-| `#/heatmap` | Performance grid | quotes.json |
-| `#/commodities` | Futures prices | commodities.json |
-| `#/calendar` | Econ events | econ.json |
-| `#/comparison` | Multi-symbol | sparklines.json |
-| `#/correlation` | Correlation matrix | correlation.json |
-| `#/valuation` | Valuation table | lookup/*.json |
-| `#/intraday/SYM` | 5-min bars | charts/SYM.json |
-| `#/dividends/SYM` | Dividend info | lookup/SYM.json |
-| `#/short/SYM` | Short interest | lookup/SYM.json |
-| `#/ratings/SYM` | Analyst consensus | lookup/SYM.json |
+Hash-based (`#/section/sub`) because GitHub Pages has no rewrites. Sections: `dashboard` (`#/`), `markets` (+sectors/commodities/calendar), `research`, `portfolio` (demo), `screen` (+compare/correlation/valuation), `chat`. Registry in `src/lib/nav.js`; parsing in `src/lib/route.js` (tested).
 
 ## Commands
 
-- `npm run dev` — Vite dev server with hot reload
-- `npm run build` — Production build to dist/
-- `npm run preview` — Preview production build
+- `npm run dev` — dev server · `npm run build` — production build · `npm test` — Vitest
+- Base path: `/ticker-tape-web/` (vite.config.js)
 
-## Key Constraints
+## Reference material (not in this repo)
 
-- No personal tickers in committed source — symbols via GitHub Secret only
-- No IBKR, no portfolio data — pure market data
-- API keys in localStorage, never committed
-- Data staleness: 5 min during market hours. Always show timestamps.
-- Base path: `/ticker-tape-web/` (configured in vite.config.js)
+- The TUI (`ticker-tape` repo) is the feature source. Its `demo_data.py` is the demo-data pattern to port: deterministic, minute-bucket seeded, "Nothing here may reference a real portfolio."
+- v2's vanilla-JS implementation is in git history before the `chore: tear down v2 app for v3 rebuild` commit — formatters, alert engine, and journal logic there are worth porting with their tests.
