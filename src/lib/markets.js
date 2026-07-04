@@ -20,6 +20,8 @@ export const MARKET_GROUPS = [
       { symbol: 'NQ=F', label: 'Nasdaq Fut' },
       { symbol: 'YM=F', label: 'Dow Fut' },
       { symbol: 'RTY=F', label: 'Russell Fut' },
+      { symbol: 'ZN=F', label: '10Y Note Fut' },
+      { symbol: 'ZB=F', label: '30Y Bond Fut' },
     ],
   },
   {
@@ -59,6 +61,8 @@ export const MARKET_GROUPS = [
       { symbol: 'USDJPY=X', label: 'USD/JPY' },
       { symbol: 'USDCNH=X', label: 'USD/CNH' },
       { symbol: 'USDCAD=X', label: 'USD/CAD' },
+      { symbol: 'AUDUSD=X', label: 'AUD/USD' },
+      { symbol: 'USDCHF=X', label: 'USD/CHF' },
     ],
   },
   {
@@ -66,6 +70,9 @@ export const MARKET_GROUPS = [
     items: [
       { symbol: 'BTC-USD', label: 'Bitcoin' },
       { symbol: 'ETH-USD', label: 'Ethereum' },
+      { symbol: 'SOL-USD', label: 'Solana' },
+      { symbol: 'XRP-USD', label: 'XRP' },
+      { symbol: 'DOGE-USD', label: 'Dogecoin' },
     ],
   },
 ]

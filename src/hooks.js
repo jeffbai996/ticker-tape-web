@@ -7,12 +7,20 @@ import {
 import { fetchHistory } from './lib/history.js'
 import { sma, rsi } from './lib/indicators.js'
 import { getLocale, onLocaleChange } from './lib/i18n.js'
+import { getWatchlist, onWatchlistChange } from './lib/watchlist.js'
 
 /** Current locale; re-renders the caller when it changes. */
 export function useLocale() {
   const [locale, set] = useState(getLocale)
   useEffect(() => onLocaleChange(set), [])
   return locale
+}
+
+/** User watchlist; re-renders the caller on add/remove. */
+export function useWatchlist() {
+  const [list, set] = useState(getWatchlist)
+  useEffect(() => onWatchlistChange((l) => set([...l])), [])
+  return list
 }
 
 /** Live quotes for a symbol list; re-renders as each symbol's data lands. */

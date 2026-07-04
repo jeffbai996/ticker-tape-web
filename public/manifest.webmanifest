@@ -1,0 +1,13 @@
+{
+  "name": "ticker-tape",
+  "short_name": "ticker-tape",
+  "description": "Bloomberg-style live market dashboard",
+  "start_url": "/ticker-tape-web/",
+  "scope": "/ticker-tape-web/",
+  "display": "standalone",
+  "background_color": "#050609",
+  "theme_color": "#050609",
+  "icons": [
+    { "src": "/ticker-tape-web/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

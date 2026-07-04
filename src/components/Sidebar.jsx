@@ -1,27 +1,53 @@
+import { useState } from 'preact/hooks'
 import { NAV, hrefFor } from '../lib/route.js'
 import { tl } from '../lib/i18n.js'
-import { useQuotes } from '../hooks.js'
-import { WATCHLIST } from '../lib/symbols.js'
+import { useQuotes, useWatchlist } from '../hooks.js'
+import { watch, unwatch } from '../lib/watchlist.js'
 import { fmtPrice, fmtPct } from '../lib/format.js'
 
 function WatchRow({ symbol, q }) {
   const up = (q?.pct ?? 0) >= 0
   return (
-    <a
-      href={`#/research/${symbol.toLowerCase()}`}
-      class="flex items-baseline px-3 py-[3px] font-mono text-[11px] hover:bg-surface-2 hover:no-underline"
-    >
-      <span class="text-ink font-bold w-14">{symbol}</span>
+    <div class="group flex items-baseline px-3 py-[3px] font-mono text-[11px] hover:bg-surface-2">
+      <a href={`#/research/${symbol.toLowerCase()}`} class="text-ink font-bold w-14 hover:no-underline">
+        {symbol}
+      </a>
       <span class="text-ink-2 ml-auto">{q ? fmtPrice(q.price) : '—'}</span>
       <span class={`w-16 text-right ${q ? (up ? 'text-up' : 'text-down') : 'text-muted'}`}>
         {q ? fmtPct(q.pct) : ''}
       </span>
-    </a>
+      <button
+        onClick={() => unwatch(symbol)}
+        title={`unwatch ${symbol}`}
+        class="w-0 overflow-hidden group-hover:w-4 text-right text-muted hover:text-down"
+      >
+        ×
+      </button>
+    </div>
+  )
+}
+
+function AddSymbol() {
+  const [value, setValue] = useState('')
+  const submit = (e) => {
+    e.preventDefault()
+    if (watch(value)) setValue('')
+  }
+  return (
+    <form onSubmit={submit} class="ml-auto">
+      <input
+        value={value}
+        onInput={(e) => setValue(e.currentTarget.value)}
+        placeholder="+ SYM"
+        class="w-14 bg-transparent border-b border-line text-[10px] font-mono text-ink uppercase outline-none focus:border-accent placeholder:text-muted"
+      />
+    </form>
   )
 }
 
 export function Sidebar({ route }) {
-  const quotes = useQuotes(WATCHLIST)
+  const watchlist = useWatchlist()
+  const quotes = useQuotes(watchlist)
 
   return (
     <nav class="w-52 shrink-0 bg-surface-1 border-r border-line flex flex-col max-md:hidden min-h-0">
@@ -68,11 +94,12 @@ export function Sidebar({ route }) {
         ))}
       </div>
 
-      <div class="px-3 pt-2 pb-1 border-t border-line font-mono text-[10px] tracking-wider text-muted">
+      <div class="px-3 pt-2 pb-1 border-t border-line font-mono text-[10px] tracking-wider text-muted flex items-baseline">
         {tl('Watchlist').toUpperCase()}
+        <AddSymbol />
       </div>
       <div class="flex-1 overflow-y-auto min-h-0">
-        {WATCHLIST.map((s) => (
+        {watchlist.map((s) => (
           <WatchRow key={s} symbol={s} q={quotes[s]?.quote} />
         ))}
       </div>

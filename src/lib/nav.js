@@ -9,6 +9,7 @@ export const NAV = [
     id: 'markets',
     label: 'Markets',
     subs: [
+      { id: 'movers', label: 'Movers' },
       { id: 'sectors', label: 'Sectors' },
       { id: 'heatmap', label: 'Heatmap' },
       { id: 'commodities', label: 'Commodities' },
