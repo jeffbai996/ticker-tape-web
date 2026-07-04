@@ -6,13 +6,16 @@ import { fmtPrice, fmtPct } from '../lib/format.js'
 function WatchRow({ symbol, q }) {
   const up = (q?.pct ?? 0) >= 0
   return (
-    <div class="flex items-baseline px-3 py-[3px] font-mono text-[11px] hover:bg-surface-2 cursor-default">
+    <a
+      href={`#/research/${symbol.toLowerCase()}`}
+      class="flex items-baseline px-3 py-[3px] font-mono text-[11px] hover:bg-surface-2 hover:no-underline"
+    >
       <span class="text-ink font-bold w-14">{symbol}</span>
       <span class="text-ink-2 ml-auto">{q ? fmtPrice(q.price) : '—'}</span>
       <span class={`w-16 text-right ${q ? (up ? 'text-up' : 'text-down') : 'text-muted'}`}>
         {q ? fmtPct(q.pct) : ''}
       </span>
-    </div>
+    </a>
   )
 }
 

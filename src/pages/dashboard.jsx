@@ -7,8 +7,11 @@ function Row({ symbol, data }) {
   const q = data?.quote
   const up = (q?.pct ?? 0) >= 0
   return (
-    <tr class="border-b border-line last:border-0 hover:bg-surface-2">
-      <td class="px-3 py-[5px] font-mono font-bold text-[12px] text-ink">{symbol}</td>
+    <tr
+      class="border-b border-line last:border-0 hover:bg-surface-2 cursor-pointer"
+      onClick={() => (location.hash = `#/research/${symbol.toLowerCase()}`)}
+    >
+      <td class="px-3 py-[5px] font-mono font-bold text-[12px] text-accent">{symbol}</td>
       <td class="px-2 py-[5px] text-[11px] text-muted max-w-36 truncate hidden @[400px]:table-cell">{q?.name || ''}</td>
       <td class="px-2 py-[5px] font-mono text-[12px] text-ink text-right">{q ? fmtPrice(q.price) : '—'}</td>
       <td class={`px-2 py-[5px] font-mono text-[12px] text-right ${q ? (up ? 'text-up' : 'text-down') : 'text-muted'}`}>

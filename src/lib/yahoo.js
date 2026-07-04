@@ -28,3 +28,21 @@ export function sparkFromChart(result) {
   const closes = result?.indicators?.quote?.[0]?.close || []
   return closes.filter((c) => c != null)
 }
+
+/** OHLC bars for candlestick charts; bars with a null close are dropped. */
+export function barsFromChart(result) {
+  const ts = result?.timestamp || []
+  const q = result?.indicators?.quote?.[0] || {}
+  const bars = []
+  for (let i = 0; i < ts.length; i++) {
+    if (q.close?.[i] == null) continue
+    bars.push({
+      time: ts[i],
+      open: q.open?.[i] ?? q.close[i],
+      high: q.high?.[i] ?? q.close[i],
+      low: q.low?.[i] ?? q.close[i],
+      close: q.close[i],
+    })
+  }
+  return bars
+}
