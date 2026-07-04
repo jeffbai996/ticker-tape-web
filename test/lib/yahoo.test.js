@@ -78,3 +78,37 @@ describe('sparkFromChart', () => {
     expect(sparkFromChart({ meta: {} })).toEqual([])
   })
 })
+
+describe('quoteFromV7', () => {
+  it('maps a v7 quote row onto the chart-quote shape', async () => {
+    const { quoteFromV7 } = await import('../../src/lib/yahoo.js')
+    const q = quoteFromV7({
+      symbol: 'MSFT', shortName: 'Microsoft Corporation',
+      regularMarketPrice: 390.49, regularMarketChange: 6.21,
+      regularMarketChangePercent: 1.616, regularMarketVolume: 40690198,
+      regularMarketDayHigh: 392.19, regularMarketDayLow: 383.7,
+    })
+    expect(q.symbol).toBe('MSFT')
+    expect(q.name).toBe('Microsoft Corporation')
+    expect(q.price).toBeCloseTo(390.49)
+    expect(q.pct).toBeCloseTo(1.616)
+    expect(q.volume).toBe(40690198)
+  })
+
+  it('re-derives change from prevClose — v7 yield-index rows lie', async () => {
+    const { quoteFromV7 } = await import('../../src/lib/yahoo.js')
+    const q = quoteFromV7({
+      symbol: '^TNX', regularMarketPrice: 4.485, regularMarketPreviousClose: 4.485,
+      regularMarketChange: -4.485, regularMarketChangePercent: -50,
+    })
+    expect(q.change).toBeCloseTo(0)
+    expect(q.pct).toBeCloseTo(0)
+  })
+
+  it('degrades to safe defaults on an empty row', async () => {
+    const { quoteFromV7 } = await import('../../src/lib/yahoo.js')
+    const q = quoteFromV7(null)
+    expect(q.price).toBe(0)
+    expect(q.dayHigh).toBeNull()
+  })
+})

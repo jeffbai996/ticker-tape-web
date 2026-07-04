@@ -2,8 +2,17 @@
 // to stay friendly with rate limits, and fans results out to subscribers.
 // No secrets, no cron, no build-time data — the browser is the pipeline.
 
-import { quoteFromChart, sparkFromChart } from './yahoo.js'
+import { quoteFromChart, sparkFromChart, quoteFromV7 } from './yahoo.js'
 import { createPCache } from './pcache.js'
+
+// v7 batch quotes need crumb auth, so they always go through the Worker —
+// the dev server's dumb /yf pass-through can't do the cookie dance.
+function crumbBase() {
+  if (import.meta.env.VITE_DATA_PROXY) return import.meta.env.VITE_DATA_PROXY
+  const saved = localStorage.getItem('proxy_url')
+  if (saved) return saved.replace(/\/$/, '')
+  return 'https://yf-proxy.2phakhvpgh.workers.dev'
+}
 
 const REQUEST_SPACING_MS = 350   // min gap between proxy requests
 const REFRESH_MS = 60_000        // full sweep cadence
@@ -64,6 +73,40 @@ async function pump() {
   pumping = false
 }
 
+// Batch first paint: one v7 request prices a whole page at once, so quotes
+// don't trickle in at pump spacing. The per-symbol chart pump still runs
+// behind it to fill sparks. Coalesced so several track() calls in one render
+// pass cost one request.
+let batchTimer = null
+const batchWanted = new Set()
+
+function scheduleBatch(symbols) {
+  for (const s of symbols) batchWanted.add(s)
+  clearTimeout(batchTimer)
+  batchTimer = setTimeout(runBatch, 50)
+}
+
+async function runBatch() {
+  const syms = [...batchWanted]
+  batchWanted.clear()
+  for (let i = 0; i < syms.length; i += 40) {
+    const chunk = syms.slice(i, i + 40)
+    try {
+      const url = `${crumbBase()}/v7/finance/quote?symbols=${encodeURIComponent(chunk.join(','))}`
+      const resp = await fetch(url, { signal: AbortSignal.timeout(10_000) })
+      if (!resp.ok) continue // pump fills the gap one by one
+      const data = await resp.json()
+      for (const row of data?.quoteResponse?.result || []) {
+        const prev = cache.get(row.symbol)
+        // Keep the old ts: this fills the quote, but the chart fetch (spark)
+        // is still owed — a fresh ts would make track() skip it next time.
+        cache.set(row.symbol, { quote: quoteFromV7(row), spark: prev?.spark || [], ts: prev?.ts ?? 0 })
+        emit(row.symbol)
+      }
+    } catch { /* pump fills the gap */ }
+  }
+}
+
 const tracked = new Set()
 
 /** Track symbols: serve the persisted snapshot immediately, fetch only what's
@@ -81,10 +124,12 @@ export function track(symbols) {
   }
   if (priority.length) {
     queue = [...priority, ...queue.filter((s) => !priority.includes(s))]
+    scheduleBatch(priority) // instant first paint; the pump follows for sparks
   }
   pump()
   if (!sweepTimer) {
     sweepTimer = setInterval(() => {
+      scheduleBatch([...tracked]) // refresh all prices in one request
       queue.push(...tracked)
       pump()
     }, REFRESH_MS)
