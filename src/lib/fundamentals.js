@@ -61,6 +61,33 @@ export async function fetchEarningsDate(symbol) {
   return value
 }
 
+const insCache = createPCache('ins_cache_v1', { max: 30 })
+const INS_TTL = 6 * 60 * 60_000
+
+/** Recent insider transactions via v10 insiderTransactions. */
+export async function fetchInsider(symbol) {
+  const hit = insCache.get(symbol)
+  if (hit && Date.now() - hit.ts < INS_TTL) return hit.value
+
+  const url = `${crumbBase()}/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=insiderTransactions`
+  const resp = await fetch(url, { signal: AbortSignal.timeout(12_000) })
+  if (!resp.ok) throw new Error(`insider ${symbol}: HTTP ${resp.status}`)
+  const data = await resp.json()
+  const txns = data?.quoteSummary?.result?.[0]?.insiderTransactions?.transactions
+  if (!txns) throw new Error(`insider ${symbol}: empty`)
+
+  const value = txns.slice(0, 25).map((t) => ({
+    name: t.filerName,
+    relation: t.filerRelation,
+    text: t.transactionText,
+    date: t.startDate?.raw ? t.startDate.raw * 1000 : null,
+    shares: t.shares?.raw ?? null,
+    value: t.value?.raw ?? null,
+  }))
+  insCache.set(symbol, { value, ts: Date.now() })
+  return value
+}
+
 export async function fetchFundamentals(symbol) {
   const hit = cache.get(symbol)
   if (hit && Date.now() - hit.ts < TTL) return hit.value
