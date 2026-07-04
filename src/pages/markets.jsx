@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'preact/hooks'
-import { useQuotes } from '../hooks.js'
+import { useQuotes, useWatchlist } from '../hooks.js'
 import { MARKET_GROUPS, SECTORS, COMMODITY_GROUPS, ECON_EVENTS, upcomingEvents } from '../lib/markets.js'
 import { fetchEarningsDate } from '../lib/fundamentals.js'
 import { tl } from '../lib/i18n.js'
-import { WATCHLIST } from '../lib/symbols.js'
-import { fmtPrice, fmtPct, fmtChange } from '../lib/format.js'
+import { fmtPrice, fmtPct, fmtChange, fmtVol } from '../lib/format.js'
 import { Spark } from '../components/Spark.jsx'
 
 function QuoteRow({ label, data, unit }) {
@@ -122,8 +121,9 @@ function heatStyle(pct) {
 }
 
 function Heatmap() {
-  const quotes = useQuotes(WATCHLIST)
-  const tiles = WATCHLIST.map((s) => ({ symbol: s, q: quotes[s]?.quote }))
+  const watchlist = useWatchlist()
+  const quotes = useQuotes(watchlist)
+  const tiles = watchlist.map((s) => ({ symbol: s, q: quotes[s]?.quote }))
     .sort((a, b) => (b.q?.pct ?? -99) - (a.q?.pct ?? -99))
 
   return (
@@ -144,20 +144,66 @@ function Heatmap() {
   )
 }
 
+function MoverTable({ title, rows, metric }) {
+  return (
+    <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
+      <header class="px-3 py-2 border-b border-line-2 bg-surface-2">
+        <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">{title}</h2>
+      </header>
+      <table class="w-full border-collapse font-mono text-[11px]">
+        <tbody>
+          {rows.map(({ symbol, q }) => {
+            const up = (q?.pct ?? 0) >= 0
+            return (
+              <tr key={symbol} class="border-b border-line last:border-0 hover:bg-surface-2 cursor-pointer"
+                onClick={() => (location.hash = `#/research/${symbol.toLowerCase()}`)}>
+                <td class="px-3 py-[5px] font-bold text-accent">{symbol}</td>
+                <td class="px-2 py-[5px] text-right text-ink">{fmtPrice(q?.price)}</td>
+                <td class={`px-3 py-[5px] text-right ${up ? 'text-up' : 'text-down'}`}>
+                  {metric === 'volume' ? fmtVol(q?.volume) : fmtPct(q?.pct)}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </section>
+  )
+}
+
+function Movers() {
+  const watchlist = useWatchlist()
+  const quotes = useQuotes(watchlist)
+  const priced = watchlist
+    .map((s) => ({ symbol: s, q: quotes[s]?.quote }))
+    .filter((r) => r.q?.pct != null)
+  const byPct = [...priced].sort((a, b) => b.q.pct - a.q.pct)
+  const byVol = [...priced].sort((a, b) => (b.q.volume ?? 0) - (a.q.volume ?? 0))
+
+  return (
+    <div class="grid gap-3 lg:grid-cols-3 max-w-5xl">
+      <MoverTable title={tl('Gainers')} rows={byPct.slice(0, 10)} />
+      <MoverTable title={tl('Losers')} rows={byPct.slice(-10).reverse()} />
+      <MoverTable title={tl('Most active')} rows={byVol.slice(0, 10)} metric="volume" />
+    </div>
+  )
+}
+
 function Earnings() {
+  const watchlist = useWatchlist()
   const [rows, setRows] = useState({})
 
   useEffect(() => {
     let alive = true
     // ETFs have no earnings — skip the obvious ones to save requests.
-    const named = WATCHLIST.filter((s) => !['SPY', 'QQQ', 'IWM', 'GLD', 'TLT'].includes(s))
+    const named = watchlist.filter((s) => !['SPY', 'QQQ', 'IWM', 'GLD', 'TLT'].includes(s))
     for (const sym of named) {
       fetchEarningsDate(sym)
         .then((v) => alive && setRows((r) => ({ ...r, [sym]: v })))
         .catch(() => alive && setRows((r) => ({ ...r, [sym]: null })))
     }
     return () => { alive = false }
-  }, [])
+  }, [watchlist.join(',')])
 
   const now = Date.now()
   const upcoming = Object.entries(rows)
@@ -247,6 +293,7 @@ export function Markets({ route }) {
   return (
     <div class="flex-1 p-3 select-text">
       {view === 'overview' && <Overview />}
+      {view === 'movers' && <Movers />}
       {view === 'sectors' && <Sectors />}
       {view === 'heatmap' && <Heatmap />}
       {view === 'commodities' && <Commodities />}

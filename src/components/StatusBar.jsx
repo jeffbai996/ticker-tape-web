@@ -30,7 +30,7 @@ export function StatusBar() {
 
   return (
     <header class="flex items-center gap-4 px-3 h-9 shrink-0 bg-surface-1 border-b border-line font-mono text-[11px]">
-      <span class="font-bold text-accent tracking-tight text-[13px]">ticker-tape</span>
+      <a href="#/" class="font-bold text-accent tracking-tight text-[13px] hover:no-underline">ticker-tape</a>
 
       <div class="flex-1 flex items-center gap-4 overflow-x-auto min-w-0 no-scrollbar">
         {INDICES.map(({ symbol, label }) => {

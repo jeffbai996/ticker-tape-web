@@ -77,3 +77,36 @@ describe('fmtFracPct', () => {
     expect(fmtFracPct(null)).toBe('—')
   })
 })
+
+describe('parseAnalysts', () => {
+  it('extracts current trend, targets, and rating changes', async () => {
+    const { parseAnalysts } = await import('../../src/lib/fundamentals.js')
+    const out = parseAnalysts({
+      recommendationTrend: { trend: [
+        { period: '0m', strongBuy: 12, buy: 41, hold: 3, sell: 0, strongSell: 0 },
+        { period: '-1m', strongBuy: 13, buy: 40, hold: 3, sell: 0, strongSell: 0 },
+      ] },
+      financialData: {
+        targetLowPrice: { raw: 400 }, targetMeanPrice: { raw: 561.11 },
+        targetHighPrice: { raw: 870 }, numberOfAnalystOpinions: { raw: 55 },
+      },
+      upgradeDowngradeHistory: { history: [
+        { epochGradeDate: 1782400845, firm: 'Stifel', toGrade: 'Hold', fromGrade: 'Hold',
+          action: 'main', currentPriceTarget: 400, priorPriceTarget: 415 },
+      ] },
+    })
+    expect(out.trend.buy).toBe(41)
+    expect(out.targets.mean).toBeCloseTo(561.11)
+    expect(out.targets.analysts).toBe(55)
+    expect(out.history[0].firm).toBe('Stifel')
+    expect(out.history[0].date).toBe(1782400845000)
+  })
+
+  it('degrades to nulls on empty modules', async () => {
+    const { parseAnalysts } = await import('../../src/lib/fundamentals.js')
+    const out = parseAnalysts({})
+    expect(out.trend).toBeNull()
+    expect(out.targets.mean).toBeNull()
+    expect(out.history).toEqual([])
+  })
+})

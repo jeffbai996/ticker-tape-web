@@ -6,6 +6,7 @@ import { fetchFundamentals } from '../lib/fundamentals.js'
 import { fetchOptions } from '../lib/options.js'
 import { fetchInsider } from '../lib/fundamentals.js'
 import { fetchEarningsImpact } from '../lib/earnings.js'
+import { fetchAnalysts } from '../lib/fundamentals.js'
 import { bsDelta } from '../lib/bs.js'
 import { vwapSeries } from '../lib/vwap.js'
 import { LineSeries } from 'lightweight-charts'
@@ -13,6 +14,8 @@ import { sma, rsi, macd, bollinger } from '../lib/indicators.js'
 import { fmtPrice, fmtPct, fmtChange, fmtVol, fmtBig, fmtRatio, fmtFracPct } from '../lib/format.js'
 import { hrefFor } from '../lib/route.js'
 import { tl, t as tt } from '../lib/i18n.js'
+import { watch, unwatch } from '../lib/watchlist.js'
+import { useWatchlist } from '../hooks.js'
 
 function Candles({ bars, intraday }) {
   const el = useRef(null)
@@ -519,6 +522,123 @@ function EarningsView({ symbol }) {
   )
 }
 
+const GRADE_TONE = (g) => {
+  const s = (g || '').toLowerCase()
+  if (/buy|overweight|outperform|positive|accumulate/.test(s)) return 'text-up'
+  if (/sell|underweight|underperform|negative|reduce/.test(s)) return 'text-down'
+  return 'text-ink-2'
+}
+
+function AnalystsView({ symbol }) {
+  const [data, setData] = useState(null)
+  const [failed, setFailed] = useState(false)
+  const live = useQuotes([symbol])
+  const price = live[symbol]?.quote?.price
+
+  useEffect(() => {
+    let dead = false
+    setData(null)
+    setFailed(false)
+    fetchAnalysts(symbol)
+      .then((d) => { if (!dead) setData(d) })
+      .catch(() => { if (!dead) setFailed(true) })
+    return () => { dead = true }
+  }, [symbol])
+
+  if (failed) {
+    return <div class="px-1 font-mono text-[11px] text-muted">no analyst coverage for {symbol}</div>
+  }
+  if (!data) return <div class="px-1 font-mono text-[11px] text-muted">{tt('common.loading')}</div>
+
+  const t9 = data.trend
+  const total = t9 ? t9.strongBuy + t9.buy + t9.hold + t9.sell + t9.strongSell : 0
+  const seg = (n, cls) =>
+    n > 0 && <div class={`${cls} h-full`} style={{ width: `${(n / total) * 100}%` }} title={n} />
+  const tg = data.targets
+
+  return (
+    <div class="flex flex-col gap-3 max-w-3xl">
+      {t9 && total > 0 && (
+        <section class="bg-surface-1 border border-line rounded-xl p-4">
+          <div class="text-[9px] text-muted uppercase tracking-wider pb-2">
+            {tl('Rec trend')} · {total} {tl('Analysts').toLowerCase()}
+          </div>
+          <div class="flex h-3 rounded overflow-hidden">
+            {seg(t9.strongBuy, 'bg-up')}
+            {seg(t9.buy, 'bg-up/50')}
+            {seg(t9.hold, 'bg-accent/60')}
+            {seg(t9.sell, 'bg-down/50')}
+            {seg(t9.strongSell, 'bg-down')}
+          </div>
+          <div class="flex flex-wrap gap-x-4 gap-y-1 pt-2 font-mono text-[10px]">
+            <span class="text-up">{tl('Strong buy')} {t9.strongBuy}</span>
+            <span class="text-up/80">{tl('Buy')} {t9.buy}</span>
+            <span class="text-accent">{tl('Hold')} {t9.hold}</span>
+            <span class="text-down/80">{tl('Sell')} {t9.sell}</span>
+            <span class="text-down">{tl('Strong sell')} {t9.strongSell}</span>
+          </div>
+        </section>
+      )}
+
+      {tg.mean != null && (
+        <section class="bg-surface-1 border border-line rounded-xl p-4 font-mono text-[12px]">
+          <div class="text-[9px] text-muted uppercase tracking-wider pb-2">
+            {tl('Price targets')}{tg.analysts != null && ` · ${tg.analysts}`}
+          </div>
+          <div class="flex flex-wrap gap-x-6 gap-y-1">
+            <span><span class="text-muted">{tl('Low')}</span> <span class="text-ink-2">{fmtPrice(tg.low)}</span></span>
+            <span><span class="text-muted">{tl('Mean')}</span> <span class="text-ink">{fmtPrice(tg.mean)}</span></span>
+            <span><span class="text-muted">{tl('High')}</span> <span class="text-ink-2">{fmtPrice(tg.high)}</span></span>
+            {price != null && (
+              <span>
+                <span class="text-muted">{tl('Current')}</span>{' '}
+                <span class={price <= tg.mean ? 'text-up' : 'text-down'}>
+                  {fmtPrice(price)} ({fmtPct(((tg.mean - price) / price) * 100)} → {tl('Mean')})
+                </span>
+              </span>
+            )}
+          </div>
+        </section>
+      )}
+
+      {data.history.length > 0 && (
+        <section class="bg-surface-1 border border-line rounded-xl overflow-x-auto">
+          <header class="px-3 py-2 border-b border-line-2 bg-surface-2">
+            <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Recent rating changes')}</h2>
+          </header>
+          <table class="w-full border-collapse font-mono text-[11px]">
+            <thead>
+              <tr class="bg-surface-2 text-[9px] text-muted uppercase tracking-wider">
+                <th class="px-3 py-2 text-left">{tl('Date')}</th>
+                <th class="px-2 py-2 text-left">{tl('Firm')}</th>
+                <th class="px-2 py-2 text-left">{tl('To')}</th>
+                <th class="px-2 py-2 text-right">PT</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.history.map((h, i) => (
+                <tr key={i} class="border-t border-line hover:bg-surface-2">
+                  <td class="px-3 py-[4px] text-muted whitespace-nowrap">
+                    {h.date ? new Date(h.date).toISOString().slice(0, 10) : '—'}
+                  </td>
+                  <td class="px-2 py-[4px] text-ink whitespace-nowrap max-w-44 truncate">{h.firm}</td>
+                  <td class={`px-2 py-[4px] whitespace-nowrap ${GRADE_TONE(h.to)}`}>{h.to || '—'}</td>
+                  <td class="px-2 py-[4px] text-right text-ink-2 whitespace-nowrap">
+                    {h.pt != null ? fmtPrice(h.pt) : '—'}
+                    {h.priorPt != null && h.priorPt !== h.pt && (
+                      <span class="text-muted text-[10px]"> ← {fmtPrice(h.priorPt)}</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
+    </div>
+  )
+}
+
 function SymbolPrompt() {
   const [value, setValue] = useState('')
   const go = (e) => {
@@ -549,6 +669,19 @@ function SymbolPrompt() {
   )
 }
 
+function WatchStar({ symbol }) {
+  const watched = useWatchlist().includes(symbol)
+  return (
+    <button
+      onClick={() => (watched ? unwatch(symbol) : watch(symbol))}
+      title={watched ? 'unwatch' : 'watch'}
+      class={`text-[15px] leading-none ${watched ? 'text-accent' : 'text-muted hover:text-accent'}`}
+    >
+      {watched ? '★' : '☆'}
+    </button>
+  )
+}
+
 export function Research({ route }) {
   const symbol = route.sub
   const [rangeKey, setRangeKey] = useState('6M')
@@ -576,6 +709,7 @@ export function Research({ route }) {
     <div class="flex-1 p-3 select-text min-w-0">
       <div class="flex items-baseline gap-3 px-1 pb-2 flex-wrap">
         <h1 class="font-mono font-bold text-lg text-ink">{symbol}</h1>
+        <WatchStar symbol={symbol} />
         {q && (
           <>
             <span class="text-[12px] text-muted">{q.name}</span>
@@ -611,6 +745,7 @@ export function Research({ route }) {
           { id: 'intraday', label: tl('Intraday'), href: `#/research/${symbol.toLowerCase()}/intraday` },
           { id: 'options', label: tl('Options'), href: `#/research/${symbol.toLowerCase()}/options` },
           { id: 'earnings', label: tl('Earnings'), href: `#/research/${symbol.toLowerCase()}/earnings` },
+          { id: 'analysts', label: tl('Analysts'), href: `#/research/${symbol.toLowerCase()}/analysts` },
           { id: 'insider', label: tl('Insider'), href: `#/research/${symbol.toLowerCase()}/insider` },
         ].map((tab) => (
           <a
@@ -641,6 +776,8 @@ export function Research({ route }) {
         <InsiderView symbol={symbol} />
       ) : route.view === 'earnings' ? (
         <EarningsView symbol={symbol} />
+      ) : route.view === 'analysts' ? (
+        <AnalystsView symbol={symbol} />
       ) : (
         <div class="grid gap-3 xl:grid-cols-[1fr_320px]">
           <section class="bg-surface-1 border border-line rounded-xl p-2 min-w-0">

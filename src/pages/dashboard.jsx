@@ -1,5 +1,5 @@
-import { useQuotes } from '../hooks.js'
-import { BUCKETS, WATCHLIST } from '../lib/symbols.js'
+import { useQuotes, useWatchlist } from '../hooks.js'
+import { BUCKETS } from '../lib/symbols.js'
 import { fmtPrice, fmtPct, fmtChange, fmtVol } from '../lib/format.js'
 import { Spark } from '../components/Spark.jsx'
 import { tl } from '../lib/i18n.js'
@@ -62,8 +62,14 @@ function BucketCard({ name, symbols, quotes }) {
 }
 
 export function Dashboard() {
-  const quotes = useQuotes(WATCHLIST)
-  const all = WATCHLIST.map((s) => quotes[s]?.quote?.pct).filter((p) => p != null)
+  const watchlist = useWatchlist()
+  const quotes = useQuotes(watchlist)
+  const inBuckets = new Set(BUCKETS.flatMap((b) => b.symbols))
+  const buckets = [
+    ...BUCKETS.map((b) => ({ ...b, symbols: b.symbols.filter((s) => watchlist.includes(s)) })),
+    { name: 'Custom', symbols: watchlist.filter((s) => !inBuckets.has(s)) },
+  ].filter((b) => b.symbols.length)
+  const all = watchlist.map((s) => quotes[s]?.quote?.pct).filter((p) => p != null)
   const breadth = all.length ? all.filter((p) => p >= 0).length : null
 
   return (
@@ -85,7 +91,7 @@ export function Dashboard() {
         )}
       </div>
       <div class="grid gap-3 xl:grid-cols-2">
-        {BUCKETS.map((b) => (
+        {buckets.map((b) => (
           <BucketCard key={b.name} name={b.name} symbols={b.symbols} quotes={quotes} />
         ))}
       </div>

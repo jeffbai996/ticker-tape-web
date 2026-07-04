@@ -4,16 +4,20 @@
 
 export const WATCHLIST = [
   'AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 'META', 'TSLA',
-  'AMD', 'INTC', 'TSM', 'CRM', 'ORCL', 'NFLX',
-  'JPM', 'V', 'LLY', 'XOM', 'WMT',
+  'AMD', 'INTC', 'TSM', 'PLTR', 'CRM', 'ORCL', 'NFLX', 'UBER', 'DIS',
+  'JPM', 'V', 'BAC', 'GS', 'BRK-B', 'COIN',
+  'LLY', 'UNH', 'JNJ', 'PG', 'KO', 'MCD', 'WMT',
+  'XOM', 'CAT', 'BA',
   'SPY', 'QQQ', 'IWM', 'GLD', 'TLT',
 ]
 
 export const BUCKETS = [
   { name: 'Mega Tech', symbols: ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'TSLA'] },
-  { name: 'Semis & AI', symbols: ['NVDA', 'AMD', 'INTC', 'TSM'] },
-  { name: 'Software & Media', symbols: ['CRM', 'ORCL', 'NFLX'] },
-  { name: 'Old Economy', symbols: ['JPM', 'V', 'LLY', 'XOM', 'WMT'] },
+  { name: 'Semis & AI', symbols: ['NVDA', 'AMD', 'INTC', 'TSM', 'PLTR'] },
+  { name: 'Software & Media', symbols: ['CRM', 'ORCL', 'NFLX', 'UBER', 'DIS'] },
+  { name: 'Financials', symbols: ['JPM', 'V', 'BAC', 'GS', 'BRK-B', 'COIN'] },
+  { name: 'Health & Staples', symbols: ['LLY', 'UNH', 'JNJ', 'PG', 'KO', 'MCD', 'WMT'] },
+  { name: 'Old Economy', symbols: ['XOM', 'CAT', 'BA'] },
   { name: 'ETFs & Macro', symbols: ['SPY', 'QQQ', 'IWM', 'GLD', 'TLT'] },
 ]
 
