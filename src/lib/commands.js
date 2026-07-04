@@ -28,6 +28,7 @@ export function parseCommand(input) {
     movers: '#/markets/movers', er: '#/markets/earnings', cal: '#/markets/calendar',
     wl: '#/', t: '#/', pos: '#/portfolio', acct: '#/portfolio/account',
     pnl: '#/portfolio', alerts: '#/alerts', port: '#/portfolio',
+    b: '#/brief', brief: '#/brief', briefing: '#/brief',
   }
   if (cmd in NAVS && !args.length) return { type: 'nav', hash: NAVS[cmd] }
 
@@ -71,7 +72,7 @@ export function parseCommand(input) {
   }
 
   if (cmd === 'h' || cmd === 'help' || cmd === '?') {
-    return { type: 'msg', text: 'SYM · ta/chart/intra/opt/ei/ins/an/n SYM · vs A B · screen A B · w/uw SYM · alert SYM > N · m s hm movers er cal · pos acct · alerts · chat [q]' }
+    return { type: 'msg', text: 'SYM · ta/chart/intra/opt/ei/ins/an/n SYM · vs A B · screen A B · w/uw SYM · alert SYM > N · m s hm movers er cal · b/brief · pos acct · alerts · chat [q]' }
   }
   if (cmd === 'q' || cmd === 'quit' || cmd === 'exit') {
     return { type: 'msg', text: "it's a browser — close the tab :)" }

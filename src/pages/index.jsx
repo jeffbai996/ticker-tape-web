@@ -6,6 +6,7 @@ import { Screen } from './screen.jsx'
 import { Alerts } from './alerts.jsx'
 import { Portfolio } from './portfolio.jsx'
 import { Chat } from './chat.jsx'
+import { Brief } from './brief.jsx'
 
 const PAGES = {
   markets: {
@@ -38,6 +39,7 @@ const PAGES = {
 
 export function Page({ route }) {
   if (route.section === 'dashboard') return <Dashboard />
+  if (route.section === 'brief') return <Brief />
   if (route.section === 'markets') return <Markets route={route} />
   if (route.section === 'research') return <Research route={route} />
   if (route.section === 'screen') return <Screen route={route} />
