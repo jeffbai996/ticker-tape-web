@@ -4,7 +4,10 @@ import { useQuotes } from '../hooks.js'
 import { fetchHistory, fetchNews, RANGES } from '../lib/history.js'
 import { fetchFundamentals } from '../lib/fundamentals.js'
 import { fetchOptions } from '../lib/options.js'
+import { fetchInsider } from '../lib/fundamentals.js'
 import { bsDelta } from '../lib/bs.js'
+import { vwapSeries } from '../lib/vwap.js'
+import { LineSeries } from 'lightweight-charts'
 import { sma, rsi, macd, bollinger } from '../lib/indicators.js'
 import { fmtPrice, fmtPct, fmtChange, fmtVol, fmtBig, fmtRatio, fmtFracPct } from '../lib/format.js'
 import { hrefFor } from '../lib/route.js'
@@ -291,6 +294,119 @@ function OptionsView({ symbol }) {
   )
 }
 
+function IntradayView({ symbol }) {
+  const el = useRef(null)
+  const [state, setState] = useState('loading')
+
+  useEffect(() => {
+    let chart = null
+    setState('loading')
+    fetchHistory(symbol, '1D')
+      .then((h) => {
+        if (!el.current) return
+        setState(h.bars.length ? 'ok' : 'empty')
+        if (!h.bars.length) return
+        chart = createChart(el.current, {
+          autoSize: true,
+          layout: {
+            background: { color: 'transparent' },
+            textColor: '#79828d',
+            fontFamily: "'IBM Plex Mono', monospace",
+            fontSize: 10,
+          },
+          grid: {
+            vertLines: { color: 'rgba(255,255,255,0.05)' },
+            horzLines: { color: 'rgba(255,255,255,0.05)' },
+          },
+          rightPriceScale: { borderColor: 'rgba(255,255,255,0.10)' },
+          timeScale: { borderColor: 'rgba(255,255,255,0.10)', timeVisible: true },
+        })
+        const candles = chart.addSeries(CandlestickSeries, {
+          upColor: '#3fb950', downColor: '#f85149',
+          borderUpColor: '#3fb950', borderDownColor: '#f85149',
+          wickUpColor: '#3fb950', wickDownColor: '#f85149',
+        })
+        candles.setData(h.bars)
+        const vwap = chart.addSeries(LineSeries, {
+          color: '#f59e0b', lineWidth: 1.5,
+          priceLineVisible: false, lastValueVisible: true,
+        })
+        vwap.setData(vwapSeries(h.bars))
+        chart.timeScale().fitContent()
+      })
+      .catch(() => setState('error'))
+    return () => chart?.remove()
+  }, [symbol])
+
+  return (
+    <section class="bg-surface-1 border border-line rounded-xl p-2 min-w-0">
+      <div class="flex gap-3 px-2 pb-1 font-mono text-[11px]">
+        <span class="text-muted">5-min bars · session</span>
+        <span style={{ color: '#f59e0b' }}>— VWAP</span>
+        {state === 'error' && <span class="text-down">no intraday data</span>}
+      </div>
+      <div ref={el} class="h-[420px] w-full" />
+    </section>
+  )
+}
+
+function InsiderView({ symbol }) {
+  const [rows, setRows] = useState(null)
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    setRows(null)
+    setFailed(false)
+    fetchInsider(symbol).then(setRows).catch(() => setFailed(true))
+  }, [symbol])
+
+  if (failed) {
+    return (
+      <div class="px-1 font-mono text-[11px] text-muted">
+        no insider data for {symbol} (ETFs/indices/crypto have none)
+      </div>
+    )
+  }
+  if (!rows) return <div class="px-1 font-mono text-[11px] text-muted">loading…</div>
+
+  return (
+    <section class="bg-surface-1 border border-line rounded-xl overflow-x-auto max-w-4xl">
+      <table class="w-full border-collapse font-mono text-[11px]">
+        <thead>
+          <tr class="bg-surface-2 text-[9px] text-muted uppercase tracking-wider">
+            <th class="px-3 py-2 text-left">Date</th>
+            <th class="px-2 py-2 text-left">Insider</th>
+            <th class="px-2 py-2 text-left">Role</th>
+            <th class="px-2 py-2 text-left">Transaction</th>
+            <th class="px-2 py-2 text-right">Shares</th>
+            <th class="px-3 py-2 text-right">Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((t, i) => {
+            const sale = /sale/i.test(t.text || '')
+            const buy = /purchase|buy/i.test(t.text || '')
+            return (
+              <tr key={i} class="border-t border-line hover:bg-surface-2">
+                <td class="px-3 py-[4px] text-ink-2 whitespace-nowrap">
+                  {t.date ? new Date(t.date).toISOString().slice(0, 10) : '—'}
+                </td>
+                <td class="px-2 py-[4px] text-ink whitespace-nowrap">{t.name}</td>
+                <td class="px-2 py-[4px] text-muted whitespace-nowrap max-w-40 truncate">{t.relation}</td>
+                <td class={`px-2 py-[4px] max-w-72 truncate ${sale ? 'text-down' : buy ? 'text-up' : 'text-ink-2'}`}>
+                  {t.text || '—'}
+                </td>
+                <td class="px-2 py-[4px] text-right text-ink-2">{fmtVol(t.shares)}</td>
+                <td class="px-3 py-[4px] text-right text-ink">{t.value != null ? fmtBig(t.value) : '—'}</td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </section>
+  )
+}
+
 function SymbolPrompt() {
   const [value, setValue] = useState('')
   const go = (e) => {
@@ -380,7 +496,9 @@ export function Research({ route }) {
       <div class="flex gap-1 px-1 pb-2">
         {[
           { id: null, label: 'Overview', href: `#/research/${symbol.toLowerCase()}` },
+          { id: 'intraday', label: 'Intraday', href: `#/research/${symbol.toLowerCase()}/intraday` },
           { id: 'options', label: 'Options', href: `#/research/${symbol.toLowerCase()}/options` },
+          { id: 'insider', label: 'Insider', href: `#/research/${symbol.toLowerCase()}/insider` },
         ].map((tab) => (
           <a
             key={tab.label}
@@ -404,6 +522,10 @@ export function Research({ route }) {
 
       {route.view === 'options' ? (
         <OptionsView symbol={symbol} />
+      ) : route.view === 'intraday' ? (
+        <IntradayView symbol={symbol} />
+      ) : route.view === 'insider' ? (
+        <InsiderView symbol={symbol} />
       ) : (
         <div class="grid gap-3 xl:grid-cols-[1fr_320px]">
           <section class="bg-surface-1 border border-line rounded-xl p-2 min-w-0">
