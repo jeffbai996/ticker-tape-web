@@ -24,6 +24,29 @@ export function quoteFromChart(result) {
   }
 }
 
+/** Same quote shape from a v7 /finance/quote row (batch endpoint, crumb-authed).
+ *  change/pct are re-derived from price vs previousClose: for yield indices
+ *  (^TNX) the reported regularMarketChange fields are garbage (-50% on an
+ *  unchanged price) while price/prevClose are consistent. */
+export function quoteFromV7(row) {
+  const price = row?.regularMarketPrice ?? 0
+  const prev = row?.regularMarketPreviousClose ?? null
+  const change = prev != null && price ? price - prev : (row?.regularMarketChange ?? 0)
+  const pct = prev ? (change / prev) * 100 : (row?.regularMarketChangePercent ?? 0)
+  return {
+    symbol: row?.symbol || '',
+    name: row?.shortName || row?.longName || '',
+    price,
+    change,
+    pct,
+    prevClose: prev,
+    dayHigh: row?.regularMarketDayHigh ?? null,
+    dayLow: row?.regularMarketDayLow ?? null,
+    volume: row?.regularMarketVolume ?? null,
+    marketTime: row?.regularMarketTime ?? null,
+  }
+}
+
 export function sparkFromChart(result) {
   const closes = result?.indicators?.quote?.[0]?.close || []
   return closes.filter((c) => c != null)
