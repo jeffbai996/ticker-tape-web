@@ -67,14 +67,20 @@ async function pump() {
 const tracked = new Set()
 
 /** Track symbols: serve the persisted snapshot immediately, fetch only what's
- *  stale, then refresh everything on the sweep cadence. */
+ *  stale, then refresh everything on the sweep cadence. Requested symbols jump
+ *  to the front of the queue — the page being looked at fills first, instead
+ *  of waiting behind the sidebar's watchlist tail on a cold cache. */
 export function track(symbols) {
+  const priority = []
   for (const s of symbols) {
-    if (!tracked.has(s)) {
-      tracked.add(s)
-      const hit = cache.get(s)
-      if (!hit || Date.now() - hit.ts >= REFRESH_MS) queue.push(s)
-    }
+    const isNew = !tracked.has(s)
+    if (isNew) tracked.add(s)
+    const hit = cache.get(s)
+    const stale = !hit || Date.now() - hit.ts >= REFRESH_MS
+    if (stale && (isNew || queue.includes(s))) priority.push(s)
+  }
+  if (priority.length) {
+    queue = [...priority, ...queue.filter((s) => !priority.includes(s))]
   }
   pump()
   if (!sweepTimer) {

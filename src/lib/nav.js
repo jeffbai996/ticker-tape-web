@@ -17,7 +17,18 @@ export const NAV = [
     ],
   },
   { id: 'research', label: 'Research', subs: [] },
-  { id: 'portfolio', label: 'Portfolio', badge: 'DEMO', subs: [] },
+  {
+    id: 'portfolio',
+    label: 'Portfolio',
+    badge: 'DEMO',
+    subs: [
+      { id: 'account', label: 'Account' },
+      { id: 'sizing', label: 'Sizing' },
+      { id: 'carry', label: 'Carry' },
+      { id: 'cockpit', label: 'Cockpit' },
+      { id: 'timeline', label: 'Timeline' },
+    ],
+  },
   {
     id: 'screen',
     label: 'Screening',
