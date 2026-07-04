@@ -88,6 +88,54 @@ export async function fetchInsider(symbol) {
   return value
 }
 
+/** Pure: pull recommendation trend, price targets, and rating changes. */
+export function parseAnalysts(result) {
+  const raw = (v) => (v != null && typeof v === 'object' ? v.raw : v)
+  const trend = (result?.recommendationTrend?.trend || []).find((t) => t.period === '0m') || null
+  const fd = result?.financialData || {}
+  const history = (result?.upgradeDowngradeHistory?.history || [])
+    .slice(0, 20)
+    .map((h) => ({
+      date: h.epochGradeDate ? h.epochGradeDate * 1000 : null,
+      firm: h.firm,
+      to: h.toGrade,
+      from: h.fromGrade,
+      action: h.action,
+      pt: h.currentPriceTarget ?? null,
+      priorPt: h.priorPriceTarget ?? null,
+    }))
+  return {
+    trend: trend
+      ? { strongBuy: trend.strongBuy, buy: trend.buy, hold: trend.hold, sell: trend.sell, strongSell: trend.strongSell }
+      : null,
+    targets: {
+      low: raw(fd.targetLowPrice) ?? null,
+      mean: raw(fd.targetMeanPrice) ?? null,
+      high: raw(fd.targetHighPrice) ?? null,
+      analysts: raw(fd.numberOfAnalystOpinions) ?? null,
+    },
+    history,
+  }
+}
+
+const anaCache = createPCache('ana_cache_v1', { max: 30 })
+const ANA_TTL = 6 * 60 * 60_000
+
+export async function fetchAnalysts(symbol) {
+  const hit = anaCache.get(symbol)
+  if (hit && Date.now() - hit.ts < ANA_TTL) return hit.value
+
+  const url = `${crumbBase()}/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=upgradeDowngradeHistory,recommendationTrend,financialData`
+  const resp = await fetch(url, { signal: AbortSignal.timeout(12_000) })
+  if (!resp.ok) throw new Error(`analysts ${symbol}: HTTP ${resp.status}`)
+  const data = await resp.json()
+  const result = data?.quoteSummary?.result?.[0]
+  if (!result) throw new Error(`analysts ${symbol}: empty`)
+  const value = parseAnalysts(result)
+  anaCache.set(symbol, { value, ts: Date.now() })
+  return value
+}
+
 export async function fetchFundamentals(symbol) {
   const hit = cache.get(symbol)
   if (hit && Date.now() - hit.ts < TTL) return hit.value

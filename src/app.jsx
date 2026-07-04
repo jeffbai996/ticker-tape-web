@@ -7,6 +7,7 @@ import { useAlertEngine } from './hooks.js'
 import { StatusBar } from './components/StatusBar.jsx'
 import { Tape } from './components/Tape.jsx'
 import { Sidebar } from './components/Sidebar.jsx'
+import { BottomNav, SubTabs } from './components/BottomNav.jsx'
 import { Palette } from './components/Palette.jsx'
 import { Page } from './pages/index.jsx'
 
@@ -63,12 +64,14 @@ export function App() {
     <div class="h-dvh flex flex-col bg-surface-0 text-ink font-sans antialiased">
       <StatusBar />
       <Tape />
+      <SubTabs route={route} />
       <div class="flex-1 flex min-h-0">
         <Sidebar route={route} />
-        <main class="flex-1 flex min-w-0 overflow-y-auto">
+        <main class="flex-1 flex min-w-0 overflow-y-auto max-md:pb-12">
           <Page route={route} />
         </main>
       </div>
+      <BottomNav route={route} />
       <AlertToasts toasts={toasts} dismiss={dismiss} />
       {paletteOpen && <Palette onClose={() => setPaletteOpen(false)} />}
     </div>

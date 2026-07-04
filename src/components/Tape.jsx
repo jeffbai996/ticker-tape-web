@@ -1,13 +1,13 @@
-import { useQuotes } from '../hooks.js'
-import { WATCHLIST } from '../lib/symbols.js'
+import { useQuotes, useWatchlist } from '../hooks.js'
 import { fmtPrice, fmtPct } from '../lib/format.js'
 
 // The namesake: a continuously scrolling quote marquee. The list is doubled
 // so the -50% keyframe loops seamlessly.
 
 export function Tape() {
-  const quotes = useQuotes(WATCHLIST)
-  const items = WATCHLIST.map((s) => ({ symbol: s, q: quotes[s]?.quote }))
+  const watchlist = useWatchlist()
+  const quotes = useQuotes(watchlist)
+  const items = watchlist.map((s) => ({ symbol: s, q: quotes[s]?.quote }))
 
   return (
     <div class="h-7 shrink-0 bg-surface-0 border-b border-line overflow-hidden relative">
