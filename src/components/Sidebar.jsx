@@ -1,4 +1,5 @@
 import { NAV, hrefFor } from '../lib/route.js'
+import { tl } from '../lib/i18n.js'
 import { useQuotes } from '../hooks.js'
 import { WATCHLIST } from '../lib/symbols.js'
 import { fmtPrice, fmtPct } from '../lib/format.js'
@@ -35,7 +36,7 @@ export function Sidebar({ route }) {
                   : 'text-ink-2 hover:bg-surface-2 hover:text-ink'
               }`}
             >
-              {section.label}
+              {tl(section.label)}
               {section.badge && (
                 <span class="text-[8px] font-mono font-bold px-1 py-px rounded border border-line-2 text-muted">
                   {section.badge}
@@ -48,7 +49,7 @@ export function Sidebar({ route }) {
                   href={hrefFor(section.id)}
                   class={`px-3 py-0.5 text-[11px] ${!route.sub ? 'text-accent' : 'text-muted hover:text-ink-2'}`}
                 >
-                  Overview
+                  {tl('Overview')}
                 </a>
                 {section.subs.map((sub) => (
                   <a
@@ -58,7 +59,7 @@ export function Sidebar({ route }) {
                       route.sub === sub.id ? 'text-accent' : 'text-muted hover:text-ink-2'
                     }`}
                   >
-                    {sub.label}
+                    {tl(sub.label)}
                   </a>
                 ))}
               </div>
@@ -68,7 +69,7 @@ export function Sidebar({ route }) {
       </div>
 
       <div class="px-3 pt-2 pb-1 border-t border-line font-mono text-[10px] tracking-wider text-muted">
-        WATCHLIST
+        {tl('Watchlist').toUpperCase()}
       </div>
       <div class="flex-1 overflow-y-auto min-h-0">
         {WATCHLIST.map((s) => (

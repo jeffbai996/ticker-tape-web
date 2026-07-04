@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { filterNav, searchSymbols } from '../lib/search.js'
 import { hrefFor } from '../lib/route.js'
+import { t as tt } from '../lib/i18n.js'
 
 // Ctrl/Cmd+K command palette: jump to a section or pull up any symbol.
 // Symbol lookups are debounced so a fast typist costs one request, not ten.
@@ -71,13 +72,13 @@ export function Palette({ onClose }) {
           value={query}
           onInput={(e) => { setQuery(e.currentTarget.value); setSelected(0) }}
           onKeyDown={onKey}
-          placeholder="symbol or section… (esc to close)"
+          placeholder={tt('palette.placeholder')}
           class="w-full bg-surface-2 px-4 py-3 font-mono text-[13px] text-ink outline-none border-b border-line placeholder:text-muted"
         />
         <div class="max-h-80 overflow-y-auto">
           {entries.length === 0 && query.trim() && (
             <div class="px-4 py-3 font-mono text-[11px] text-muted">
-              no matches — Enter opens {query.trim().toUpperCase()} in research
+              {tt('palette.no_match', { q: query.trim().toUpperCase() })}
             </div>
           )}
           {entries.map((entry, i) => (

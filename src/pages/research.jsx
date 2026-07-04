@@ -12,6 +12,7 @@ import { LineSeries } from 'lightweight-charts'
 import { sma, rsi, macd, bollinger } from '../lib/indicators.js'
 import { fmtPrice, fmtPct, fmtChange, fmtVol, fmtBig, fmtRatio, fmtFracPct } from '../lib/format.js'
 import { hrefFor } from '../lib/route.js'
+import { tl, t as tt } from '../lib/i18n.js'
 
 function Candles({ bars, intraday }) {
   const el = useRef(null)
@@ -87,7 +88,7 @@ function Technicals({ symbol }) {
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
       <header class="px-3 py-2 border-b border-line-2 bg-surface-2">
-        <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">Technicals — daily</h2>
+        <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Technicals — daily')}</h2>
       </header>
       <Stat label="SMA 20" value={fmtPrice(sma(closes, 20))} cls={smaCls(20)} />
       <Stat label="SMA 50" value={fmtPrice(sma(closes, 50))} cls={smaCls(50)} />
@@ -121,12 +122,12 @@ function Fundamentals({ symbol }) {
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
       <header class="px-3 py-2 border-b border-line-2 bg-surface-2 flex items-baseline gap-2">
-        <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">Fundamentals</h2>
+        <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Fundamentals')}</h2>
         {f?.recommendationKey && (
           <span class="font-mono text-[10px] text-ink-2 uppercase">{f.recommendationKey.replace('_', ' ')}</span>
         )}
       </header>
-      {!f && <div class="px-3 py-3 text-[11px] text-muted font-mono">loading…</div>}
+      {!f && <div class="px-3 py-3 text-[11px] text-muted font-mono">{tt('common.loading')}</div>}
       {f && (
         <>
           <Stat label="Mkt cap" value={fmtBig(f.marketCap)} />
@@ -162,10 +163,10 @@ function News({ symbol }) {
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
       <header class="px-3 py-2 border-b border-line-2 bg-surface-2">
-        <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">News</h2>
+        <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">{tl('News')}</h2>
       </header>
-      {items == null && <div class="px-3 py-3 text-[11px] text-muted font-mono">loading…</div>}
-      {items?.length === 0 && <div class="px-3 py-3 text-[11px] text-muted font-mono">no headlines</div>}
+      {items == null && <div class="px-3 py-3 text-[11px] text-muted font-mono">{tt('common.loading')}</div>}
+      {items?.length === 0 && <div class="px-3 py-3 text-[11px] text-muted font-mono">{tl('no headlines')}</div>}
       {items?.map((n) => (
         <a
           key={n.link}
@@ -288,8 +289,8 @@ function OptionsView({ symbol }) {
         )}
       </div>
       <div class="grid gap-3 xl:grid-cols-2">
-        <OptionSide title="Calls" rows={near(chain.calls)} spot={chain.spot} t={t} type="call" />
-        <OptionSide title="Puts" rows={near(chain.puts)} spot={chain.spot} t={t} type="put" />
+        <OptionSide title={tl('Calls')} rows={near(chain.calls)} spot={chain.spot} t={t} type="call" />
+        <OptionSide title={tl('Puts')} rows={near(chain.puts)} spot={chain.spot} t={t} type="put" />
       </div>
     </div>
   )
@@ -364,23 +365,23 @@ function InsiderView({ symbol }) {
   if (failed) {
     return (
       <div class="px-1 font-mono text-[11px] text-muted">
-        no insider data for {symbol} (ETFs/indices/crypto have none)
+        {tt('research.no_insider', { sym: symbol })}
       </div>
     )
   }
-  if (!rows) return <div class="px-1 font-mono text-[11px] text-muted">loading…</div>
+  if (!rows) return <div class="px-1 font-mono text-[11px] text-muted">{tt('common.loading')}</div>
 
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-x-auto max-w-4xl">
       <table class="w-full border-collapse font-mono text-[11px]">
         <thead>
           <tr class="bg-surface-2 text-[9px] text-muted uppercase tracking-wider">
-            <th class="px-3 py-2 text-left">Date</th>
-            <th class="px-2 py-2 text-left">Insider</th>
-            <th class="px-2 py-2 text-left">Role</th>
-            <th class="px-2 py-2 text-left">Transaction</th>
-            <th class="px-2 py-2 text-right">Shares</th>
-            <th class="px-3 py-2 text-right">Value</th>
+            <th class="px-3 py-2 text-left">{tl('Date')}</th>
+            <th class="px-2 py-2 text-left">{tl('Name')}</th>
+            <th class="px-2 py-2 text-left">{tl('Role')}</th>
+            <th class="px-2 py-2 text-left">{tl('Transaction')}</th>
+            <th class="px-2 py-2 text-right">{tl('Shares')}</th>
+            <th class="px-3 py-2 text-right">{tl('Value')}</th>
           </tr>
         </thead>
         <tbody>
@@ -434,11 +435,11 @@ function EarningsView({ symbol }) {
   if (failed) {
     return (
       <div class="px-1 font-mono text-[11px] text-muted">
-        no earnings history for {symbol} (ETFs/indices/crypto have none)
+        {tt('research.no_earnings', { sym: symbol })}
       </div>
     )
   }
-  if (!data) return <div class="px-1 font-mono text-[11px] text-muted">loading…</div>
+  if (!data) return <div class="px-1 font-mono text-[11px] text-muted">{tt('common.loading')}</div>
   if (!data.events.length) {
     return <div class="px-1 font-mono text-[11px] text-muted">no reported quarters for {symbol}</div>
   }
@@ -450,17 +451,17 @@ function EarningsView({ symbol }) {
     <div class="flex flex-col gap-3 max-w-4xl">
       <section class="bg-surface-1 border border-line rounded-xl flex flex-wrap divide-x divide-line">
         <SummaryStat
-          label="Beat rate"
+          label={tl('Beat rate')}
           value={s.beatRate != null ? `${Math.round(s.beatRate * 100)}% (${s.beats}/${s.total})` : '—'}
         />
-        <SummaryStat label="Beat streak" value={`${s.beatStreak}q`} />
+        <SummaryStat label={tl('Beat streak')} value={`${s.beatStreak}q`} />
         <SummaryStat
-          label="Avg surprise"
+          label={tl('Avg surprise')}
           value={s.avgSurprise != null ? fmtPct(s.avgSurprise * 100) : '—'}
           tone={pctTone(s.avgSurprise)}
         />
         <SummaryStat
-          label="Avg reaction"
+          label={tl('Avg reaction')}
           value={s.avgMove != null ? fmtPct(s.avgMove) : '—'}
           tone={pctTone(s.avgMove)}
         />
@@ -470,13 +471,13 @@ function EarningsView({ symbol }) {
         <table class="w-full border-collapse font-mono text-[11px]">
           <thead>
             <tr class="bg-surface-2 text-[9px] text-muted uppercase tracking-wider">
-              <th class="px-3 py-2 text-left">Quarter</th>
-              <th class="px-2 py-2 text-left">Reported</th>
-              <th class="px-2 py-2 text-right">EPS est</th>
-              <th class="px-2 py-2 text-right">EPS act</th>
-              <th class="px-2 py-2 text-right">Surprise</th>
-              <th class="px-2 py-2 text-right">Reaction</th>
-              <th class="px-3 py-2 text-left">Peers</th>
+              <th class="px-3 py-2 text-left">{tl('Quarter')}</th>
+              <th class="px-2 py-2 text-left">{tl('Reported')}</th>
+              <th class="px-2 py-2 text-right">{tl('EPS est')}</th>
+              <th class="px-2 py-2 text-right">{tl('EPS act')}</th>
+              <th class="px-2 py-2 text-right">{tl('Surprise')}</th>
+              <th class="px-2 py-2 text-right">{tl('Reaction')}</th>
+              <th class="px-3 py-2 text-left">{tl('Peers')}</th>
             </tr>
           </thead>
           <tbody>
@@ -511,7 +512,7 @@ function EarningsView({ symbol }) {
           </tbody>
         </table>
         <div class="px-3 py-1.5 border-t border-line text-[9px] text-muted">
-          reaction = close-to-close around the report date · dashes = Yahoo's calendar lacks the date
+          {tt('earn.note')}
         </div>
       </section>
     </div>
@@ -606,11 +607,11 @@ export function Research({ route }) {
 
       <div class="flex gap-1 px-1 pb-2">
         {[
-          { id: null, label: 'Overview', href: `#/research/${symbol.toLowerCase()}` },
-          { id: 'intraday', label: 'Intraday', href: `#/research/${symbol.toLowerCase()}/intraday` },
-          { id: 'options', label: 'Options', href: `#/research/${symbol.toLowerCase()}/options` },
-          { id: 'earnings', label: 'Earnings', href: `#/research/${symbol.toLowerCase()}/earnings` },
-          { id: 'insider', label: 'Insider', href: `#/research/${symbol.toLowerCase()}/insider` },
+          { id: null, label: tl('Overview'), href: `#/research/${symbol.toLowerCase()}` },
+          { id: 'intraday', label: tl('Intraday'), href: `#/research/${symbol.toLowerCase()}/intraday` },
+          { id: 'options', label: tl('Options'), href: `#/research/${symbol.toLowerCase()}/options` },
+          { id: 'earnings', label: tl('Earnings'), href: `#/research/${symbol.toLowerCase()}/earnings` },
+          { id: 'insider', label: tl('Insider'), href: `#/research/${symbol.toLowerCase()}/insider` },
         ].map((tab) => (
           <a
             key={tab.label}

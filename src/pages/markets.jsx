@@ -2,6 +2,7 @@ import { useEffect, useState } from 'preact/hooks'
 import { useQuotes } from '../hooks.js'
 import { MARKET_GROUPS, SECTORS, COMMODITY_GROUPS, ECON_EVENTS, upcomingEvents } from '../lib/markets.js'
 import { fetchEarningsDate } from '../lib/fundamentals.js'
+import { tl } from '../lib/i18n.js'
 import { WATCHLIST } from '../lib/symbols.js'
 import { fmtPrice, fmtPct, fmtChange } from '../lib/format.js'
 import { Spark } from '../components/Spark.jsx'
@@ -31,14 +32,14 @@ function GroupCard({ name, items, quotes, withUnits }) {
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden @container">
       <header class="px-3 py-2 border-b border-line-2 bg-surface-2">
-        <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">{name}</h2>
+        <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">{tl(name)}</h2>
       </header>
       <table class="w-full border-collapse">
         <tbody>
           {items.map((it) => (
             <QuoteRow
               key={it.symbol}
-              label={it.label}
+              label={tl(it.label)}
               unit={withUnits ? it.unit : undefined}
               data={quotes[it.symbol]}
             />
@@ -71,7 +72,7 @@ function Sectors() {
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden max-w-2xl">
       <header class="px-3 py-2 border-b border-line-2 bg-surface-2">
         <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">
-          Sector ETFs — today
+          {tl('Sector ETFs — today')}
         </h2>
       </header>
       <div class="p-2">
@@ -82,7 +83,7 @@ function Sectors() {
           return (
             <div key={symbol} class="flex items-center gap-2 px-1 py-[3px] font-mono text-[11px]">
               <span class="w-9 font-bold text-ink">{symbol}</span>
-              <span class="w-36 text-muted truncate max-sm:hidden">{label}</span>
+              <span class="w-36 text-muted truncate max-sm:hidden">{tl(label)}</span>
               <div class="flex-1 h-3.5 relative">
                 <div
                   class={`absolute inset-y-0 left-0 rounded-sm ${up ? 'bg-up/30' : 'bg-down/30'}`}
@@ -168,11 +169,11 @@ function Earnings() {
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden max-w-xl">
       <header class="px-3 py-2 border-b border-line-2 bg-surface-2">
         <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">
-          Upcoming earnings — watchlist
+          {tl('Upcoming earnings — watchlist')}
         </h2>
       </header>
       {upcoming.length === 0 && (
-        <div class="px-3 py-3 font-mono text-[11px] text-muted">loading earnings dates…</div>
+        <div class="px-3 py-3 font-mono text-[11px] text-muted">{tl('loading earnings dates…')}</div>
       )}
       <table class="w-full border-collapse font-mono text-[12px]">
         <tbody>
@@ -192,7 +193,7 @@ function Earnings() {
                   {e.epsEstimate != null ? `est ${e.epsEstimate.toFixed(2)}` : ''}
                 </td>
                 <td class={`px-3 py-[5px] text-right ${cls}`}>
-                  {e.days <= 0 ? 'today' : `${e.days}d`}
+                  {e.days <= 0 ? tl('today') : `${e.days}d`}
                 </td>
               </tr>
             )
@@ -217,7 +218,7 @@ function Calendar() {
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden max-w-xl">
       <header class="px-3 py-2 border-b border-line-2 bg-surface-2">
         <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">
-          Economic calendar — next 90 days
+          {tl('Economic calendar — next 90 days')}
         </h2>
       </header>
       <table class="w-full border-collapse">
@@ -228,9 +229,9 @@ function Calendar() {
               <tr key={`${e.date}-${e.type}`} class="border-b border-line last:border-0 hover:bg-surface-2">
                 <td class="px-3 py-[5px] font-mono text-[12px] text-ink">{e.date}</td>
                 <td class={`px-2 py-[5px] font-mono font-bold text-[11px] ${cls}`}>{e.type}</td>
-                <td class="px-2 py-[5px] text-[12px] text-ink-2">{e.label}</td>
+                <td class="px-2 py-[5px] text-[12px] text-ink-2">{tl(e.label)}</td>
                 <td class={`px-3 py-[5px] font-mono text-[11px] text-right ${cls}`}>
-                  {e.days === 0 ? 'today' : `${e.days}d`}
+                  {e.days === 0 ? tl('today') : `${e.days}d`}
                 </td>
               </tr>
             )
