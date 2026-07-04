@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { createChart, LineSeries } from 'lightweight-charts'
+import { useQuotes } from '../hooks.js'
 import { fetchHistory } from '../lib/history.js'
+import { fetchFundamentals } from '../lib/fundamentals.js'
 import { rsi, sma } from '../lib/indicators.js'
 import { dailyReturns, pearson, normalize } from '../lib/stats.js'
-import { fmtPrice, fmtPct } from '../lib/format.js'
+import { fmtPrice, fmtPct, fmtBig, fmtRatio, fmtFracPct } from '../lib/format.js'
 
 const DEFAULT_SYMBOLS = 'AAPL MSFT NVDA GOOGL AMZN SPY'
 const LINE_COLORS = ['#f59e0b', '#22d3ee', '#3fb950', '#f85149', '#a78bfa', '#ec4899', '#e7ecf3', '#79828d']
@@ -61,6 +63,9 @@ function SymbolInput({ value, onChange }) {
 }
 
 function ScreenTable({ symbols, hist }) {
+  // Live 1D quotes for price/day% — the 1Y history fetch reports change vs the
+  // range start, not vs yesterday's close.
+  const live = useQuotes(symbols)
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-x-auto max-w-4xl">
       <table class="w-full border-collapse font-mono text-[12px]">
@@ -87,7 +92,7 @@ function ScreenTable({ symbols, hist }) {
               )
             }
             const closes = h?.bars?.map((b) => b.close) || []
-            const q = h?.quote
+            const q = live[sym]?.quote
             const price = q?.price ?? closes[closes.length - 1]
             const r = rsi(closes, 14)
             const s200 = sma(closes, 200)
@@ -231,6 +236,75 @@ function Correlation({ symbols, hist }) {
   )
 }
 
+const VAL_ROWS = [
+  { label: 'Mkt cap', fmt: (f) => fmtBig(f.marketCap) },
+  { label: 'P/E ttm', fmt: (f) => fmtRatio(f.trailingPE) },
+  { label: 'P/E fwd', fmt: (f) => fmtRatio(f.forwardPE) },
+  { label: 'P/S ttm', fmt: (f) => fmtRatio(f.priceToSalesTrailing12Months) },
+  { label: 'PEG', fmt: (f) => fmtRatio(f.pegRatio) },
+  { label: 'EV/EBITDA', fmt: (f) => fmtRatio(f.enterpriseToEbitda) },
+  { label: 'P/B', fmt: (f) => fmtRatio(f.priceToBook) },
+  { label: 'Gross mgn', fmt: (f) => fmtFracPct(f.grossMargins) },
+  { label: 'Net mgn', fmt: (f) => fmtFracPct(f.profitMargins) },
+  { label: 'ROE', fmt: (f) => fmtFracPct(f.returnOnEquity) },
+  { label: 'Rev growth', fmt: (f) => fmtFracPct(f.revenueGrowth) },
+  { label: 'Div yield', fmt: (f) => fmtFracPct(f.dividendYield) },
+  { label: 'Beta', fmt: (f) => fmtRatio(f.beta) },
+]
+
+function Valuation({ symbols }) {
+  const [funds, setFunds] = useState({})
+
+  useEffect(() => {
+    let alive = true
+    setFunds({})
+    for (const sym of symbols) {
+      fetchFundamentals(sym)
+        .then((f) => alive && setFunds((d) => ({ ...d, [sym]: f })))
+        .catch(() => alive && setFunds((d) => ({ ...d, [sym]: { error: true } })))
+    }
+    return () => { alive = false }
+  }, [symbols.join(',')])
+
+  const ready = symbols.filter((s) => funds[s] && !funds[s].error)
+
+  return (
+    <section class="bg-surface-1 border border-line rounded-xl overflow-x-auto max-w-4xl">
+      <table class="border-collapse font-mono text-[11px] w-full">
+        <thead>
+          <tr class="bg-surface-2 text-[10px] text-muted">
+            <th class="px-3 py-2 text-left"></th>
+            {ready.map((s) => (
+              <th
+                key={s}
+                class="px-3 py-2 text-right text-accent cursor-pointer hover:underline"
+                onClick={() => (location.hash = `#/research/${s.toLowerCase()}`)}
+              >
+                {s}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {VAL_ROWS.map((row) => (
+            <tr key={row.label} class="border-t border-line hover:bg-surface-2">
+              <td class="px-3 py-[5px] text-muted whitespace-nowrap">{row.label}</td>
+              {ready.map((s) => (
+                <td key={s} class="px-3 py-[5px] text-right text-ink">{row.fmt(funds[s])}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {ready.length === 0 && (
+        <div class="px-3 py-3 font-mono text-[11px] text-muted">
+          loading fundamentals… (indices/futures/crypto have none)
+        </div>
+      )}
+    </section>
+  )
+}
+
 export function Screen({ route }) {
   const view = route.sub || 'screen'
   const [raw, setRaw] = useState(() => localStorage.getItem('screen_symbols') || DEFAULT_SYMBOLS)
@@ -248,11 +322,7 @@ export function Screen({ route }) {
       {view === 'screen' && <ScreenTable symbols={symbols} hist={hist} />}
       {view === 'compare' && <Compare symbols={symbols} hist={hist} />}
       {view === 'correlation' && <Correlation symbols={symbols} hist={hist} />}
-      {view === 'valuation' && (
-        <div class="px-1 font-mono text-[11px] text-muted">
-          valuation table lands with the fundamentals (v10) pass
-        </div>
-      )}
+      {view === 'valuation' && <Valuation symbols={symbols} />}
     </div>
   )
 }
