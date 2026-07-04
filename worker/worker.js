@@ -36,13 +36,13 @@ export default {
             return jsonResp({ status: 'ok', proxy: 'yf-cors' });
         }
 
-        if (!path.startsWith('/v7/') && !path.startsWith('/v8/') && !path.startsWith('/v10/') && !path.startsWith('/ws/')) {
-            return jsonResp({ error: 'Use /v7/, /v8/, /v10/ endpoints' }, 400);
+        if (!path.startsWith('/v1/') && !path.startsWith('/v7/') && !path.startsWith('/v8/') && !path.startsWith('/v10/') && !path.startsWith('/ws/')) {
+            return jsonResp({ error: 'Use /v1/, /v7/, /v8/, /v10/ endpoints' }, 400);
         }
 
         try {
-            // v8 endpoints don't need crumb auth
-            if (path.startsWith('/v8/')) {
+            // v1 (search/news) and v8 (chart) endpoints don't need crumb auth
+            if (path.startsWith('/v1/') || path.startsWith('/v8/')) {
                 return await proxyDirect(path, url.search);
             }
 

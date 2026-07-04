@@ -33,6 +33,16 @@ describe('parseHash', () => {
   it('is case-insensitive', () => {
     expect(parseHash('#/Markets/Sectors')).toEqual({ section: 'markets', sub: 'sectors' })
   })
+
+  it('treats the research sub as a free-form symbol, uppercased', () => {
+    expect(parseHash('#/research/nvda')).toEqual({ section: 'research', sub: 'NVDA' })
+    expect(parseHash('#/research/btc-usd')).toEqual({ section: 'research', sub: 'BTC-USD' })
+    expect(parseHash('#/research')).toEqual({ section: 'research', sub: null })
+  })
+
+  it('rejects junk research symbols', () => {
+    expect(parseHash('#/research/<script>')).toEqual({ section: 'research', sub: null })
+  })
 })
 
 describe('hrefFor', () => {
