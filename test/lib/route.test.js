@@ -35,13 +35,18 @@ describe('parseHash', () => {
   })
 
   it('treats the research sub as a free-form symbol, uppercased', () => {
-    expect(parseHash('#/research/nvda')).toEqual({ section: 'research', sub: 'NVDA' })
-    expect(parseHash('#/research/btc-usd')).toEqual({ section: 'research', sub: 'BTC-USD' })
-    expect(parseHash('#/research')).toEqual({ section: 'research', sub: null })
+    expect(parseHash('#/research/nvda')).toEqual({ section: 'research', sub: 'NVDA', view: null })
+    expect(parseHash('#/research/btc-usd')).toEqual({ section: 'research', sub: 'BTC-USD', view: null })
+    expect(parseHash('#/research')).toEqual({ section: 'research', sub: null, view: null })
+  })
+
+  it('parses a research view segment', () => {
+    expect(parseHash('#/research/nvda/options')).toEqual({ section: 'research', sub: 'NVDA', view: 'options' })
+    expect(parseHash('#/research/nvda/bogus')).toEqual({ section: 'research', sub: 'NVDA', view: null })
   })
 
   it('rejects junk research symbols', () => {
-    expect(parseHash('#/research/<script>')).toEqual({ section: 'research', sub: null })
+    expect(parseHash('#/research/<script>')).toEqual({ section: 'research', sub: null, view: null })
   })
 })
 
