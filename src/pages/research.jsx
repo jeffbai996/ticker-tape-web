@@ -5,6 +5,7 @@ import { fetchHistory, fetchNews, RANGES } from '../lib/history.js'
 import { fetchFundamentals } from '../lib/fundamentals.js'
 import { fetchOptions } from '../lib/options.js'
 import { fetchInsider } from '../lib/fundamentals.js'
+import { fetchEarningsImpact } from '../lib/earnings.js'
 import { bsDelta } from '../lib/bs.js'
 import { vwapSeries } from '../lib/vwap.js'
 import { LineSeries } from 'lightweight-charts'
@@ -407,6 +408,116 @@ function InsiderView({ symbol }) {
   )
 }
 
+function SummaryStat({ label, value, tone }) {
+  return (
+    <div class="flex flex-col gap-0.5 px-3 py-2">
+      <span class="text-[9px] text-muted uppercase tracking-wider">{label}</span>
+      <span class={`font-mono text-[13px] ${tone || 'text-ink'}`}>{value}</span>
+    </div>
+  )
+}
+
+function EarningsView({ symbol }) {
+  const [data, setData] = useState(null)
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    let dead = false
+    setData(null)
+    setFailed(false)
+    fetchEarningsImpact(symbol)
+      .then((d) => { if (!dead) setData(d) })
+      .catch(() => { if (!dead) setFailed(true) })
+    return () => { dead = true }
+  }, [symbol])
+
+  if (failed) {
+    return (
+      <div class="px-1 font-mono text-[11px] text-muted">
+        no earnings history for {symbol} (ETFs/indices/crypto have none)
+      </div>
+    )
+  }
+  if (!data) return <div class="px-1 font-mono text-[11px] text-muted">loading…</div>
+  if (!data.events.length) {
+    return <div class="px-1 font-mono text-[11px] text-muted">no reported quarters for {symbol}</div>
+  }
+
+  const s = data.summary
+  const pctTone = (v) => (v == null ? 'text-muted' : v >= 0 ? 'text-up' : 'text-down')
+
+  return (
+    <div class="flex flex-col gap-3 max-w-4xl">
+      <section class="bg-surface-1 border border-line rounded-xl flex flex-wrap divide-x divide-line">
+        <SummaryStat
+          label="Beat rate"
+          value={s.beatRate != null ? `${Math.round(s.beatRate * 100)}% (${s.beats}/${s.total})` : '—'}
+        />
+        <SummaryStat label="Beat streak" value={`${s.beatStreak}q`} />
+        <SummaryStat
+          label="Avg surprise"
+          value={s.avgSurprise != null ? fmtPct(s.avgSurprise * 100) : '—'}
+          tone={pctTone(s.avgSurprise)}
+        />
+        <SummaryStat
+          label="Avg reaction"
+          value={s.avgMove != null ? fmtPct(s.avgMove) : '—'}
+          tone={pctTone(s.avgMove)}
+        />
+      </section>
+
+      <section class="bg-surface-1 border border-line rounded-xl overflow-x-auto">
+        <table class="w-full border-collapse font-mono text-[11px]">
+          <thead>
+            <tr class="bg-surface-2 text-[9px] text-muted uppercase tracking-wider">
+              <th class="px-3 py-2 text-left">Quarter</th>
+              <th class="px-2 py-2 text-left">Reported</th>
+              <th class="px-2 py-2 text-right">EPS est</th>
+              <th class="px-2 py-2 text-right">EPS act</th>
+              <th class="px-2 py-2 text-right">Surprise</th>
+              <th class="px-2 py-2 text-right">Reaction</th>
+              <th class="px-3 py-2 text-left">Peers</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.events.map((e) => (
+              <tr key={e.quarter} class="border-t border-line hover:bg-surface-2">
+                <td class="px-3 py-[5px] text-ink-2 whitespace-nowrap">
+                  {new Date(e.quarter).toISOString().slice(0, 10)}
+                </td>
+                <td class="px-2 py-[5px] text-muted whitespace-nowrap">
+                  {e.report ? new Date(e.report).toISOString().slice(0, 10) : '—'}
+                </td>
+                <td class="px-2 py-[5px] text-right text-ink-2">{e.epsEstimate != null ? e.epsEstimate.toFixed(2) : '—'}</td>
+                <td class="px-2 py-[5px] text-right text-ink">{e.epsActual.toFixed(2)}</td>
+                <td class={`px-2 py-[5px] text-right ${pctTone(e.surprisePct)}`}>
+                  {e.surprisePct != null ? fmtPct(e.surprisePct * 100) : '—'}
+                </td>
+                <td class={`px-2 py-[5px] text-right ${pctTone(e.priceMove)}`}>
+                  {e.priceMove != null ? fmtPct(e.priceMove) : '—'}
+                </td>
+                <td class="px-3 py-[5px] whitespace-nowrap">
+                  {e.peers.length
+                    ? e.peers.map((p) => (
+                        <span key={p.sym} class="mr-2">
+                          <span class="text-muted">{p.sym}</span>{' '}
+                          <span class={pctTone(p.move)}>{fmtPct(p.move)}</span>
+                        </span>
+                      ))
+                    : <span class="text-muted">—</span>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div class="px-3 py-1.5 border-t border-line text-[9px] text-muted">
+          reaction = close-to-close around the report date · dashes = Yahoo's calendar lacks the date
+        </div>
+      </section>
+    </div>
+  )
+}
+
 function SymbolPrompt() {
   const [value, setValue] = useState('')
   const go = (e) => {
@@ -498,6 +609,7 @@ export function Research({ route }) {
           { id: null, label: 'Overview', href: `#/research/${symbol.toLowerCase()}` },
           { id: 'intraday', label: 'Intraday', href: `#/research/${symbol.toLowerCase()}/intraday` },
           { id: 'options', label: 'Options', href: `#/research/${symbol.toLowerCase()}/options` },
+          { id: 'earnings', label: 'Earnings', href: `#/research/${symbol.toLowerCase()}/earnings` },
           { id: 'insider', label: 'Insider', href: `#/research/${symbol.toLowerCase()}/insider` },
         ].map((tab) => (
           <a
@@ -526,6 +638,8 @@ export function Research({ route }) {
         <IntradayView symbol={symbol} />
       ) : route.view === 'insider' ? (
         <InsiderView symbol={symbol} />
+      ) : route.view === 'earnings' ? (
+        <EarningsView symbol={symbol} />
       ) : (
         <div class="grid gap-3 xl:grid-cols-[1fr_320px]">
           <section class="bg-surface-1 border border-line rounded-xl p-2 min-w-0">

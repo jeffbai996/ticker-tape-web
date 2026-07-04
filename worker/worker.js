@@ -8,9 +8,13 @@
 
 const CORS_HEADERS = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
 };
+
+// The one POST endpoint we proxy: Yahoo's visualization API, which backs the
+// earnings calendar (historical report dates). Everything else stays GET-only.
+const POST_PATH = '/v1/finance/visualization';
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
@@ -25,12 +29,20 @@ export default {
         if (request.method === 'OPTIONS') {
             return new Response(null, { status: 204, headers: CORS_HEADERS });
         }
+        const url = new URL(request.url);
+        const path = url.pathname;
+
+        if (request.method === 'POST') {
+            if (path !== POST_PATH) return jsonResp({ error: 'Method not allowed' }, 405);
+            try {
+                return await proxyWithCrumb(path, url.search, await request.text());
+            } catch (err) {
+                return jsonResp({ error: `Proxy error: ${err.message}` }, 502);
+            }
+        }
         if (request.method !== 'GET') {
             return jsonResp({ error: 'Method not allowed' }, 405);
         }
-
-        const url = new URL(request.url);
-        const path = url.pathname;
 
         if (path === '/' || path === '/health') {
             return jsonResp({ status: 'ok', proxy: 'yf-cors' });
@@ -73,49 +85,38 @@ async function proxyDirect(path, search) {
     });
 }
 
-/** Proxy with crumb+cookies (v7, v10 endpoints). */
-async function proxyWithCrumb(path, search) {
+/** Proxy with crumb+cookies (v7, v10 GETs; visualization POST when body given). */
+async function proxyWithCrumb(path, search, body = null) {
     // Ensure we have a valid crumb
     if (!_crumb || !_cookies || Date.now() - _crumbTs > CRUMB_TTL) {
         const ok = await refreshCrumb();
         if (!ok) return jsonResp({ error: 'Failed to obtain Yahoo auth crumb' }, 502);
     }
 
-    // Append crumb to query string
     const sep = search ? '&' : '?';
-    const fullUrl = `https://query2.finance.yahoo.com${path}${search}${sep}crumb=${encodeURIComponent(_crumb)}`;
-
-    const resp = await fetch(fullUrl, {
-        headers: {
-            'User-Agent': UA,
-            'Accept': 'application/json',
-            'Referer': 'https://finance.yahoo.com/',
-            'Origin': 'https://finance.yahoo.com',
-            'Cookie': _cookies,
+    const doFetch = () => fetch(
+        `https://query1.finance.yahoo.com${path}${search}${sep}crumb=${encodeURIComponent(_crumb)}`,
+        {
+            method: body != null ? 'POST' : 'GET',
+            body: body ?? undefined,
+            headers: {
+                'User-Agent': UA,
+                'Accept': 'application/json',
+                'Referer': 'https://finance.yahoo.com/',
+                'Origin': 'https://finance.yahoo.com',
+                'Cookie': _cookies,
+                ...(body != null ? { 'Content-Type': 'application/json' } : {}),
+            },
         },
-    });
+    );
+
+    let resp = await doFetch();
 
     // If 401, crumb might be stale — refresh once and retry
     if (resp.status === 401) {
         const ok = await refreshCrumb();
         if (!ok) return jsonResp({ error: 'Yahoo auth failed after refresh' }, 502);
-
-        const retryUrl = `https://query2.finance.yahoo.com${path}${search}${sep}crumb=${encodeURIComponent(_crumb)}`;
-        const retry = await fetch(retryUrl, {
-            headers: {
-                'User-Agent': UA,
-                'Accept': 'application/json',
-                'Referer': 'https://finance.yahoo.com/',
-                'Cookie': _cookies,
-            },
-        });
-
-        if (!retry.ok) return jsonResp({ error: `Yahoo returned ${retry.status} after crumb refresh` }, retry.status);
-
-        return new Response(await retry.text(), {
-            status: 200,
-            headers: { ...CORS_HEADERS, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=30' },
-        });
+        resp = await doFetch();
     }
 
     if (!resp.ok) return jsonResp({ error: `Yahoo returned ${resp.status}` }, resp.status);
