@@ -16,7 +16,7 @@ Corollaries:
 ## Build Phases
 
 - **Phase 0 (done):** Preact shell, hash router, Operator design tokens, placeholder pages, Pages deploy.
-- **Phase 1:** public-safe pages (~24 features) on the static JSON pipeline; i18n (en/zh-CN) infrastructure.
+- **Phase 1 (done):** public-safe pages on live client-side Yahoo data — dashboard, markets (overview/sectors/heatmap/commodities/earnings/econ calendar), research (candles, technicals, fundamentals, news, options chain w/ BS delta, intraday VWAP, insider, earnings impact), screening (screen/compare/correlation/valuation), alerts (price/RSI/SMA-cross/volume), Ctrl+K command palette, i18n (en/zh-CN).
 - **Phase 2:** demo-portfolio generator + Portfolio section (positions, sizing, carry, cockpit, timeline).
 - **Phase 3:** AI chat via Worker proxy (rate-limited, spend-capped).
 - **Phase 4:** interaction polish — research drawer, drag-resize, crosshair sync, mobile.
@@ -30,18 +30,18 @@ Corollaries:
 | Build | Vite 8 |
 | CSS | Tailwind CSS v4 (CSS-first config, tokens in `src/styles/main.css`) |
 | Charts | lightweight-charts (TradingView) |
-| Fonts | Plus Jakarta Sans (UI) + JetBrains Mono (data, tabular-nums) |
+| Fonts | Plus Jakarta Sans (UI) + IBM Plex Mono (data, tabular-nums) |
 | Tests | Vitest + jsdom (pure logic in `src/lib/` — that's the layer to test) |
 | Deploy | GitHub Pages via Actions (`deploy.yml`, push to main) |
 
 ## Design System — Operator language
 
-Flat, near-black, hairline borders. Tokens live in `@theme` in `src/styles/main.css`; use the Tailwind classes, don't hardcode hex in components.
+Operator pitch-black surfaces + Bloomberg amber accent. Flat, hairline borders. Tokens live in `@theme` in `src/styles/main.css`; use the Tailwind classes, don't hardcode hex in components.
 
 - **Surfaces:** `surface-0` #050609 (canvas) → `surface-1` #0b0d11 (rails/cards) → `surface-2` #12141a (hover) → `surface-3` #1a1d24 (active/popover)
 - **Text:** `ink` #e7ecf3, `ink-2` #a6adb6, `muted` #79828d
 - **Borders:** `line` (white 10%), `line-2` (white 14%), 1px always
-- **Accent:** `accent` #b8c0cc (neutral gray — not purple, not amber), `accent-soft` wash for active nav
+- **Accent:** `accent` #f59e0b (Bloomberg amber — the one color allowed to pop), `accent-soft` wash for active nav
 - **P&L / live:** `up` #3fb950, `down` #f85149 — reserved for semantics, never decoration
 - **No glows, no gradients, no soft shadows.** Radii 10–16px.
 - Dark-only for now.
@@ -56,14 +56,18 @@ src/
 ├── components/             <- shell components (StatusBar, Sidebar, Placeholder)
 ├── pages/                  <- one module per section
 └── styles/main.css         <- Tailwind import + @theme tokens
-scripts/                    <- yfinance data pipeline (Phase 1 rebuild pending)
+scripts/                    <- legacy yfinance tooling (unused by the app)
 worker/                     <- Cloudflare Worker: Yahoo CORS proxy, later AI chat proxy
 test/lib/                   <- Vitest specs for src/lib
 ```
 
 ## Routing
 
-Hash-based (`#/section/sub`) because GitHub Pages has no rewrites. Sections: `dashboard` (`#/`), `markets` (+sectors/commodities/calendar), `research`, `portfolio` (demo), `screen` (+compare/correlation/valuation), `chat`. Registry in `src/lib/nav.js`; parsing in `src/lib/route.js` (tested).
+Hash-based (`#/section/sub`) because GitHub Pages has no rewrites. Sections: `dashboard` (`#/`), `markets` (+sectors/heatmap/commodities/earnings/calendar), `research` (`#/research/SYM/{intraday|options|earnings|insider}`), `portfolio` (demo), `screen` (+compare/correlation/valuation), `alerts`, `chat`. Registry in `src/lib/nav.js`; parsing in `src/lib/route.js` (tested).
+
+## Data path
+
+No cron, no committed JSON — the browser fetches Yahoo live. v8 chart + v1 search go through a plain CORS proxy (dev: Vite's `/yf` proxy, zero setup; prod: the `worker/` Cloudflare Worker). v7 options + v10 quoteSummary + the earnings-calendar POST (`/v1/finance/visualization`) need Yahoo's cookie/crumb dance and ALWAYS go through the Worker, even in dev. Persistent stale-while-revalidate caches in localStorage (`src/lib/pcache.js`) make reloads ~free. Day-change must come from the 1D feed — a multi-range chart fetch reports change vs the range start. Persist epoch ms, never Date objects.
 
 ## Commands
 
