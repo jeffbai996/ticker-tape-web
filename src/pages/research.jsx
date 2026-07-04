@@ -1,0 +1,240 @@
+import { useEffect, useRef, useState } from 'preact/hooks'
+import { createChart, CandlestickSeries } from 'lightweight-charts'
+import { fetchHistory, fetchNews, RANGES } from '../lib/history.js'
+import { sma, rsi, macd, bollinger } from '../lib/indicators.js'
+import { fmtPrice, fmtPct, fmtChange, fmtVol } from '../lib/format.js'
+import { hrefFor } from '../lib/route.js'
+
+function Candles({ bars, intraday }) {
+  const el = useRef(null)
+  const chartRef = useRef(null)
+
+  useEffect(() => {
+    if (!el.current) return
+    const chart = createChart(el.current, {
+      autoSize: true,
+      layout: {
+        background: { color: 'transparent' },
+        textColor: '#79828d',
+        fontFamily: "'JetBrains Mono', monospace",
+        fontSize: 10,
+      },
+      grid: {
+        vertLines: { color: 'rgba(255,255,255,0.05)' },
+        horzLines: { color: 'rgba(255,255,255,0.05)' },
+      },
+      rightPriceScale: { borderColor: 'rgba(255,255,255,0.10)' },
+      timeScale: { borderColor: 'rgba(255,255,255,0.10)', timeVisible: intraday },
+      crosshair: { mode: 0 },
+    })
+    const series = chart.addSeries(CandlestickSeries, {
+      upColor: '#3fb950',
+      downColor: '#f85149',
+      borderUpColor: '#3fb950',
+      borderDownColor: '#f85149',
+      wickUpColor: '#3fb950',
+      wickDownColor: '#f85149',
+    })
+    chartRef.current = { chart, series }
+    return () => chart.remove()
+  }, [intraday])
+
+  useEffect(() => {
+    if (!chartRef.current || !bars) return
+    chartRef.current.series.setData(bars)
+    chartRef.current.chart.timeScale().fitContent()
+  }, [bars])
+
+  return <div ref={el} class="h-[380px] w-full" />
+}
+
+function Stat({ label, value, cls = 'text-ink' }) {
+  return (
+    <div class="flex justify-between gap-3 px-3 py-[4px] border-b border-line last:border-0">
+      <span class="text-muted text-[11px]">{label}</span>
+      <span class={`font-mono text-[11px] ${cls}`}>{value ?? '—'}</span>
+    </div>
+  )
+}
+
+function Technicals({ symbol }) {
+  const [daily, setDaily] = useState(null)
+
+  useEffect(() => {
+    setDaily(null)
+    fetchHistory(symbol, '1Y').then(setDaily).catch(() => setDaily({ bars: [] }))
+  }, [symbol])
+
+  const closes = daily?.bars?.map((b) => b.close) || []
+  const price = closes[closes.length - 1]
+  const r = rsi(closes, 14)
+  const m = macd(closes)
+  const bb = bollinger(closes, 20, 2)
+  const smaCls = (n) => {
+    const v = sma(closes, n)
+    return v == null || price == null ? 'text-ink' : price >= v ? 'text-up' : 'text-down'
+  }
+  const rsiCls = r == null ? 'text-ink' : r >= 70 ? 'text-down' : r <= 30 ? 'text-up' : 'text-ink'
+
+  return (
+    <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
+      <header class="px-3 py-2 border-b border-line-2 bg-surface-2">
+        <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">Technicals — daily</h2>
+      </header>
+      <Stat label="SMA 20" value={fmtPrice(sma(closes, 20))} cls={smaCls(20)} />
+      <Stat label="SMA 50" value={fmtPrice(sma(closes, 50))} cls={smaCls(50)} />
+      <Stat label="SMA 200" value={fmtPrice(sma(closes, 200))} cls={smaCls(200)} />
+      <Stat label="RSI 14" value={r == null ? null : r.toFixed(1)} cls={rsiCls} />
+      <Stat
+        label="MACD hist"
+        value={m == null ? null : m.hist.toFixed(2)}
+        cls={m == null ? 'text-ink' : m.hist >= 0 ? 'text-up' : 'text-down'}
+      />
+      <Stat label="Bollinger up" value={bb && fmtPrice(bb.upper)} />
+      <Stat label="Bollinger mid" value={bb && fmtPrice(bb.mid)} />
+      <Stat label="Bollinger low" value={bb && fmtPrice(bb.lower)} />
+    </section>
+  )
+}
+
+function News({ symbol }) {
+  const [items, setItems] = useState(null)
+
+  useEffect(() => {
+    setItems(null)
+    fetchNews(symbol).then(setItems).catch(() => setItems([]))
+  }, [symbol])
+
+  return (
+    <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
+      <header class="px-3 py-2 border-b border-line-2 bg-surface-2">
+        <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">News</h2>
+      </header>
+      {items == null && <div class="px-3 py-3 text-[11px] text-muted font-mono">loading…</div>}
+      {items?.length === 0 && <div class="px-3 py-3 text-[11px] text-muted font-mono">no headlines</div>}
+      {items?.map((n) => (
+        <a
+          key={n.link}
+          href={n.link}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="block px-3 py-2 border-b border-line last:border-0 hover:bg-surface-2"
+        >
+          <div class="text-[12px] text-ink leading-snug">{n.title}</div>
+          <div class="font-mono text-[10px] text-muted mt-0.5">
+            {n.publisher}
+            {n.time && ` · ${n.time.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
+          </div>
+        </a>
+      ))}
+    </section>
+  )
+}
+
+function SymbolPrompt() {
+  const [value, setValue] = useState('')
+  const go = (e) => {
+    e.preventDefault()
+    const sym = value.trim().toUpperCase()
+    if (sym) location.hash = hrefFor('research', sym.toLowerCase())
+  }
+  return (
+    <div class="flex-1 flex items-center justify-center p-8">
+      <form onSubmit={go} class="w-full max-w-sm bg-surface-1 border border-line rounded-2xl p-6">
+        <h1 class="text-base font-semibold text-ink mb-3">Research a symbol</h1>
+        <div class="flex gap-2">
+          <input
+            value={value}
+            onInput={(e) => setValue(e.target.value)}
+            placeholder="NVDA, SPY, BTC-USD…"
+            class="flex-1 bg-surface-0 border border-line-2 rounded-lg px-3 py-2 font-mono text-[13px] text-ink outline-none focus:border-accent"
+          />
+          <button
+            type="submit"
+            class="bg-accent text-surface-0 font-mono font-bold text-[12px] px-4 rounded-lg hover:opacity-90"
+          >
+            GO
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
+export function Research({ route }) {
+  const symbol = route.sub
+  const [rangeKey, setRangeKey] = useState('6M')
+  const [hist, setHist] = useState(null)
+  const [err, setErr] = useState(null)
+
+  useEffect(() => {
+    if (!symbol) return
+    setHist(null)
+    setErr(null)
+    fetchHistory(symbol, rangeKey)
+      .then(setHist)
+      .catch((e) => setErr(String(e.message || e)))
+  }, [symbol, rangeKey])
+
+  if (!symbol) return <SymbolPrompt />
+
+  const q = hist?.quote
+  const up = (q?.pct ?? 0) >= 0
+
+  return (
+    <div class="flex-1 p-3 select-text min-w-0">
+      <div class="flex items-baseline gap-3 px-1 pb-2 flex-wrap">
+        <h1 class="font-mono font-bold text-lg text-ink">{symbol}</h1>
+        {q && (
+          <>
+            <span class="text-[12px] text-muted">{q.name}</span>
+            <span class="font-mono text-lg text-ink">{fmtPrice(q.price)}</span>
+            <span class={`font-mono text-[13px] ${up ? 'text-up' : 'text-down'}`}>
+              {fmtChange(q.change)} {fmtPct(q.pct)}
+            </span>
+            {q.volume != null && (
+              <span class="font-mono text-[11px] text-muted">vol {fmtVol(q.volume)}</span>
+            )}
+          </>
+        )}
+        <div class="ml-auto flex gap-1">
+          {RANGES.map((r) => (
+            <button
+              key={r.key}
+              onClick={() => setRangeKey(r.key)}
+              class={`font-mono text-[11px] px-2 py-1 rounded-md border ${
+                rangeKey === r.key
+                  ? 'border-accent text-accent bg-accent-soft'
+                  : 'border-line text-muted hover:text-ink hover:bg-surface-2'
+              }`}
+            >
+              {r.key}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {err && (
+        <div class="mx-1 mb-2 px-3 py-2 bg-surface-1 border border-down/40 rounded-lg font-mono text-[11px] text-down">
+          {err} — check the symbol or try again
+        </div>
+      )}
+
+      <div class="grid gap-3 xl:grid-cols-[1fr_320px]">
+        <section class="bg-surface-1 border border-line rounded-xl p-2 min-w-0">
+          {hist ? (
+            <Candles bars={hist.bars} intraday={hist.intraday} />
+          ) : (
+            <div class="h-[380px] flex items-center justify-center font-mono text-[11px] text-muted">
+              {err ? 'no chart' : 'loading…'}
+            </div>
+          )}
+        </section>
+        <div class="flex flex-col gap-3 min-w-0">
+          <Technicals symbol={symbol} />
+          <News symbol={symbol} />
+        </div>
+      </div>
+    </div>
+  )
+}
