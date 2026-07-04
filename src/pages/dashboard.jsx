@@ -3,6 +3,8 @@ import { useQuotes, useWatchlist } from '../hooks.js'
 import { BUCKETS } from '../lib/symbols.js'
 import { pulseStats } from '../lib/pulse.js'
 import { fetchEarningsDate } from '../lib/fundamentals.js'
+import { ECON_EVENTS, upcomingEvents } from '../lib/markets.js'
+import { lastGoodTs } from '../lib/feed.js'
 import { fmtPrice, fmtPct, fmtChange, fmtVol } from '../lib/format.js'
 import { Histo } from '../components/Histo.jsx'
 import { tl } from '../lib/i18n.js'
@@ -10,8 +12,9 @@ import { tl } from '../lib/i18n.js'
 const DAY = 86_400_000
 const ETF_SKIP = new Set(['SPY', 'QQQ', 'IWM', 'GLD', 'TLT'])
 
-/** Days until each symbol's next earnings — feeds the `27d` badge + panel. */
-function useEarningsDays(symbols) {
+/** Days until each symbol's next earnings — feeds the `27d` badge + panel.
+ *  Exported for the briefing page, which reuses the same fan-out. */
+export function useEarningsDays(symbols) {
   const [rows, setRows] = useState({})
   useEffect(() => {
     let alive = true
@@ -150,6 +153,36 @@ function PulsePanel({ quotes }) {
   )
 }
 
+const ECON_COLORS = {
+  FOMC: 'text-down', CPI: 'text-accent', NFP: 'text-accent',
+  GDP: 'text-[#00c8ff]', PCE: 'text-[#c084fc]',
+}
+
+function MacroCalPanel() {
+  const events = upcomingEvents(ECON_EVENTS, new Date().toISOString().slice(0, 10), 60).slice(0, 8)
+  if (!events.length) return null
+  const dayCls = (d) =>
+    d <= 3 ? 'text-down font-bold' : d <= 7 ? 'text-down' : d <= 30 ? 'text-accent' : 'text-muted'
+  return (
+    <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
+      <header class="px-3 py-1.5 border-b border-line-2 bg-surface-2">
+        <a href="#/markets/calendar" class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase hover:no-underline">
+          {tl('Calendar')}
+        </a>
+      </header>
+      <div class="py-1">
+        {events.map((e) => (
+          <div key={`${e.date}-${e.type}`} class="flex items-baseline gap-2 px-3 py-[2px] font-mono text-[11px]">
+            <span class={`w-10 font-bold ${ECON_COLORS[e.type] || 'text-ink-2'}`}>{e.type}</span>
+            <span class="text-muted flex-1 truncate">{tl(e.label)}</span>
+            <span class={dayCls(e.days)}>{e.days === 0 ? tl('today') : `${e.days}d`}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
 function EarningsPanel({ symbols, days }) {
   const upcoming = symbols
     .filter((s) => days[s] != null)
@@ -175,10 +208,37 @@ function EarningsPanel({ symbols, days }) {
   )
 }
 
+/** Watchlist split into bucket groups (TUI's `── group ──` separators). */
+function groupRows(watchlist) {
+  const groups = []
+  const seen = new Set()
+  for (const b of BUCKETS) {
+    const syms = b.symbols.filter((s) => watchlist.includes(s))
+    if (!syms.length) continue
+    groups.push({ name: b.name, symbols: syms })
+    syms.forEach((s) => seen.add(s))
+  }
+  const rest = watchlist.filter((s) => !seen.has(s))
+  if (rest.length) groups.push({ name: 'General', symbols: rest })
+  return groups
+}
+
 export function Dashboard() {
   const watchlist = useWatchlist()
   const quotes = useQuotes(watchlist)
   const earnDays = useEarningsDays(watchlist)
+
+  // 10s tick keeps the "updated" line and stale banner honest between fetches.
+  const [, tick] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => tick((n) => n + 1), 10_000)
+    return () => clearInterval(t)
+  }, [])
+  const good = lastGoodTs()
+  const updated = good
+    ? new Date(good).toLocaleTimeString('en-US', { hour12: false, timeZone: 'America/New_York' })
+    : null
+  const staleMin = good ? Math.floor((Date.now() - good) / 60_000) : 0
 
   const all = watchlist.map((s) => quotes[s]?.quote).filter((q) => q?.pct != null)
   const bucketAvg = (symbols) => {
@@ -203,15 +263,34 @@ export function Dashboard() {
         })}
       </div>
 
+      <div class="flex items-baseline gap-3 px-1 pb-1 font-mono text-[10px]">
+        <span class="text-muted italic">
+          {updated ? `${tl('updated')} ${updated} ET` : '…'}
+        </span>
+        {staleMin >= 5 && (
+          <span class="text-down font-bold">
+            ⚠ {tl('STALE — last good fetch')} {staleMin < 60 ? `${staleMin}m` : `${Math.floor(staleMin / 60)}h`} {tl('ago')}
+          </span>
+        )}
+      </div>
+
       <div class="grid gap-3 xl:grid-cols-[1fr_230px] min-w-0">
         <section class="bg-surface-1 border border-line rounded-xl overflow-hidden min-w-0">
-          {watchlist.map((s) => (
-            <TuiRow key={s} symbol={s} data={quotes[s]} earnDays={earnDays[s]} />
+          {groupRows(watchlist).map((g) => (
+            <div key={g.name}>
+              <div class="px-3 pt-1.5 pb-0.5 font-mono text-[10px] text-muted tracking-wider border-b border-line">
+                ── {tl(g.name)} ──
+              </div>
+              {g.symbols.map((s) => (
+                <TuiRow key={s} symbol={s} data={quotes[s]} earnDays={earnDays[s]} />
+              ))}
+            </div>
           ))}
         </section>
         <div class="flex flex-col gap-3 min-w-0">
           <PulsePanel quotes={all} />
           <EarningsPanel symbols={watchlist} days={earnDays} />
+          <MacroCalPanel />
         </div>
       </div>
     </div>

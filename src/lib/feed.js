@@ -100,6 +100,7 @@ async function fetchSymbol(symbol) {
     tech: techBadges({ closes, volumes }, symbol === RS_BENCH ? null : benchCloses),
     ts: Date.now(),
   })
+  goodTs = Date.now()
   emit(symbol)
 }
 
@@ -116,6 +117,13 @@ async function pump() {
     await new Promise((r) => setTimeout(r, REQUEST_SPACING_MS))
   }
   pumping = false
+}
+
+// Timestamp of the last successful quote fetch (batch or pump) — drives the
+// dashboard's "updated HH:MM:SS" line and its stale-data banner.
+let goodTs = 0
+export function lastGoodTs() {
+  return goodTs
 }
 
 // Batch first paint: one v7 request prices a whole page at once, so quotes
@@ -141,7 +149,9 @@ async function runBatch() {
       const resp = await fetch(url, { signal: AbortSignal.timeout(10_000) })
       if (!resp.ok) continue // pump fills the gap one by one
       const data = await resp.json()
-      for (const row of data?.quoteResponse?.result || []) {
+      const rows = data?.quoteResponse?.result || []
+      if (rows.length) goodTs = Date.now()
+      for (const row of rows) {
         const prev = cache.get(row.symbol)
         // Keep the old ts: this fills the quote, but the chart fetch (histo
         // + badges) is still owed — a fresh ts would make track() skip it.

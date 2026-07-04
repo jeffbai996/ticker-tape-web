@@ -16,6 +16,32 @@ import { hrefFor } from '../lib/route.js'
 import { tl, t as tt } from '../lib/i18n.js'
 import { watch, unwatch } from '../lib/watchlist.js'
 import { useWatchlist } from '../hooks.js'
+import { getCached } from '../lib/feed.js'
+import { fetchEarningsDate } from '../lib/fundamentals.js'
+import { memoPrompt, BRIEFING_SYSTEM } from '../lib/briefing.js'
+import { AiReport } from '../components/AiReport.jsx'
+
+/** Snapshot whatever the page already knows about a symbol into a memo
+ *  prompt. Fetches are cache-first, so this is cheap at click time. */
+async function buildMemoPrompt(symbol) {
+  const cached = getCached(symbol)
+  const [earn, analysts] = await Promise.all([
+    fetchEarningsDate(symbol).catch(() => null),
+    fetchAnalysts(symbol).catch(() => null),
+  ])
+  const earnDays = earn?.date != null
+    ? Math.max(0, Math.round((earn.date - Date.now()) / 86_400_000))
+    : null
+  return {
+    system: BRIEFING_SYSTEM,
+    prompt: memoPrompt(symbol, {
+      quote: cached?.quote,
+      tech: cached?.tech,
+      analysts: analysts?.targets,
+      earnDays,
+    }),
+  }
+}
 
 function Candles({ bars, intraday }) {
   const el = useRef(null)
@@ -790,6 +816,11 @@ export function Research({ route }) {
             )}
           </section>
           <div class="flex flex-col gap-3 min-w-0">
+            <AiReport
+              label="AI memo"
+              filename={`${symbol.toLowerCase()}-memo.md`}
+              buildPrompt={() => buildMemoPrompt(symbol)}
+            />
             <Technicals symbol={symbol} />
             <Fundamentals symbol={symbol} />
             <News symbol={symbol} />
