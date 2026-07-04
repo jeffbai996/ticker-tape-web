@@ -139,7 +139,7 @@ function Compare({ symbols, hist }) {
       layout: {
         background: { color: 'transparent' },
         textColor: '#79828d',
-        fontFamily: "'JetBrains Mono', monospace",
+        fontFamily: "'IBM Plex Mono', monospace",
         fontSize: 10,
       },
       grid: {
