@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
-/* Design tokens — Operator cockpit language (squad-store operator.html, op-flat
-   dark): near-black surface ladder, neutral gray accent, flat surfaces, 1px
-   hairline borders. Green/red are reserved for live/P&L semantics. */
+/* Design tokens — Operator's pitch-black flat surfaces + Bloomberg terminal
+   colors (Jeff 2026-07-03): amber accent, green/red P&L, 1px hairline borders.
+   Green/red are reserved for live/P&L semantics, amber for interactive/brand. */
 @theme {
   --color-surface-0: #050609;
   --color-surface-1: #0b0d11;
@@ -16,8 +16,8 @@
   --color-line: rgba(255, 255, 255, 0.10);
   --color-line-2: rgba(255, 255, 255, 0.14);
 
-  --color-accent: #b8c0cc;
-  --color-accent-soft: rgba(184, 192, 204, 0.14);
+  --color-accent: #f59e0b;
+  --color-accent-soft: rgba(245, 158, 11, 0.13);
 
   --color-up: #3fb950;
   --color-down: #f85149;
@@ -32,7 +32,44 @@ body {
   user-select: none;
 }
 
+/* Terminal-dark scrollbars everywhere. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2a2e37 transparent;
+}
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #2a2e37;
+  border-radius: 3px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 /* Numbers everywhere should line up — tabular figures for the mono face. */
 .font-mono {
   font-variant-numeric: tabular-nums;
+}
+
+/* Hide a scroll region's bar entirely (status-bar index strip). */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Tape marquee: list rendered twice, scroll half the total width, loop. */
+.tape-scroll {
+  animation: tape-scroll 60s linear infinite;
+}
+.tape-scroll:hover {
+  animation-play-state: paused;
+}
+@keyframes tape-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
 }
