@@ -71,6 +71,26 @@ const STRINGS = {
     zh: '股票代码，空格或逗号分隔（最多8个）',
   },
   'common.loading': { en: 'loading…', zh: '加载中…' },
+  'demo.banner': {
+    en: 'DEMO — NOT REAL POSITIONS · synthetic book on live prices',
+    zh: 'DEMO — 非真实持仓 · 模拟组合 + 实时价格',
+  },
+  'demo.formulas': {
+    en: 'flat 25% maintenance — demo simplification',
+    zh: '统一25%维持保证金 — 演示简化',
+  },
+  'demo.carry_note': {
+    en: 'hypothetical margin loan at {rate}% APR on the demo book',
+    zh: '演示组合按 {rate}% 年利率的假设融资成本',
+  },
+  'demo.stress_note': {
+    en: 'beta-weighted shock on static demo betas — indicative only',
+    zh: '基于静态演示Beta的冲击测算 — 仅供参考',
+  },
+  'demo.timeline_note': {
+    en: '252-day seeded random walk ending at the current demo NLV — not a real account history',
+    zh: '252天随机模拟曲线，终点为当前演示净值 — 非真实账户历史',
+  },
 }
 
 // Short labels keyed by English text. Absent key → English passthrough.
@@ -137,6 +157,17 @@ const LABELS = {
   today: '今日', advancing: '上涨', avg: '均', est: '预期',
   'Technicals — daily': '技术指标 — 日线', Name: '姓名', 'no headlines': '暂无新闻',
   Sym: '代码', 'Day %': '日%',
+  // Portfolio (demo)
+  Account: '账户', Sizing: '仓位计算', Carry: '融资成本', Cockpit: '风险面板',
+  Timeline: '净值曲线', 'Avg cost': '成本价', Weight: '权重', 'Day P&L': '日盈亏',
+  'Unreal P&L': '浮动盈亏', Total: '合计', Cash: '现金', 'Gross exposure': '总敞口',
+  Leverage: '杠杆', Maintenance: '维持保证金', 'Excess liquidity': '超额流动性',
+  Cushion: '缓冲', 'Target weight': '目标权重', 'Target value': '目标市值',
+  'Target shares': '目标股数', 'Held (demo)': '当前持有（演示）', Buy: '买入',
+  Sell: '卖出', shares: '股', 'Target leverage': '目标杠杆', 'Margin loan': '融资额',
+  'Per year': '每年', 'Per month': '每月', 'Per day': '每日', 'Stress test': '压力测试',
+  'Market move': '市场变动', 'Book P&L': '组合盈亏', 'Top position': '最大持仓',
+  'Concentration (HHI)': '集中度 (HHI)', 'Demo betas': '演示Beta',
 }
 
 export function t(key, params) {

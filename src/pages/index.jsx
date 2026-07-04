@@ -4,6 +4,7 @@ import { Markets } from './markets.jsx'
 import { Research } from './research.jsx'
 import { Screen } from './screen.jsx'
 import { Alerts } from './alerts.jsx'
+import { Portfolio } from './portfolio.jsx'
 
 const PAGES = {
   markets: {
@@ -40,6 +41,7 @@ export function Page({ route }) {
   if (route.section === 'research') return <Research route={route} />
   if (route.section === 'screen') return <Screen route={route} />
   if (route.section === 'alerts') return <Alerts />
+  if (route.section === 'portfolio') return <Portfolio route={route} />
   const page = PAGES[route.section]
   const sub = route.sub ? ` / ${route.sub}` : ''
   return <Placeholder {...page} title={page.title + sub} />
