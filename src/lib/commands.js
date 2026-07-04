@@ -5,6 +5,19 @@ import { hrefFor } from './route.js'
 
 const SYM = /^[A-Za-z0-9.^=-]{1,12}$/
 
+// Multi-line help — rendered in the command console, TUI help-screen style.
+export const HELP_TEXT = [
+  'SYM               open research            ta|chart SYM   chart + technicals',
+  'intra SYM         intraday + VWAP          opt SYM        options chain',
+  'ei SYM            earnings impact          an SYM         analysts',
+  'ins SYM           insider activity         n SYM          news',
+  'vs A B [C…]       compare                  screen A B     valuation grid',
+  'w|uw SYM          watch / unwatch          alert SYM > N  arm price alert',
+  'm s hm movers     markets views            er · cal       earnings · calendar',
+  'b|brief           briefing + AI            pos · acct     demo portfolio',
+  'alerts            alert center             chat [q]       AI chat',
+].join('\n')
+
 const low = (s) => s.toLowerCase()
 const research = (sym, view) =>
   ({ type: 'nav', hash: `#/research/${low(sym)}${view ? `/${view}` : ''}` })
@@ -72,7 +85,7 @@ export function parseCommand(input) {
   }
 
   if (cmd === 'h' || cmd === 'help' || cmd === '?') {
-    return { type: 'msg', text: 'SYM · ta/chart/intra/opt/ei/ins/an/n SYM · vs A B · screen A B · w/uw SYM · alert SYM > N · m s hm movers er cal · b/brief · pos acct · alerts · chat [q]' }
+    return { type: 'msg', text: HELP_TEXT }
   }
   if (cmd === 'q' || cmd === 'quit' || cmd === 'exit') {
     return { type: 'msg', text: "it's a browser — close the tab :)" }

@@ -169,6 +169,8 @@ const LABELS = {
   General: '其他',
   Briefing: '晨报', Data: '数据', copy: '复制', generate: '生成', regenerate: '重新生成',
   'AI synthesis': 'AI 综述', 'AI memo': 'AI 备忘录', 'AI report': 'AI 报告',
+  widget: '组件', cancel: '取消', pulse: '广度', earnings: '财报', calendar: '日历',
+  movers: '异动', chart: '图表', Movers: '异动',
   'Technicals — daily': '技术指标 — 日线', Name: '姓名', 'no headlines': '暂无新闻',
   Sym: '代码', 'Day %': '日%', Custom: '自定义', 'Health & Staples': '医疗与消费',
   '10Y Note Fut': '10年期国债期货', '30Y Bond Fut': '30年期国债期货',
