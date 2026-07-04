@@ -27,6 +27,7 @@ export const NAV = [
       { id: 'valuation', label: 'Valuation' },
     ],
   },
+  { id: 'alerts', label: 'Alerts', subs: [] },
   { id: 'chat', label: 'AI Chat', subs: [] },
 ]
 
