@@ -11,11 +11,10 @@ import time
 
 import yfinance as yf
 
+from fetch_data import SYMBOLS  # single source of truth for the generic set
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
-
-_sym_raw = os.environ.get("WATCHLIST_SYMBOLS", "").strip()
-SYMBOLS: list[str] = json.loads(_sym_raw) if _sym_raw else ["AAPL", "MSFT", "GOOG", "AMZN", "NVDA"]
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "public", "data", "lookup")
 
 

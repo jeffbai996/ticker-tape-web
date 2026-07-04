@@ -22,11 +22,23 @@ log = logging.getLogger(__name__)
 ET = ZoneInfo("America/New_York")
 RS_BENCHMARK = "QQQ"
 
-# ── Symbols from env ────────────────────────────────────────
-_sym_raw = os.environ.get("WATCHLIST_SYMBOLS", "").strip()
-SYMBOLS: list[str] = json.loads(_sym_raw) if _sym_raw else ["AAPL", "MSFT", "GOOG", "AMZN", "NVDA"]
-_buck_raw = os.environ.get("THESIS_BUCKETS", "").strip()
-BUCKETS: dict[str, list[str]] = json.loads(_buck_raw) if _buck_raw else {}
+# ── Symbols — hardcoded generic showcase set ────────────────
+# Deliberately NOT env/secret-driven: a secret carrying a real watchlist into
+# a public build is a leak surface (HANDOFF_SPEC §5). This set is generic
+# mega-caps + broad ETFs; nothing here may reference a real portfolio.
+SYMBOLS: list[str] = [
+    "AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "TSLA",
+    "AMD", "INTC", "TSM", "CRM", "ORCL", "NFLX",
+    "JPM", "V", "LLY", "XOM", "WMT",
+    "SPY", "QQQ", "IWM", "GLD", "TLT",
+]
+BUCKETS: dict[str, list[str]] = {
+    "Mega Tech": ["AAPL", "MSFT", "GOOGL", "AMZN", "META", "TSLA"],
+    "Semis & AI": ["NVDA", "AMD", "INTC", "TSM"],
+    "Software & Media": ["CRM", "ORCL", "NFLX"],
+    "Old Economy": ["JPM", "V", "LLY", "XOM", "WMT"],
+    "ETFs & Macro": ["SPY", "QQQ", "IWM", "GLD", "TLT"],
+}
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "public", "data")
 
 # ── Sector ETFs ─────────────────────────────────────────────
