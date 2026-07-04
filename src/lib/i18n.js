@@ -114,7 +114,8 @@ const LABELS = {
   Technicals: '技术指标', Fundamentals: '基本面', News: '新闻',
   Calls: '看涨', Puts: '看跌',
   // Status bar
-  OPEN: '开盘', CLOSED: '休市', Watchlist: '自选股', Breadth: '广度',
+  OPEN: '盘中', CLOSED: '休市', PRE: '盘前', POST: '盘后', HOLIDAY: '休市日',
+  Watchlist: '自选股', Breadth: '广度',
   // Table headers
   Quarter: '季度', Reported: '发布日', 'EPS est': '预期EPS', 'EPS act': '实际EPS',
   Surprise: '超预期', Reaction: '反应', Peers: '同组',
@@ -164,6 +165,10 @@ const LABELS = {
   'Economic calendar — next 90 days': '财经日历 — 未来90天',
   'loading earnings dates…': '加载财报日期…',
   today: '今日', advancing: '上涨', avg: '均', est: '预期',
+  updated: '更新于', 'STALE — last good fetch': '数据过期 — 上次成功获取', ago: '前',
+  General: '其他',
+  Briefing: '晨报', Data: '数据', copy: '复制', generate: '生成', regenerate: '重新生成',
+  'AI synthesis': 'AI 综述', 'AI memo': 'AI 备忘录', 'AI report': 'AI 报告',
   'Technicals — daily': '技术指标 — 日线', Name: '姓名', 'no headlines': '暂无新闻',
   Sym: '代码', 'Day %': '日%', Custom: '自定义', 'Health & Staples': '医疗与消费',
   '10Y Note Fut': '10年期国债期货', '30Y Bond Fut': '30年期国债期货',

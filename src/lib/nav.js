@@ -5,6 +5,7 @@
 
 export const NAV = [
   { id: 'dashboard', label: 'Dashboard', subs: [] },
+  { id: 'brief', label: 'Briefing', badge: 'AI', subs: [] },
   {
     id: 'markets',
     label: 'Markets',
