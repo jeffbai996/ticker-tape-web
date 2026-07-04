@@ -3,6 +3,7 @@
 // No secrets, no cron, no build-time data — the browser is the pipeline.
 
 import { quoteFromChart, sparkFromChart } from './yahoo.js'
+import { createPCache } from './pcache.js'
 
 const REQUEST_SPACING_MS = 350   // min gap between proxy requests
 const REFRESH_MS = 60_000        // full sweep cadence
@@ -16,7 +17,9 @@ export function proxyBase() {
   return import.meta.env.DEV ? '/yf' : 'https://yf-proxy.2phakhvpgh.workers.dev'
 }
 
-const cache = new Map()      // symbol -> { quote, spark, ts }
+// symbol -> { quote, spark, ts } — persisted so a refresh paints instantly
+// from the last snapshot and only re-fetches what's actually stale.
+const cache = createPCache('feed_cache_v1', { max: 150 })
 const listeners = new Set()
 let queue = []
 let pumping = false
@@ -63,12 +66,14 @@ async function pump() {
 
 const tracked = new Set()
 
-/** Track symbols: fetch now (stale-first) and refresh on the sweep cadence. */
+/** Track symbols: serve the persisted snapshot immediately, fetch only what's
+ *  stale, then refresh everything on the sweep cadence. */
 export function track(symbols) {
   for (const s of symbols) {
     if (!tracked.has(s)) {
       tracked.add(s)
-      queue.push(s)
+      const hit = cache.get(s)
+      if (!hit || Date.now() - hit.ts >= REFRESH_MS) queue.push(s)
     }
   }
   pump()

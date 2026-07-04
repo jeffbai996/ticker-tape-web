@@ -16,7 +16,7 @@ function Candles({ bars, intraday }) {
       layout: {
         background: { color: 'transparent' },
         textColor: '#79828d',
-        fontFamily: "'JetBrains Mono', monospace",
+        fontFamily: "'IBM Plex Mono', monospace",
         fontSize: 10,
       },
       grid: {
@@ -123,7 +123,7 @@ function News({ symbol }) {
           <div class="text-[12px] text-ink leading-snug">{n.title}</div>
           <div class="font-mono text-[10px] text-muted mt-0.5">
             {n.publisher}
-            {n.time && ` · ${n.time.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
+            {n.time && ` · ${new Date(n.time).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
           </div>
         </a>
       ))}
