@@ -5,6 +5,7 @@ import { useAlertEngine } from './hooks.js'
 import { StatusBar } from './components/StatusBar.jsx'
 import { Tape } from './components/Tape.jsx'
 import { Sidebar } from './components/Sidebar.jsx'
+import { Palette } from './components/Palette.jsx'
 import { Page } from './pages/index.jsx'
 
 function AlertToasts({ toasts, dismiss }) {
@@ -39,6 +40,21 @@ function useHashRoute() {
 export function App() {
   const route = useHashRoute()
   const { toasts, dismiss } = useAlertEngine()
+  const [paletteOpen, setPaletteOpen] = useState(false)
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setPaletteOpen((v) => !v)
+      } else if (e.key === '/' && !/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement?.tagName)) {
+        e.preventDefault()
+        setPaletteOpen(true)
+      }
+    }
+    addEventListener('keydown', onKey)
+    return () => removeEventListener('keydown', onKey)
+  }, [])
 
   return (
     <div class="h-dvh flex flex-col bg-surface-0 text-ink font-sans antialiased">
@@ -51,6 +67,7 @@ export function App() {
         </main>
       </div>
       <AlertToasts toasts={toasts} dismiss={dismiss} />
+      {paletteOpen && <Palette onClose={() => setPaletteOpen(false)} />}
     </div>
   )
 }
