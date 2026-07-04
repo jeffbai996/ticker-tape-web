@@ -8,6 +8,7 @@ import { StatusBar } from './components/StatusBar.jsx'
 import { Tape } from './components/Tape.jsx'
 import { Sidebar } from './components/Sidebar.jsx'
 import { BottomNav, SubTabs } from './components/BottomNav.jsx'
+import { CommandBar } from './components/CommandBar.jsx'
 import { Palette } from './components/Palette.jsx'
 import { Page } from './pages/index.jsx'
 
@@ -71,6 +72,7 @@ export function App() {
           <Page route={route} />
         </main>
       </div>
+      <CommandBar />
       <BottomNav route={route} />
       <AlertToasts toasts={toasts} dismiss={dismiss} />
       {paletteOpen && <Palette onClose={() => setPaletteOpen(false)} />}

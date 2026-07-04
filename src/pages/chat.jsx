@@ -45,7 +45,11 @@ export function Chat() {
   const [model, setModel] = useState(localStorage.getItem('chat_model') || 'flash')
   const [spend, setSpend] = useState(null)
   const [history, setHistory] = useState(loadHistory)
-  const [input, setInput] = useState('')
+  const [input, setInput] = useState(() => {
+    const pre = sessionStorage.getItem('chat_prefill') || ''
+    sessionStorage.removeItem('chat_prefill')
+    return pre
+  })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const scrollRef = useRef(null)

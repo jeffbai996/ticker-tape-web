@@ -4,7 +4,7 @@ import { MARKET_GROUPS, SECTORS, COMMODITY_GROUPS, ECON_EVENTS, upcomingEvents }
 import { fetchEarningsDate } from '../lib/fundamentals.js'
 import { tl } from '../lib/i18n.js'
 import { fmtPrice, fmtPct, fmtChange, fmtVol } from '../lib/format.js'
-import { Spark } from '../components/Spark.jsx'
+import { Histo } from '../components/Histo.jsx'
 
 function QuoteRow({ label, data, unit }) {
   const q = data?.quote
@@ -21,7 +21,7 @@ function QuoteRow({ label, data, unit }) {
         {q ? fmtPct(q.pct) : ''}
       </td>
       <td class="px-2 py-[5px] hidden @[420px]:table-cell">
-        <Spark data={data?.spark} up={up} />
+        <Histo bars={data?.histo} width={84} />
       </td>
     </tr>
   )
