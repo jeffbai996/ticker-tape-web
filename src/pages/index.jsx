@@ -2,6 +2,7 @@ import { Placeholder } from '../components/Placeholder.jsx'
 import { Dashboard } from './dashboard.jsx'
 import { Markets } from './markets.jsx'
 import { Research } from './research.jsx'
+import { Screen } from './screen.jsx'
 
 const PAGES = {
   markets: {
@@ -36,6 +37,7 @@ export function Page({ route }) {
   if (route.section === 'dashboard') return <Dashboard />
   if (route.section === 'markets') return <Markets route={route} />
   if (route.section === 'research') return <Research route={route} />
+  if (route.section === 'screen') return <Screen route={route} />
   const page = PAGES[route.section]
   const sub = route.sub ? ` / ${route.sub}` : ''
   return <Placeholder {...page} title={page.title + sub} />
