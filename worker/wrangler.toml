@@ -1,3 +1,7 @@
 name = "yf-proxy"
 main = "worker.js"
 compatibility_date = "2024-12-01"
+
+[[kv_namespaces]]
+binding = "SPEND"
+id = "bf70e74407934939bb511990611cb9e7"

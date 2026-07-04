@@ -6,6 +6,8 @@
  * Deploy: npx wrangler deploy
  */
 
+import { handleChat } from './chat.js'
+
 const CORS_HEADERS = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -25,12 +27,18 @@ let _crumbTs = 0;
 const CRUMB_TTL = 3600 * 1000; // refresh crumb every hour
 
 export default {
-    async fetch(request) {
+    async fetch(request, env) {
+        const url = new URL(request.url);
+        const path = url.pathname;
+
+        // AI chat proxy — own CORS (origin-restricted), own spend/rate gates.
+        if (path === '/chat' || path.startsWith('/chat/')) {
+            return handleChat(request, env, path);
+        }
+
         if (request.method === 'OPTIONS') {
             return new Response(null, { status: 204, headers: CORS_HEADERS });
         }
-        const url = new URL(request.url);
-        const path = url.pathname;
 
         if (request.method === 'POST') {
             if (path !== POST_PATH) return jsonResp({ error: 'Method not allowed' }, 405);

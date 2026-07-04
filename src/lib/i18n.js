@@ -87,6 +87,15 @@ const STRINGS = {
     en: 'beta-weighted shock on static demo betas — indicative only',
     zh: '基于静态演示Beta的冲击测算 — 仅供参考',
   },
+  'chat.empty': {
+    en: 'Ask about a ticker, a sector, or how this app works. Proxied server-side — no API key in your browser, $10/day shared cap.',
+    zh: '问我任意股票、板块，或这个应用怎么用。服务端代理 — 浏览器无需 API key，全站共享每日 $10 上限。',
+  },
+  'chat.placeholder': { en: 'ask anything…', zh: '随便问…' },
+  'chat.cap_note': {
+    en: 'shared daily spend across all visitors, worst-case charged',
+    zh: '全站访客共享的每日用量，按最坏情况计费',
+  },
   'demo.timeline_note': {
     en: '252-day seeded random walk ending at the current demo NLV — not a real account history',
     zh: '252天随机模拟曲线，终点为当前演示净值 — 非真实账户历史',
@@ -168,6 +177,7 @@ const LABELS = {
   'Per year': '每年', 'Per month': '每月', 'Per day': '每日', 'Stress test': '压力测试',
   'Market move': '市场变动', 'Book P&L': '组合盈亏', 'Top position': '最大持仓',
   'Concentration (HHI)': '集中度 (HHI)', 'Demo betas': '演示Beta',
+  Send: '发送', clear: '清空',
 }
 
 export function t(key, params) {
