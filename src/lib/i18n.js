@@ -185,6 +185,8 @@ const LABELS = {
   'Market move': '市场变动', 'Book P&L': '组合盈亏', 'Top position': '最大持仓',
   'Concentration (HHI)': '集中度 (HHI)', 'Demo betas': '演示Beta',
   Send: '发送', clear: '清空',
+  Pulse: '市场脉搏', Hi: '高', Lo: '低', Spd: '价差', down: '跌',
+  Median: '中位', Green: '上涨',
 }
 
 export function t(key, params) {

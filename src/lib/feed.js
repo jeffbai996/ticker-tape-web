@@ -2,8 +2,15 @@
 // to stay friendly with rate limits, and fans results out to subscribers.
 // No secrets, no cron, no build-time data — the browser is the pipeline.
 
-import { quoteFromChart, sparkFromChart, quoteFromV7 } from './yahoo.js'
+import { barsFromChart, quoteFromV7 } from './yahoo.js'
+import { techBadges, histoBars } from './badges.js'
 import { createPCache } from './pcache.js'
+
+// RS badge benchmark (TUI: RS vs QQQ, 20d). Its daily closes are kept in
+// module memory and prioritized in the queue so other symbols can diff
+// against it.
+const RS_BENCH = 'QQQ'
+let benchCloses = null
 
 // v7 batch quotes need crumb auth, so they always go through the Worker —
 // the dev server's dumb /yf pass-through can't do the cookie dance.
@@ -26,9 +33,10 @@ export function proxyBase() {
   return import.meta.env.DEV ? '/yf' : 'https://yf-proxy.2phakhvpgh.workers.dev'
 }
 
-// symbol -> { quote, spark, ts } — persisted so a refresh paints instantly
-// from the last snapshot and only re-fetches what's actually stale.
-const cache = createPCache('feed_cache_v1', { max: 150 })
+// symbol -> { quote, histo, tech, ts } — persisted so a refresh paints
+// instantly from the last snapshot and only re-fetches what's actually stale.
+// v2: chart pump moved from intraday sparks to 1Y daily (histo + badges).
+const cache = createPCache('feed_cache_v2', { max: 150 })
 const listeners = new Set()
 let queue = []
 let pumping = false
@@ -48,13 +56,50 @@ function emit(symbol) {
 }
 
 async function fetchSymbol(symbol) {
-  const url = `${proxyBase()}/v8/finance/chart/${encodeURIComponent(symbol)}?range=1d&interval=5m&includePrePost=true`
+  // One 1Y daily chart per symbol feeds the histogram spark AND the badge
+  // row (RSI / SMA flags / vol ratio / off-high / RS). The day quote itself
+  // comes from the v7 batch — a multi-range chart reports change vs range
+  // START, the classic day-change trap.
+  const url = `${proxyBase()}/v8/finance/chart/${encodeURIComponent(symbol)}?range=1y&interval=1d`
   const resp = await fetch(url, { signal: AbortSignal.timeout(10_000) })
   if (!resp.ok) throw new Error(`chart ${symbol}: HTTP ${resp.status}`)
   const data = await resp.json()
   const result = data?.chart?.result?.[0]
   if (!result) throw new Error(`chart ${symbol}: empty result`)
-  cache.set(symbol, { quote: quoteFromChart(result), spark: sparkFromChart(result), ts: Date.now() })
+
+  const bars = barsFromChart(result)
+  const closes = bars.map((b) => b.close)
+  const volumes = bars.map((b) => b.volume || 0)
+  if (symbol === RS_BENCH) benchCloses = closes
+
+  let quote = cache.get(symbol)?.quote
+  if (!quote) {
+    // Batch hasn't landed (or failed): derive an honest day quote from the
+    // daily series — last close vs the one before it.
+    const meta = result.meta || {}
+    const price = meta.regularMarketPrice ?? closes[closes.length - 1] ?? 0
+    const prev = meta.previousClose ?? (closes.length >= 2 ? closes[closes.length - 2] : null)
+    const change = prev != null && price ? price - prev : 0
+    quote = {
+      symbol,
+      name: meta.shortName || meta.longName || '',
+      price,
+      change,
+      pct: prev ? (change / prev) * 100 : 0,
+      prevClose: prev ?? null,
+      dayHigh: meta.regularMarketDayHigh ?? null,
+      dayLow: meta.regularMarketDayLow ?? null,
+      volume: meta.regularMarketVolume ?? null,
+      marketTime: meta.regularMarketTime ?? null,
+    }
+  }
+
+  cache.set(symbol, {
+    quote,
+    histo: histoBars(bars),
+    tech: techBadges({ closes, volumes }, symbol === RS_BENCH ? null : benchCloses),
+    ts: Date.now(),
+  })
   emit(symbol)
 }
 
@@ -98,9 +143,14 @@ async function runBatch() {
       const data = await resp.json()
       for (const row of data?.quoteResponse?.result || []) {
         const prev = cache.get(row.symbol)
-        // Keep the old ts: this fills the quote, but the chart fetch (spark)
-        // is still owed — a fresh ts would make track() skip it next time.
-        cache.set(row.symbol, { quote: quoteFromV7(row), spark: prev?.spark || [], ts: prev?.ts ?? 0 })
+        // Keep the old ts: this fills the quote, but the chart fetch (histo
+        // + badges) is still owed — a fresh ts would make track() skip it.
+        cache.set(row.symbol, {
+          quote: quoteFromV7(row),
+          histo: prev?.histo || [],
+          tech: prev?.tech || null,
+          ts: prev?.ts ?? 0,
+        })
         emit(row.symbol)
       }
     } catch { /* pump fills the gap */ }
@@ -124,7 +174,11 @@ export function track(symbols) {
   }
   if (priority.length) {
     queue = [...priority, ...queue.filter((s) => !priority.includes(s))]
-    scheduleBatch(priority) // instant first paint; the pump follows for sparks
+    scheduleBatch(priority) // instant first paint; the pump follows with charts
+  }
+  // RS benchmark first, so badge rows can diff against it from the start.
+  if (!benchCloses && queue.length && queue[0] !== RS_BENCH) {
+    queue = [RS_BENCH, ...queue.filter((s) => s !== RS_BENCH)]
   }
   pump()
   if (!sweepTimer) {
