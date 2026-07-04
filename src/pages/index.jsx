@@ -1,11 +1,7 @@
 import { Placeholder } from '../components/Placeholder.jsx'
+import { Dashboard } from './dashboard.jsx'
 
 const PAGES = {
-  dashboard: {
-    title: 'Dashboard',
-    phase: 1,
-    note: 'Live thesis grid: quotes, sparklines, technicals, movers, macro strip. All public market data.',
-  },
   markets: {
     title: 'Markets',
     phase: 1,
@@ -35,7 +31,8 @@ const PAGES = {
 }
 
 export function Page({ route }) {
-  const page = PAGES[route.section] || PAGES.dashboard
+  if (route.section === 'dashboard') return <Dashboard />
+  const page = PAGES[route.section]
   const sub = route.sub ? ` / ${route.sub}` : ''
   return <Placeholder {...page} title={page.title + sub} />
 }
