@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'preact/hooks'
 import { parseHash } from './lib/route.js'
 import { StatusBar } from './components/StatusBar.jsx'
+import { Tape } from './components/Tape.jsx'
 import { Sidebar } from './components/Sidebar.jsx'
 import { Page } from './pages/index.jsx'
 
@@ -20,6 +21,7 @@ export function App() {
   return (
     <div class="h-dvh flex flex-col bg-surface-0 text-ink font-sans antialiased">
       <StatusBar />
+      <Tape />
       <div class="flex-1 flex min-h-0">
         <Sidebar route={route} />
         <main class="flex-1 flex min-w-0 overflow-y-auto">
