@@ -23,7 +23,9 @@
   --color-down: #f85149;
 
   --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* IBM Plex Mono: terminal-heritage data face, closest open match to the
+     Bloomberg look (Jeff 2026-07-03). */
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 /* App chrome is not selectable; content areas opt back in per component. */
