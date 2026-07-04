@@ -40,6 +40,26 @@ function crumbBase() {
 }
 
 const cache = createPCache('fund_cache_v1', { max: 40 })
+const calCache = createPCache('cal_cache_v1', { max: 60 })
+const CAL_TTL = 6 * 60 * 60_000
+
+/** Next earnings date (epoch ms) + EPS estimate via v10 calendarEvents. */
+export async function fetchEarningsDate(symbol) {
+  const hit = calCache.get(symbol)
+  if (hit && Date.now() - hit.ts < CAL_TTL) return hit.value
+
+  const url = `${crumbBase()}/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=calendarEvents`
+  const resp = await fetch(url, { signal: AbortSignal.timeout(12_000) })
+  if (!resp.ok) throw new Error(`calendar ${symbol}: HTTP ${resp.status}`)
+  const data = await resp.json()
+  const e = data?.quoteSummary?.result?.[0]?.calendarEvents?.earnings
+  const first = e?.earningsDate?.[0]?.raw
+  const value = first
+    ? { date: first * 1000, epsEstimate: e?.earningsAverage?.raw ?? null }
+    : null
+  calCache.set(symbol, { value, ts: Date.now() })
+  return value
+}
 
 export async function fetchFundamentals(symbol) {
   const hit = cache.get(symbol)

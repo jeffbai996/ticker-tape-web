@@ -1,5 +1,8 @@
+import { useEffect, useState } from 'preact/hooks'
 import { useQuotes } from '../hooks.js'
 import { MARKET_GROUPS, SECTORS, COMMODITY_GROUPS, ECON_EVENTS, upcomingEvents } from '../lib/markets.js'
+import { fetchEarningsDate } from '../lib/fundamentals.js'
+import { WATCHLIST } from '../lib/symbols.js'
 import { fmtPrice, fmtPct, fmtChange } from '../lib/format.js'
 import { Spark } from '../components/Spark.jsx'
 
@@ -109,6 +112,97 @@ function Commodities() {
   )
 }
 
+function heatStyle(pct) {
+  if (pct == null) return { background: 'var(--color-surface-2)' }
+  const a = Math.min(Math.abs(pct) / 5, 1) * 0.55 + 0.08
+  return {
+    background: pct >= 0 ? `rgba(63, 185, 80, ${a})` : `rgba(248, 81, 73, ${a})`,
+  }
+}
+
+function Heatmap() {
+  const quotes = useQuotes(WATCHLIST)
+  const tiles = WATCHLIST.map((s) => ({ symbol: s, q: quotes[s]?.quote }))
+    .sort((a, b) => (b.q?.pct ?? -99) - (a.q?.pct ?? -99))
+
+  return (
+    <div class="grid gap-1.5 max-w-4xl" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))' }}>
+      {tiles.map(({ symbol, q }) => (
+        <a
+          key={symbol}
+          href={`#/research/${symbol.toLowerCase()}`}
+          class="rounded-lg border border-line p-2 hover:border-line-2 hover:no-underline"
+          style={heatStyle(q?.pct)}
+        >
+          <div class="font-mono font-bold text-[12px] text-ink">{symbol}</div>
+          <div class="font-mono text-[11px] text-ink">{q ? fmtPct(q.pct) : '—'}</div>
+          <div class="font-mono text-[10px] text-ink-2">{q ? fmtPrice(q.price) : ''}</div>
+        </a>
+      ))}
+    </div>
+  )
+}
+
+function Earnings() {
+  const [rows, setRows] = useState({})
+
+  useEffect(() => {
+    let alive = true
+    // ETFs have no earnings — skip the obvious ones to save requests.
+    const named = WATCHLIST.filter((s) => !['SPY', 'QQQ', 'IWM', 'GLD', 'TLT'].includes(s))
+    for (const sym of named) {
+      fetchEarningsDate(sym)
+        .then((v) => alive && setRows((r) => ({ ...r, [sym]: v })))
+        .catch(() => alive && setRows((r) => ({ ...r, [sym]: null })))
+    }
+    return () => { alive = false }
+  }, [])
+
+  const now = Date.now()
+  const upcoming = Object.entries(rows)
+    .filter(([, v]) => v?.date && v.date >= now - 86_400_000)
+    .map(([sym, v]) => ({ sym, ...v, days: Math.round((v.date - now) / 86_400_000) }))
+    .sort((a, b) => a.date - b.date)
+
+  return (
+    <section class="bg-surface-1 border border-line rounded-xl overflow-hidden max-w-xl">
+      <header class="px-3 py-2 border-b border-line-2 bg-surface-2">
+        <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">
+          Upcoming earnings — watchlist
+        </h2>
+      </header>
+      {upcoming.length === 0 && (
+        <div class="px-3 py-3 font-mono text-[11px] text-muted">loading earnings dates…</div>
+      )}
+      <table class="w-full border-collapse font-mono text-[12px]">
+        <tbody>
+          {upcoming.map((e) => {
+            const cls = e.days <= 7 ? 'text-down' : e.days <= 21 ? 'text-accent' : 'text-ink-2'
+            return (
+              <tr
+                key={e.sym}
+                class="border-b border-line last:border-0 hover:bg-surface-2 cursor-pointer"
+                onClick={() => (location.hash = `#/research/${e.sym.toLowerCase()}`)}
+              >
+                <td class="px-3 py-[5px] font-bold text-accent">{e.sym}</td>
+                <td class="px-2 py-[5px] text-ink">
+                  {new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </td>
+                <td class="px-2 py-[5px] text-ink-2 text-right">
+                  {e.epsEstimate != null ? `est ${e.epsEstimate.toFixed(2)}` : ''}
+                </td>
+                <td class={`px-3 py-[5px] text-right ${cls}`}>
+                  {e.days <= 0 ? 'today' : `${e.days}d`}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </section>
+  )
+}
+
 const URGENCY = [
   { max: 3, cls: 'text-down' },
   { max: 10, cls: 'text-accent' },
@@ -153,7 +247,9 @@ export function Markets({ route }) {
     <div class="flex-1 p-3 select-text">
       {view === 'overview' && <Overview />}
       {view === 'sectors' && <Sectors />}
+      {view === 'heatmap' && <Heatmap />}
       {view === 'commodities' && <Commodities />}
+      {view === 'earnings' && <Earnings />}
       {view === 'calendar' && <Calendar />}
     </div>
   )
