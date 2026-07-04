@@ -1,5 +1,6 @@
 import { Placeholder } from '../components/Placeholder.jsx'
 import { Dashboard } from './dashboard.jsx'
+import { Markets } from './markets.jsx'
 
 const PAGES = {
   markets: {
@@ -32,6 +33,7 @@ const PAGES = {
 
 export function Page({ route }) {
   if (route.section === 'dashboard') return <Dashboard />
+  if (route.section === 'markets') return <Markets route={route} />
   const page = PAGES[route.section]
   const sub = route.sub ? ` / ${route.sub}` : ''
   return <Placeholder {...page} title={page.title + sub} />
