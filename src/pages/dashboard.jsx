@@ -1,10 +1,15 @@
-import { useEffect, useState } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
+import { createChart, AreaSeries } from 'lightweight-charts'
 import { useQuotes, useWatchlist } from '../hooks.js'
 import { BUCKETS } from '../lib/symbols.js'
 import { pulseStats } from '../lib/pulse.js'
 import { fetchEarningsDate } from '../lib/fundamentals.js'
 import { ECON_EVENTS, upcomingEvents } from '../lib/markets.js'
 import { lastGoodTs } from '../lib/feed.js'
+import { fetchHistory } from '../lib/history.js'
+import {
+  getWidgets, addWidget, removeWidget, moveWidget, onWidgetsChange, WIDGET_TYPES,
+} from '../lib/widgets.js'
 import { fmtPrice, fmtPct, fmtChange, fmtVol } from '../lib/format.js'
 import { Histo } from '../components/Histo.jsx'
 import { tl } from '../lib/i18n.js'
@@ -208,6 +213,139 @@ function EarningsPanel({ symbols, days }) {
   )
 }
 
+// ── Customizable widget rail ──
+
+function MoversPanel({ quotes }) {
+  const ranked = [...quotes].sort((a, b) => b.pct - a.pct)
+  const rows = [...ranked.slice(0, 3), ...ranked.slice(-3).filter((q) => !ranked.slice(0, 3).includes(q))]
+  if (!rows.length) return null
+  return (
+    <div class="py-1">
+      {rows.map((q) => (
+        <a key={q.symbol} href={`#/research/${q.symbol.toLowerCase()}`}
+          class="flex justify-between px-3 py-[2px] font-mono text-[11px] hover:bg-surface-2 hover:no-underline">
+          <span class="text-ink font-bold">{q.symbol}</span>
+          <span class={q.pct >= 0 ? 'text-up' : 'text-down'}>{fmtPct(q.pct)}</span>
+        </a>
+      ))}
+    </div>
+  )
+}
+
+function MiniChart({ symbol }) {
+  const el = useRef(null)
+  const [err, setErr] = useState(false)
+  useEffect(() => {
+    if (!el.current) return
+    const chart = createChart(el.current, {
+      autoSize: true,
+      layout: { background: { color: 'transparent' }, textColor: '#79828d', fontSize: 9, fontFamily: "'IBM Plex Mono', monospace" },
+      grid: { vertLines: { visible: false }, horzLines: { color: 'rgba(255,255,255,0.04)' } },
+      rightPriceScale: { borderVisible: false },
+      timeScale: { borderVisible: false, visible: false },
+      crosshair: { mode: 0 },
+      handleScroll: false,
+      handleScale: false,
+    })
+    const series = chart.addSeries(AreaSeries, {
+      lineColor: '#f59e0b', lineWidth: 1,
+      topColor: 'rgba(245,158,11,0.25)', bottomColor: 'rgba(245,158,11,0)',
+      priceLineVisible: false,
+    })
+    let dead = false
+    fetchHistory(symbol, '3M')
+      .then(({ bars }) => {
+        if (dead) return
+        series.setData(bars.map((b) => ({ time: b.time, value: b.close })))
+        chart.timeScale().fitContent()
+      })
+      .catch(() => !dead && setErr(true))
+    return () => { dead = true; chart.remove() }
+  }, [symbol])
+  return err
+    ? <div class="h-[110px] flex items-center justify-center font-mono text-[10px] text-muted">no chart</div>
+    : <div ref={el} class="h-[110px]" />
+}
+
+function ChartWidget({ symbol }) {
+  const quotes = useQuotes([symbol])
+  const q = quotes[symbol]?.quote
+  return (
+    <div>
+      <div class="flex items-baseline gap-2 px-3 pt-1.5 font-mono text-[11px]">
+        <a href={`#/research/${symbol.toLowerCase()}`} class="text-ink font-bold hover:no-underline">{symbol}</a>
+        {q && <span class="text-ink-2">{fmtPrice(q.price)}</span>}
+        {q && <span class={q.pct >= 0 ? 'text-up' : 'text-down'}>{fmtPct(q.pct)}</span>}
+        <span class="text-muted text-[9px] ml-auto">3M</span>
+      </div>
+      <MiniChart symbol={symbol} />
+    </div>
+  )
+}
+
+/** Hover chrome shared by every rail widget: ↑ ↓ ✕ in the top-right. */
+function WidgetFrame({ id, children }) {
+  return (
+    <div class="relative group">
+      <div class="absolute top-1 right-1.5 z-10 hidden group-hover:flex gap-0.5 bg-surface-2 rounded px-0.5">
+        <button onClick={() => moveWidget(id, -1)} class="font-mono text-[10px] text-muted hover:text-ink px-0.5">↑</button>
+        <button onClick={() => moveWidget(id, 1)} class="font-mono text-[10px] text-muted hover:text-ink px-0.5">↓</button>
+        <button onClick={() => removeWidget(id)} class="font-mono text-[10px] text-muted hover:text-down px-0.5">✕</button>
+      </div>
+      {children}
+    </div>
+  )
+}
+
+function AddWidget() {
+  const [open, setOpen] = useState(false)
+  const [sym, setSym] = useState('')
+  const pick = (type) => {
+    if (type === 'chart') return // chart adds via the symbol form
+    addWidget(type)
+    setOpen(false)
+  }
+  const submitChart = (e) => {
+    e.preventDefault()
+    if (addWidget('chart', sym)) {
+      setSym('')
+      setOpen(false)
+    }
+  }
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        class="font-mono text-[10px] text-muted hover:text-accent border border-dashed border-line rounded-xl py-1.5 hover:border-accent/50"
+      >
+        + {tl('widget')}
+      </button>
+    )
+  }
+  return (
+    <div class="bg-surface-1 border border-line rounded-xl p-2 flex flex-col gap-1.5">
+      <div class="flex flex-wrap gap-1">
+        {WIDGET_TYPES.filter((t) => t !== 'chart').map((t) => (
+          <button key={t} onClick={() => pick(t)}
+            class="font-mono text-[10px] px-2 py-0.5 rounded border border-line text-ink-2 hover:border-accent hover:text-accent">
+            {tl(t)}
+          </button>
+        ))}
+      </div>
+      <form onSubmit={submitChart} class="flex gap-1">
+        <input
+          value={sym}
+          onInput={(e) => setSym(e.currentTarget.value)}
+          placeholder="chart: SYM"
+          class="flex-1 min-w-0 bg-transparent border border-line rounded px-1.5 py-0.5 font-mono text-[10px] text-ink uppercase outline-none focus:border-accent placeholder:text-muted"
+        />
+        <button type="submit" class="font-mono text-[10px] px-2 rounded border border-line text-ink-2 hover:border-accent hover:text-accent">+</button>
+      </form>
+      <button onClick={() => setOpen(false)} class="font-mono text-[9px] text-muted hover:text-ink self-start">{tl('cancel')}</button>
+    </div>
+  )
+}
+
 /** Watchlist split into bucket groups (TUI's `── group ──` separators). */
 function groupRows(watchlist) {
   const groups = []
@@ -223,10 +361,30 @@ function groupRows(watchlist) {
   return groups
 }
 
+function RailWidget({ w, all, watchlist, earnDays }) {
+  if (w.type === 'pulse') return <PulsePanel quotes={all} />
+  if (w.type === 'earnings') return <EarningsPanel symbols={watchlist} days={earnDays} />
+  if (w.type === 'calendar') return <MacroCalPanel />
+  const title = w.type === 'movers' ? tl('Movers') : null
+  return (
+    <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
+      {title && (
+        <header class="px-3 py-1.5 border-b border-line-2 bg-surface-2">
+          <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">{title}</h2>
+        </header>
+      )}
+      {w.type === 'movers' && <MoversPanel quotes={all} />}
+      {w.type === 'chart' && <ChartWidget symbol={w.symbol} />}
+    </section>
+  )
+}
+
 export function Dashboard() {
   const watchlist = useWatchlist()
   const quotes = useQuotes(watchlist)
   const earnDays = useEarningsDays(watchlist)
+  const [widgets, setWidgets] = useState(getWidgets)
+  useEffect(() => onWidgetsChange((w) => setWidgets([...w])), [])
 
   // 10s tick keeps the "updated" line and stale banner honest between fetches.
   const [, tick] = useState(0)
@@ -288,9 +446,12 @@ export function Dashboard() {
           ))}
         </section>
         <div class="flex flex-col gap-3 min-w-0">
-          <PulsePanel quotes={all} />
-          <EarningsPanel symbols={watchlist} days={earnDays} />
-          <MacroCalPanel />
+          {widgets.map((w) => (
+            <WidgetFrame key={w.id} id={w.id}>
+              <RailWidget w={w} all={all} watchlist={watchlist} earnDays={earnDays} />
+            </WidgetFrame>
+          ))}
+          <AddWidget />
         </div>
       </div>
     </div>

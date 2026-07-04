@@ -1,88 +1,85 @@
 # ticker-tape-web
 
-Modern web dashboard for market data — Bloomberg-inspired dark theme, built with Vite + Tailwind CSS v4. Deployed on GitHub Pages with data refreshed via GitHub Actions every 5 minutes during market hours.
+A Bloomberg-style market terminal in the browser — the web rebuild of a private CLI TUI. Preact + Vite + Tailwind v4, deployed on GitHub Pages, all data fetched live client-side through a Cloudflare Worker proxy.
+
+**Live:** https://jeffbai996.github.io/ticker-tape-web/
 
 Personal project. See [LICENSE](LICENSE).
+
+## Features
+
+- **TUI dashboard** — two-line quote rows with after-hours prints, volume histogram sparks, and a badge row per symbol: RSI(14), days-to-earnings, SMA50/200 flags, volume vs 20d average, % off 52-week high, 20d relative strength vs QQQ
+- **Customizable widget rail** — add / remove / reorder panels (pulse, earnings, macro calendar, movers, mini charts) on the home view; layout persists per browser
+- **`ticker>` command line** — the CLI grammar in the footer, with a drop-up output console and ↑/↓ history: `NVDA`, `ta AMD`, `intra TSM`, `vs AAPL MSFT`, `alert SPY > 700`, `w SHOP`, `b`, `h`
+- **Status bar** — PRE / OPEN / POST / CLOSED / HOLIDAY session chip (ET, holiday-aware), global index strip that swaps to ES/NQ futures outside regular hours, VIX threshold colors, ET clock with connectivity dot
+- **Research** — candlestick charts (1D–5Y) with SMA/Bollinger/VWAP overlays, options chain with BS delta, earnings history + surprise impact, analyst ratings + price targets, insider activity, news
+- **Markets** — movers, sectors, heatmap, commodities, earnings week, 2026 macro calendar (FOMC/CPI/NFP/GDP/PCE)
+- **Screening** — multi-symbol compare, correlation matrix, valuation grid on any tickers
+- **Alerts** — price + technical (RSI / SMA cross / volume) alerts evaluated in-browser, with browser notifications
+- **AI** — one-click **Briefing** synthesis and per-symbol **memo** generation, plus a multi-model chat page. Streams through the worker; server holds the keys
+- **Demo portfolio** — clearly-marked synthetic positions exercising the position/risk/sizing/carry views
+- **i18n** — EN / 中文 toggle, PWA-installable, mobile layout with bottom tab bar
 
 ## Architecture
 
 ```
-GitHub Actions (cron, every 5 min weekdays)
-  scripts/fetch_data.py        <- yfinance: quotes, indices, sectors, earnings, charts
-  scripts/fetch_lookup.py      <- per-symbol fundamentals
-  -> commits public/data/*.json to main
-  -> triggers deploy workflow
-
-Deploy workflow (on push to main)
-  npm ci && npm run build      <- Vite builds src/ -> dist/
-  dist/ deployed to GitHub Pages
-
-Browser
-  Loads dist/data/*.json with cache-busting
-  AI chat calls Anthropic/Google/OpenAI directly from browser
-  API keys stored in localStorage (never committed)
+Browser (GitHub Pages, static)
+  src/lib/feed.js       one v7 batch request paints every quote instantly,
+                        then a per-symbol 1Y-daily pump fills badges + sparks
+  src/lib/*             all analytics computed client-side (pure functions)
+        │
+        ▼
+Cloudflare Worker (worker/)
+  /v1 /v7 /v8 /v10 /ws  Yahoo Finance proxy; handles the cookie+crumb dance
+                        (single-flight refresh, survives 401 stampedes)
+  /chat                 AI streaming proxy: Anthropic / Google / OpenAI.
+                        Keys are worker secrets. Daily spend cap enforced in
+                        KV via worst-case pre-charging; per-IP rate limit.
 ```
+
+No cron, no committed data, no API keys in the browser — everything is fetched live and computed on the client.
 
 ## Tech Stack
 
 | Layer | Choice |
 |-------|--------|
+| UI | Preact + hash router |
 | Build | Vite 8 |
-| CSS | Tailwind CSS v4 (CSS-first, `@tailwindcss/vite` plugin) |
-| JS | Vanilla ES6+ modules (no framework) |
-| Charts | lightweight-charts (TradingView) |
-| Fonts | Inter (UI) + JetBrains Mono (data) |
+| CSS | Tailwind CSS v4 (`@theme` tokens, CSS-first) |
+| Charts | lightweight-charts (TradingView) + hand-rolled SVG sparks |
+| Tests | Vitest (jsdom) |
+| Fonts | Plus Jakarta Sans (UI) + IBM Plex Mono (data) |
 | Deploy | GitHub Pages via Actions |
-| Proxy | Cloudflare Worker (`worker/`) for Yahoo Finance CORS |
+| Data/AI proxy | Cloudflare Worker (`worker/`) |
 
 ## Commands
 
 ```bash
 npm install
-npm run dev        # Vite dev server with hot reload
-npm run build      # Production build to dist/
-npm run preview    # Preview production build
+npm run dev        # Vite dev server
+npm run build      # production build to dist/
 npm test           # Vitest
 ```
 
-## Pages
-
-Hash-based SPA router. 21 pages covering dashboard, market overview, candlestick charts, fundamentals, technicals (SMA/RSI/MACD/BB/ATR/RS), sectors, earnings, news, heatmap, intraday, comparison, correlation, valuation, calendar, commodities, dividends, short interest, ratings.
-
-## Design System
-
-- Background `zinc-950`, surface `zinc-900`, border `zinc-800`
-- Text: `zinc-50` primary, `zinc-400` secondary, `zinc-500` muted
-- Accent: `amber-500` (Bloomberg orange)
-- Positive/negative: `green-500` / `red-500`
-- Data font uses `tabular-nums` for alignment
+Worker: `cd worker && npx wrangler deploy` (needs Cloudflare credentials; chat providers configured as worker secrets).
 
 ## Constraints
 
-- No personal tickers in committed source — symbols injected via GitHub Secret
-- No broker or portfolio data — pure market data
-- API keys live in localStorage, never committed
-- Data is up to 5 min stale during market hours; pages always show timestamps
-- Base path `/ticker-tape-web/` (see `vite.config.js`)
+- **No personal data.** This is a public showcase: no real positions, accounts, or portfolio-derived symbols anywhere in source, tests, or fixtures. The portfolio section is a labeled synthetic demo.
+- API keys never touch the browser — chat is proxied server-side with a hard daily spend cap.
+- Yahoo data quirks are handled explicitly (crumb auth, ^TNX change fields, patchy earnings-calendar coverage) rather than papered over.
 
 ## Repo Layout
 
 ```
 ticker-tape-web/
-├── .github/workflows/   # fetch-data.yml + deploy.yml
-├── scripts/             # Python fetchers (yfinance)
-├── worker/              # Cloudflare Worker (CORS proxy)
-├── public/data/         # JSON data (populated by Actions)
+├── .github/workflows/deploy.yml
+├── worker/              # Cloudflare Worker: Yahoo proxy + AI chat proxy
 ├── src/
-│   ├── main.js, router.js, state.js
-│   ├── layout/          # shell, sidebar, status-bar, command-palette, settings
-│   ├── pages/           # 21 page modules
-│   ├── chat/            # AI chat panel + providers + memory
-│   ├── lib/             # data, format, alerts, watchlist, journal, storage
-│   └── styles/main.css
-├── index.html
-├── vite.config.js
-└── package.json
+│   ├── app.jsx          # shell: status bar, tape, sidebar, command bar
+│   ├── pages/           # dashboard, brief, markets, research, screen, portfolio, alerts, chat
+│   ├── components/      # StatusBar, Tape, CommandBar, AiReport, Histo, Palette…
+│   └── lib/             # feed, yahoo, badges, pulse, briefing, widgets, alerts, i18n…
+├── test/                # Vitest suites (lib + worker)
+└── vite.config.js
 ```
-
-See [CLAUDE.md](CLAUDE.md) for deeper architectural notes.
