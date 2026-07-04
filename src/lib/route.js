@@ -15,10 +15,12 @@ export function parseHash(hash) {
   const section = findSection(parts[0]) ? parts[0] : DEFAULT_SECTION
   if (section !== parts[0]) return { section: DEFAULT_SECTION, sub: null }
 
-  // Research's sub-path is a free-form ticker, not a registered tab.
+  // Research's sub-path is a free-form ticker, not a registered tab; an
+  // optional third segment picks a per-symbol view.
   if (section === 'research') {
     const sym = parts[1] && SYMBOL_RE.test(parts[1]) ? parts[1].toUpperCase() : null
-    return { section, sub: sym }
+    const view = sym && ['options'].includes(parts[2]) ? parts[2] : null
+    return { section, sub: sym, view }
   }
 
   const subs = findSection(section)?.subs || []
