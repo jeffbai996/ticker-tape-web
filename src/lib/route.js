@@ -19,7 +19,7 @@ export function parseHash(hash) {
   // optional third segment picks a per-symbol view.
   if (section === 'research') {
     const sym = parts[1] && SYMBOL_RE.test(parts[1]) ? parts[1].toUpperCase() : null
-    const view = sym && ['options'].includes(parts[2]) ? parts[2] : null
+    const view = sym && ['options', 'intraday', 'insider'].includes(parts[2]) ? parts[2] : null
     return { section, sub: sym, view }
   }
 
