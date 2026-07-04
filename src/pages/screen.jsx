@@ -6,6 +6,7 @@ import { fetchFundamentals } from '../lib/fundamentals.js'
 import { rsi, sma } from '../lib/indicators.js'
 import { dailyReturns, pearson, normalize } from '../lib/stats.js'
 import { fmtPrice, fmtPct, fmtBig, fmtRatio, fmtFracPct } from '../lib/format.js'
+import { tl, t as tt } from '../lib/i18n.js'
 
 const DEFAULT_SYMBOLS = 'AAPL MSFT NVDA GOOGL AMZN SPY'
 const LINE_COLORS = ['#f59e0b', '#22d3ee', '#3fb950', '#f85149', '#a78bfa', '#ec4899', '#e7ecf3', '#79828d']
@@ -49,7 +50,7 @@ function SymbolInput({ value, onChange }) {
       <input
         value={draft}
         onInput={(e) => setDraft(e.target.value)}
-        placeholder="Symbols, space or comma separated (max 8)"
+        placeholder={tt('screen.placeholder')}
         class="flex-1 max-w-md bg-surface-1 border border-line-2 rounded-lg px-3 py-1.5 font-mono text-[12px] text-ink outline-none focus:border-accent"
       />
       <button
@@ -71,9 +72,9 @@ function ScreenTable({ symbols, hist }) {
       <table class="w-full border-collapse font-mono text-[12px]">
         <thead>
           <tr class="border-b border-line-2 bg-surface-2 text-[10px] text-muted uppercase tracking-wider">
-            <th class="px-3 py-2 text-left">Sym</th>
-            <th class="px-2 py-2 text-right">Price</th>
-            <th class="px-2 py-2 text-right">Day %</th>
+            <th class="px-3 py-2 text-left">{tl('Sym')}</th>
+            <th class="px-2 py-2 text-right">{tl('Price')}</th>
+            <th class="px-2 py-2 text-right">{tl('Day %')}</th>
             <th class="px-2 py-2 text-right">RSI 14</th>
             <th class="px-2 py-2 text-right">vs SMA200</th>
             <th class="px-2 py-2 text-right">52w range</th>
