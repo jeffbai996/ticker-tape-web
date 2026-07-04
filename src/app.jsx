@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'preact/hooks'
 import { parseHash } from './lib/route.js'
 import { conditionText } from './lib/alerts.js'
+import { tl } from './lib/i18n.js'
+import { useLocale } from './hooks.js'
 import { useAlertEngine } from './hooks.js'
 import { StatusBar } from './components/StatusBar.jsx'
 import { Tape } from './components/Tape.jsx'
@@ -16,7 +18,7 @@ function AlertToasts({ toasts, dismiss }) {
         <div key={t.id}
           class="bg-surface-2 border border-accent rounded-lg px-3 py-2 shadow-lg flex items-start gap-3">
           <div class="font-mono text-[11px]">
-            <div class="text-accent font-bold text-[9px] uppercase tracking-wider pb-0.5">Alert triggered</div>
+            <div class="text-accent font-bold text-[9px] uppercase tracking-wider pb-0.5">{tl('Alert triggered')}</div>
             <div class="text-ink">{conditionText(t)}</div>
             <div class="text-ink-2">now {Number(t.current).toFixed(2)}</div>
           </div>
@@ -40,6 +42,7 @@ function useHashRoute() {
 export function App() {
   const route = useHashRoute()
   const { toasts, dismiss } = useAlertEngine()
+  useLocale() // locale toggle re-renders the whole shell
   const [paletteOpen, setPaletteOpen] = useState(false)
 
   useEffect(() => {

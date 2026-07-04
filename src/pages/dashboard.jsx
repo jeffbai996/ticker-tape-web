@@ -2,6 +2,7 @@ import { useQuotes } from '../hooks.js'
 import { BUCKETS, WATCHLIST } from '../lib/symbols.js'
 import { fmtPrice, fmtPct, fmtChange, fmtVol } from '../lib/format.js'
 import { Spark } from '../components/Spark.jsx'
+import { tl } from '../lib/i18n.js'
 
 function Row({ symbol, data }) {
   const q = data?.quote
@@ -40,7 +41,7 @@ function BucketCard({ name, symbols, quotes }) {
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden @container">
       <header class="flex items-baseline gap-3 px-3 py-2 border-b border-line-2 bg-surface-2">
-        <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">{name}</h2>
+        <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">{tl(name)}</h2>
         {avg != null && (
           <span class={`font-mono text-[11px] ${avg >= 0 ? 'text-up' : 'text-down'}`}>
             avg {fmtPct(avg)}
@@ -69,9 +70,9 @@ export function Dashboard() {
     <div class="flex-1 p-3 select-text">
       <div class="flex items-baseline gap-4 px-1 pb-2 font-mono text-[11px]">
         <span class="text-muted">
-          BREADTH{' '}
+          {tl('Breadth').toUpperCase()}{' '}
           <span class="text-ink-2">
-            {breadth != null ? `${breadth}/${all.length} advancing` : '—'}
+            {breadth != null ? `${breadth}/${all.length} ${tl('advancing')}` : '—'}
           </span>
         </span>
         {all.length > 0 && (

@@ -6,6 +6,14 @@ import {
 } from './lib/alerts.js'
 import { fetchHistory } from './lib/history.js'
 import { sma, rsi } from './lib/indicators.js'
+import { getLocale, onLocaleChange } from './lib/i18n.js'
+
+/** Current locale; re-renders the caller when it changes. */
+export function useLocale() {
+  const [locale, set] = useState(getLocale)
+  useEffect(() => onLocaleChange(set), [])
+  return locale
+}
 
 /** Live quotes for a symbol list; re-renders as each symbol's data lands. */
 export function useQuotes(symbols) {

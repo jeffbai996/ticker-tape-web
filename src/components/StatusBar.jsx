@@ -2,6 +2,7 @@ import { useEffect, useState } from 'preact/hooks'
 import { useQuotes } from '../hooks.js'
 import { INDICES } from '../lib/symbols.js'
 import { fmtPrice, fmtPct } from '../lib/format.js'
+import { tl, getLocale, setLocale } from '../lib/i18n.js'
 
 const INDEX_SYMBOLS = INDICES.map((i) => i.symbol)
 
@@ -37,7 +38,7 @@ export function StatusBar() {
           const up = (q?.pct ?? 0) >= 0
           return (
             <span key={symbol} class="flex items-baseline gap-1.5 whitespace-nowrap">
-              <span class="text-muted">{label}</span>
+              <span class="text-muted">{tl(label)}</span>
               <span class="text-ink-2">{q ? fmtPrice(q.price) : '—'}</span>
               {q && <span class={up ? 'text-up' : 'text-down'}>{fmtPct(q.pct)}</span>}
             </span>
@@ -47,9 +48,16 @@ export function StatusBar() {
 
       <span class="flex items-center gap-1.5 whitespace-nowrap">
         <span class={`inline-block w-1.5 h-1.5 rounded-full ${state.live ? 'bg-up' : 'bg-muted'}`} />
-        <span class={state.live ? 'text-up' : 'text-muted'}>{state.label}</span>
+        <span class={state.live ? 'text-up' : 'text-muted'}>{tl(state.label)}</span>
       </span>
       <span class="text-ink-2 whitespace-nowrap">{clock} ET</span>
+      <button
+        onClick={() => setLocale(getLocale() === 'en' ? 'zh' : 'en')}
+        class="px-1.5 py-0.5 rounded border border-line text-muted hover:text-ink hover:border-line-2"
+        title="EN / 中文"
+      >
+        {getLocale() === 'en' ? '中' : 'EN'}
+      </button>
     </header>
   )
 }

@@ -4,12 +4,13 @@ import {
 } from '../lib/alerts.js'
 import { useQuotes } from '../hooks.js'
 import { fmtPrice } from '../lib/format.js'
+import { tl, t as tt } from '../lib/i18n.js'
 
 const TYPE_META = {
-  price: { label: 'Price', hint: 'trigger level in $' },
-  rsi: { label: 'RSI', hint: 'RSI(14) level, 0-100' },
-  sma_cross: { label: 'SMA cross', hint: 'SMA window, e.g. 50 or 200' },
-  volume: { label: 'Volume', hint: 'multiple of 20-day avg volume' },
+  price: { label: 'Price', hint: 'alerts.hint.price' },
+  rsi: { label: 'RSI', hint: 'alerts.hint.rsi' },
+  sma_cross: { label: 'SMA cross', hint: 'alerts.hint.sma' },
+  volume: { label: 'Volume', hint: 'alerts.hint.volume' },
 }
 
 function AddForm() {
@@ -40,19 +41,19 @@ function AddForm() {
   return (
     <form onSubmit={submit} class="bg-surface-1 border border-line rounded-xl p-3 flex flex-wrap items-end gap-2">
       <label class="flex flex-col gap-1">
-        <span class="text-[9px] text-muted uppercase tracking-wider">Symbol</span>
+        <span class="text-[9px] text-muted uppercase tracking-wider">{tl('Symbol')}</span>
         <input class={`${field} w-24 uppercase`} value={symbol}
           onInput={(e) => setSymbol(e.currentTarget.value)} placeholder="MSFT" />
       </label>
       <label class="flex flex-col gap-1">
-        <span class="text-[9px] text-muted uppercase tracking-wider">Type</span>
+        <span class="text-[9px] text-muted uppercase tracking-wider">{tl('Type')}</span>
         <select class={field} value={type} onChange={(e) => setType(e.currentTarget.value)}>
-          {Object.entries(TYPE_META).map(([id, m]) => <option key={id} value={id}>{m.label}</option>)}
+          {Object.entries(TYPE_META).map(([id, m]) => <option key={id} value={id}>{tl(m.label)}</option>)}
         </select>
       </label>
       {type !== 'volume' && (
         <label class="flex flex-col gap-1">
-          <span class="text-[9px] text-muted uppercase tracking-wider">Op</span>
+          <span class="text-[9px] text-muted uppercase tracking-wider">{tl('Op')}</span>
           <select class={field} value={operator} onChange={(e) => setOperator(e.currentTarget.value)}>
             <option value=">">{type === 'sma_cross' ? 'above' : '>'}</option>
             <option value="<">{type === 'sma_cross' ? 'below' : '<'}</option>
@@ -60,13 +61,13 @@ function AddForm() {
         </label>
       )}
       <label class="flex flex-col gap-1">
-        <span class="text-[9px] text-muted uppercase tracking-wider">{TYPE_META[type].hint}</span>
+        <span class="text-[9px] text-muted uppercase tracking-wider">{tt(TYPE_META[type].hint)}</span>
         <input class={`${field} w-28`} value={value} inputMode="decimal"
           onInput={(e) => setValue(e.currentTarget.value)} placeholder="0" />
       </label>
       <button type="submit"
         class="font-mono text-[11px] px-3 py-[7px] rounded-md border border-accent text-accent bg-accent-soft hover:bg-accent hover:text-black">
-        + Add alert
+        {tl('+ Add alert')}
       </button>
       {error && <span class="font-mono text-[11px] text-down pb-1.5">{error}</span>}
     </form>
@@ -83,9 +84,9 @@ export function Alerts() {
   return (
     <div class="flex-1 p-3 select-text min-w-0">
       <div class="flex items-baseline gap-3 px-1 pb-2">
-        <h1 class="font-mono font-bold text-lg text-ink">Alerts</h1>
+        <h1 class="font-mono font-bold text-lg text-ink">{tl('Alerts')}</h1>
         <span class="text-[11px] text-muted">
-          checked against the live feed · triggered alerts stay put until re-armed
+          {tt('alerts.subtitle')}
         </span>
       </div>
 
@@ -93,17 +94,17 @@ export function Alerts() {
         <AddForm />
 
         {alerts.length === 0 ? (
-          <div class="px-1 font-mono text-[11px] text-muted">no alerts configured</div>
+          <div class="px-1 font-mono text-[11px] text-muted">{tt('alerts.none')}</div>
         ) : (
           <section class="bg-surface-1 border border-line rounded-xl overflow-x-auto">
             <table class="w-full border-collapse font-mono text-[11px]">
               <thead>
                 <tr class="bg-surface-2 text-[9px] text-muted uppercase tracking-wider">
-                  <th class="px-3 py-2 text-left">Condition</th>
-                  <th class="px-2 py-2 text-right">Last</th>
-                  <th class="px-2 py-2 text-left">Status</th>
-                  <th class="px-2 py-2 text-left">Created</th>
-                  <th class="px-3 py-2 text-right">Actions</th>
+                  <th class="px-3 py-2 text-left">{tl('Condition')}</th>
+                  <th class="px-2 py-2 text-right">{tl('Last')}</th>
+                  <th class="px-2 py-2 text-left">{tl('Status')}</th>
+                  <th class="px-2 py-2 text-left">{tl('Created')}</th>
+                  <th class="px-3 py-2 text-right">{tl('Actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -119,11 +120,11 @@ export function Alerts() {
                       <td class="px-2 py-[5px] whitespace-nowrap">
                         {a.triggered ? (
                           <span class="text-up">
-                            TRIGGERED {new Date(a.triggered).toISOString().slice(5, 16).replace('T', ' ')}
+                            {tl('TRIGGERED')} {new Date(a.triggered).toISOString().slice(5, 16).replace('T', ' ')}
                             {a.current != null && ` @ ${Number(a.current).toFixed(2)}`}
                           </span>
                         ) : (
-                          <span class="text-accent">ARMED</span>
+                          <span class="text-accent">{tl('ARMED')}</span>
                         )}
                       </td>
                       <td class="px-2 py-[5px] text-muted whitespace-nowrap">
@@ -132,10 +133,10 @@ export function Alerts() {
                       <td class="px-3 py-[5px] text-right whitespace-nowrap">
                         {a.triggered && (
                           <button onClick={() => rearmAlert(a.id)}
-                            class="text-accent hover:underline mr-3">re-arm</button>
+                            class="text-accent hover:underline mr-3">{tl('re-arm')}</button>
                         )}
                         <button onClick={() => removeAlert(a.id)}
-                          class="text-down hover:underline">delete</button>
+                          class="text-down hover:underline">{tl('delete')}</button>
                       </td>
                     </tr>
                   )
