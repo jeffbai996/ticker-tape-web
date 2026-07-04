@@ -3,6 +3,8 @@ import { createChart, CandlestickSeries } from 'lightweight-charts'
 import { useQuotes } from '../hooks.js'
 import { fetchHistory, fetchNews, RANGES } from '../lib/history.js'
 import { fetchFundamentals } from '../lib/fundamentals.js'
+import { fetchOptions } from '../lib/options.js'
+import { bsDelta } from '../lib/bs.js'
 import { sma, rsi, macd, bollinger } from '../lib/indicators.js'
 import { fmtPrice, fmtPct, fmtChange, fmtVol, fmtBig, fmtRatio, fmtFracPct } from '../lib/format.js'
 import { hrefFor } from '../lib/route.js'
@@ -179,6 +181,116 @@ function News({ symbol }) {
   )
 }
 
+function OptionSide({ title, rows, spot, t, type }) {
+  return (
+    <section class="bg-surface-1 border border-line rounded-xl overflow-hidden min-w-0">
+      <header class="px-3 py-2 border-b border-line-2 bg-surface-2">
+        <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">{title}</h2>
+      </header>
+      <div class="overflow-x-auto">
+        <table class="w-full border-collapse font-mono text-[11px]">
+          <thead>
+            <tr class="text-[9px] text-muted uppercase tracking-wider bg-surface-2/60">
+              <th class="px-2 py-1.5 text-right">Strike</th>
+              <th class="px-2 py-1.5 text-right">Last</th>
+              <th class="px-2 py-1.5 text-right">Bid</th>
+              <th class="px-2 py-1.5 text-right">Ask</th>
+              <th class="px-2 py-1.5 text-right">IV</th>
+              <th class="px-2 py-1.5 text-right">Δ</th>
+              <th class="px-2 py-1.5 text-right">Vol</th>
+              <th class="px-2 py-1.5 text-right">OI</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((c) => {
+              const delta = bsDelta({ spot, strike: c.strike, t, iv: c.iv, type })
+              return (
+                <tr
+                  key={c.strike}
+                  class={`border-t border-line ${c.itm ? 'bg-accent-soft/40' : ''} hover:bg-surface-2`}
+                >
+                  <td class="px-2 py-[3px] text-right font-bold text-ink">{fmtPrice(c.strike)}</td>
+                  <td class="px-2 py-[3px] text-right text-ink">{c.last != null ? fmtPrice(c.last) : '—'}</td>
+                  <td class="px-2 py-[3px] text-right text-ink-2">{c.bid != null ? fmtPrice(c.bid) : '—'}</td>
+                  <td class="px-2 py-[3px] text-right text-ink-2">{c.ask != null ? fmtPrice(c.ask) : '—'}</td>
+                  <td class="px-2 py-[3px] text-right text-ink-2">
+                    {c.iv != null ? `${(c.iv * 100).toFixed(0)}%` : '—'}
+                  </td>
+                  <td class="px-2 py-[3px] text-right text-ink-2">
+                    {delta != null ? delta.toFixed(2) : '—'}
+                  </td>
+                  <td class="px-2 py-[3px] text-right text-muted">{c.volume ?? '—'}</td>
+                  <td class="px-2 py-[3px] text-right text-muted">{c.oi ?? '—'}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  )
+}
+
+function OptionsView({ symbol }) {
+  const [expiration, setExpiration] = useState(null)
+  const [chain, setChain] = useState(null)
+  const [err, setErr] = useState(null)
+
+  useEffect(() => {
+    setChain(null)
+    setErr(null)
+    fetchOptions(symbol, expiration)
+      .then(setChain)
+      .catch((e) => setErr(String(e.message || e)))
+  }, [symbol, expiration])
+
+  if (err) {
+    return (
+      <div class="mx-1 px-3 py-2 bg-surface-1 border border-down/40 rounded-lg font-mono text-[11px] text-down">
+        no options chain — {err}
+      </div>
+    )
+  }
+  if (!chain) return <div class="px-2 font-mono text-[11px] text-muted">loading chain…</div>
+
+  const t = Math.max((chain.expiration * 1000 - Date.now()) / (365 * 86_400_000), 1 / 365)
+  // Show ±12 strikes around spot so the table stays scannable.
+  const near = (rows) => {
+    if (chain.spot == null) return rows
+    const idx = rows.findIndex((r) => r.strike >= chain.spot)
+    const lo = Math.max(0, (idx === -1 ? rows.length : idx) - 12)
+    return rows.slice(lo, lo + 24)
+  }
+
+  return (
+    <div class="min-w-0">
+      <div class="flex items-center gap-2 px-1 pb-2 flex-wrap">
+        <span class="font-mono text-[11px] text-muted">EXPIRY</span>
+        <select
+          value={chain.expiration ?? ''}
+          onChange={(e) => setExpiration(Number(e.target.value))}
+          class="bg-surface-1 border border-line-2 rounded-lg px-2 py-1 font-mono text-[11px] text-ink outline-none focus:border-accent"
+        >
+          {chain.expirations.map((x) => (
+            <option key={x} value={x}>
+              {new Date(x * 1000).toISOString().slice(0, 10)}
+            </option>
+          ))}
+        </select>
+        {chain.spot != null && (
+          <span class="font-mono text-[11px] text-muted">
+            spot <span class="text-ink">{fmtPrice(chain.spot)}</span> · shaded = ITM · Δ via Black-Scholes from IV
+          </span>
+        )}
+      </div>
+      <div class="grid gap-3 xl:grid-cols-2">
+        <OptionSide title="Calls" rows={near(chain.calls)} spot={chain.spot} t={t} type="call" />
+        <OptionSide title="Puts" rows={near(chain.puts)} spot={chain.spot} t={t} type="put" />
+      </div>
+    </div>
+  )
+}
+
 function SymbolPrompt() {
   const [value, setValue] = useState('')
   const go = (e) => {
@@ -265,28 +377,51 @@ export function Research({ route }) {
         </div>
       </div>
 
+      <div class="flex gap-1 px-1 pb-2">
+        {[
+          { id: null, label: 'Overview', href: `#/research/${symbol.toLowerCase()}` },
+          { id: 'options', label: 'Options', href: `#/research/${symbol.toLowerCase()}/options` },
+        ].map((tab) => (
+          <a
+            key={tab.label}
+            href={tab.href}
+            class={`font-mono text-[11px] px-2.5 py-1 rounded-md border hover:no-underline ${
+              route.view === tab.id
+                ? 'border-accent text-accent bg-accent-soft'
+                : 'border-line text-muted hover:text-ink hover:bg-surface-2'
+            }`}
+          >
+            {tab.label}
+          </a>
+        ))}
+      </div>
+
       {err && (
         <div class="mx-1 mb-2 px-3 py-2 bg-surface-1 border border-down/40 rounded-lg font-mono text-[11px] text-down">
           {err} — check the symbol or try again
         </div>
       )}
 
-      <div class="grid gap-3 xl:grid-cols-[1fr_320px]">
-        <section class="bg-surface-1 border border-line rounded-xl p-2 min-w-0">
-          {hist ? (
-            <Candles bars={hist.bars} intraday={hist.intraday} />
-          ) : (
-            <div class="h-[380px] flex items-center justify-center font-mono text-[11px] text-muted">
-              {err ? 'no chart' : 'loading…'}
-            </div>
-          )}
-        </section>
-        <div class="flex flex-col gap-3 min-w-0">
-          <Technicals symbol={symbol} />
-          <Fundamentals symbol={symbol} />
-          <News symbol={symbol} />
+      {route.view === 'options' ? (
+        <OptionsView symbol={symbol} />
+      ) : (
+        <div class="grid gap-3 xl:grid-cols-[1fr_320px]">
+          <section class="bg-surface-1 border border-line rounded-xl p-2 min-w-0">
+            {hist ? (
+              <Candles bars={hist.bars} intraday={hist.intraday} />
+            ) : (
+              <div class="h-[380px] flex items-center justify-center font-mono text-[11px] text-muted">
+                {err ? 'no chart' : 'loading…'}
+              </div>
+            )}
+          </section>
+          <div class="flex flex-col gap-3 min-w-0">
+            <Technicals symbol={symbol} />
+            <Fundamentals symbol={symbol} />
+            <News symbol={symbol} />
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
