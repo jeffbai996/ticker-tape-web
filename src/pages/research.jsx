@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { createChart, CandlestickSeries } from 'lightweight-charts'
+import { useQuotes } from '../hooks.js'
 import { fetchHistory, fetchNews, RANGES } from '../lib/history.js'
+import { fetchFundamentals } from '../lib/fundamentals.js'
 import { sma, rsi, macd, bollinger } from '../lib/indicators.js'
-import { fmtPrice, fmtPct, fmtChange, fmtVol } from '../lib/format.js'
+import { fmtPrice, fmtPct, fmtChange, fmtVol, fmtBig, fmtRatio, fmtFracPct } from '../lib/format.js'
 import { hrefFor } from '../lib/route.js'
 
 function Candles({ bars, intraday }) {
@@ -97,6 +99,52 @@ function Technicals({ symbol }) {
   )
 }
 
+function Fundamentals({ symbol }) {
+  const [f, setF] = useState(null)
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    setF(null)
+    setFailed(false)
+    fetchFundamentals(symbol).then(setF).catch(() => setFailed(true))
+  }, [symbol])
+
+  // Indices/futures/crypto have no fundamentals — hide the card quietly.
+  if (failed) return null
+
+  return (
+    <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
+      <header class="px-3 py-2 border-b border-line-2 bg-surface-2 flex items-baseline gap-2">
+        <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">Fundamentals</h2>
+        {f?.recommendationKey && (
+          <span class="font-mono text-[10px] text-ink-2 uppercase">{f.recommendationKey.replace('_', ' ')}</span>
+        )}
+      </header>
+      {!f && <div class="px-3 py-3 text-[11px] text-muted font-mono">loading…</div>}
+      {f && (
+        <>
+          <Stat label="Mkt cap" value={fmtBig(f.marketCap)} />
+          <Stat label="P/E ttm / fwd" value={`${fmtRatio(f.trailingPE)} / ${fmtRatio(f.forwardPE)}`} />
+          <Stat label="P/S ttm" value={fmtRatio(f.priceToSalesTrailing12Months)} />
+          <Stat label="PEG" value={fmtRatio(f.pegRatio)} />
+          <Stat label="EV/EBITDA" value={fmtRatio(f.enterpriseToEbitda)} />
+          <Stat label="Gross margin" value={fmtFracPct(f.grossMargins)} />
+          <Stat label="Op margin" value={fmtFracPct(f.operatingMargins)} />
+          <Stat label="Net margin" value={fmtFracPct(f.profitMargins)} />
+          <Stat label="ROE" value={fmtFracPct(f.returnOnEquity)} />
+          <Stat label="Rev growth yoy" value={fmtFracPct(f.revenueGrowth)}
+            cls={f.revenueGrowth == null ? 'text-ink' : f.revenueGrowth >= 0 ? 'text-up' : 'text-down'} />
+          <Stat label="FCF ttm" value={fmtBig(f.freeCashflow)} />
+          <Stat label="Div yield" value={fmtFracPct(f.dividendYield)} />
+          <Stat label="Beta" value={fmtRatio(f.beta)} />
+          <Stat label="Short % float" value={fmtFracPct(f.shortPercentOfFloat)} />
+          <Stat label="Target (mean)" value={fmtPrice(f.targetMeanPrice)} />
+        </>
+      )}
+    </section>
+  )
+}
+
 function News({ symbol }) {
   const [items, setItems] = useState(null)
 
@@ -166,6 +214,9 @@ export function Research({ route }) {
   const [rangeKey, setRangeKey] = useState('6M')
   const [hist, setHist] = useState(null)
   const [err, setErr] = useState(null)
+  // Header quote comes from the live 1D feed — a multi-month chart fetch
+  // reports change vs the range START (chartPreviousClose), not yesterday.
+  const live = useQuotes(symbol ? [symbol] : [])
 
   useEffect(() => {
     if (!symbol) return
@@ -178,7 +229,7 @@ export function Research({ route }) {
 
   if (!symbol) return <SymbolPrompt />
 
-  const q = hist?.quote
+  const q = live[symbol]?.quote
   const up = (q?.pct ?? 0) >= 0
 
   return (
@@ -232,6 +283,7 @@ export function Research({ route }) {
         </section>
         <div class="flex flex-col gap-3 min-w-0">
           <Technicals symbol={symbol} />
+          <Fundamentals symbol={symbol} />
           <News symbol={symbol} />
         </div>
       </div>
