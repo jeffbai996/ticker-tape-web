@@ -11,6 +11,7 @@ export const RANGES = [
   { key: '1M', range: '1mo', interval: '1d', ttl: 10 * 60_000 },
   { key: '6M', range: '6mo', interval: '1d', ttl: 10 * 60_000 },
   { key: '1Y', range: '1y', interval: '1d', ttl: 10 * 60_000 },
+  { key: '2Y', range: '2y', interval: '1d', ttl: 30 * 60_000 },
   { key: '5Y', range: '5y', interval: '1wk', ttl: 30 * 60_000 },
 ]
 

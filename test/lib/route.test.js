@@ -42,6 +42,7 @@ describe('parseHash', () => {
 
   it('parses a research view segment', () => {
     expect(parseHash('#/research/nvda/options')).toEqual({ section: 'research', sub: 'NVDA', view: 'options' })
+    expect(parseHash('#/research/nvda/earnings')).toEqual({ section: 'research', sub: 'NVDA', view: 'earnings' })
     expect(parseHash('#/research/nvda/bogus')).toEqual({ section: 'research', sub: 'NVDA', view: null })
   })
 
