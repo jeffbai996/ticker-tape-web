@@ -93,11 +93,21 @@ async function proxyDirect(path, search) {
     });
 }
 
+// Single-flight: N concurrent 401s must share ONE refresh, not stampede
+// Yahoo's getcrumb endpoint (which rate-limits and then everyone fails).
+let _refreshing = null;
+function refreshCrumbOnce() {
+    if (!_refreshing) {
+        _refreshing = refreshCrumb().finally(() => { _refreshing = null; });
+    }
+    return _refreshing;
+}
+
 /** Proxy with crumb+cookies (v7, v10 GETs; visualization POST when body given). */
 async function proxyWithCrumb(path, search, body = null) {
     // Ensure we have a valid crumb
     if (!_crumb || !_cookies || Date.now() - _crumbTs > CRUMB_TTL) {
-        const ok = await refreshCrumb();
+        const ok = await refreshCrumbOnce();
         if (!ok) return jsonResp({ error: 'Failed to obtain Yahoo auth crumb' }, 502);
     }
 
@@ -122,7 +132,7 @@ async function proxyWithCrumb(path, search, body = null) {
 
     // If 401, crumb might be stale — refresh once and retry
     if (resp.status === 401) {
-        const ok = await refreshCrumb();
+        const ok = await refreshCrumbOnce();
         if (!ok) return jsonResp({ error: 'Yahoo auth failed after refresh' }, 502);
         resp = await doFetch();
     }
