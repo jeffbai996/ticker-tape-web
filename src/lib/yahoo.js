@@ -42,6 +42,7 @@ export function barsFromChart(result) {
       high: q.high?.[i] ?? q.close[i],
       low: q.low?.[i] ?? q.close[i],
       close: q.close[i],
+      volume: q.volume?.[i] ?? null,
     })
   }
   return bars
