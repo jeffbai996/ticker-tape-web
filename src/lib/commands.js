@@ -2,8 +2,10 @@
 // and actions. Pure parser: returns a plan, the CommandBar executes it.
 
 import { hrefFor } from './route.js'
+import { CATALYST_TYPES } from './catalysts.js'
 
 const SYM = /^[A-Za-z0-9.^=-]{1,12}$/
+const DATE = /^\d{4}-\d{2}-\d{2}$/
 
 // Multi-line help — rendered in the command console, TUI help-screen style.
 export const HELP_TEXT = [
@@ -14,6 +16,8 @@ export const HELP_TEXT = [
   'vs A B [C…]       compare                  screen A B     valuation grid',
   'w|uw SYM          watch / unwatch          alert SYM > N  arm price alert',
   'm s hm movers     markets views            er · cal       earnings · calendar',
+  'cat               list catalysts           cat rm N       remove catalyst',
+  'cat add DATE [SYM] [type] label…           add catalyst (type: product conf policy capex macro)',
   'b|brief           briefing + AI            pos · acct     demo portfolio',
   'alerts            alert center             chat [q]       AI chat',
 ].join('\n')
@@ -78,6 +82,35 @@ export function parseCommand(input) {
       symbols: args.map((a) => a.toUpperCase()),
       view: cmd === 'vs' ? 'compare' : 'valuation',
     }
+  }
+
+  // cat · cat rm N · cat add DATE [SYM] [type] label…
+  if (cmd === 'cat' || cmd === 'catalyst') {
+    if (!args.length) return { type: 'catalyst_list' }
+    if (low(args[0]) === 'rm' && args.length === 2 && /^\d+$/.test(args[1])) {
+      return { type: 'catalyst_rm', id: Number(args[1]) }
+    }
+    if (low(args[0]) === 'add' && args.length >= 3 && DATE.test(args[1])) {
+      let i = 2
+      let symbol = null
+      let ctype = 'other'
+      // A symbol must be typed in CAPS ("NVDA") — that's what separates it
+      // from a lowercase label word ("tariff …"). Type words are lowercase.
+      if (CATALYST_TYPES.includes(low(args[i]))) {
+        ctype = low(args[i])
+        i++
+      } else if (SYM.test(args[i]) && args[i] === args[i].toUpperCase() && args.length > i + 1) {
+        symbol = args[i]
+        i++
+        if (CATALYST_TYPES.includes(low(args[i])) && args.length > i + 1) {
+          ctype = low(args[i])
+          i++
+        }
+      }
+      const label = args.slice(i).join(' ')
+      if (label) return { type: 'catalyst_add', date: args[1], symbol, ctype, label }
+    }
+    return { type: 'msg', text: 'usage: cat · cat rm N · cat add 2026-09-09 [NVDA] [product] GTC keynote' }
   }
 
   if (cmd === 'chat') {

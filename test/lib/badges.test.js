@@ -112,6 +112,28 @@ describe('parseCommand', () => {
     expect(parseCommand('chat')).toEqual({ type: 'nav', hash: '#/chat' })
   })
 
+  it('parses catalyst commands', () => {
+    expect(parseCommand('cat')).toEqual({ type: 'catalyst_list' })
+    expect(parseCommand('cat rm 3')).toEqual({ type: 'catalyst_rm', id: 3 })
+    expect(parseCommand('cat add 2026-09-09 NVDA product GTC keynote')).toEqual({
+      type: 'catalyst_add', date: '2026-09-09', symbol: 'NVDA', ctype: 'product', label: 'GTC keynote',
+    })
+    // no symbol, no type -> macro/other
+    expect(parseCommand('cat add 2026-08-01 tariff decision day')).toEqual({
+      type: 'catalyst_add', date: '2026-08-01', symbol: null, ctype: 'other', label: 'tariff decision day',
+    })
+    // type without symbol
+    expect(parseCommand('cat add 2026-08-01 policy tariff decision')).toEqual({
+      type: 'catalyst_add', date: '2026-08-01', symbol: null, ctype: 'policy', label: 'tariff decision',
+    })
+    // single trailing word stays the label, not a symbol
+    expect(parseCommand('cat add 2026-09-09 GTC')).toEqual({
+      type: 'catalyst_add', date: '2026-09-09', symbol: null, ctype: 'other', label: 'GTC',
+    })
+    expect(parseCommand('cat add baddate x').type).toBe('msg')
+    expect(parseCommand('cat add 2026-09-09').type).toBe('msg')
+  })
+
   it('returns null on junk and msg on help/quit', () => {
     expect(parseCommand('')).toBeNull()
     expect(parseCommand('!!!')).toBeNull()
