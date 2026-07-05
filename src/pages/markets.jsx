@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'preact/hooks'
 import { useQuotes, useWatchlist } from '../hooks.js'
 import { MARKET_GROUPS, SECTORS, COMMODITY_GROUPS, ECON_EVENTS, upcomingEvents } from '../lib/markets.js'
+import { loadCatalysts, onCatalystsChange, removeCatalyst, mergedEvents } from '../lib/catalysts.js'
 import { fetchEarningsDate } from '../lib/fundamentals.js'
 import { tl } from '../lib/i18n.js'
 import { fmtPrice, fmtPct, fmtChange, fmtVol } from '../lib/format.js'
@@ -258,7 +259,9 @@ const URGENCY = [
 
 function Calendar() {
   const today = new Date().toISOString().slice(0, 10)
-  const events = upcomingEvents(ECON_EVENTS, today, 90)
+  const [cats, setCats] = useState(loadCatalysts)
+  useEffect(() => onCatalystsChange(setCats), [])
+  const events = mergedEvents(ECON_EVENTS, cats, today, 90)
 
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden max-w-xl">
@@ -272,10 +275,21 @@ function Calendar() {
           {events.map((e) => {
             const cls = URGENCY.find((u) => e.days <= u.max).cls
             return (
-              <tr key={`${e.date}-${e.type}`} class="border-b border-line last:border-0 hover:bg-surface-2">
+              <tr key={`${e.date}-${e.type}-${e.id ?? ''}`} class="border-b border-line last:border-0 hover:bg-surface-2 group">
                 <td class="px-3 py-[5px] font-mono text-[12px] text-ink">{e.date}</td>
-                <td class={`px-2 py-[5px] font-mono font-bold text-[11px] ${cls}`}>{e.type}</td>
-                <td class="px-2 py-[5px] text-[12px] text-ink-2">{tl(e.label)}</td>
+                <td class={`px-2 py-[5px] font-mono font-bold text-[11px] ${e.user ? 'text-[#00c8ff]' : cls}`}>{e.type}</td>
+                <td class="px-2 py-[5px] text-[12px] text-ink-2">
+                  {e.user ? e.label : tl(e.label)}
+                  {e.user && (
+                    <button
+                      onClick={() => removeCatalyst(e.id)}
+                      class="ml-2 font-mono text-[10px] text-muted opacity-0 group-hover:opacity-100 hover:text-down"
+                      title="remove catalyst"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </td>
                 <td class={`px-3 py-[5px] font-mono text-[11px] text-right ${cls}`}>
                   {e.days === 0 ? tl('today') : `${e.days}d`}
                 </td>
@@ -284,6 +298,9 @@ function Calendar() {
           })}
         </tbody>
       </table>
+      <footer class="px-3 py-1.5 border-t border-line font-mono text-[10px] text-muted">
+        {tl('add your own')}: <span class="text-ink-2">cat add 2026-09-09 NVDA product GTC keynote</span>
+      </footer>
     </section>
   )
 }

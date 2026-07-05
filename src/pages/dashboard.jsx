@@ -5,6 +5,7 @@ import { BUCKETS } from '../lib/symbols.js'
 import { pulseStats } from '../lib/pulse.js'
 import { fetchEarningsDate } from '../lib/fundamentals.js'
 import { ECON_EVENTS, upcomingEvents } from '../lib/markets.js'
+import { loadCatalysts, onCatalystsChange, mergedEvents } from '../lib/catalysts.js'
 import { lastGoodTs } from '../lib/feed.js'
 import { fetchHistory } from '../lib/history.js'
 import {
@@ -164,7 +165,9 @@ const ECON_COLORS = {
 }
 
 function MacroCalPanel() {
-  const events = upcomingEvents(ECON_EVENTS, new Date().toISOString().slice(0, 10), 60).slice(0, 8)
+  const [cats, setCats] = useState(loadCatalysts)
+  useEffect(() => onCatalystsChange(setCats), [])
+  const events = mergedEvents(ECON_EVENTS, cats, new Date().toISOString().slice(0, 10), 60).slice(0, 8)
   if (!events.length) return null
   const dayCls = (d) =>
     d <= 3 ? 'text-down font-bold' : d <= 7 ? 'text-down' : d <= 30 ? 'text-accent' : 'text-muted'
@@ -177,9 +180,11 @@ function MacroCalPanel() {
       </header>
       <div class="py-1">
         {events.map((e) => (
-          <div key={`${e.date}-${e.type}`} class="flex items-baseline gap-2 px-3 py-[2px] font-mono text-[11px]">
-            <span class={`w-10 font-bold ${ECON_COLORS[e.type] || 'text-ink-2'}`}>{e.type}</span>
-            <span class="text-muted flex-1 truncate">{tl(e.label)}</span>
+          <div key={`${e.date}-${e.type}-${e.id ?? ''}`} class="flex items-baseline gap-2 px-3 py-[2px] font-mono text-[11px]">
+            <span class={`w-10 font-bold shrink-0 truncate ${e.user ? 'text-[#00c8ff]' : ECON_COLORS[e.type] || 'text-ink-2'}`}>
+              {e.user ? (e.symbol === 'MACRO' ? e.type : e.symbol) : e.type}
+            </span>
+            <span class="text-muted flex-1 truncate">{e.user ? e.rawLabel : tl(e.label)}</span>
             <span class={dayCls(e.days)}>{e.days === 0 ? tl('today') : `${e.days}d`}</span>
           </div>
         ))}

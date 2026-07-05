@@ -15,6 +15,8 @@ import { fetchEarningsHistory, earningsSummary } from './earnings.js'
 import { getWatchlist, watch, unwatch } from './watchlist.js'
 import { addAlert, conditionText } from './alerts.js'
 import { pulseStats } from './pulse.js'
+import { ECON_EVENTS } from './markets.js'
+import { loadCatalysts, addCatalyst, mergedEvents, CATALYST_TYPES } from './catalysts.js'
 
 const SYM_RE = /^[A-Za-z0-9.^=-]{1,12}$/
 const MAX_SYMBOLS = 15
@@ -193,6 +195,29 @@ function setAlertTool({ symbol, type = 'price', operator, value }) {
   }
 }
 
+function getCalendarTool() {
+  const today = new Date().toISOString().slice(0, 10)
+  const events = mergedEvents(ECON_EVENTS, loadCatalysts(), today, 60)
+  return {
+    events: events.map((e) => ({
+      date: e.date,
+      inDays: e.days,
+      type: e.type,
+      label: e.label,
+      ...(e.user ? { userCatalyst: true } : {}),
+    })),
+  }
+}
+
+function addCatalystTool({ date, symbol, type, label }) {
+  try {
+    const c = addCatalyst({ date, symbol, type: type || 'other', label })
+    return { ok: true, catalyst: c }
+  } catch (err) {
+    return { error: String(err.message || err) }
+  }
+}
+
 const NAV_VIEWS = {
   dashboard: '#/',
   markets: '#/markets',
@@ -283,6 +308,25 @@ export const TOOL_DEFS = [
     },
   },
   {
+    name: 'get_calendar',
+    description: 'Upcoming market calendar (next 60 days): FOMC/CPI/NFP/GDP/PCE plus user-added catalysts.',
+    parameters: { type: 'object', properties: {} },
+  },
+  {
+    name: 'add_catalyst',
+    description: 'Add a user catalyst to the calendar (product event, conference, policy date, capex day…).',
+    parameters: {
+      type: 'object',
+      properties: {
+        date: { type: 'string', description: 'YYYY-MM-DD' },
+        symbol: { type: 'string', description: 'Ticker, omit for macro events' },
+        type: { type: 'string', enum: CATALYST_TYPES },
+        label: { type: 'string', description: 'Short event name' },
+      },
+      required: ['date', 'label'],
+    },
+  },
+  {
     name: 'navigate',
     description: 'Jump the app to a view. view: dashboard, markets, sectors, heatmap, movers, earnings, calendar, screen, alerts, portfolio, briefing, or research (needs symbol; optional sub: chart, intraday, options, earnings, insider, analysts).',
     parameters: {
@@ -306,13 +350,15 @@ const EXECUTORS = {
   watch: watchTool,
   unwatch: unwatchTool,
   set_alert: setAlertTool,
+  get_calendar: getCalendarTool,
+  add_catalyst: addCatalystTool,
   navigate: navigateTool,
 }
 
 /** Human-readable chip label for a tool call. Exported for the UI. */
 export function toolLabel(tc) {
   const a = tc.args || {}
-  const arg = a.symbols?.join?.(',') ?? a.symbol ?? a.view ?? ''
+  const arg = a.symbols?.join?.(',') ?? a.symbol ?? a.view ?? a.label ?? ''
   return arg ? `${tc.name}(${arg})` : `${tc.name}()`
 }
 

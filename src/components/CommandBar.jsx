@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { parseCommand } from '../lib/commands.js'
 import { watch, unwatch } from '../lib/watchlist.js'
 import { addAlert, conditionText } from '../lib/alerts.js'
+import { addCatalyst, removeCatalyst, loadCatalysts } from '../lib/catalysts.js'
 import { getCached } from '../lib/feed.js'
 import { fmtPrice, fmtPct } from '../lib/format.js'
 
@@ -67,6 +68,20 @@ export function CommandBar() {
       localStorage.setItem('screen_symbols', plan.symbols.join(' '))
       location.hash = `#/screen/${plan.view === 'compare' ? 'compare' : 'valuation'}`
       print(cmd, `${plan.view}: ${plan.symbols.join(' ')}`)
+    } else if (plan.type === 'catalyst_add') {
+      try {
+        const c = addCatalyst({ date: plan.date, symbol: plan.symbol, type: plan.ctype, label: plan.label })
+        print(cmd, `catalyst #${c.id}: ${c.date}  ${c.symbol === 'MACRO' ? '' : `${c.symbol} `}[${c.type}] ${c.label}`)
+      } catch (err) {
+        print(cmd, String(err.message || err))
+      }
+    } else if (plan.type === 'catalyst_rm') {
+      print(cmd, removeCatalyst(plan.id) ? `removed catalyst #${plan.id}` : `no catalyst #${plan.id}`)
+    } else if (plan.type === 'catalyst_list') {
+      const cats = [...loadCatalysts()].sort((a, b) => a.date.localeCompare(b.date))
+      print(cmd, cats.length
+        ? cats.map((c) => `#${c.id}  ${c.date}  ${c.symbol === 'MACRO' ? '' : `${c.symbol} `}[${c.type}] ${c.label}`).join('\n')
+        : 'no catalysts — cat add 2026-09-09 NVDA product GTC keynote')
     } else if (plan.type === 'chat') {
       sessionStorage.setItem('chat_prefill', plan.q)
       location.hash = '#/chat'
