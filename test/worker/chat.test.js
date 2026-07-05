@@ -172,6 +172,17 @@ describe('makeToolCollector', () => {
     expect(out[1].args).toEqual({})
   })
 
+  it('captures gemini thoughtSignature and gemContents replays it', () => {
+    const c = makeToolCollector('gemini')
+    c.feed(JSON.stringify({ candidates: [{ content: { parts: [{ functionCall: { name: 'get_quotes', args: {} }, thoughtSignature: 'SIG==' }] } }] }))
+    const [call] = c.result()
+    expect(call.sig).toBe('SIG==')
+
+    const out = gemContents([{ role: 'assistant', content: '', toolCalls: [call] }])
+    expect(out[0].parts[0].thoughtSignature).toBe('SIG==')
+    expect(out[0].parts[0].functionCall.name).toBe('get_quotes')
+  })
+
   it('assembles openai incremental tool_calls by index', () => {
     const c = makeToolCollector('openai')
     c.feed(JSON.stringify({ choices: [{ delta: { tool_calls: [{ index: 0, id: 'call_1', function: { name: 'watch', arguments: '' } }] } }] }))
