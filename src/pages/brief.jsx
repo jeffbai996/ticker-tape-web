@@ -51,13 +51,13 @@ function ArchivePanel() {
               </button>
               <button
                 onClick={() => downloadMd(`${r.title.replace(/\s+/g, '-').toLowerCase()}.md`, r.text)}
-                class="text-muted hover:text-ink opacity-0 group-hover:opacity-100 shrink-0"
+                class="text-muted hover:text-ink opacity-0 group-hover:opacity-100 max-md:opacity-100 shrink-0"
               >
                 .md
               </button>
               <button
                 onClick={() => removeReport(r.id)}
-                class="text-muted hover:text-down opacity-0 group-hover:opacity-100 shrink-0"
+                class="text-muted hover:text-down opacity-0 group-hover:opacity-100 max-md:opacity-100 shrink-0"
                 title="delete"
               >
                 ✕
