@@ -820,6 +820,7 @@ export function Research({ route }) {
               label="AI memo"
               filename={`${symbol.toLowerCase()}-memo.md`}
               buildPrompt={() => buildMemoPrompt(symbol)}
+              archive={{ kind: 'memo', symbol, title: `${symbol} memo` }}
             />
             <Technicals symbol={symbol} />
             <Fundamentals symbol={symbol} />

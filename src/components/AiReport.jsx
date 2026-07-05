@@ -1,5 +1,6 @@
 import { useState } from 'preact/hooks'
 import { streamChat } from '../lib/chatClient.js'
+import { saveReport } from '../lib/archive.js'
 import { tl } from '../lib/i18n.js'
 
 // One-click AI synthesis panel: build a prompt, stream the answer, offer
@@ -32,8 +33,10 @@ export function MdLite({ text }) {
  *    the report always reflects the data currently on screen
  *  filename: download name for the .md
  *  label: button text (defaults to "AI report")
+ *  archive: optional {kind: 'briefing'|'memo', symbol?, title} — when set,
+ *    every completed generation auto-saves to the report archive
  */
-export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI report' }) {
+export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI report', archive = null }) {
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
@@ -56,6 +59,7 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
           setText(acc)
         },
       })
+      if (archive) saveReport({ ...archive, text: acc })
     } catch (err) {
       setError(String(err.message || err))
     } finally {
