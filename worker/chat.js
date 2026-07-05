@@ -230,7 +230,12 @@ export function gemContents(messages) {
       push('user', [{ functionResponse: { name: m.name, response: { result: m.content } } }])
     } else if (m.role === 'assistant' && m.toolCalls?.length) {
       const parts = m.content ? [{ text: m.content }] : []
-      for (const tc of m.toolCalls) parts.push({ functionCall: { name: tc.name, args: tc.args } })
+      for (const tc of m.toolCalls) {
+        parts.push({
+          functionCall: { name: tc.name, args: tc.args },
+          ...(tc.sig ? { thoughtSignature: tc.sig } : {}),
+        })
+      }
       push('model', parts)
     } else {
       push(m.role === 'assistant' ? 'model' : 'user', [{ text: m.content }])
@@ -372,7 +377,13 @@ export function makeToolCollector(provider) {
     if (provider === 'gemini') {
       for (const p of d.candidates?.[0]?.content?.parts || []) {
         if (p.functionCall?.name) {
-          slots.set(`g${gi}`, { id: `g${gi}`, name: p.functionCall.name, args: p.functionCall.args || {} })
+          // thoughtSignature must round-trip on replay or Gemini 3 400s.
+          slots.set(`g${gi}`, {
+            id: `g${gi}`,
+            name: p.functionCall.name,
+            args: p.functionCall.args || {},
+            ...(p.thoughtSignature ? { sig: p.thoughtSignature } : {}),
+          })
           gi++
         }
       }
@@ -405,7 +416,12 @@ export function makeToolCollector(provider) {
           continue // truncated/garbled args — drop rather than execute wrong
         }
       }
-      out.push({ id: slot.id || `t${out.length}`, name: slot.name, args })
+      out.push({
+        id: slot.id || `t${out.length}`,
+        name: slot.name,
+        args,
+        ...(slot.sig ? { sig: slot.sig } : {}),
+      })
     }
     return out
   }
