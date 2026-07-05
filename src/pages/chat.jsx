@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { fetchChatModels, fetchSpend, streamChat } from '../lib/chatClient.js'
+import { fetchChatModels, fetchSpend } from '../lib/chatClient.js'
+import { runAgentic, trimHistory } from '../lib/agent.js'
+import { toolLabel } from '../lib/tools.js'
 import { tl, t as tt } from '../lib/i18n.js'
 
 // Generic on purpose: the assistant knows about markets and this app, and is
@@ -7,8 +9,12 @@ import { tl, t as tt } from '../lib/i18n.js'
 const SYSTEM =
   'You are the assistant inside ticker-tape-web, a public demo market dashboard ' +
   '(dashboard, markets, per-symbol research, screening, alerts, and a synthetic ' +
-  'DEMO portfolio). Answer questions about markets, tickers, and the app. ' +
-  'You have no access to any personal, account, or portfolio data. Be concise.'
+  'DEMO portfolio). You have tools: live quotes, technicals, earnings, market ' +
+  'pulse, watchlist read/write, alert arming, and app navigation. Use them for ' +
+  'anything involving current prices, technicals, or the watchlist instead of ' +
+  'answering from memory; call several in one round when that is faster. ' +
+  'You have no access to any personal, account, or portfolio data — the ' +
+  'portfolio section is a clearly-labeled synthetic demo. Be concise.'
 
 const HISTORY_KEY = 'chat_history_v1'
 const MAX_TURNS = 40
@@ -23,7 +29,7 @@ function loadHistory() {
 
 function saveHistory(h) {
   try {
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(h.slice(-MAX_TURNS)))
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(trimHistory(h, MAX_TURNS)))
   } catch { /* best-effort */ }
 }
 
@@ -37,6 +43,30 @@ function SpendMeter({ spend }) {
         <span class={`block h-full ${pct > 80 ? 'bg-down' : 'bg-accent'}`} style={{ width: `${pct}%` }} />
       </span>
     </span>
+  )
+}
+
+function ToolChips({ calls, results }) {
+  return (
+    <div class="flex flex-wrap gap-1 self-start">
+      {calls.map((tc) => {
+        const res = results.get(tc.id)
+        const failed = res != null && res.startsWith('{"error"')
+        return (
+          <span
+            key={tc.id}
+            title={res ? res.slice(0, 400) : 'running…'}
+            class={`font-mono text-[10px] px-2 py-0.5 rounded-full border ${
+              failed
+                ? 'border-down/40 text-down bg-surface-1'
+                : 'border-line-2 text-ink-2 bg-surface-1'
+            }`}
+          >
+            ⚙ {toolLabel(tc)} {res == null ? '…' : failed ? '✕' : '✓'}
+          </span>
+        )
+      })}
+    </div>
   )
 }
 
@@ -72,26 +102,35 @@ export function Chat() {
     setBusy(true)
 
     const base = [...history, { role: 'user', content: text }]
-    setHistory([...base, { role: 'assistant', content: '' }])
+    let added = []
+    let live = ''
+    const paint = () =>
+      setHistory([...base, ...added, ...(live ? [{ role: 'assistant', content: live }] : [])])
+    paint()
 
     try {
-      let acc = ''
-      await streamChat({
+      await runAgentic({
         model,
         system: SYSTEM,
-        messages: base.map(({ role, content }) => ({ role, content })),
+        messages: base,
         onDelta: (d) => {
-          acc += d
-          setHistory([...base, { role: 'assistant', content: acc }])
+          live += d
+          paint()
+        },
+        onRound: (entries) => {
+          added = entries
+          live = ''
+          paint()
         },
       })
-      const done = [...base, { role: 'assistant', content: acc }]
+      const done = [...base, ...added]
       setHistory(done)
       saveHistory(done)
     } catch (err) {
       setError(String(err.message || err))
-      setHistory(base) // drop the empty assistant bubble
-      saveHistory(base)
+      const done = [...base, ...added]
+      setHistory(done)
+      saveHistory(done)
     } finally {
       setBusy(false)
       fetchSpend().then(setSpend).catch(() => {})
@@ -102,6 +141,9 @@ export function Chat() {
     setHistory([])
     saveHistory([])
   }
+
+  // Tool results by call id, for chip status/tooltips.
+  const results = new Map(history.filter((m) => m.role === 'tool').map((m) => [m.id, m.content]))
 
   return (
     <div class="flex-1 flex flex-col p-3 min-h-0 min-w-0 select-text">
@@ -133,18 +175,39 @@ export function Chat() {
         {history.length === 0 && (
           <div class="font-mono text-[11px] text-muted pt-6">{tt('chat.empty')}</div>
         )}
-        {history.map((m, i) => (
-          <div
-            key={i}
-            class={`rounded-xl border px-3 py-2 text-[13px] leading-relaxed whitespace-pre-wrap ${
-              m.role === 'user'
-                ? 'self-end bg-accent-soft border-accent/40 text-ink max-w-[85%]'
-                : 'self-start bg-surface-1 border-line text-ink max-w-[95%]'
-            }`}
-          >
-            {m.content || <span class="text-muted font-mono text-[11px]">{tt('common.loading')}</span>}
-          </div>
-        ))}
+        {history.map((m, i) => {
+          if (m.role === 'tool') return null
+          if (m.role === 'assistant' && m.toolCalls?.length) {
+            return (
+              <div key={i} class="self-start flex flex-col gap-1 max-w-[95%]">
+                {m.content && (
+                  <div class="rounded-xl border px-3 py-2 text-[13px] leading-relaxed whitespace-pre-wrap bg-surface-1 border-line text-ink">
+                    {m.content}
+                  </div>
+                )}
+                <ToolChips calls={m.toolCalls} results={results} />
+              </div>
+            )
+          }
+          return (
+            <div
+              key={i}
+              class={`rounded-xl border px-3 py-2 text-[13px] leading-relaxed whitespace-pre-wrap ${
+                m.role === 'user'
+                  ? 'self-end bg-accent-soft border-accent/40 text-ink max-w-[85%]'
+                  : 'self-start bg-surface-1 border-line text-ink max-w-[95%]'
+              }`}
+            >
+              {m.content ||
+                (busy && i === history.length - 1
+                  ? <span class="text-muted font-mono text-[11px]">{tt('common.loading')}</span>
+                  : null)}
+            </div>
+          )
+        })}
+        {busy && ['user', 'tool'].includes(history[history.length - 1]?.role) && (
+          <div class="self-start font-mono text-[11px] text-muted px-1">{tt('common.loading')}</div>
+        )}
         {error && (
           <div class="self-start font-mono text-[11px] text-down px-1">{error}</div>
         )}

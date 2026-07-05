@@ -6,11 +6,20 @@
 // raced past by parallel streams, and no provider stream parsing is needed
 // for accounting. The stream itself is translated to one uniform SSE shape
 // (`data: {"d":"…"}` … `data: [DONE]`) so the client is provider-agnostic.
+//
+// Tool calling: the client may send `tools` (JSON-Schema function defs) and
+// extended message shapes — assistant messages carrying `toolCalls`
+// [{id,name,args}] and `{role:'tool', id, name, content}` results. Tools are
+// translated per provider; tool calls the model makes are accumulated out of
+// the stream and emitted as one `data: {"tc":[…]}` event before [DONE]. The
+// worker never executes tools — execution is client-side, against data the
+// browser already has.
 
 export const DAILY_CAP_USD = 10
 const MAX_OUT_TOKENS = 2048
 const MAX_INPUT_CHARS = 32_000
 const RATE_LIMIT_PER_HOUR = 30
+const MAX_TOOLS = 16
 
 // Web mirror of the CLI's MODELS registry (chat.py). cost per 1M tokens.
 export const MODELS = {
@@ -58,6 +67,30 @@ export function estimateCost(model, inputChars) {
   return (inTokens / 1e6) * model.costIn + (MAX_OUT_TOKENS / 1e6) * model.costOut
 }
 
+/** One of the three message shapes the client may send. Exported for tests. */
+export function validMessage(m) {
+  if (!m || typeof m !== 'object') return false
+  if (m.role === 'tool') {
+    return typeof m.id === 'string' && typeof m.name === 'string' && typeof m.content === 'string'
+  }
+  if (m.role !== 'user' && m.role !== 'assistant') return false
+  if (typeof m.content !== 'string') return false
+  if (m.toolCalls !== undefined) {
+    if (m.role !== 'assistant' || !Array.isArray(m.toolCalls)) return false
+    return m.toolCalls.every(
+      (tc) => tc && typeof tc.id === 'string' && typeof tc.name === 'string' &&
+        tc.args !== null && typeof tc.args === 'object',
+    )
+  }
+  return true
+}
+
+function validTool(t) {
+  return t && typeof t.name === 'string' && /^[a-zA-Z0-9_-]{1,64}$/.test(t.name) &&
+    typeof t.description === 'string' &&
+    t.parameters !== null && typeof t.parameters === 'object'
+}
+
 export async function handleChat(request, env, path) {
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: corsFor(request) })
@@ -96,12 +129,23 @@ async function handleCompletion(request, env) {
   const messages = Array.isArray(body.messages) ? body.messages : []
   if (!messages.length) return json(request, { error: 'No messages' }, 400)
   const system = typeof body.system === 'string' ? body.system : ''
-  const ok = messages.every(
-    (m) => (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string',
-  )
-  if (!ok) return json(request, { error: 'Bad message shape' }, 400)
+  if (!messages.every(validMessage)) return json(request, { error: 'Bad message shape' }, 400)
 
-  const inputChars = system.length + messages.reduce((s, m) => s + m.content.length, 0)
+  let tools = null
+  if (body.tools !== undefined) {
+    if (!Array.isArray(body.tools) || body.tools.length > MAX_TOOLS || !body.tools.every(validTool)) {
+      return json(request, { error: 'Bad tools' }, 400)
+    }
+    tools = body.tools.length ? body.tools : null
+  }
+
+  const inputChars =
+    system.length +
+    (tools ? JSON.stringify(tools).length : 0) +
+    messages.reduce(
+      (s, m) => s + m.content.length + (m.toolCalls ? JSON.stringify(m.toolCalls).length : 0),
+      0,
+    )
   if (inputChars > MAX_INPUT_CHARS) {
     return json(request, { error: `Input too long (${inputChars} chars, max ${MAX_INPUT_CHARS})` }, 413)
   }
@@ -127,7 +171,7 @@ async function handleCompletion(request, env) {
   if (!apiKey) return json(request, { error: `${model.provider} key not configured` }, 502)
 
   try {
-    const upstream = await callProvider(model, apiKey, system, messages)
+    const upstream = await callProvider(model, apiKey, system, messages, tools)
     if (!upstream.ok) {
       const detail = (await upstream.text()).slice(0, 300)
       return json(request, { error: `${model.provider} ${upstream.status}: ${detail}` }, 502)
@@ -145,7 +189,76 @@ async function handleCompletion(request, env) {
   }
 }
 
-function callProvider(model, apiKey, system, messages) {
+// ---------------------------------------------------------------------------
+// Neutral messages → provider wire formats. Exported for tests.
+
+/** Anthropic: toolCalls → tool_use blocks; tool results → user tool_result
+ *  blocks, consecutive results merged into ONE user message (API requirement). */
+export function anthMessages(messages) {
+  const out = []
+  for (const m of messages) {
+    if (m.role === 'tool') {
+      const block = { type: 'tool_result', tool_use_id: m.id, content: m.content }
+      const last = out[out.length - 1]
+      if (last?.role === 'user' && Array.isArray(last.content)) last.content.push(block)
+      else out.push({ role: 'user', content: [block] })
+    } else if (m.role === 'assistant' && m.toolCalls?.length) {
+      const content = []
+      if (m.content) content.push({ type: 'text', text: m.content })
+      for (const tc of m.toolCalls) {
+        content.push({ type: 'tool_use', id: tc.id, name: tc.name, input: tc.args })
+      }
+      out.push({ role: 'assistant', content })
+    } else {
+      out.push({ role: m.role, content: m.content })
+    }
+  }
+  return out
+}
+
+/** Gemini: toolCalls → functionCall parts; tool results → functionResponse
+ *  parts, consecutive same-role contents merged (Gemini rejects role runs). */
+export function gemContents(messages) {
+  const out = []
+  const push = (role, parts) => {
+    const last = out[out.length - 1]
+    if (last?.role === role) last.parts.push(...parts)
+    else out.push({ role, parts })
+  }
+  for (const m of messages) {
+    if (m.role === 'tool') {
+      push('user', [{ functionResponse: { name: m.name, response: { result: m.content } } }])
+    } else if (m.role === 'assistant' && m.toolCalls?.length) {
+      const parts = m.content ? [{ text: m.content }] : []
+      for (const tc of m.toolCalls) parts.push({ functionCall: { name: tc.name, args: tc.args } })
+      push('model', parts)
+    } else {
+      push(m.role === 'assistant' ? 'model' : 'user', [{ text: m.content }])
+    }
+  }
+  return out
+}
+
+/** OpenAI: toolCalls → tool_calls with stringified arguments; tool → role tool. */
+export function oaiMessages(messages) {
+  return messages.map((m) => {
+    if (m.role === 'tool') return { role: 'tool', tool_call_id: m.id, content: m.content }
+    if (m.role === 'assistant' && m.toolCalls?.length) {
+      return {
+        role: 'assistant',
+        content: m.content || null,
+        tool_calls: m.toolCalls.map((tc) => ({
+          id: tc.id,
+          type: 'function',
+          function: { name: tc.name, arguments: JSON.stringify(tc.args) },
+        })),
+      }
+    }
+    return { role: m.role, content: m.content }
+  })
+}
+
+function callProvider(model, apiKey, system, messages, tools) {
   if (model.provider === 'anthropic') {
     return fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -159,24 +272,32 @@ function callProvider(model, apiKey, system, messages) {
         max_tokens: MAX_OUT_TOKENS,
         stream: true,
         ...(system ? { system } : {}),
-        messages,
+        ...(tools
+          ? { tools: tools.map((t) => ({ name: t.name, description: t.description, input_schema: t.parameters })) }
+          : {}),
+        messages: anthMessages(messages),
       }),
     })
   }
 
   if (model.provider === 'gemini') {
-    const contents = messages.map((m) => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }],
-    }))
     return fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model.id}:streamGenerateContent?alt=sse`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
         body: JSON.stringify({
-          contents,
+          contents: gemContents(messages),
           ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
+          ...(tools
+            ? {
+                tools: [{
+                  functionDeclarations: tools.map((t) => ({
+                    name: t.name, description: t.description, parameters: t.parameters,
+                  })),
+                }],
+              }
+            : {}),
           generationConfig: { maxOutputTokens: MAX_OUT_TOKENS },
         }),
       },
@@ -191,7 +312,12 @@ function callProvider(model, apiKey, system, messages) {
       model: model.id,
       stream: true,
       max_completion_tokens: MAX_OUT_TOKENS,
-      messages: system ? [{ role: 'system', content: system }, ...messages] : messages,
+      ...(tools
+        ? { tools: tools.map((t) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.parameters } })) }
+        : {}),
+      messages: system
+        ? [{ role: 'system', content: system }, ...oaiMessages(messages)]
+        : oaiMessages(messages),
     }),
   })
 }
@@ -214,10 +340,85 @@ export function deltaFrom(provider, payload) {
   }
 }
 
-/** Provider SSE → uniform SSE: `data: {"d":"text"}` chunks, `data: [DONE]` end. */
+/**
+ * Stateful per-provider accumulator for tool calls arriving in stream
+ * fragments. feed() each `data:` payload; result() → [{id,name,args}].
+ * Exported for tests.
+ */
+export function makeToolCollector(provider) {
+  // keyed slots: anthropic by block index, openai by tool_calls index,
+  // gemini calls arrive whole (ids synthesized).
+  const slots = new Map()
+  let gi = 0
+
+  function feed(payload) {
+    let d
+    try {
+      d = JSON.parse(payload)
+    } catch {
+      return
+    }
+
+    if (provider === 'anthropic') {
+      if (d.type === 'content_block_start' && d.content_block?.type === 'tool_use') {
+        slots.set(d.index, { id: d.content_block.id, name: d.content_block.name, argStr: '' })
+      } else if (d.type === 'content_block_delta' && d.delta?.type === 'input_json_delta') {
+        const slot = slots.get(d.index)
+        if (slot) slot.argStr += d.delta.partial_json || ''
+      }
+      return
+    }
+
+    if (provider === 'gemini') {
+      for (const p of d.candidates?.[0]?.content?.parts || []) {
+        if (p.functionCall?.name) {
+          slots.set(`g${gi}`, { id: `g${gi}`, name: p.functionCall.name, args: p.functionCall.args || {} })
+          gi++
+        }
+      }
+      return
+    }
+
+    // openai: incremental fragments keyed by index; id/name arrive on the first
+    for (const tc of d.choices?.[0]?.delta?.tool_calls || []) {
+      if (tc.index == null) continue
+      let slot = slots.get(tc.index)
+      if (!slot) {
+        slot = { id: '', name: '', argStr: '' }
+        slots.set(tc.index, slot)
+      }
+      if (tc.id) slot.id = tc.id
+      if (tc.function?.name) slot.name += tc.function.name
+      if (tc.function?.arguments) slot.argStr += tc.function.arguments
+    }
+  }
+
+  function result() {
+    const out = []
+    for (const slot of slots.values()) {
+      if (!slot.name) continue
+      let args = slot.args
+      if (args === undefined) {
+        try {
+          args = slot.argStr ? JSON.parse(slot.argStr) : {}
+        } catch {
+          continue // truncated/garbled args — drop rather than execute wrong
+        }
+      }
+      out.push({ id: slot.id || `t${out.length}`, name: slot.name, args })
+    }
+    return out
+  }
+
+  return { feed, result }
+}
+
+/** Provider SSE → uniform SSE: `data: {"d":"text"}` chunks, one optional
+ *  `data: {"tc":[…]}` tool-call event, then `data: [DONE]`. */
 function translateStream(upstream, provider) {
   const enc = new TextEncoder()
   const dec = new TextDecoder()
+  const collector = makeToolCollector(provider)
   let buf = ''
 
   return upstream.pipeThrough(
@@ -230,11 +431,16 @@ function translateStream(upstream, provider) {
           if (!line.startsWith('data:')) continue
           const payload = line.slice(5).trim()
           if (!payload || payload === '[DONE]') continue
+          collector.feed(payload)
           const text = deltaFrom(provider, payload)
           if (text) controller.enqueue(enc.encode(`data: ${JSON.stringify({ d: text })}\n\n`))
         }
       },
       flush(controller) {
+        const calls = collector.result()
+        if (calls.length) {
+          controller.enqueue(enc.encode(`data: ${JSON.stringify({ tc: calls })}\n\n`))
+        }
         controller.enqueue(enc.encode('data: [DONE]\n\n'))
       },
     }),

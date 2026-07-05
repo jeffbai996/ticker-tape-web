@@ -21,9 +21,11 @@ export async function fetchSpend() {
   return resp.json()
 }
 
-/** Parse one SSE chunk buffer; returns [deltas, done, rest]. Exported for tests. */
+/** Parse one SSE chunk buffer; returns [deltas, done, rest, toolCalls].
+ *  Exported for tests. */
 export function parseSSE(buf) {
   const deltas = []
+  const toolCalls = []
   let done = false
   const lines = buf.split('\n')
   const rest = lines.pop() // partial tail stays buffered
@@ -37,21 +39,23 @@ export function parseSSE(buf) {
     try {
       const d = JSON.parse(payload)
       if (d.d) deltas.push(d.d)
+      if (Array.isArray(d.tc)) toolCalls.push(...d.tc)
     } catch { /* skip malformed line */ }
   }
-  return [deltas, done, rest]
+  return [deltas, done, rest, toolCalls]
 }
 
 /**
- * Stream one completion. Calls onDelta(text) per chunk; resolves with the
- * full text when the stream ends. Throws with the server's error message
- * on cap/rate/provider failures.
+ * Stream one completion. Calls onDelta(text) per chunk; resolves with
+ * {text, toolCalls} when the stream ends (toolCalls is [] unless the model
+ * called tools). Throws with the server's error message on cap/rate/provider
+ * failures.
  */
-export async function streamChat({ model, messages, system, onDelta }) {
+export async function streamChat({ model, messages, system, tools, onDelta }) {
   const resp = await fetch(`${chatBase()}/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model, messages, system }),
+    body: JSON.stringify({ model, messages, system, ...(tools?.length ? { tools } : {}) }),
   })
   if (!resp.ok) {
     let msg = `HTTP ${resp.status}`
@@ -65,16 +69,18 @@ export async function streamChat({ model, messages, system, onDelta }) {
   const dec = new TextDecoder()
   let buf = ''
   let full = ''
+  const calls = []
   for (;;) {
     const { done, value } = await reader.read()
     if (done) break
     buf += dec.decode(value, { stream: true })
-    const [deltas, , rest] = parseSSE(buf)
+    const [deltas, , rest, tcs] = parseSSE(buf)
     buf = rest
+    calls.push(...tcs)
     for (const d of deltas) {
       full += d
       onDelta?.(d)
     }
   }
-  return full
+  return { text: full, toolCalls: calls }
 }
