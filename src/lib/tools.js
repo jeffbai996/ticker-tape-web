@@ -355,11 +355,28 @@ const EXECUTORS = {
   navigate: navigateTool,
 }
 
+// Short human verbs for the chat's tool chips — "quotes AAPL, TSLA" reads
+// better than get_quotes({"symbols":…}).
+const TOOL_VERBS = {
+  get_quotes: 'quotes',
+  get_technicals: 'technicals',
+  get_earnings: 'earnings',
+  get_market_pulse: 'market pulse',
+  get_watchlist: 'watchlist',
+  watch: 'watch',
+  unwatch: 'unwatch',
+  set_alert: 'alert',
+  get_calendar: 'calendar',
+  add_catalyst: 'catalyst',
+  navigate: 'open',
+}
+
 /** Human-readable chip label for a tool call. Exported for the UI. */
 export function toolLabel(tc) {
   const a = tc.args || {}
-  const arg = a.symbols?.join?.(',') ?? a.symbol ?? a.view ?? a.label ?? ''
-  return arg ? `${tc.name}(${arg})` : `${tc.name}()`
+  const arg = a.symbols?.join?.(', ') ?? a.symbol ?? a.view ?? a.label ?? ''
+  const verb = TOOL_VERBS[tc.name] || tc.name
+  return arg ? `${verb} ${arg}` : verb
 }
 
 /**
