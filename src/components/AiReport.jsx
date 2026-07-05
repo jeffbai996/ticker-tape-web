@@ -22,6 +22,10 @@ export function MdLite({ text }) {
     if (/^\s*[-*]\s+/.test(line)) {
       return <div key={i} class="pl-4 relative"><span class="absolute left-1 text-muted">·</span>{parts(line.replace(/^\s*[-*]\s+/, ''))}</div>
     }
+    const num = line.match(/^\s*(\d+)\.\s+(.*)/)
+    if (num) {
+      return <div key={i} class="pl-5 relative"><span class="absolute left-1 text-muted font-mono text-[11px]">{num[1]}.</span>{parts(num[2])}</div>
+    }
     if (/^\s*---+\s*$/.test(line)) return <hr key={i} class="border-line my-1.5" />
     return <div key={i} class="min-h-[0.6em]">{parts(line)}</div>
   })

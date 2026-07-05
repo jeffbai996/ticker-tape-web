@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { fetchChatModels, fetchSpend } from '../lib/chatClient.js'
 import { runAgentic, trimHistory } from '../lib/agent.js'
 import { toolLabel } from '../lib/tools.js'
+import { MdLite } from '../components/AiReport.jsx'
 import { tl, t as tt } from '../lib/i18n.js'
 
 // Generic on purpose: the assistant knows about markets and this app, and is
@@ -49,21 +50,20 @@ function SpendMeter({ spend }) {
 
 function ToolChips({ calls, results }) {
   return (
-    <div class="flex flex-wrap gap-1 self-start">
+    <div class="flex flex-wrap items-center gap-x-2 gap-y-1 self-start pl-1">
       {calls.map((tc) => {
         const res = results.get(tc.id)
         const failed = res != null && res.startsWith('{"error"')
         return (
           <span
             key={tc.id}
-            title={res ? res.slice(0, 400) : 'running…'}
-            class={`font-mono text-[10px] px-2 py-0.5 rounded-full border ${
-              failed
-                ? 'border-down/40 text-down bg-surface-1'
-                : 'border-line-2 text-ink-2 bg-surface-1'
-            }`}
+            title={failed ? res.slice(0, 200) : undefined}
+            class="inline-flex items-center gap-1 font-mono text-[10px] text-muted"
           >
-            ⚙ {toolLabel(tc)} {res == null ? '…' : failed ? '✕' : '✓'}
+            <span class={failed ? 'text-down' : res == null ? 'text-accent animate-pulse' : 'text-up'}>
+              {failed ? '✕' : res == null ? '◌' : '✓'}
+            </span>
+            {toolLabel(tc)}
           </span>
         )
       })}
@@ -182,27 +182,28 @@ export function Chat() {
             return (
               <div key={i} class="self-start flex flex-col gap-1 max-w-[95%]">
                 {m.content && (
-                  <div class="rounded-xl border px-3 py-2 text-[13px] leading-relaxed whitespace-pre-wrap bg-surface-1 border-line text-ink">
-                    {m.content}
+                  <div class="rounded-xl border px-3 py-2 text-[13px] leading-relaxed bg-surface-1 border-line text-ink">
+                    <MdLite text={m.content} />
                   </div>
                 )}
                 <ToolChips calls={m.toolCalls} results={results} />
               </div>
             )
           }
+          if (m.role === 'assistant') {
+            return (
+              <div key={i} class="self-start rounded-xl border px-3 py-2 text-[13px] leading-relaxed bg-surface-1 border-line text-ink max-w-[95%]">
+                {m.content
+                  ? <MdLite text={m.content} />
+                  : busy && i === history.length - 1
+                    ? <span class="text-muted font-mono text-[11px]">{tt('common.loading')}</span>
+                    : null}
+              </div>
+            )
+          }
           return (
-            <div
-              key={i}
-              class={`rounded-xl border px-3 py-2 text-[13px] leading-relaxed whitespace-pre-wrap ${
-                m.role === 'user'
-                  ? 'self-end bg-accent-soft border-accent/40 text-ink max-w-[85%]'
-                  : 'self-start bg-surface-1 border-line text-ink max-w-[95%]'
-              }`}
-            >
-              {m.content ||
-                (busy && i === history.length - 1
-                  ? <span class="text-muted font-mono text-[11px]">{tt('common.loading')}</span>
-                  : null)}
+            <div key={i} class="self-end rounded-xl border px-3 py-2 text-[13px] leading-relaxed whitespace-pre-wrap bg-accent-soft border-accent/40 text-ink max-w-[85%]">
+              {m.content}
             </div>
           )
         })}
