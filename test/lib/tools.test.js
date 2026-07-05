@@ -33,11 +33,12 @@ describe('cleanSymbols', () => {
 })
 
 describe('toolLabel', () => {
-  it('shows the most relevant arg', () => {
-    expect(toolLabel({ name: 'get_quotes', args: { symbols: ['NVDA', 'AMD'] } })).toBe('get_quotes(NVDA,AMD)')
-    expect(toolLabel({ name: 'get_technicals', args: { symbol: 'MU' } })).toBe('get_technicals(MU)')
-    expect(toolLabel({ name: 'navigate', args: { view: 'heatmap' } })).toBe('navigate(heatmap)')
-    expect(toolLabel({ name: 'get_watchlist', args: {} })).toBe('get_watchlist()')
+  it('humanizes the verb and shows the most relevant arg', () => {
+    expect(toolLabel({ name: 'get_quotes', args: { symbols: ['NVDA', 'AMD'] } })).toBe('quotes NVDA, AMD')
+    expect(toolLabel({ name: 'get_technicals', args: { symbol: 'MU' } })).toBe('technicals MU')
+    expect(toolLabel({ name: 'navigate', args: { view: 'heatmap' } })).toBe('open heatmap')
+    expect(toolLabel({ name: 'get_watchlist', args: {} })).toBe('watchlist')
+    expect(toolLabel({ name: 'future_tool', args: {} })).toBe('future_tool')
   })
 })
 
