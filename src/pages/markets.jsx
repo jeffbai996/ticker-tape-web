@@ -283,7 +283,7 @@ function Calendar() {
                   {e.user && (
                     <button
                       onClick={() => removeCatalyst(e.id)}
-                      class="ml-2 font-mono text-[10px] text-muted opacity-0 group-hover:opacity-100 hover:text-down"
+                      class="ml-2 font-mono text-[10px] text-muted opacity-0 group-hover:opacity-100 max-md:opacity-100 hover:text-down"
                       title="remove catalyst"
                     >
                       ✕
