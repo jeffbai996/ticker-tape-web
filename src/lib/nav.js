@@ -29,6 +29,7 @@ export const NAV = [
       { id: 'carry', label: 'Carry' },
       { id: 'cockpit', label: 'Cockpit' },
       { id: 'timeline', label: 'Timeline' },
+      { id: 'backtest', label: 'Backtest' },
     ],
   },
   {
