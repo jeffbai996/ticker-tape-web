@@ -100,6 +100,10 @@ const STRINGS = {
     en: '252-day seeded random walk ending at the current demo NLV — not a real account history',
     zh: '252天随机模拟曲线，终点为当前演示净值 — 非真实账户历史',
   },
+  'backtest.replay_start': {
+    en: 'replay starts {date}',
+    zh: '回测起点 {date}',
+  },
 }
 
 // Short labels keyed by English text. Absent key → English passthrough.
@@ -194,6 +198,13 @@ const LABELS = {
   Send: '发送', clear: '清空',
   Pulse: '市场脉搏', Hi: '高', Lo: '低', Spd: '价差', down: '跌',
   Median: '中位', Green: '上涨',
+  // Backtest
+  Backtest: '回测', 'Fills ledger': '成交记录', Save: '保存', 'Reset to demo': '重置为演示',
+  'DEMO LEDGER': '演示记录', Benchmark: '基准', 'Report currency': '报告货币',
+  'Book return': '组合收益', 'Benchmark return': '基准收益', Alpha: '超额收益',
+  'Max drawdown': '最大回撤',
+  'No fills yet — add rows to the ledger above.': '暂无成交记录 — 请在上方添加记录',
+  'CSV format': 'CSV 格式',
 }
 
 export function t(key, params) {

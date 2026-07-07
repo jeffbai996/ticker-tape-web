@@ -20,6 +20,7 @@ export const HELP_TEXT = [
   'cat add DATE [SYM] [type] label…           add catalyst (type: product conf policy capex macro)',
   'b|brief           briefing + AI            pos · acct     demo portfolio',
   'alerts            alert center             chat [q]       AI chat',
+  'bt|backtest       fills ledger replay',
 ].join('\n')
 
 const low = (s) => s.toLowerCase()
@@ -46,6 +47,7 @@ export function parseCommand(input) {
     wl: '#/', t: '#/', pos: '#/portfolio', acct: '#/portfolio/account',
     pnl: '#/portfolio', alerts: '#/alerts', port: '#/portfolio',
     b: '#/brief', brief: '#/brief', briefing: '#/brief',
+    bt: '#/portfolio/backtest', backtest: '#/portfolio/backtest',
   }
   if (cmd in NAVS && !args.length) return { type: 'nav', hash: NAVS[cmd] }
 
