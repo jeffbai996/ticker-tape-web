@@ -24,7 +24,7 @@ const MAX_TOOLS = 16
 // Web mirror of the CLI's MODELS registry (chat.py). cost per 1M tokens.
 export const MODELS = {
   flash: { id: 'gemini-3-flash-preview', label: 'Flash 3', provider: 'gemini', costIn: 0.30, costOut: 2.50 },
-  'flash+': { id: 'gemini-3.5-flash', label: 'Flash 3.5', provider: 'gemini', costIn: 1.50, costOut: 9.00 },
+  'flash+': { id: 'gemini-3.6-flash', label: 'Flash 3.6', provider: 'gemini', costIn: 1.50, costOut: 7.50 },
   pro: { id: 'gemini-3.1-pro-preview', label: 'Pro 3.1', provider: 'gemini', costIn: 2.00, costOut: 12.00 },
   sonnet: { id: 'claude-sonnet-5', label: 'Sonnet 5', provider: 'anthropic', costIn: 3.00, costOut: 15.00 },
   opus: { id: 'claude-opus-5', label: 'Opus 5', provider: 'anthropic', costIn: 5.00, costOut: 25.00 },
