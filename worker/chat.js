@@ -27,7 +27,7 @@ export const MODELS = {
   'flash+': { id: 'gemini-3.5-flash', label: 'Flash 3.5', provider: 'gemini', costIn: 1.50, costOut: 9.00 },
   pro: { id: 'gemini-3.1-pro-preview', label: 'Pro 3.1', provider: 'gemini', costIn: 2.00, costOut: 12.00 },
   sonnet: { id: 'claude-sonnet-5', label: 'Sonnet 5', provider: 'anthropic', costIn: 3.00, costOut: 15.00 },
-  opus: { id: 'claude-opus-4-8', label: 'Opus 4.8', provider: 'anthropic', costIn: 5.00, costOut: 25.00 },
+  opus: { id: 'claude-opus-5', label: 'Opus 5', provider: 'anthropic', costIn: 5.00, costOut: 25.00 },
   fable: { id: 'claude-fable-5', label: 'Fable 5', provider: 'anthropic', costIn: 10.00, costOut: 50.00 },
   gpt: { id: 'gpt-5.5', label: 'GPT-5.5', provider: 'openai', costIn: 5.00, costOut: 30.00 },
   'gpt-mini': { id: 'gpt-5.4-mini', label: 'GPT-5.4 mini', provider: 'openai', costIn: 0.75, costOut: 4.50 },
