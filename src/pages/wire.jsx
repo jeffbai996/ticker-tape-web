@@ -29,7 +29,7 @@ function Row({ ev, hot }) {
   const latTxt = lat > 0.5 && lat < 600 ? `+${lat.toFixed(1)}s` : ''
   return (
     <div
-      class={`grid grid-cols-[70px_60px_40px_1fr_auto] gap-x-3 items-baseline px-3 py-1.5 border-b border-line/40 font-mono text-[12.5px] transition-colors duration-1000 ${
+      class={`grid grid-cols-[64px_56px_36px_1fr_auto] gap-x-2.5 items-baseline px-2.5 py-[3px] border-b border-line/30 font-mono text-[12px] leading-[1.55] transition-colors duration-1000 ${
         hot ? 'bg-accent text-black' : ''
       }`}
     >
@@ -130,7 +130,7 @@ export function Wire() {
   const stateTone = { demo: 'text-muted', connecting: 'text-muted', live: 'text-accent', error: 'text-down' }
 
   return (
-    <div class="flex flex-col gap-3">
+    <div class="flex flex-col gap-2 flex-1 min-w-0 p-3">
       <div class="flex items-center gap-3 flex-wrap">
         <span class={`font-mono text-[11px] uppercase tracking-widest ${stateTone[state]}`}>
           {state === 'demo' ? 'demo wire — synthetic events' : state}
