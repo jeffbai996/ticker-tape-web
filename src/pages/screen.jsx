@@ -87,8 +87,8 @@ function ScreenTable({ symbols, hist }) {
             if (h?.error) {
               return (
                 <tr key={sym} class="border-b border-line last:border-0">
-                  <td class="px-3 py-[5px] font-bold text-accent">{sym}</td>
-                  <td colSpan={6} class="px-2 py-[5px] text-down text-[11px]">no data</td>
+                  <td class="px-3 py-[3px] font-bold text-accent">{sym}</td>
+                  <td colSpan={6} class="px-2 py-[3px] text-down text-[11px]">no data</td>
                 </tr>
               )
             }
@@ -109,21 +109,21 @@ function ScreenTable({ symbols, hist }) {
                 class="border-b border-line last:border-0 hover:bg-surface-2 cursor-pointer"
                 onClick={() => (location.hash = `#/research/${sym.toLowerCase()}`)}
               >
-                <td class="px-3 py-[5px] font-bold text-accent">{sym}</td>
-                <td class="px-2 py-[5px] text-right text-ink">{q ? fmtPrice(price) : '…'}</td>
-                <td class={`px-2 py-[5px] text-right ${dayUp ? 'text-up' : 'text-down'}`}>
+                <td class="px-3 py-[3px] font-bold text-accent">{sym}</td>
+                <td class="px-2 py-[3px] text-right text-ink">{q ? fmtPrice(price) : '…'}</td>
+                <td class={`px-2 py-[3px] text-right ${dayUp ? 'text-up' : 'text-down'}`}>
                   {q ? fmtPct(q.pct) : ''}
                 </td>
-                <td class={`px-2 py-[5px] text-right ${r == null ? 'text-muted' : r >= 70 ? 'text-down' : r <= 30 ? 'text-up' : 'text-ink'}`}>
+                <td class={`px-2 py-[3px] text-right ${r == null ? 'text-muted' : r >= 70 ? 'text-down' : r <= 30 ? 'text-up' : 'text-ink'}`}>
                   {r == null ? '—' : r.toFixed(1)}
                 </td>
-                <td class={`px-2 py-[5px] text-right ${vs200 == null ? 'text-muted' : vs200 >= 0 ? 'text-up' : 'text-down'}`}>
+                <td class={`px-2 py-[3px] text-right ${vs200 == null ? 'text-muted' : vs200 >= 0 ? 'text-up' : 'text-down'}`}>
                   {vs200 == null ? '—' : fmtPct(vs200)}
                 </td>
-                <td class="px-2 py-[5px] text-right text-ink-2">
+                <td class="px-2 py-[3px] text-right text-ink-2">
                   {pos52 == null ? '—' : `${pos52.toFixed(0)}%`}
                 </td>
-                <td class={`px-3 py-[5px] text-right ${y1 == null ? 'text-muted' : y1 >= 0 ? 'text-up' : 'text-down'}`}>
+                <td class={`px-3 py-[3px] text-right ${y1 == null ? 'text-muted' : y1 >= 0 ? 'text-up' : 'text-down'}`}>
                   {y1 == null ? '—' : fmtPct(y1)}
                 </td>
               </tr>
@@ -289,9 +289,9 @@ function Valuation({ symbols }) {
         <tbody>
           {VAL_ROWS.map((row) => (
             <tr key={row.label} class="border-t border-line hover:bg-surface-2">
-              <td class="px-3 py-[5px] text-muted whitespace-nowrap">{row.label}</td>
+              <td class="px-3 py-[3px] text-muted whitespace-nowrap">{row.label}</td>
               {ready.map((s) => (
-                <td key={s} class="px-3 py-[5px] text-right text-ink">{row.fmt(funds[s])}</td>
+                <td key={s} class="px-3 py-[3px] text-right text-ink">{row.fmt(funds[s])}</td>
               ))}
             </tr>
           ))}

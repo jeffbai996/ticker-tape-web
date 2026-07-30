@@ -66,16 +66,16 @@ function Positions({ priceMap }) {
           {rows.map((r) => (
             <tr key={r.symbol} class="border-t border-line hover:bg-surface-2 cursor-pointer"
               onClick={() => (location.hash = `#/research/${r.symbol.toLowerCase()}`)}>
-              <td class="px-3 py-[5px] font-bold text-accent">{r.symbol}</td>
-              <td class="px-2 py-[5px] text-right text-ink-2">{r.shares}</td>
-              <td class="px-2 py-[5px] text-right text-muted">{fmtPrice(r.avgCost)}</td>
-              <td class="px-2 py-[5px] text-right text-ink">{fmtPrice(r.price)}</td>
-              <td class="px-2 py-[5px] text-right text-ink">{money(r.mktValue)}</td>
-              <td class="px-2 py-[5px] text-right text-ink-2">{r.weight != null ? `${r.weight.toFixed(1)}%` : '—'}</td>
-              <td class={`px-2 py-[5px] text-right ${pnlCls(r.dayPnl)}`}>
+              <td class="px-3 py-[3px] font-bold text-accent">{r.symbol}</td>
+              <td class="px-2 py-[3px] text-right text-ink-2">{r.shares}</td>
+              <td class="px-2 py-[3px] text-right text-muted">{fmtPrice(r.avgCost)}</td>
+              <td class="px-2 py-[3px] text-right text-ink">{fmtPrice(r.price)}</td>
+              <td class="px-2 py-[3px] text-right text-ink">{money(r.mktValue)}</td>
+              <td class="px-2 py-[3px] text-right text-ink-2">{r.weight != null ? `${r.weight.toFixed(1)}%` : '—'}</td>
+              <td class={`px-2 py-[3px] text-right ${pnlCls(r.dayPnl)}`}>
                 {signedMoney(r.dayPnl)} {r.dayPct != null && <span class="text-[10px]">({fmtPct(r.dayPct)})</span>}
               </td>
-              <td class={`px-3 py-[5px] text-right ${pnlCls(r.unrealPnl)}`}>
+              <td class={`px-3 py-[3px] text-right ${pnlCls(r.unrealPnl)}`}>
                 {signedMoney(r.unrealPnl)} {r.unrealPct != null && <span class="text-[10px]">({fmtPct(r.unrealPct)})</span>}
               </td>
             </tr>
@@ -218,7 +218,7 @@ function Cockpit({ priceMap }) {
   return (
     <div class="max-w-2xl flex flex-col gap-3">
       <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
-        <header class="px-3 py-2 border-b border-line-2 bg-surface-2">
+        <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
           <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Stress test')}</h2>
         </header>
         <table class="w-full border-collapse font-mono text-[11px]">
@@ -236,10 +236,10 @@ function Cockpit({ priceMap }) {
               const grossAfter = s.gross != null ? s.gross + pnl : null
               return (
                 <tr key={move} class="border-t border-line">
-                  <td class={`px-3 py-[5px] font-bold ${move < 0 ? 'text-down' : 'text-up'}`}>{move > 0 ? '+' : ''}{move}%</td>
-                  <td class={`px-2 py-[5px] text-right ${pnlCls(pnl)}`}>{signedMoney(pnl)}</td>
-                  <td class="px-2 py-[5px] text-right text-ink">{money(nlvAfter)}</td>
-                  <td class="px-3 py-[5px] text-right text-ink-2">
+                  <td class={`px-3 py-[3px] font-bold ${move < 0 ? 'text-down' : 'text-up'}`}>{move > 0 ? '+' : ''}{move}%</td>
+                  <td class={`px-2 py-[3px] text-right ${pnlCls(pnl)}`}>{signedMoney(pnl)}</td>
+                  <td class="px-2 py-[3px] text-right text-ink">{money(nlvAfter)}</td>
+                  <td class="px-3 py-[3px] text-right text-ink-2">
                     {nlvAfter && grossAfter ? `${(grossAfter / nlvAfter).toFixed(2)}x` : '—'}
                   </td>
                 </tr>

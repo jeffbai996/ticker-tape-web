@@ -116,7 +116,7 @@ function Technicals({ symbol }) {
 
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
-      <header class="px-3 py-2 border-b border-line-2 bg-surface-2">
+      <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
         <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Technicals — daily')}</h2>
       </header>
       <Stat label="SMA 20" value={fmtPrice(sma(closes, 20))} cls={smaCls(20)} />
@@ -150,7 +150,7 @@ function Fundamentals({ symbol }) {
 
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
-      <header class="px-3 py-2 border-b border-line-2 bg-surface-2 flex items-baseline gap-2">
+      <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2 flex items-baseline gap-2">
         <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Fundamentals')}</h2>
         {f?.recommendationKey && (
           <span class="font-mono text-[10px] text-ink-2 uppercase">{f.recommendationKey.replace('_', ' ')}</span>
@@ -191,7 +191,7 @@ function News({ symbol }) {
 
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
-      <header class="px-3 py-2 border-b border-line-2 bg-surface-2">
+      <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
         <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">{tl('News')}</h2>
       </header>
       {items == null && <div class="px-3 py-3 text-[11px] text-muted font-mono">{tt('common.loading')}</div>}
@@ -218,7 +218,7 @@ function News({ symbol }) {
 function OptionSide({ title, rows, spot, t, type }) {
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden min-w-0">
-      <header class="px-3 py-2 border-b border-line-2 bg-surface-2">
+      <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
         <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">{title}</h2>
       </header>
       <div class="overflow-x-auto">
@@ -317,7 +317,7 @@ function OptionsView({ symbol }) {
           </span>
         )}
       </div>
-      <div class="grid gap-3 xl:grid-cols-2">
+      <div class="grid gap-2 xl:grid-cols-2">
         <OptionSide title={tl('Calls')} rows={near(chain.calls)} spot={chain.spot} t={t} type="call" />
         <OptionSide title={tl('Puts')} rows={near(chain.puts)} spot={chain.spot} t={t} type="put" />
       </div>
@@ -512,21 +512,21 @@ function EarningsView({ symbol }) {
           <tbody>
             {data.events.map((e) => (
               <tr key={e.quarter} class="border-t border-line hover:bg-surface-2">
-                <td class="px-3 py-[5px] text-ink-2 whitespace-nowrap">
+                <td class="px-3 py-[3px] text-ink-2 whitespace-nowrap">
                   {new Date(e.quarter).toISOString().slice(0, 10)}
                 </td>
-                <td class="px-2 py-[5px] text-muted whitespace-nowrap">
+                <td class="px-2 py-[3px] text-muted whitespace-nowrap">
                   {e.report ? new Date(e.report).toISOString().slice(0, 10) : '—'}
                 </td>
-                <td class="px-2 py-[5px] text-right text-ink-2">{e.epsEstimate != null ? e.epsEstimate.toFixed(2) : '—'}</td>
-                <td class="px-2 py-[5px] text-right text-ink">{e.epsActual.toFixed(2)}</td>
-                <td class={`px-2 py-[5px] text-right ${pctTone(e.surprisePct)}`}>
+                <td class="px-2 py-[3px] text-right text-ink-2">{e.epsEstimate != null ? e.epsEstimate.toFixed(2) : '—'}</td>
+                <td class="px-2 py-[3px] text-right text-ink">{e.epsActual.toFixed(2)}</td>
+                <td class={`px-2 py-[3px] text-right ${pctTone(e.surprisePct)}`}>
                   {e.surprisePct != null ? fmtPct(e.surprisePct * 100) : '—'}
                 </td>
-                <td class={`px-2 py-[5px] text-right ${pctTone(e.priceMove)}`}>
+                <td class={`px-2 py-[3px] text-right ${pctTone(e.priceMove)}`}>
                   {e.priceMove != null ? fmtPct(e.priceMove) : '—'}
                 </td>
-                <td class="px-3 py-[5px] whitespace-nowrap">
+                <td class="px-3 py-[3px] whitespace-nowrap">
                   {e.peers.length
                     ? e.peers.map((p) => (
                         <span key={p.sym} class="mr-2">
@@ -629,7 +629,7 @@ function AnalystsView({ symbol }) {
 
       {data.history.length > 0 && (
         <section class="bg-surface-1 border border-line rounded-xl overflow-x-auto">
-          <header class="px-3 py-2 border-b border-line-2 bg-surface-2">
+          <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
             <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Recent rating changes')}</h2>
           </header>
           <table class="w-full border-collapse font-mono text-[11px]">
@@ -805,7 +805,7 @@ export function Research({ route }) {
       ) : route.view === 'analysts' ? (
         <AnalystsView symbol={symbol} />
       ) : (
-        <div class="grid gap-3 xl:grid-cols-[1fr_320px]">
+        <div class="grid gap-2 xl:grid-cols-[1fr_320px]">
           <section class="bg-surface-1 border border-line rounded-xl p-2 min-w-0">
             {hist ? (
               <Candles bars={hist.bars} intraday={hist.intraday} />

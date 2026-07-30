@@ -88,7 +88,7 @@ function TuiRow({ symbol, data, earnDays }) {
   return (
     <a
       href={`#/research/${symbol.toLowerCase()}`}
-      class="block px-3 py-[5px] border-b border-line last:border-0 hover:bg-surface-2 hover:no-underline"
+      class="block px-3 py-[3px] border-b border-line last:border-0 hover:bg-surface-2 hover:no-underline"
     >
       <div class="flex items-baseline gap-3 font-mono text-[12px] flex-wrap">
         <span class="text-ink font-bold w-16">{symbol}</span>
@@ -437,7 +437,7 @@ export function Dashboard() {
         )}
       </div>
 
-      <div class="grid gap-3 xl:grid-cols-[1fr_230px] min-w-0">
+      <div class="grid gap-2 xl:grid-cols-[1fr_230px] min-w-0">
         <section class="bg-surface-1 border border-line rounded-xl overflow-hidden min-w-0">
           {groupRows(watchlist).map((g) => (
             <div key={g.name}>

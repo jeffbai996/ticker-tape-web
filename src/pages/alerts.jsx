@@ -112,12 +112,12 @@ export function Alerts() {
                   const q = live[a.symbol]?.quote
                   return (
                     <tr key={a.id} class="border-t border-line hover:bg-surface-2">
-                      <td class="px-3 py-[5px] text-ink whitespace-nowrap">
+                      <td class="px-3 py-[3px] text-ink whitespace-nowrap">
                         <a href={`#/research/${a.symbol.toLowerCase()}`} class="text-accent hover:underline">{a.symbol}</a>
                         {' '}{conditionText(a).slice(a.symbol.length + 1)}
                       </td>
-                      <td class="px-2 py-[5px] text-right text-ink-2">{fmtPrice(q?.price)}</td>
-                      <td class="px-2 py-[5px] whitespace-nowrap">
+                      <td class="px-2 py-[3px] text-right text-ink-2">{fmtPrice(q?.price)}</td>
+                      <td class="px-2 py-[3px] whitespace-nowrap">
                         {a.triggered ? (
                           <span class="text-up">
                             {tl('TRIGGERED')} {new Date(a.triggered).toISOString().slice(5, 16).replace('T', ' ')}
@@ -127,10 +127,10 @@ export function Alerts() {
                           <span class="text-accent">{tl('ARMED')}</span>
                         )}
                       </td>
-                      <td class="px-2 py-[5px] text-muted whitespace-nowrap">
+                      <td class="px-2 py-[3px] text-muted whitespace-nowrap">
                         {new Date(a.created).toISOString().slice(0, 10)}
                       </td>
-                      <td class="px-3 py-[5px] text-right whitespace-nowrap">
+                      <td class="px-3 py-[3px] text-right whitespace-nowrap">
                         {a.triggered && (
                           <button onClick={() => rearmAlert(a.id)}
                             class="text-accent hover:underline mr-3">{tl('re-arm')}</button>
