@@ -67,3 +67,79 @@ export const TYPE_CODE = {
   fed_speech: 'FED', fed_headline: 'FED', macro_print: 'ECO',
   transcript_chunk: 'LIV', digest: 'DIG',
 }
+
+export async function fetchToday(base) {
+  const resp = await fetch(`${base}/api/today`)
+  if (!resp.ok) throw new Error(`wire ${resp.status}`)
+  return resp.json()
+}
+
+export async function fetchQuotes(base) {
+  const resp = await fetch(`${base}/api/quotes`)
+  if (!resp.ok) throw new Error(`wire ${resp.status}`)
+  return resp.json()
+}
+
+export async function fetchMeta(base) {
+  const resp = await fetch(`${base}/api/meta`)
+  if (!resp.ok) throw new Error(`wire ${resp.status}`)
+  return resp.json()
+}
+
+// ── priority scorer (ported from the fragwire board): what it is × whether
+// it's a watched name × freshness decay, ~25h half-life.
+export const TYPE_WEIGHT = {
+  earnings_release: 100, macro_print: 85, fed_headline: 75, fed_speech: 70,
+  digest: 60, filing: 55, headline: 40, transcript_chunk: 12,
+}
+
+export function scoreEvent(ev, watchset, now = Date.now() / 1000) {
+  const base = TYPE_WEIGHT[ev.type] ?? 30
+  const wl = (ev.symbols || []).some((s) => watchset.has(s)) ? 1.5 : 1
+  const ageH = Math.max(0, now - ev.ts_event) / 3600
+  return base * wl * Math.exp(-ageH / 36)
+}
+
+// TOP mode collapses live-transcript chatter to the newest chunk per session.
+export function rankEvents(events, watchset, now = Date.now() / 1000) {
+  const newestChunk = new Map()
+  for (const ev of events) {
+    if (ev.type !== 'transcript_chunk') continue
+    const sid = ev.meta && ev.meta.session_id
+    const cur = newestChunk.get(sid)
+    if (!cur || ev.id > cur.id) newestChunk.set(sid, ev)
+  }
+  return events
+    .filter((ev) => ev.type !== 'transcript_chunk'
+      || newestChunk.get(ev.meta && ev.meta.session_id) === ev)
+    .slice()
+    .sort((a, b) => scoreEvent(b, watchset, now) - scoreEvent(a, watchset, now))
+}
+
+// ── synthetic rail data for demo mode ──
+export function demoToday(now = Date.now() / 1000) {
+  return {
+    calendar: [
+      { id: 1, ts: now + 3.2 * 3600, symbol: 'AAPL', kind: 'earnings',
+        label: 'AAPL earnings (demo · cons EPS $2.10, rev $96.4B)' },
+    ],
+    upcoming: [
+      { id: 2, ts: now + 5 * 86400, symbol: '', kind: 'macro', label: 'Employment report (demo)' },
+      { id: 3, ts: now + 9 * 86400, symbol: 'MSFT', kind: 'earnings', label: 'MSFT earnings (demo)' },
+      { id: 4, ts: now + 13 * 86400, symbol: '', kind: 'fed', label: 'FOMC statement (demo)' },
+    ],
+    captured: { headline: 24, filing: 6, earnings_release: 2, digest: 5, transcript_chunk: 61 },
+    sessions: [
+      { id: 1, symbol: 'AAPL', status: 'capturing', label: 'AAPL earnings call (demo)' },
+      { id: 2, symbol: 'TSLA', status: 'done', label: 'TSLA call replay (demo)' },
+    ],
+  }
+}
+
+export function demoQuotes() {
+  return {
+    AAPL: { change_pct: 1.2 }, MSFT: { change_pct: -0.4 },
+    NVDA: { change_pct: 2.6 }, GOOGL: { change_pct: 0.9 },
+    AMZN: { change_pct: -1.8 }, TSLA: { change_pct: 3.5 },
+  }
+}
