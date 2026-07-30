@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import {
-  wireUrl, setWireUrl, fetchEvents, fetchToday, fetchQuotes, fetchMeta,
-  demoBackfill, demoEvent, demoToday, demoQuotes, rankEvents, TYPE_CODE,
+  wireUrl, setWireUrl, fetchEvents, fetchToday, fetchMeta,
+  demoBackfill, demoEvent, demoToday, rankEvents, TYPE_CODE,
 } from '../lib/wire.js'
 
 const CODE_TONE = {
@@ -86,25 +86,11 @@ function Panel({ title, children }) {
   )
 }
 
-function Rail({ today, quotes, now }) {
+function Rail({ today, now }) {
   const sessions = (today?.sessions || []).filter((s) => s.status !== 'failed')
   const live = sessions.filter((s) => ['armed', 'capturing'].includes(s.status))
   return (
     <aside class="flex flex-col gap-2 w-[290px] shrink-0 max-lg:w-full">
-      {quotes && Object.keys(quotes).length > 0 && (
-        <Panel title="watchlist">
-          <div class="flex flex-col">
-            {Object.entries(quotes).map(([sym, q]) => (
-              <div key={sym} class="flex justify-between items-baseline font-mono text-[11.5px] py-[2px]">
-                <span class="text-ink">{sym}</span>
-                <span class={q.change_pct >= 0 ? 'text-up' : 'text-down'}>
-                  {q.change_pct > 0 ? '+' : ''}{Number(q.change_pct).toFixed(1)}%
-                </span>
-              </div>
-            ))}
-          </div>
-        </Panel>
-      )}
       <Panel title="today">
         {(today?.calendar || []).length === 0 && (
           <p class="font-mono text-[11px] text-muted py-0.5">nothing on the sheet</p>
@@ -170,7 +156,6 @@ export function Wire() {
   const [state, setState] = useState('demo')   // demo | connecting | live | error
   const [error, setError] = useState('')
   const [today, setToday] = useState(null)
-  const [quotes, setQuotes] = useState(null)
   const [watchset, setWatchset] = useState(new Set())
   const [now, setNow] = useState(Date.now() / 1000)
   const esRef = useRef(null)
@@ -195,7 +180,6 @@ export function Wire() {
       setState('demo')
       setEvents(demoBackfill())
       setToday(demoToday())
-      setQuotes(demoQuotes())
       setWatchset(new Set(['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 'TSLA']))
       let nextId = 41
       const timer = setInterval(() => {
@@ -212,9 +196,6 @@ export function Wire() {
     setError('')
     const pollRail = () => {
       fetchToday(endpoint).then((out) => !cancelled && setToday(out)).catch(() => {})
-      fetchQuotes(endpoint)
-        .then((out) => !cancelled && setQuotes(out.ok ? out.quotes : null))
-        .catch(() => !cancelled && setQuotes(null))
     }
     fetchMeta(endpoint)
       .then((out) => !cancelled && setWatchset(new Set(out.watchlist || [])))
@@ -332,7 +313,7 @@ export function Wire() {
                  open={openIds.has(ev.id)} onToggle={() => toggleOpen(ev.id)} />
           ))}
         </div>
-        <Rail today={today} quotes={quotes} now={now} />
+        <Rail today={today} now={now} />
       </div>
       <p class="font-mono text-[10.5px] text-muted max-w-[74ch]">
         BYO wire: this page ships no endpoint and no data — point it at any
