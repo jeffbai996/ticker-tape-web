@@ -56,7 +56,7 @@ export function Sidebar({ route }) {
           <div key={section.id}>
             <a
               href={hrefFor(section.id)}
-              class={`flex items-center gap-2 mx-2 px-2.5 py-[5px] rounded-lg text-[13px] transition-colors ${
+              class={`flex items-center gap-2 mx-2 px-2.5 py-1 rounded-lg font-mono lowercase text-[12px] transition-colors ${
                 route.section === section.id
                   ? 'bg-accent-soft text-accent'
                   : 'text-ink-2 hover:bg-surface-2 hover:text-ink'
@@ -73,7 +73,7 @@ export function Sidebar({ route }) {
               <div class="ml-4 my-0.5 flex flex-col border-l border-line">
                 <a
                   href={hrefFor(section.id)}
-                  class={`px-3 py-0.5 text-[11px] ${!route.sub ? 'text-accent' : 'text-muted hover:text-ink-2'}`}
+                  class={`px-3 py-0.5 font-mono lowercase text-[10.5px] ${!route.sub ? 'text-accent' : 'text-muted hover:text-ink-2'}`}
                 >
                   {tl('Overview')}
                 </a>
@@ -81,7 +81,7 @@ export function Sidebar({ route }) {
                   <a
                     key={sub.id}
                     href={hrefFor(section.id, sub.id)}
-                    class={`px-3 py-0.5 text-[11px] ${
+                    class={`px-3 py-0.5 font-mono lowercase text-[10.5px] ${
                       route.sub === sub.id ? 'text-accent' : 'text-muted hover:text-ink-2'
                     }`}
                   >
