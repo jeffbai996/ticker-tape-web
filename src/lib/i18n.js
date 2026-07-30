@@ -110,7 +110,7 @@ const STRINGS = {
 const LABELS = {
   // Nav
   Dashboard: '仪表盘', Markets: '市场', Research: '研究', Portfolio: '持仓',
-  Screening: '筛选', Alerts: '提醒', 'AI Chat': 'AI 对话', Overview: '概览',
+  Screening: '筛选', Alerts: '提醒', Wire: '快讯', 'AI Chat': 'AI 对话', Overview: '概览',
   Sectors: '板块', Heatmap: '热力图', Commodities: '商品', Earnings: '财报',
   Calendar: '财经日历', Compare: '对比', Correlation: '相关性', Valuation: '估值',
   // Research tabs + panels

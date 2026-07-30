@@ -42,6 +42,7 @@ export const NAV = [
     ],
   },
   { id: 'alerts', label: 'Alerts', subs: [] },
+  { id: 'wire', label: 'Wire', badge: 'BYO', subs: [] },
   { id: 'chat', label: 'AI Chat', subs: [] },
 ]
 
