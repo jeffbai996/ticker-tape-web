@@ -12,16 +12,16 @@ function QuoteRow({ label, data, unit }) {
   const up = (q?.pct ?? 0) >= 0
   return (
     <tr class="border-b border-line last:border-0 hover:bg-surface-2">
-      <td class="px-3 py-[5px] text-[12px] text-ink whitespace-nowrap">{label}</td>
-      {unit !== undefined && <td class="px-2 py-[5px] font-mono text-[10px] text-muted">{unit}</td>}
-      <td class="px-2 py-[5px] font-mono text-[12px] text-ink text-right">{q ? fmtPrice(q.price) : '—'}</td>
-      <td class={`px-2 py-[5px] font-mono text-[12px] text-right ${q ? (up ? 'text-up' : 'text-down') : 'text-muted'}`}>
+      <td class="px-3 py-[3px] text-[12px] text-ink whitespace-nowrap">{label}</td>
+      {unit !== undefined && <td class="px-2 py-[3px] font-mono text-[10px] text-muted">{unit}</td>}
+      <td class="px-2 py-[3px] font-mono text-[12px] text-ink text-right">{q ? fmtPrice(q.price) : '—'}</td>
+      <td class={`px-2 py-[3px] font-mono text-[12px] text-right ${q ? (up ? 'text-up' : 'text-down') : 'text-muted'}`}>
         {q ? fmtChange(q.change) : ''}
       </td>
-      <td class={`px-2 py-[5px] font-mono text-[12px] text-right ${q ? (up ? 'text-up' : 'text-down') : 'text-muted'}`}>
+      <td class={`px-2 py-[3px] font-mono text-[12px] text-right ${q ? (up ? 'text-up' : 'text-down') : 'text-muted'}`}>
         {q ? fmtPct(q.pct) : ''}
       </td>
-      <td class="px-2 py-[5px] hidden @[420px]:table-cell">
+      <td class="px-2 py-[3px] hidden @[420px]:table-cell">
         <Histo bars={data?.histo} width={84} />
       </td>
     </tr>
@@ -31,7 +31,7 @@ function QuoteRow({ label, data, unit }) {
 function GroupCard({ name, items, quotes, withUnits }) {
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden @container">
-      <header class="px-3 py-2 border-b border-line-2 bg-surface-2">
+      <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
         <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">{tl(name)}</h2>
       </header>
       <table class="w-full border-collapse">
@@ -54,7 +54,7 @@ function Overview() {
   const symbols = MARKET_GROUPS.flatMap((g) => g.items.map((i) => i.symbol))
   const quotes = useQuotes(symbols)
   return (
-    <div class="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
+    <div class="grid gap-2 lg:grid-cols-2 2xl:grid-cols-3">
       {MARKET_GROUPS.map((g) => (
         <GroupCard key={g.name} name={g.name} items={g.items} quotes={quotes} />
       ))}
@@ -70,7 +70,7 @@ function Sectors() {
 
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden max-w-2xl">
-      <header class="px-3 py-2 border-b border-line-2 bg-surface-2">
+      <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
         <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">
           {tl('Sector ETFs — today')}
         </h2>
@@ -105,7 +105,7 @@ function Commodities() {
   const symbols = COMMODITY_GROUPS.flatMap((g) => g.items.map((i) => i.symbol))
   const quotes = useQuotes(symbols)
   return (
-    <div class="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
+    <div class="grid gap-2 lg:grid-cols-2 2xl:grid-cols-3">
       {COMMODITY_GROUPS.map((g) => (
         <GroupCard key={g.name} name={g.name} items={g.items} quotes={quotes} withUnits />
       ))}
@@ -148,7 +148,7 @@ function Heatmap() {
 function MoverTable({ title, rows, metric }) {
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
-      <header class="px-3 py-2 border-b border-line-2 bg-surface-2">
+      <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
         <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">{title}</h2>
       </header>
       <table class="w-full border-collapse font-mono text-[11px]">
@@ -158,9 +158,9 @@ function MoverTable({ title, rows, metric }) {
             return (
               <tr key={symbol} class="border-b border-line last:border-0 hover:bg-surface-2 cursor-pointer"
                 onClick={() => (location.hash = `#/research/${symbol.toLowerCase()}`)}>
-                <td class="px-3 py-[5px] font-bold text-accent">{symbol}</td>
-                <td class="px-2 py-[5px] text-right text-ink">{fmtPrice(q?.price)}</td>
-                <td class={`px-3 py-[5px] text-right ${up ? 'text-up' : 'text-down'}`}>
+                <td class="px-3 py-[3px] font-bold text-accent">{symbol}</td>
+                <td class="px-2 py-[3px] text-right text-ink">{fmtPrice(q?.price)}</td>
+                <td class={`px-3 py-[3px] text-right ${up ? 'text-up' : 'text-down'}`}>
                   {metric === 'volume' ? fmtVol(q?.volume) : fmtPct(q?.pct)}
                 </td>
               </tr>
@@ -182,7 +182,7 @@ function Movers() {
   const byVol = [...priced].sort((a, b) => (b.q.volume ?? 0) - (a.q.volume ?? 0))
 
   return (
-    <div class="grid gap-3 lg:grid-cols-3 max-w-5xl">
+    <div class="grid gap-2 lg:grid-cols-3 max-w-5xl">
       <MoverTable title={tl('Gainers')} rows={byPct.slice(0, 10)} />
       <MoverTable title={tl('Losers')} rows={byPct.slice(-10).reverse()} />
       <MoverTable title={tl('Most active')} rows={byVol.slice(0, 10)} metric="volume" />
@@ -214,7 +214,7 @@ function Earnings() {
 
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden max-w-xl">
-      <header class="px-3 py-2 border-b border-line-2 bg-surface-2">
+      <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
         <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">
           {tl('Upcoming earnings — watchlist')}
         </h2>
@@ -232,14 +232,14 @@ function Earnings() {
                 class="border-b border-line last:border-0 hover:bg-surface-2 cursor-pointer"
                 onClick={() => (location.hash = `#/research/${e.sym.toLowerCase()}`)}
               >
-                <td class="px-3 py-[5px] font-bold text-accent">{e.sym}</td>
-                <td class="px-2 py-[5px] text-ink">
+                <td class="px-3 py-[3px] font-bold text-accent">{e.sym}</td>
+                <td class="px-2 py-[3px] text-ink">
                   {new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                 </td>
-                <td class="px-2 py-[5px] text-ink-2 text-right">
+                <td class="px-2 py-[3px] text-ink-2 text-right">
                   {e.epsEstimate != null ? `est ${e.epsEstimate.toFixed(2)}` : ''}
                 </td>
-                <td class={`px-3 py-[5px] text-right ${cls}`}>
+                <td class={`px-3 py-[3px] text-right ${cls}`}>
                   {e.days <= 0 ? tl('today') : `${e.days}d`}
                 </td>
               </tr>
@@ -265,7 +265,7 @@ function Calendar() {
 
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden max-w-xl">
-      <header class="px-3 py-2 border-b border-line-2 bg-surface-2">
+      <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
         <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">
           {tl('Economic calendar — next 90 days')}
         </h2>
@@ -276,9 +276,9 @@ function Calendar() {
             const cls = URGENCY.find((u) => e.days <= u.max).cls
             return (
               <tr key={`${e.date}-${e.type}-${e.id ?? ''}`} class="border-b border-line last:border-0 hover:bg-surface-2 group">
-                <td class="px-3 py-[5px] font-mono text-[12px] text-ink">{e.date}</td>
-                <td class={`px-2 py-[5px] font-mono font-bold text-[11px] ${e.user ? 'text-[#00c8ff]' : cls}`}>{e.type}</td>
-                <td class="px-2 py-[5px] text-[12px] text-ink-2">
+                <td class="px-3 py-[3px] font-mono text-[12px] text-ink">{e.date}</td>
+                <td class={`px-2 py-[3px] font-mono font-bold text-[11px] ${e.user ? 'text-[#00c8ff]' : cls}`}>{e.type}</td>
+                <td class="px-2 py-[3px] text-[12px] text-ink-2">
                   {e.user ? e.label : tl(e.label)}
                   {e.user && (
                     <button
@@ -290,7 +290,7 @@ function Calendar() {
                     </button>
                   )}
                 </td>
-                <td class={`px-3 py-[5px] font-mono text-[11px] text-right ${cls}`}>
+                <td class={`px-3 py-[3px] font-mono text-[11px] text-right ${cls}`}>
                   {e.days === 0 ? tl('today') : `${e.days}d`}
                 </td>
               </tr>
