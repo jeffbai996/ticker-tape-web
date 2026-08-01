@@ -25,6 +25,11 @@ const FILTERS = [
 const hhmmss = (ts) =>
   new Date(ts * 1000).toLocaleTimeString('en-US', { hour12: false })
 
+// under 24h → clock time (fresh even if yesterday); older → the date
+const rowTime = (ts) => Date.now() / 1000 - ts < 86400
+  ? hhmmss(ts)
+  : new Date(ts * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+
 const countdown = (sec) => {
   if (sec <= 0) return 'now'
   if (sec < 3600) return `in ${Math.round(sec / 60)}m`
@@ -45,7 +50,7 @@ function Row({ ev, hot, open, onToggle }) {
       onClick={expandable ? onToggle : undefined}
     >
       <div class="grid grid-cols-[64px_56px_36px_1fr_auto] gap-x-2.5 items-baseline px-2.5 py-[3px] text-[12px] leading-[1.55]">
-        <span class={hot ? '' : 'text-muted'}>{hhmmss(ev.ts_event)}</span>
+        <span class={hot ? '' : 'text-muted'}>{rowTime(ev.ts_event)}</span>
         <span class={hot ? 'font-semibold' : 'text-accent font-medium'}>
           {(ev.symbols || []).join(' ') || '—'}
         </span>
@@ -254,7 +259,7 @@ export function Wire() {
     .filter((ev) => !wanted || wanted.includes(typeOf(ev)) || wanted.includes(ev.type))
   const shown = mode === 'top'
     ? rankEvents(filtered, watchset, now)
-    : filtered.slice().sort((a, b) => b.id - a.id)
+    : filtered.slice().sort((a, b) => (b.is_live ? 1 : 0) - (a.is_live ? 1 : 0) || b.id - a.id)
 
   const applyEndpoint = (e) => {
     e.preventDefault()

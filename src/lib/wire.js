@@ -113,7 +113,8 @@ export function rankEvents(events, watchset, now = Date.now() / 1000) {
     .filter((ev) => ev.type !== 'transcript_chunk'
       || newestChunk.get(ev.meta && ev.meta.session_id) === ev)
     .slice()
-    .sort((a, b) => scoreEvent(b, watchset, now) - scoreEvent(a, watchset, now))
+    .sort((a, b) => (b.is_live ? 1 : 0) - (a.is_live ? 1 : 0)
+      || scoreEvent(b, watchset, now) - scoreEvent(a, watchset, now))
 }
 
 // ── synthetic rail data for demo mode ──
@@ -168,6 +169,7 @@ export function collapseSessions(events, now = Date.now() / 1000) {
     const latestChunk = chunks.length ? chunks.reduce((a, b) => (b.id > a.id ? b : a)) : null
     const live = latest.ts_seen > now - 120
     rest.push({
+      is_live: live,
       id: latest.id, type: 'live_call', symbols: latest.symbols,
       ts_event: latest.ts_event, ts_seen: latest.ts_seen, url: '',
       headline: `${(latest.symbols || [])[0] || ''} call${label ? ' · ' + label : ''}`
