@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach } from 'vitest'
-import { setWireUrl, wireUrl, demoBackfill, demoEvent, demoToday, demoQuotes, rankEvents, TYPE_CODE } from '../../src/lib/wire.js'
+import { setWireUrl, wireUrl, demoBackfill, demoEvent, demoToday, demoQuotes, rankEvents, collapseSessions, TYPE_CODE } from '../../src/lib/wire.js'
 
 describe('wire endpoint config', () => {
   beforeEach(() => localStorage.clear())
@@ -87,5 +87,38 @@ describe('demo rail data', () => {
     for (const q of Object.values(demoQuotes())) {
       expect(typeof q.change_pct).toBe('number')
     }
+  })
+})
+
+describe('collapseSessions', () => {
+  const now = 1_000_000
+  const audio = (id, type, sid, body, extra = {}) => ({
+    id, type, symbols: ['AAPL'], ts_event: now - 10, ts_seen: now - 10,
+    body, meta: { session_id: sid, ...extra },
+  })
+
+  it('folds a session into one live_call card with counts and latest snippet', () => {
+    const out = collapseSessions([
+      audio(1, 'transcript_chunk', 5, 'first words', { seq: 0, label: 'Q2 call' }),
+      audio(2, 'transcript_chunk', 5, 'later words', { seq: 1 }),
+      audio(3, 'digest', 5, 'the digest', { digest_n: 1 }),
+      { id: 4, type: 'headline', symbols: ['MSFT'], ts_event: now, ts_seen: now, headline: 'x', meta: {} },
+    ], now)
+    const card = out.find((e) => e.type === 'live_call')
+    expect(card.headline).toContain('2 chunks · 1 digests')
+    expect(card.headline).toContain('LIVE')
+    expect(card.headline).toContain('later words')
+    expect(card.headline).toContain('Q2 call')
+    expect(card.live_call.digests).toHaveLength(1)
+    expect(card.live_call.tail.map((c) => c.id)).toEqual([1, 2])
+    // non-audio events pass through untouched
+    expect(out.find((e) => e.id === 4).type).toBe('headline')
+  })
+
+  it('a finished session loses the LIVE tag', () => {
+    const stale = [audio(1, 'transcript_chunk', 5, 'w', { seq: 0 })]
+    stale[0].ts_seen = now - 600
+    const card = collapseSessions(stale, now)[0]
+    expect(card.headline).not.toContain('LIVE')
   })
 })

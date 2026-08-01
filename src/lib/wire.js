@@ -65,7 +65,7 @@ export function demoBackfill(count = 40, now = Date.now() / 1000) {
 export const TYPE_CODE = {
   earnings_release: 'ERN', filing: 'FIL', headline: 'NWS',
   fed_speech: 'FED', fed_headline: 'FED', macro_print: 'ECO',
-  transcript_chunk: 'LIV', digest: 'DIG',
+  transcript_chunk: 'LIV', digest: 'DIG', live_call: 'LIV',
 }
 
 export async function fetchToday(base) {
@@ -90,7 +90,7 @@ export async function fetchMeta(base) {
 // it's a watched name × freshness decay, ~25h half-life.
 export const TYPE_WEIGHT = {
   earnings_release: 100, macro_print: 85, fed_headline: 75, fed_speech: 70,
-  digest: 60, filing: 55, headline: 40, transcript_chunk: 12,
+  live_call: 90, digest: 60, filing: 55, headline: 40, transcript_chunk: 12,
 }
 
 export function scoreEvent(ev, watchset, now = Date.now() / 1000) {
@@ -142,4 +142,40 @@ export function demoQuotes() {
     NVDA: { change_pct: 2.6 }, GOOGL: { change_pct: 0.9 },
     AMZN: { change_pct: -1.8 }, TSLA: { change_pct: 3.5 },
   }
+}
+
+// ── session cards: a call is ONE line item, not a chunk every 20s. All of a
+// session's transcript_chunk + digest events fold into one synthetic
+// `live_call` row that updates as audio lands; expand for digests + the
+// transcript tail. The wire API stays granular — this is presentation.
+export function collapseSessions(events, now = Date.now() / 1000) {
+  const bySession = new Map()
+  const rest = []
+  for (const ev of events) {
+    const sid = ev.meta && ev.meta.session_id
+    if (sid != null && (ev.type === 'transcript_chunk' || ev.type === 'digest')) {
+      if (!bySession.has(sid)) bySession.set(sid, [])
+      bySession.get(sid).push(ev)
+    } else {
+      rest.push(ev)
+    }
+  }
+  for (const [sid, evs] of bySession) {
+    const chunks = evs.filter((e) => e.type === 'transcript_chunk')
+    const digests = evs.filter((e) => e.type === 'digest').sort((a, b) => a.id - b.id)
+    const latest = evs.reduce((a, b) => (b.id > a.id ? b : a))
+    const label = evs.map((e) => e.meta && e.meta.label).find(Boolean) || ''
+    const latestChunk = chunks.length ? chunks.reduce((a, b) => (b.id > a.id ? b : a)) : null
+    const live = latest.ts_seen > now - 120
+    rest.push({
+      id: latest.id, type: 'live_call', symbols: latest.symbols,
+      ts_event: latest.ts_event, ts_seen: latest.ts_seen, url: '',
+      headline: `${(latest.symbols || [])[0] || ''} call${label ? ' · ' + label : ''}`
+        + `${live ? ' · LIVE' : ''} — ${chunks.length} chunks · ${digests.length} digests`
+        + (latestChunk ? ` · latest: ${(latestChunk.body || '').slice(0, 60)}` : ''),
+      live_call: { sid, digests, tail: chunks.slice(-4) },
+      meta: { session_id: sid },
+    })
+  }
+  return rest
 }
