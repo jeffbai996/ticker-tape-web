@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import {
   wireUrl, setWireUrl, fetchEvents, fetchToday, fetchMeta,
-  demoBackfill, demoEvent, demoToday, rankEvents, TYPE_CODE,
+  demoBackfill, demoEvent, demoToday, rankEvents, collapseSessions, TYPE_CODE,
 } from '../lib/wire.js'
 
 const CODE_TONE = {
@@ -35,7 +35,8 @@ const countdown = (sec) => {
 function Row({ ev, hot, open, onToggle }) {
   const lat = ev.ts_seen - ev.ts_event
   const latTxt = lat > 0.5 && lat < 600 ? `+${lat.toFixed(1)}s` : ''
-  const expandable = Boolean(ev.body) || Object.keys(ev.numbers || {}).length > 0
+  const expandable = Boolean(ev.body) || Boolean(ev.live_call)
+    || Object.keys(ev.numbers || {}).length > 0
   return (
     <div
       class={`border-b border-line/30 font-mono transition-colors duration-1000 ${
@@ -58,7 +59,25 @@ function Row({ ev, hot, open, onToggle }) {
         </span>
         <span class={`text-[10.5px] ${hot ? '' : lat < 60 ? 'text-up' : 'text-muted'}`}>{latTxt}</span>
       </div>
-      {open && (
+      {open && ev.live_call && (
+        <div class="px-2.5 pb-2 pl-[168px] flex flex-col gap-1.5">
+          {ev.live_call.digests.map((dg) => (
+            <p key={dg.id} class="text-[11.5px] leading-relaxed text-ink-2 max-w-[72ch] border-l-2 border-accent pl-2.5">
+              <span class="text-[8.5px] uppercase tracking-wider text-muted mr-1.5">digest #{(dg.meta || {}).digest_n || ''}</span>
+              {dg.body}
+            </p>
+          ))}
+          {ev.live_call.tail.length > 0 && (
+            <div>
+              <p class="text-[8.5px] uppercase tracking-wider text-muted">latest audio</p>
+              {ev.live_call.tail.map((c) => (
+                <p key={c.id} class="text-[11px] leading-relaxed text-muted max-w-[72ch]">{c.body}</p>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      {open && !ev.live_call && (
         <div class="px-2.5 pb-2 pl-[168px]">
           {ev.body && <p class="text-[11.5px] leading-relaxed text-ink-2 max-w-[72ch]">{ev.body}</p>}
           {Object.keys(ev.numbers || {}).length > 0 && (
@@ -229,7 +248,10 @@ export function Wire() {
   }, [endpoint])
 
   const wanted = filter ? filter.split(',') : null
-  const filtered = events.filter((ev) => !wanted || wanted.includes(ev.type))
+  // a session card answers for its audio contents on the type filter
+  const typeOf = (ev) => (ev.type === 'live_call' ? 'digest' : ev.type)
+  const filtered = collapseSessions(events, now)
+    .filter((ev) => !wanted || wanted.includes(typeOf(ev)) || wanted.includes(ev.type))
   const shown = mode === 'top'
     ? rankEvents(filtered, watchset, now)
     : filtered.slice().sort((a, b) => b.id - a.id)
@@ -308,10 +330,14 @@ export function Wire() {
           {shown.length === 0 && (
             <div class="px-3 py-6 font-mono text-[12px] text-muted">no events</div>
           )}
-          {shown.slice(0, 250).map((ev) => (
-            <Row key={ev.id} ev={ev} hot={hotIds.has(ev.id)}
-                 open={openIds.has(ev.id)} onToggle={() => toggleOpen(ev.id)} />
-          ))}
+          {shown.slice(0, 250).map((ev) => {
+            // a session card's identity must survive id churn as chunks land
+            const key = ev.live_call ? `s${ev.live_call.sid}` : ev.id
+            return (
+              <Row key={key} ev={ev} hot={hotIds.has(ev.id)}
+                   open={openIds.has(key)} onToggle={() => toggleOpen(key)} />
+            )
+          })}
         </div>
         <Rail today={today} now={now} />
       </div>
