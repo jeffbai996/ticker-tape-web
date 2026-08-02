@@ -86,7 +86,13 @@ export function Chat() {
   const scrollRef = useRef(null)
 
   useEffect(() => {
-    fetchChatModels().then((d) => setModels(d.models)).catch(() => {})
+    fetchChatModels().then((d) => {
+      setModels(d.models)
+      if (!d.models.some((candidate) => candidate.key === model)) {
+        setModel('flash')
+        localStorage.setItem('chat_model', 'flash')
+      }
+    }).catch(() => {})
     fetchSpend().then(setSpend).catch(() => {})
   }, [])
 
