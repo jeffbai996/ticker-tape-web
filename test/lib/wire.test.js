@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach } from 'vitest'
-import { setWireUrl, wireUrl, demoBackfill, demoEvent, demoToday, demoQuotes, rankEvents, collapseSessions, TYPE_CODE } from '../../src/lib/wire.js'
+import { setWireUrl, wireUrl, demoBackfill, demoEvent, demoToday, demoQuotes, rankEvents, collapseSessions, clusterStories, TYPE_CODE } from '../../src/lib/wire.js'
 
 describe('wire endpoint config', () => {
   beforeEach(() => localStorage.clear())
@@ -120,5 +120,46 @@ describe('collapseSessions', () => {
     stale[0].ts_seen = now - 600
     const card = collapseSessions(stale, now)[0]
     expect(card.headline).not.toContain('LIVE')
+  })
+})
+
+describe('clusterStories', () => {
+  const now = 1_000_000
+  const h = (id, headline, url, ageMin = 0) => ({
+    id, type: 'headline', symbols: [], headline, url,
+    ts_event: now - ageMin * 60, ts_seen: now - ageMin * 60, meta: {},
+  })
+
+  it('folds near-identical headlines from different outlets into one row', () => {
+    const out = clusterStories([
+      h(1, 'BP Puts UK North Sea Business Up for Sale', 'https://wsj.com/a', 30),
+      h(2, 'BP puts North Sea oil business up for sale - Reuters', 'https://news.google.com/x', 20),
+      h(3, 'BP to sell UK North Sea business', 'https://bbc.co.uk/b', 10),
+      h(4, 'Fed officials eye rate hike', 'https://cnbc.com/c', 5),
+    ], now)
+    const cluster = out.find((e) => e.story_cluster)
+    expect(cluster.story_cluster.count).toBe(3)
+    expect(out.filter((e) => /BP/.test(e.headline))).toHaveLength(1)
+    expect(out.find((e) => /Fed officials/.test(e.headline))).toBeTruthy()
+    // the representative is the highest-tier source (wsj beats bbc/google)
+    expect(cluster.url).toContain('wsj.com')
+    // members keep their identities for the expansion
+    expect(cluster.story_cluster.members.map((m) => m.id).sort()).toEqual([1, 2, 3])
+  })
+
+  it('does not cluster stories that merely share a word', () => {
+    const out = clusterStories([
+      h(1, 'Apple launches new iPhone lineup today', 'https://a/1'),
+      h(2, 'Apple orchard yields hit record in Washington', 'https://a/2'),
+    ], now)
+    expect(out).toHaveLength(2)
+    expect(out.every((e) => !e.story_cluster)).toBe(true)
+  })
+
+  it('keeps singletons untouched and preserves non-headline events', () => {
+    const ev = { id: 9, type: 'earnings_release', symbols: ['NVDA'], headline: 'NVDA reports', ts_event: now, ts_seen: now, meta: {} }
+    const out = clusterStories([ev, h(1, 'one lonely story about zinc markets', 'https://a/1')], now)
+    expect(out).toHaveLength(2)
+    expect(out.find((e) => e.id === 9)).toBe(ev)
   })
 })

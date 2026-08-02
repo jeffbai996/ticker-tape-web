@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import {
   wireUrl, setWireUrl, fetchEvents, fetchToday, fetchMeta,
-  demoBackfill, demoEvent, demoToday, rankEvents, collapseSessions, TYPE_CODE,
+  demoBackfill, demoEvent, demoToday, rankEvents, collapseSessions, clusterStories, TYPE_CODE,
 } from '../lib/wire.js'
 import { getWatchlist } from '../lib/watchlist.js'
 
@@ -42,6 +42,7 @@ function Row({ ev, hot, open, onToggle }) {
   const lat = ev.ts_seen - ev.ts_event
   const latTxt = lat > 0.5 && lat < 600 ? `+${lat.toFixed(1)}s` : ''
   const expandable = Boolean(ev.body) || Boolean(ev.live_call)
+    || Boolean(ev.story_cluster)
     || Object.keys(ev.numbers || {}).length > 0
   return (
     <div
@@ -62,9 +63,21 @@ function Row({ ev, hot, open, onToggle }) {
           {ev.url ? (
             <a href={ev.url} target="_blank" rel="noopener" class="hover:text-accent" onClick={(e) => e.stopPropagation()}>{ev.headline}</a>
           ) : ev.headline}
+          {ev.story_cluster && <span class="text-accent font-bold"> ×{ev.story_cluster.count}</span>}
         </span>
         <span class={`text-[10.5px] ${hot ? '' : lat < 60 ? 'text-up' : 'text-muted'}`}>{latTxt}</span>
       </div>
+      {open && ev.story_cluster && (
+        <div class="px-2.5 pb-2 pl-[168px] flex flex-col gap-0.5">
+          <p class="text-[8.5px] uppercase tracking-wider text-muted">{ev.story_cluster.count} outlets on this story</p>
+          {ev.story_cluster.members.map((m) => (
+            <p key={m.id} class="text-[11.5px] font-mono truncate">
+              <span class="text-muted text-[9.5px] mr-1.5">{(() => { try { return new URL(m.url).hostname.replace('www.', '') } catch { return m.source } })()}</span>
+              <a href={m.url} target="_blank" rel="noopener" class="text-ink-2 hover:text-accent" onClick={(e) => e.stopPropagation()}>{m.headline}</a>
+            </p>
+          ))}
+        </div>
+      )}
       {open && ev.live_call && (
         <div class="px-2.5 pb-2 pl-[168px] flex flex-col gap-1.5">
           {ev.live_call.digests.map((dg) => (
@@ -256,7 +269,7 @@ export function Wire() {
   const wanted = filter ? filter.split(',') : null
   // a session card answers for its audio contents on the type filter
   const typeOf = (ev) => (ev.type === 'live_call' ? 'digest' : ev.type)
-  const filtered = collapseSessions(events, now)
+  const filtered = clusterStories(collapseSessions(events, now), now)
     .filter((ev) => !wanted || wanted.includes(typeOf(ev)) || wanted.includes(ev.type))
   const shown = mode === 'top'
     ? rankEvents(filtered, watchset, now)

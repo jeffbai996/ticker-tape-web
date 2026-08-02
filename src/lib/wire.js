@@ -181,3 +181,79 @@ export function collapseSessions(events, now = Date.now() / 1000) {
   }
   return rest
 }
+
+// ── story clustering: the same story from N outlets is ONE row. Headlines
+// normalize to significant-token sets; Jaccard >= 0.5 within a 48h window
+// joins a cluster. The face of the cluster is the highest-tier source.
+const STOP = new Set(['the', 'a', 'an', 'to', 'of', 'in', 'on', 'for', 'and',
+  'as', 'at', 'its', 'is', 'are', 'up', 'with', 'after', 'over', 'from',
+  'by', 'says', 'say', 'said', 'new', 'reuters', 'bloomberg', 'wsj'])
+export function storyTokens(headline) {
+  return new Set((headline || '').toLowerCase()
+    .replace(/[-—–]\s*[a-z0-9 .]+$/i, '')       // trailing "— Source" credit
+    .replace(/[^a-z0-9$% ]+/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length > 2 && !STOP.has(w)))
+}
+
+const SRC_RANK = [
+  [/reuters|wsj\.com|bloomberg|ft\.com|apnews/i, 5],
+  [/cnbc|marketwatch|barrons|bbc|guardian/i, 4],
+  [/benzinga|businessinsider|yahoo|investing\.com|seekingalpha|fortune/i, 3],
+]
+function srcRank(ev) {
+  const hay = `${ev.url || ''} ${ev.headline || ''}`
+  for (const [re, n] of SRC_RANK) if (re.test(hay)) return n
+  return 1
+}
+
+export function clusterStories(events, now = Date.now() / 1000) {
+  const headlines = []
+  const rest = []
+  for (const ev of events) {
+    (ev.type === 'headline' ? headlines : rest).push(ev)
+  }
+  const clusters = []          // [{tokens, members}]
+  for (const ev of headlines) {
+    const toks = storyTokens(ev.headline)
+    let home = null
+    if (toks.size >= 3) {
+      for (const c of clusters) {
+        if (Math.abs(c.members[0].ts_event - ev.ts_event) > 48 * 3600) continue
+        let inter = 0
+        for (const w of toks) if (c.tokens.has(w)) inter += 1
+        // overlap coefficient (∩ / min size): robust to the cluster's token
+        // set growing as members join, unlike Jaccard
+        const denom = Math.min(c.tokens.size, toks.size)
+        if (denom > 0 && inter / denom >= 0.6) { home = c; break }
+      }
+    }
+    if (home) {
+      home.members.push(ev)
+      for (const w of toks) home.tokens.add(w)
+    } else {
+      clusters.push({ tokens: new Set(toks), members: [ev] })
+    }
+  }
+  for (const c of clusters) {
+    if (c.members.length === 1) {
+      rest.push(c.members[0])
+      continue
+    }
+    // ties go to a DIRECT link over an aggregator redirect
+    const direct = (e) => (/news\.google\./.test(e.url || '') ? 0 : 1)
+    const face = c.members.slice().sort((a, b) =>
+      srcRank(b) - srcRank(a) || direct(b) - direct(a) || b.id - a.id)[0]
+    const latest = c.members.reduce((a, b) => (b.id > a.id ? b : a))
+    rest.push({
+      ...face,
+      id: latest.id,
+      ts_event: latest.ts_event, ts_seen: latest.ts_seen,
+      story_cluster: {
+        count: c.members.length,
+        members: c.members.slice().sort((a, b) => b.id - a.id),
+      },
+    })
+  }
+  return rest
+}
