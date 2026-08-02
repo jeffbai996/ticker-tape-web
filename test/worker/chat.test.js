@@ -2,9 +2,18 @@ import { describe, it, expect } from 'vitest'
 import {
   MODELS, estimateCost, deltaFrom, DAILY_CAP_USD,
   validMessage, anthMessages, gemContents, oaiMessages, makeToolCollector,
+  providerRequest,
 } from '../../worker/chat.js'
 
 describe('MODELS registry', () => {
+  it('exposes the deliberately trimmed web lineup', () => {
+    expect(Object.keys(MODELS)).toEqual(['flash', 'sonnet', 'opus', 'fable', 'terra', 'sol'])
+    expect(MODELS.flash).toMatchObject({ id: 'gemini-3.6-flash', thinkingBudget: 1024 })
+    expect(MODELS.opus).toMatchObject({ id: 'claude-opus-5', effort: 'high' })
+    expect(MODELS.terra).toMatchObject({ id: 'gpt-5.6-terra', reasoningEffort: 'high' })
+    expect(MODELS.sol).toMatchObject({ id: 'gpt-5.6-sol', reasoningEffort: 'low' })
+  })
+
   it('has provider, label, and both cost rates on every model', () => {
     for (const m of Object.values(MODELS)) {
       expect(['gemini', 'anthropic', 'openai']).toContain(m.provider)
@@ -17,14 +26,37 @@ describe('MODELS registry', () => {
 
 describe('estimateCost', () => {
   it('charges input estimate plus full output allowance', () => {
-    // flash: $0.30/M in, $2.50/M out, 2048 max out tokens
+    // Flash 3.6: $1.50/M in, $7.50/M out, 2048 max out tokens
     const c = estimateCost(MODELS.flash, 4000) // ≈1000 input tokens
-    expect(c).toBeCloseTo((1000 / 1e6) * 0.3 + (2048 / 1e6) * 2.5, 6)
+    expect(c).toBeCloseTo((1000 / 1e6) * 1.5 + (2048 / 1e6) * 7.5, 6)
   })
 
   it('keeps a fable turn well under the daily cap', () => {
     const c = estimateCost(MODELS.fable, 32_000)
     expect(c).toBeLessThan(DAILY_CAP_USD / 10)
+  })
+})
+
+describe('providerRequest effort', () => {
+  const messages = [{ role: 'user', content: 'Analyze AAPL' }]
+
+  it('sends Gemini thinking budget', () => {
+    const [, init] = providerRequest(MODELS.flash, 'key', '', messages, null)
+    expect(JSON.parse(init.body).generationConfig.thinkingConfig).toEqual({ thinkingBudget: 1024 })
+  })
+
+  it('sends adaptive thinking and effort to Anthropic', () => {
+    const [, init] = providerRequest(MODELS.opus, 'key', '', messages, null)
+    const body = JSON.parse(init.body)
+    expect(body.thinking).toEqual({ type: 'adaptive' })
+    expect(body.output_config).toEqual({ effort: 'high' })
+  })
+
+  it('sends reasoning effort to OpenAI', () => {
+    const [, terraInit] = providerRequest(MODELS.terra, 'key', '', messages, null)
+    const [, solInit] = providerRequest(MODELS.sol, 'key', '', messages, null)
+    expect(JSON.parse(terraInit.body).reasoning_effort).toBe('high')
+    expect(JSON.parse(solInit.body).reasoning_effort).toBe('low')
   })
 })
 
