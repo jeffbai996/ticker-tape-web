@@ -3,6 +3,7 @@ import {
   wireUrl, setWireUrl, fetchEvents, fetchToday, fetchMeta,
   demoBackfill, demoEvent, demoToday, rankEvents, collapseSessions, TYPE_CODE,
 } from '../lib/wire.js'
+import { getWatchlist } from '../lib/watchlist.js'
 
 const CODE_TONE = {
   earnings_release: 'text-accent font-semibold',
@@ -303,6 +304,25 @@ export function Wire() {
           {state === 'demo' ? 'demo wire — synthetic events' : state}
         </span>
         {error && <span class="font-mono text-[11px] text-down">{error}</span>}
+        {endpoint && (
+          <button
+            class="border border-line rounded-md px-2.5 py-1 text-[11.5px] font-semibold text-ink-2 hover:text-ink hover:border-ink-2"
+            title="add this site's watchlist symbols to the wire's watchlist"
+            onClick={() => {
+              const syms = getWatchlist()
+              if (!syms.length) return
+              fetch(`${endpoint}/api/watchlist`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ add: syms }),
+              }).then((r) => r.json())
+                .then((out) => setError(out.ok ? `synced ${syms.length} symbols → wire` : (out.error || 'sync failed')))
+                .catch(() => setError('sync failed'))
+            }}
+          >
+            push watchlist → wire
+          </button>
+        )}
         <form class="flex gap-2 ml-auto" onSubmit={applyEndpoint}>
           <input
             class="bg-surface-2 border border-line rounded-md px-2 py-1 font-mono text-[11.5px] text-ink outline-none focus:border-accent w-64"
