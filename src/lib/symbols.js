@@ -1,5 +1,5 @@
 // Generic showcase universe — deliberately hardcoded, never env/secret-driven
-// (HANDOFF_SPEC §5): a secret carrying a real watchlist into a public build is
+// A secret carrying a real watchlist into a public build is
 // a leak surface. Nothing here may reference a real portfolio.
 
 export const WATCHLIST = [
