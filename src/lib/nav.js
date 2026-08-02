@@ -1,7 +1,5 @@
-// Information architecture: six top-level sections (HANDOFF_SPEC §3).
-// Sub-tabs switch content within a section without a page reload.
-// Research is a slide-over drawer in the final design (Phase 4); it gets a
-// plain page slot until the drawer pattern lands.
+// Top-level information architecture. Sub-tabs switch content within a section
+// without a page reload; research intentionally uses its own routed page.
 
 export const NAV = [
   { id: 'dashboard', label: 'Dashboard', subs: [] },
