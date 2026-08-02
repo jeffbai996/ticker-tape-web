@@ -7,20 +7,30 @@ import { CATALYST_TYPES } from './catalysts.js'
 const SYM = /^[A-Za-z0-9.^=-]{1,12}$/
 const DATE = /^\d{4}-\d{2}-\d{2}$/
 
-// Multi-line help — rendered in the command console, TUI help-screen style.
+// Multi-line help in the CLI help screen's exact register: bold-info command
+// column, dim descriptions, amber ═══ sections (rendered via lib/rich.js).
+const INF = '#00c8ff'
+const DIM = '#808080'
+const ACC = '#ffc800'
+const row = (cmd, desc) => `[bold ${INF}]${cmd.padEnd(18)}[/][${DIM}]${desc}[/]`
+const row2 = (c1, d1, c2, d2) => `${row(c1, d1.padEnd(24))}${row(c2, d2)}`
+const section = (title) => `[bold ${ACC}]═══ ${title} ═══[/]`
 export const HELP_TEXT = [
-  'SYM               open research            ta|chart SYM   chart + technicals',
-  'intra SYM         intraday + VWAP          opt SYM        options chain',
-  'ei SYM            earnings impact          an SYM         analysts',
-  'ins SYM           insider activity         n SYM          news',
-  'vs A B [C…]       compare                  screen A B     valuation grid',
-  'w|uw SYM          watch / unwatch          alert SYM > N  arm price alert',
-  'm s hm movers     markets views            er · cal       earnings · calendar',
-  'cat               list catalysts           cat rm N       remove catalyst',
-  'cat add DATE [SYM] [type] label…           add catalyst (type: product conf policy capex macro)',
-  'b|brief           briefing + AI            pos · acct     demo portfolio',
-  'alerts            alert center             chat [q]       AI chat',
-  'bt|backtest       fills ledger replay',
+  section('research'),
+  row2('SYM', 'open research', 'ta|chart SYM', 'chart + technicals'),
+  row2('intra SYM', 'intraday + VWAP', 'opt SYM', 'options chain'),
+  row2('ei SYM', 'earnings impact', 'an SYM', 'analysts'),
+  row2('ins SYM', 'insider activity', 'n SYM', 'news'),
+  section('screens'),
+  row2('vs A B \\[C…]', 'compare', 'screen A B', 'valuation grid'),
+  row2('m s hm movers', 'markets views', 'er · cal', 'earnings · calendar'),
+  row2('b|brief', 'briefing + AI', 'pos · acct', 'demo portfolio'),
+  row2('alerts', 'alert center', 'chat \\[q]', 'AI chat'),
+  row('bt|backtest', 'fills ledger replay'),
+  section('actions'),
+  row2('w|uw SYM', 'watch / unwatch', 'alert SYM > N', 'arm price alert'),
+  row2('cat', 'list catalysts', 'cat rm N', 'remove catalyst'),
+  row('cat add DATE …', '\\[SYM] \\[type] label — type: product conf policy capex macro'),
 ].join('\n')
 
 const low = (s) => s.toLowerCase()
@@ -74,7 +84,7 @@ export function parseCommand(input) {
     if (!args.length) return { type: 'nav', hash: '#/alerts' }
     const m = args.join(' ').match(/^([A-Za-z0-9.^=-]{1,12})\s*([<>])\s*([\d.]+)$/)
     if (m) return { type: 'alert', symbol: m[1].toUpperCase(), operator: m[2], value: Number(m[3]) }
-    return { type: 'msg', text: 'usage: alert SYM > 123.45' }
+    return { type: 'msg', text: `[bold ${INF}]usage[/] [${DIM}]alert SYM > 123.45[/]` }
   }
 
   // vs A B [C…] → compare; screen A B → valuation grid
@@ -112,7 +122,7 @@ export function parseCommand(input) {
       const label = args.slice(i).join(' ')
       if (label) return { type: 'catalyst_add', date: args[1], symbol, ctype, label }
     }
-    return { type: 'msg', text: 'usage: cat · cat rm N · cat add 2026-09-09 [NVDA] [product] GTC keynote' }
+    return { type: 'msg', text: `[bold ${INF}]usage[/] [${DIM}]cat · cat rm N · cat add 2026-09-09 NVDA product GTC keynote[/]` }
   }
 
   if (cmd === 'chat') {
