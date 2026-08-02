@@ -1,7 +1,6 @@
-// Every section ships as a placeholder in Phase 0 so the shell, nav, and
-// deploy pipeline can be verified live before any page content exists.
+// Fallback for any registered route whose dedicated page is unavailable.
 
-export function Placeholder({ title, phase, note, badge }) {
+export function Placeholder({ title, note, badge }) {
   return (
     <div class="flex-1 flex items-center justify-center p-8">
       <div class="max-w-md w-full bg-surface-1 border border-line rounded-2xl p-8 select-text">
@@ -14,7 +13,6 @@ export function Placeholder({ title, phase, note, badge }) {
           )}
         </div>
         <p class="text-sm text-ink-2 mb-4">{note}</p>
-        <p class="font-mono text-xs text-muted">arrives in phase {phase}</p>
       </div>
     </div>
   )
