@@ -74,6 +74,7 @@ function ToolChips({ calls, results }) {
 export function Chat() {
   const [models, setModels] = useState([])
   const [model, setModel] = useState(localStorage.getItem('chat_model') || 'flash')
+  const [effort, setEffort] = useState(localStorage.getItem('chat_effort') || 'auto')
   const [spend, setSpend] = useState(null)
   const [history, setHistory] = useState(loadHistory)
   const [input, setInput] = useState(() => {
@@ -118,6 +119,7 @@ export function Chat() {
     try {
       await runAgentic({
         model,
+        effort,
         system: SYSTEM,
         messages: base,
         onDelta: (d) => {
@@ -168,6 +170,22 @@ export function Chat() {
             <option key={m.key} value={m.key}>{m.label}</option>
           ))}
         </select>
+        <div class="flex items-center border border-line rounded-md overflow-hidden" title="thinking effort">
+          {['auto', 'off', 'low', 'medium', 'high'].map((lv) => (
+            <button
+              key={lv}
+              onClick={() => {
+                setEffort(lv)
+                localStorage.setItem('chat_effort', lv)
+              }}
+              class={`px-2 py-1 font-mono text-[10px] border-r border-line last:border-r-0 ${
+                effort === lv ? 'bg-accent text-black font-bold' : 'text-ink-2 hover:text-ink'
+              }`}
+            >
+              {lv}
+            </button>
+          ))}
+        </div>
         <div class="ml-auto flex items-center gap-3">
           <SpendMeter spend={spend} />
           {history.length > 0 && (

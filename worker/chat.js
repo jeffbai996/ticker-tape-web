@@ -133,8 +133,21 @@ async function handleCompletion(request, env) {
     return json(request, { error: 'Bad JSON' }, 400)
   }
 
-  const model = MODELS[body.model]
-  if (!model) return json(request, { error: `Unknown model: ${body.model}` }, 400)
+  const base = MODELS[body.model]
+  if (!base) return json(request, { error: `Unknown model: ${body.model}` }, 400)
+  // Request-level thinking-effort override, translated per provider below:
+  // anthropic → adaptive thinking + output_config.effort; gemini → a
+  // thinkingBudget tier; openai → reasoning_effort. 'auto' keeps the model's
+  // registry default; 'off' disables thinking where the provider allows it.
+  const EFFORTS = ['auto', 'off', 'low', 'medium', 'high']
+  const effort = EFFORTS.includes(body.effort) ? body.effort : 'auto'
+  const GEMINI_BUDGET = { off: 0, low: 512, medium: 2048, high: 8192 }
+  const model = effort === 'auto' ? base : {
+    ...base,
+    effort: base.provider === 'anthropic' && effort !== 'off' ? effort : undefined,
+    thinkingBudget: base.provider === 'gemini' ? GEMINI_BUDGET[effort] : undefined,
+    reasoningEffort: base.provider === 'openai' && effort !== 'off' ? effort : undefined,
+  }
 
   const messages = Array.isArray(body.messages) ? body.messages : []
   if (!messages.length) return json(request, { error: 'No messages' }, 400)
@@ -318,7 +331,7 @@ export function providerRequest(model, apiKey, system, messages, tools) {
             : {}),
           generationConfig: {
             maxOutputTokens: MAX_OUT_TOKENS,
-            ...(model.thinkingBudget
+            ...(model.thinkingBudget != null
               ? { thinkingConfig: { thinkingBudget: model.thinkingBudget } }
               : {}),
           },

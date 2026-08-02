@@ -5,6 +5,7 @@ import { addAlert, conditionText } from '../lib/alerts.js'
 import { addCatalyst, removeCatalyst, loadCatalysts } from '../lib/catalysts.js'
 import { getCached } from '../lib/feed.js'
 import { fmtPrice, fmtPct } from '../lib/format.js'
+import { parseRich, TUI } from '../lib/rich.js'
 
 // The TUI's bottom command line, with a real output console: every command
 // echoes into a drop-up log (like the CLI's main pane) instead of a blink-
@@ -16,8 +17,25 @@ let nextId = 1
 function quoteEcho(symbol) {
   const q = getCached(symbol)?.quote
   if (!q?.price) return null
-  const arrow = (q.pct ?? 0) >= 0 ? '▲' : '▼'
-  return `${symbol} ${fmtPrice(q.price)} ${arrow} ${fmtPct(q.pct)}`
+  const up = (q.pct ?? 0) >= 0
+  const tone = up ? 'green' : 'red'
+  return `[bold]${symbol}[/] ${fmtPrice(q.price)} [${tone}]${up ? '▲' : '▼'} ${fmtPct(q.pct)}[/]`
+}
+
+/** Console line: TUI rich markup → colored spans. */
+function Rich({ text }) {
+  return parseRich(text).map((s, i) => (
+    <span
+      key={i}
+      style={{
+        color: s.color || undefined,
+        fontWeight: s.bold ? 700 : undefined,
+        opacity: s.dim && !s.color ? 0.62 : undefined,
+      }}
+    >
+      {s.text}
+    </span>
+  ))
 }
 
 export function CommandBar() {
@@ -42,7 +60,7 @@ export function CommandBar() {
     const cmd = value.trim()
     const plan = parseCommand(cmd)
     if (!plan) {
-      if (cmd) print(cmd, `unknown: ${cmd} — try h for help`)
+      if (cmd) print(cmd, `[red]unknown:[/] ${cmd} [#808080]— try h for help[/]`)
       return
     }
     history.current.push(cmd)
@@ -54,13 +72,13 @@ export function CommandBar() {
       const sym = plan.hash.match(/#\/research\/([a-z0-9.^=-]+)/)?.[1]?.toUpperCase()
       print(cmd, (sym && quoteEcho(sym)) || `→ ${plan.hash.replace('#/', '') || 'dashboard'}`)
     } else if (plan.type === 'watch') {
-      print(cmd, watch(plan.symbol) ? `watching ${plan.symbol}` : `${plan.symbol}: already watched or invalid`)
+      print(cmd, watch(plan.symbol) ? `[green]✓[/] watching [bold]${plan.symbol}[/]` : `[red]${plan.symbol}: already watched or invalid[/]`)
     } else if (plan.type === 'unwatch') {
-      print(cmd, unwatch(plan.symbol) ? `unwatched ${plan.symbol}` : `${plan.symbol}: not on the list`)
+      print(cmd, unwatch(plan.symbol) ? `[green]✓[/] unwatched [bold]${plan.symbol}[/]` : `[red]${plan.symbol}: not on the list[/]`)
     } else if (plan.type === 'alert') {
       try {
         const a = addAlert({ symbol: plan.symbol, type: 'price', operator: plan.operator, value: plan.value })
-        print(cmd, `armed: ${conditionText(a)}`)
+        print(cmd, `[green]✓ armed[/] [#00c8ff]${conditionText(a)}[/]`)
       } catch (err) {
         print(cmd, String(err.message || err))
       }
@@ -133,7 +151,7 @@ export function CommandBar() {
                 <div class="text-muted">
                   <span class="text-accent">ticker&gt;</span> {entry.cmd}
                 </div>
-                <pre class="text-ink-2 whitespace-pre-wrap pl-3 m-0 font-mono">{entry.text}</pre>
+                <pre class="text-ink-2 whitespace-pre-wrap pl-3 m-0 font-mono"><Rich text={entry.text} /></pre>
               </div>
             ))}
           </div>
