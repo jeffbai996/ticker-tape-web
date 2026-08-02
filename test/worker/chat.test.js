@@ -9,7 +9,7 @@ describe('MODELS registry', () => {
   it('exposes the deliberately trimmed web lineup', () => {
     expect(Object.keys(MODELS)).toEqual(['flash', 'sonnet', 'opus', 'fable', 'terra', 'sol'])
     expect(MODELS.flash).toMatchObject({ id: 'gemini-3.6-flash', thinkingBudget: 1024 })
-    expect(MODELS.opus).toMatchObject({ id: 'claude-opus-5', effort: 'high' })
+    expect(MODELS.opus).toMatchObject({ id: 'claude-opus-5', effort: 'medium' })
     expect(MODELS.terra).toMatchObject({ id: 'gpt-5.6-terra', reasoningEffort: 'high' })
     expect(MODELS.sol).toMatchObject({ id: 'gpt-5.6-sol', reasoningEffort: 'low' })
   })
@@ -49,7 +49,7 @@ describe('providerRequest effort', () => {
     const [, init] = providerRequest(MODELS.opus, 'key', '', messages, null)
     const body = JSON.parse(init.body)
     expect(body.thinking).toEqual({ type: 'adaptive' })
-    expect(body.output_config).toEqual({ effort: 'high' })
+    expect(body.output_config).toEqual({ effort: 'medium' })
   })
 
   it('sends reasoning effort to OpenAI', () => {

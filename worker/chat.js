@@ -30,7 +30,7 @@ export const MODELS = {
   sonnet: { id: 'claude-sonnet-5', label: 'Sonnet 5', provider: 'anthropic', costIn: 3.00, costOut: 15.00 },
   opus: {
     id: 'claude-opus-5', label: 'Opus 5', provider: 'anthropic',
-    effort: 'high', costIn: 5.00, costOut: 25.00,
+    effort: 'medium', costIn: 5.00, costOut: 25.00,
   },
   fable: { id: 'claude-fable-5', label: 'Fable 5', provider: 'anthropic', costIn: 10.00, costOut: 50.00 },
   terra: {
