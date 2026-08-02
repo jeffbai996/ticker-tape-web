@@ -51,11 +51,13 @@ export function parseSSE(buf) {
  * called tools). Throws with the server's error message on cap/rate/provider
  * failures.
  */
-export async function streamChat({ model, messages, system, tools, onDelta }) {
+export async function streamChat({ model, effort, messages, system, tools, onDelta }) {
   const resp = await fetch(`${chatBase()}/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model, messages, system, ...(tools?.length ? { tools } : {}) }),
+    body: JSON.stringify({ model, messages, system,
+      ...(effort && effort !== 'auto' ? { effort } : {}),
+      ...(tools?.length ? { tools } : {}) }),
   })
   if (!resp.ok) {
     let msg = `HTTP ${resp.status}`

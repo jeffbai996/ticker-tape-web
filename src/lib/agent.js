@@ -34,7 +34,7 @@ export function trimHistory(history, max) {
  *  - onRound(entries): transcript grew — entries appended so far this turn
  * Resolves with the full list of new entries (assistant/tool messages).
  */
-export async function runAgentic({ model, system, messages, onDelta, onRound }) {
+export async function runAgentic({ model, effort, system, messages, onDelta, onRound }) {
   const added = []
   const convo = () => [...messages, ...added]
 
@@ -43,6 +43,7 @@ export async function runAgentic({ model, system, messages, onDelta, onRound }) 
     const finalRound = round === MAX_ROUNDS - 1
     let text = ''
     const { toolCalls } = await streamChat({
+      effort,
       model,
       system,
       messages: convo(),
