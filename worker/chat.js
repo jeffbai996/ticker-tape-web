@@ -23,14 +23,24 @@ const MAX_TOOLS = 16
 
 // Web mirror of the CLI's MODELS registry (chat.py). cost per 1M tokens.
 export const MODELS = {
-  flash: { id: 'gemini-3-flash-preview', label: 'Flash 3', provider: 'gemini', costIn: 0.30, costOut: 2.50 },
-  'flash+': { id: 'gemini-3.6-flash', label: 'Flash 3.6', provider: 'gemini', costIn: 1.50, costOut: 7.50 },
-  pro: { id: 'gemini-3.1-pro-preview', label: 'Pro 3.1', provider: 'gemini', costIn: 2.00, costOut: 12.00 },
+  flash: {
+    id: 'gemini-3.6-flash', label: 'Flash 3.6', provider: 'gemini',
+    thinkingBudget: 1024, costIn: 1.50, costOut: 7.50,
+  },
   sonnet: { id: 'claude-sonnet-5', label: 'Sonnet 5', provider: 'anthropic', costIn: 3.00, costOut: 15.00 },
-  opus: { id: 'claude-opus-5', label: 'Opus 5', provider: 'anthropic', costIn: 5.00, costOut: 25.00 },
+  opus: {
+    id: 'claude-opus-5', label: 'Opus 5', provider: 'anthropic',
+    effort: 'high', costIn: 5.00, costOut: 25.00,
+  },
   fable: { id: 'claude-fable-5', label: 'Fable 5', provider: 'anthropic', costIn: 10.00, costOut: 50.00 },
-  gpt: { id: 'gpt-5.5', label: 'GPT-5.5', provider: 'openai', costIn: 5.00, costOut: 30.00 },
-  'gpt-mini': { id: 'gpt-5.4-mini', label: 'GPT-5.4 mini', provider: 'openai', costIn: 0.75, costOut: 4.50 },
+  terra: {
+    id: 'gpt-5.6-terra', label: 'GPT 5.6 Terra', provider: 'openai',
+    reasoningEffort: 'high', costIn: 2.50, costOut: 15.00,
+  },
+  sol: {
+    id: 'gpt-5.6-sol', label: 'GPT 5.6 Sol', provider: 'openai',
+    reasoningEffort: 'low', costIn: 5.00, costOut: 30.00,
+  },
 }
 
 const KEY_ENV = { gemini: 'GEMINI_API_KEY', anthropic: 'ANTHROPIC_API_KEY', openai: 'OPENAI_API_KEY' }
@@ -263,9 +273,9 @@ export function oaiMessages(messages) {
   })
 }
 
-function callProvider(model, apiKey, system, messages, tools) {
+export function providerRequest(model, apiKey, system, messages, tools) {
   if (model.provider === 'anthropic') {
-    return fetch('https://api.anthropic.com/v1/messages', {
+    return ['https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'x-api-key': apiKey,
@@ -276,17 +286,20 @@ function callProvider(model, apiKey, system, messages, tools) {
         model: model.id,
         max_tokens: MAX_OUT_TOKENS,
         stream: true,
+        ...(model.effort
+          ? { thinking: { type: 'adaptive' }, output_config: { effort: model.effort } }
+          : {}),
         ...(system ? { system } : {}),
         ...(tools
           ? { tools: tools.map((t) => ({ name: t.name, description: t.description, input_schema: t.parameters })) }
           : {}),
         messages: anthMessages(messages),
       }),
-    })
+    }]
   }
 
   if (model.provider === 'gemini') {
-    return fetch(
+    return [
       `https://generativelanguage.googleapis.com/v1beta/models/${model.id}:streamGenerateContent?alt=sse`,
       {
         method: 'POST',
@@ -303,20 +316,26 @@ function callProvider(model, apiKey, system, messages, tools) {
                 }],
               }
             : {}),
-          generationConfig: { maxOutputTokens: MAX_OUT_TOKENS },
+          generationConfig: {
+            maxOutputTokens: MAX_OUT_TOKENS,
+            ...(model.thinkingBudget
+              ? { thinkingConfig: { thinkingBudget: model.thinkingBudget } }
+              : {}),
+          },
         }),
       },
-    )
+    ]
   }
 
   // openai
-  return fetch('https://api.openai.com/v1/chat/completions', {
+  return ['https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: model.id,
       stream: true,
       max_completion_tokens: MAX_OUT_TOKENS,
+      ...(model.reasoningEffort ? { reasoning_effort: model.reasoningEffort } : {}),
       ...(tools
         ? { tools: tools.map((t) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.parameters } })) }
         : {}),
@@ -324,7 +343,11 @@ function callProvider(model, apiKey, system, messages, tools) {
         ? [{ role: 'system', content: system }, ...oaiMessages(messages)]
         : oaiMessages(messages),
     }),
-  })
+  }]
+}
+
+function callProvider(model, apiKey, system, messages, tools) {
+  return fetch(...providerRequest(model, apiKey, system, messages, tools))
 }
 
 /** Extract the text delta from one provider SSE `data:` payload, or null. */
