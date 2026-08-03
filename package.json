@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "build:tailnet": "vite build --base=/ --outDir dist-tailnet"
   },
   "dependencies": {
     "@preact/preset-vite": "^2.10.5",
