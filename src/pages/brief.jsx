@@ -104,6 +104,7 @@ export function Brief() {
       <div class="flex flex-col gap-3">
         <AiReport
           label="AI synthesis"
+          hint="reads the data panel below and writes the day's brief — setup, risks, what to watch"
           filename={`briefing-${new Date().toISOString().slice(0, 10)}.md`}
           buildPrompt={async () => ({ system: BRIEFING_SYSTEM, prompt: briefingPrompt(text) })}
           archive={{ kind: 'briefing', title: `Briefing ${new Date().toISOString().slice(0, 10)}` }}
