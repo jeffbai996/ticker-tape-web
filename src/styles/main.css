@@ -77,10 +77,23 @@ body {
 .tape-scroll {
   animation: tape-scroll 60s linear infinite;
 }
-.tape-scroll:hover {
-  animation-play-state: paused;
-}
 @keyframes tape-scroll {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }
+}
+
+/* rolodex clock — fragwire's time-wheel */
+.time-wheel-digit { position: relative; display: inline-grid; height: 1em;
+  min-width: .58em; overflow: hidden; align-items: start;
+  justify-items: center; font-variant-numeric: tabular-nums; }
+.time-wheel-mark { display: inline-block; min-width: .24em; text-align: center; }
+.time-wheel-face, .time-wheel-old, .time-wheel-new {
+  grid-area: 1 / 1; line-height: 1; transform: translateY(0);
+  backface-visibility: hidden; will-change: transform;
+  transition: transform .32s cubic-bezier(.22, .72, .2, 1); }
+.time-wheel-new { transform: translateY(100%); }
+.time-wheel-digit.rolling .time-wheel-old { transform: translateY(-100%); }
+.time-wheel-digit.rolling .time-wheel-new { transform: translateY(0); }
+@media (prefers-reduced-motion: reduce) {
+  .time-wheel-face, .time-wheel-old, .time-wheel-new { transition: none !important; }
 }
