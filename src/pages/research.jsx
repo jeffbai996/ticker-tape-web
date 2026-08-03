@@ -7,6 +7,8 @@ import { fetchOptions } from '../lib/options.js'
 import { fetchInsider } from '../lib/fundamentals.js'
 import { fetchEarningsImpact } from '../lib/earnings.js'
 import { fetchAnalysts } from '../lib/fundamentals.js'
+import { fetchProfile, fetchHolders } from '../lib/fundamentals.js'
+import { fetchFilings } from '../lib/edgar.js'
 import { bsDelta } from '../lib/bs.js'
 import { vwapSeries } from '../lib/vwap.js'
 import { LineSeries } from 'lightweight-charts'
@@ -612,10 +614,13 @@ function AnalystsView({ symbol }) {
   return (
     <div class="flex flex-col gap-3 max-w-3xl">
       {t9 && total > 0 && (
-        <section class="bg-surface-1 border border-line rounded-xl p-4">
-          <div class="text-[9px] text-muted uppercase tracking-wider pb-2">
-            {tl('Rec trend')} · {total} {tl('Analysts').toLowerCase()}
-          </div>
+        <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
+          <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
+            <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">
+              {tl('Rec trend')} · {total} {tl('Analysts').toLowerCase()}
+            </h2>
+          </header>
+          <div class="p-4 pt-3">
           <div class="flex h-3 rounded overflow-hidden">
             {seg(t9.strongBuy, 'bg-up')}
             {seg(t9.buy, 'bg-up/50')}
@@ -630,14 +635,18 @@ function AnalystsView({ symbol }) {
             <span class="text-down/80">{tl('Sell')} {t9.sell}</span>
             <span class="text-down">{tl('Strong sell')} {t9.strongSell}</span>
           </div>
+          </div>
         </section>
       )}
 
       {tg.mean != null && (
-        <section class="bg-surface-1 border border-line rounded-xl p-4 font-mono text-[12px]">
-          <div class="text-[9px] text-muted uppercase tracking-wider pb-2">
-            {tl('Price targets')}{tg.analysts != null && ` · ${tg.analysts}`}
-          </div>
+        <section class="bg-surface-1 border border-line rounded-xl overflow-hidden font-mono text-[12px]">
+          <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
+            <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">
+              {tl('Price targets')}{tg.analysts != null && ` · ${tg.analysts}`}
+            </h2>
+          </header>
+          <div class="p-4 pt-3">
           <div class="flex flex-wrap gap-x-6 gap-y-1">
             <span><span class="text-muted">{tl('Low')}</span> <span class="text-ink-2">{fmtPrice(tg.low)}</span></span>
             <span><span class="text-muted">{tl('Mean')}</span> <span class="text-ink">{fmtPrice(tg.mean)}</span></span>
@@ -650,6 +659,7 @@ function AnalystsView({ symbol }) {
                 </span>
               </span>
             )}
+          </div>
           </div>
         </section>
       )}
@@ -664,8 +674,10 @@ function AnalystsView({ symbol }) {
               <tr class="bg-surface-2 text-[9px] text-muted uppercase tracking-wider">
                 <th class="px-3 py-2 text-left">{tl('Date')}</th>
                 <th class="px-2 py-2 text-left">{tl('Firm')}</th>
+                <th class="px-2 py-2 text-left">{tl('From')}</th>
                 <th class="px-2 py-2 text-left">{tl('To')}</th>
-                <th class="px-2 py-2 text-right">PT</th>
+                <th class="px-2 py-2 text-right">{tl('PT prior')}</th>
+                <th class="px-3 py-2 text-right">{tl('PT new')}</th>
               </tr>
             </thead>
             <tbody>
@@ -675,12 +687,17 @@ function AnalystsView({ symbol }) {
                     {h.date ? new Date(h.date).toISOString().slice(0, 10) : '—'}
                   </td>
                   <td class="px-2 py-[4px] text-ink whitespace-nowrap max-w-44 truncate">{h.firm}</td>
-                  <td class={`px-2 py-[4px] whitespace-nowrap ${GRADE_TONE(h.to)}`}>{h.to || '—'}</td>
-                  <td class="px-2 py-[4px] text-right text-ink-2 whitespace-nowrap">
+                  <td class="px-2 py-[4px] whitespace-nowrap text-muted">{h.from || '—'}</td>
+                  <td class={`px-2 py-[4px] whitespace-nowrap font-medium ${GRADE_TONE(h.to)}`}>{h.to || '—'}</td>
+                  <td class="px-2 py-[4px] text-right text-muted whitespace-nowrap">
+                    {h.priorPt != null ? fmtPrice(h.priorPt) : '—'}
+                  </td>
+                  <td class={`px-3 py-[4px] text-right whitespace-nowrap ${
+                    h.pt != null && h.priorPt != null
+                      ? (h.pt >= h.priorPt ? 'text-up' : 'text-down')
+                      : 'text-ink-2'
+                  }`}>
                     {h.pt != null ? fmtPrice(h.pt) : '—'}
-                    {h.priorPt != null && h.priorPt !== h.pt && (
-                      <span class="text-muted text-[10px]"> ← {fmtPrice(h.priorPt)}</span>
-                    )}
                   </td>
                 </tr>
               ))}
@@ -688,6 +705,159 @@ function AnalystsView({ symbol }) {
           </table>
         </section>
       )}
+    </div>
+  )
+}
+
+function SectionCard({ title, children }) {
+  return (
+    <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
+      <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
+        <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">{title}</h2>
+      </header>
+      {children}
+    </section>
+  )
+}
+
+function useFetched(symbol, fetcher) {
+  const [data, setData] = useState(null)
+  const [failed, setFailed] = useState(false)
+  useEffect(() => {
+    let dead = false
+    setData(null)
+    setFailed(false)
+    fetcher(symbol)
+      .then((d) => { if (!dead) setData(d) })
+      .catch(() => { if (!dead) setFailed(true) })
+    return () => { dead = true }
+  }, [symbol])
+  return [data, failed]
+}
+
+function ProfileView({ symbol }) {
+  const [p, failed] = useFetched(symbol, fetchProfile)
+  if (failed || (p === null && failed)) {
+    return <div class="px-1 font-mono text-[11px] text-muted">no profile for {symbol}</div>
+  }
+  if (p === null) return <div class="px-1 font-mono text-[11px] text-muted">{tt('common.loading')}</div>
+  if (!p) return <div class="px-1 font-mono text-[11px] text-muted">no profile for {symbol}</div>
+  return (
+    <div class="flex flex-col gap-3 max-w-3xl">
+      <SectionCard title={tl('Company')}>
+        <div class="p-4 pt-3 font-mono text-[12px] flex flex-wrap gap-x-6 gap-y-1">
+          <span><span class="text-muted">{tl('Sector')}</span> <span class="text-ink">{p.sector || '—'}</span></span>
+          <span><span class="text-muted">{tl('Industry')}</span> <span class="text-ink-2">{p.industry || '—'}</span></span>
+          <span><span class="text-muted">{tl('Employees')}</span> <span class="text-ink-2">{p.employees ? p.employees.toLocaleString() : '—'}</span></span>
+          <span><span class="text-muted">HQ</span> <span class="text-ink-2">{[p.city, p.state, p.country].filter(Boolean).join(', ') || '—'}</span></span>
+          {p.website && <a class="text-accent" href={p.website} target="_blank" rel="noopener">{p.website.replace(/^https?:\/\//, '')}</a>}
+        </div>
+      </SectionCard>
+      {p.summary && (
+        <SectionCard title={tl('Business')}>
+          <p class="p-4 pt-3 text-[12.5px] leading-relaxed text-ink-2 max-w-[74ch]">{p.summary}</p>
+        </SectionCard>
+      )}
+      {p.officers.length > 0 && (
+        <SectionCard title={tl('Officers')}>
+          <table class="w-full border-collapse font-mono text-[11px]">
+            <tbody>
+              {p.officers.map((o) => (
+                <tr key={o.name} class="border-t border-line first:border-0">
+                  <td class="px-3 py-[4px] text-ink whitespace-nowrap">{o.name}</td>
+                  <td class="px-2 py-[4px] text-muted">{o.title}</td>
+                  <td class="px-3 py-[4px] text-right text-ink-2 whitespace-nowrap">{o.pay != null ? fmtBig(o.pay) : ''}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </SectionCard>
+      )}
+    </div>
+  )
+}
+
+function HoldersView({ symbol }) {
+  const [h, failed] = useFetched(symbol, fetchHolders)
+  if (failed) return <div class="px-1 font-mono text-[11px] text-muted">no ownership data for {symbol}</div>
+  if (h === null) return <div class="px-1 font-mono text-[11px] text-muted">{tt('common.loading')}</div>
+  if (!h) return <div class="px-1 font-mono text-[11px] text-muted">no ownership data for {symbol}</div>
+  return (
+    <div class="flex flex-col gap-3 max-w-3xl">
+      <SectionCard title={tl('Ownership')}>
+        <div class="p-4 pt-3 font-mono text-[12px] flex flex-wrap gap-x-6 gap-y-1">
+          <span><span class="text-muted">{tl('Institutions')}</span> <span class="text-ink">{h.institutionsPct != null ? fmtFracPct(h.institutionsPct) : '—'}</span>{h.institutionsCount != null && <span class="text-muted"> · {h.institutionsCount.toLocaleString()} {tl('holders')}</span>}</span>
+          <span><span class="text-muted">{tl('Insiders')}</span> <span class="text-ink-2">{h.insidersPct != null ? fmtFracPct(h.insidersPct) : '—'}</span></span>
+        </div>
+      </SectionCard>
+      {h.top.length > 0 && (
+        <SectionCard title={tl('Top institutional holders')}>
+          <table class="w-full border-collapse font-mono text-[11px]">
+            <thead>
+              <tr class="bg-surface-2 text-[9px] text-muted uppercase tracking-wider">
+                <th class="px-3 py-2 text-left">{tl('Holder')}</th>
+                <th class="px-2 py-2 text-right">{tl('% held')}</th>
+                <th class="px-2 py-2 text-right">{tl('Shares')}</th>
+                <th class="px-2 py-2 text-right">{tl('Value')}</th>
+                <th class="px-3 py-2 text-right">{tl('Reported')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {h.top.map((o) => (
+                <tr key={o.org} class="border-t border-line hover:bg-surface-2">
+                  <td class="px-3 py-[4px] text-ink whitespace-nowrap max-w-56 truncate">{o.org}</td>
+                  <td class="px-2 py-[4px] text-right text-ink-2">{o.pctHeld != null ? fmtFracPct(o.pctHeld) : '—'}</td>
+                  <td class="px-2 py-[4px] text-right text-ink-2">{o.position != null ? fmtVol(o.position) : '—'}</td>
+                  <td class="px-2 py-[4px] text-right text-ink-2">{o.value != null ? fmtBig(o.value) : '—'}</td>
+                  <td class="px-3 py-[4px] text-right text-muted whitespace-nowrap">{o.reportDate ? new Date(o.reportDate).toISOString().slice(0, 10) : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </SectionCard>
+      )}
+    </div>
+  )
+}
+
+const FORM_TONE = (form) =>
+  /^(10-K|10-Q|8-K)/.test(form) ? 'text-accent font-medium'
+    : /^(4|SC 13|13F)/.test(form) ? 'text-ink' : 'text-ink-2'
+
+function FilingsView({ symbol }) {
+  const [d, failed] = useFetched(symbol, fetchFilings)
+  if (failed) return <div class="px-1 font-mono text-[11px] text-muted">no SEC filings for {symbol}</div>
+  if (d === null) return <div class="px-1 font-mono text-[11px] text-muted">{tt('common.loading')}</div>
+  if (!d.filings.length) return <div class="px-1 font-mono text-[11px] text-muted">no SEC filings for {symbol}</div>
+  return (
+    <div class="flex flex-col gap-3 max-w-3xl">
+      <SectionCard title={tl('SEC filings')}>
+        <table class="w-full border-collapse font-mono text-[11px]">
+          <thead>
+            <tr class="bg-surface-2 text-[9px] text-muted uppercase tracking-wider">
+              <th class="px-3 py-2 text-left">{tl('Filed')}</th>
+              <th class="px-2 py-2 text-left">{tl('Form')}</th>
+              <th class="px-3 py-2 text-left">{tl('Title')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {d.filings.map((f, i) => (
+              <tr key={i} class="border-t border-line hover:bg-surface-2">
+                <td class="px-3 py-[4px] text-muted whitespace-nowrap">{f.date}</td>
+                <td class={`px-2 py-[4px] whitespace-nowrap ${FORM_TONE(f.form)}`}>{f.form}</td>
+                <td class="px-3 py-[4px]">
+                  {f.url
+                    ? <a class="text-ink-2 hover:text-accent" href={f.url} target="_blank" rel="noopener">{f.title || f.form}</a>
+                    : <span class="text-ink-2">{f.title || '—'}</span>}
+                  {f.exhibits.slice(0, 3).map((x) => (
+                    <a key={x.url} class="ml-2 text-[10px] text-muted hover:text-accent" href={x.url} target="_blank" rel="noopener">{x.type}</a>
+                  ))}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </SectionCard>
     </div>
   )
 }
@@ -800,6 +970,9 @@ export function Research({ route }) {
           { id: 'earnings', label: tl('Earnings'), href: `#/research/${symbol.toLowerCase()}/earnings` },
           { id: 'analysts', label: tl('Analysts'), href: `#/research/${symbol.toLowerCase()}/analysts` },
           { id: 'insider', label: tl('Insider'), href: `#/research/${symbol.toLowerCase()}/insider` },
+          { id: 'holders', label: tl('Holders'), href: `#/research/${symbol.toLowerCase()}/holders` },
+          { id: 'filings', label: tl('Filings'), href: `#/research/${symbol.toLowerCase()}/filings` },
+          { id: 'profile', label: tl('Profile'), href: `#/research/${symbol.toLowerCase()}/profile` },
         ].map((tab) => (
           <a
             key={tab.label}
@@ -829,6 +1002,12 @@ export function Research({ route }) {
         <InsiderView symbol={symbol} />
       ) : route.view === 'earnings' ? (
         <EarningsView symbol={symbol} />
+      ) : route.view === 'holders' ? (
+        <HoldersView symbol={symbol} />
+      ) : route.view === 'filings' ? (
+        <FilingsView symbol={symbol} />
+      ) : route.view === 'profile' ? (
+        <ProfileView symbol={symbol} />
       ) : route.view === 'analysts' ? (
         <AnalystsView symbol={symbol} />
       ) : (
