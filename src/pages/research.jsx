@@ -23,6 +23,7 @@ import { getCached } from '../lib/feed.js'
 import { fetchEarningsDate } from '../lib/fundamentals.js'
 import { memoPrompt, BRIEFING_SYSTEM } from '../lib/briefing.js'
 import { AiReport } from '../components/AiReport.jsx'
+import { ChartSuite } from '../components/ChartSuite.jsx'
 
 /** Snapshot whatever the page already knows about a symbol into a memo
  *  prompt. Fetches are cache-first, so this is cheap at click time. */
@@ -1181,7 +1182,7 @@ export function Research({ route }) {
       <div class="flex gap-1 px-1 pb-2 select-none">
         {[
           { id: null, label: tl('Overview'), href: `#/research/${symbol.toLowerCase()}` },
-          { id: 'intraday', label: tl('Intraday'), href: `#/research/${symbol.toLowerCase()}/intraday` },
+          { id: 'intraday', label: tl('Chart'), href: `#/research/${symbol.toLowerCase()}/intraday` },
           { id: 'options', label: tl('Options'), href: `#/research/${symbol.toLowerCase()}/options` },
           { id: 'earnings', label: tl('Earnings'), href: `#/research/${symbol.toLowerCase()}/earnings` },
           { id: 'analysts', label: tl('Analysts'), href: `#/research/${symbol.toLowerCase()}/analysts` },
@@ -1214,7 +1215,7 @@ export function Research({ route }) {
       {route.view === 'options' ? (
         <OptionsView symbol={symbol} />
       ) : route.view === 'intraday' ? (
-        <IntradayView symbol={symbol} />
+        <ChartSuite symbol={symbol} />
       ) : route.view === 'insider' ? (
         <InsiderView symbol={symbol} />
       ) : route.view === 'earnings' ? (
@@ -1245,8 +1246,8 @@ export function Research({ route }) {
           </section>
           <div class="flex flex-col gap-3 min-w-0">
             <AiReport
-              label="AI memo"
-              filename={`${symbol.toLowerCase()}-memo.md`}
+              label="AI report"
+              filename={`${symbol.toLowerCase()}-report.md`}
               buildPrompt={() => buildMemoPrompt(symbol)}
               archive={{ kind: 'memo', symbol, title: `${symbol} memo` }}
             />
