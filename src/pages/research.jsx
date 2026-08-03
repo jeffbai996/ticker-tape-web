@@ -1011,7 +1011,7 @@ function DesCell({ n, label, value, tone, big }) {
       <span class="text-[9px] text-muted uppercase tracking-wider whitespace-nowrap">
         {n != null && <span class="text-accent/80">{n}) </span>}{label}
       </span>
-      <span class={`font-mono whitespace-nowrap ${big ? 'text-[14px] font-semibold' : 'text-[12px]'} ${tone || 'text-ink'}`}>{value ?? '—'}</span>
+      <span class={`font-mono min-w-0 truncate ${big ? 'text-[14px] font-semibold' : 'text-[12px]'} ${tone || 'text-ink'}`} title={value ?? ''}>{value ?? '—'}</span>
     </div>
   )
 }
@@ -1055,6 +1055,23 @@ function DesBand({ symbol, bars }) {
         value={f?.volume != null ? `${fmtVol(f.volume)}${f.averageVolume ? ` / ${fmtVol(f.averageVolume)}` : ''}` : null} />
       <DesCell n={8} label={tl('Open / prev')}
         value={f?.open != null ? `${fmtPrice(f.open)} / ${fmtPrice(f.previousClose)}` : null} />
+      <DesCell n={9} label={tl('Tgt / upside')}
+        value={f?.targetMeanPrice != null ? `${fmtPrice(f.targetMeanPrice)}${price ? ` ${fmtPct(((f.targetMeanPrice / price) - 1) * 100)}` : ''}` : null}
+        tone={f?.targetMeanPrice != null && price ? (f.targetMeanPrice >= price ? 'text-up' : 'text-down') : null} />
+      <DesCell n={10} label={tl('Consensus')}
+        value={f?.recommendationKey ? f.recommendationKey.replace('_', ' ').toUpperCase() : null} />
+      <DesCell n={11} label={tl('Short % flt')}
+        value={f?.shortPercentOfFloat != null ? fmtFracPct(f.shortPercentOfFloat) : null} />
+      <DesCell n={12} label={tl('Beta / D-E')}
+        value={f?.beta != null ? `${fmtRatio(f.beta)}${f.debtToEquity != null ? ` / ${fmtRatio(f.debtToEquity)}` : ''}` : null} />
+      <DesCell n={13} label="P/E t / fwd"
+        value={f?.trailingPE != null || f?.forwardPE != null ? `${fmtRatio(f?.trailingPE)} / ${fmtRatio(f?.forwardPE)}` : null} />
+      <DesCell n={14} label="EV/EBITDA"
+        value={f?.enterpriseToEbitda != null ? fmtRatio(f.enterpriseToEbitda) : null} />
+      <DesCell n={15} label="FCF ttm"
+        value={f?.freeCashflow != null ? fmtBig(f.freeCashflow) : null} />
+      <DesCell n={16} label={tl('Div yld')}
+        value={f?.dividendYield != null ? fmtFracPct(f.dividendYield) : '—'} />
     </div>
   )
 }
@@ -1171,6 +1188,52 @@ function SymbolPrompt() {
             </section>
           </div>
         </div>
+      </div>
+    </div>
+  )
+}
+
+// Dense symbol tape under the DES band — the overview's dead zone becomes
+// the last 10 things fragwire caught on this name. Hidden when no wire.
+function WireMini({ symbol }) {
+  const [rows, setRows] = useState(null)
+  const base = wireUrl()
+  useEffect(() => {
+    let dead = false
+    setRows(null)
+    if (!base) return
+    fetch(`${base.replace(/\/$/, '')}/api/events?symbols=${encodeURIComponent(symbol)}&limit=10&newest=1`,
+          { signal: AbortSignal.timeout(8_000) })
+      .then((r) => r.json())
+      .then((out) => { if (!dead) setRows(out.events || []) })
+      .catch(() => { if (!dead) setRows([]) })
+    return () => { dead = true }
+  }, [symbol, base])
+  if (!base || !rows?.length) return null
+  const CODE = { earnings_release: 'ERN', filing: 'FIL', headline: 'NWS',
+    macro_print: 'ECO', price_move: 'PX', digest: 'DIG',
+    transcript_chunk: 'LIV', brief: 'BRF' }
+  return (
+    <div class="border-t border-line">
+      <div class="flex items-baseline gap-2 px-3 pt-1.5 pb-0.5">
+        <span class="font-mono font-bold text-[10px] tracking-wider text-accent uppercase">{tl('On the wire')}</span>
+        <a href={`#/research/${symbol.toLowerCase()}/wire`} class="font-mono text-[9.5px] text-muted hover:text-ink">0) {tl('all')} →</a>
+      </div>
+      <div class="font-mono text-[11px] pb-1">
+        {rows.map((e, i) => (
+          <div key={e.id} class="grid grid-cols-[18px_78px_30px_1fr] gap-x-2 items-baseline px-3 py-[2px] hover:bg-surface-2">
+            <span class="text-muted text-[10px] text-right">{i + 1})</span>
+            <span class="text-muted text-[10.5px] whitespace-nowrap">
+              {new Date(e.ts_event * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toLowerCase()}
+              {' '}
+              {new Date(e.ts_event * 1000).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', timeZone: 'America/New_York' })}
+            </span>
+            <span class={`text-[9.5px] tracking-wider ${e.type === 'earnings_release' || e.type === 'price_move' ? 'text-accent font-semibold' : 'text-muted'}`}>
+              {CODE[e.type] || (e.type || '').slice(0, 3).toUpperCase()}
+            </span>
+            <span class="text-ink-2 truncate min-w-0" title={e.headline}>{e.headline}</span>
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -1339,6 +1402,7 @@ export function Research({ route }) {
             )}
             </div>
             <DesBand symbol={symbol} bars={hist?.bars} />
+            <WireMini symbol={symbol} />
           </section>
           <div class="flex flex-col gap-3 min-w-0">
             <AiReport

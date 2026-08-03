@@ -10,7 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "build:tailnet": "vite build --base=/ --outDir dist-tailnet"
+    "build:tailnet": "vite build --base=/ --outDir dist-tailnet && mkdir -p dist-tailnet/fonts && cp private/fonts/*.woff2 dist-tailnet/fonts/"
   },
   "dependencies": {
     "@preact/preset-vite": "^2.10.5",
