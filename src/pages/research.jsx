@@ -538,9 +538,9 @@ function EarningsView({ symbol }) {
           </thead>
           <tbody>
             {data.events.map((e) => (
-              <tr key={e.quarter} class="border-t border-line hover:bg-surface-2">
+              <tr key={e.quarter ?? e.report} class="border-t border-line hover:bg-surface-2">
                 <td class="px-3 py-[3px] text-ink-2 whitespace-nowrap">
-                  {new Date(e.quarter).toISOString().slice(0, 10)}
+                  {e.quarter ? new Date(e.quarter).toISOString().slice(0, 10) : '—'}
                 </td>
                 <td class="px-2 py-[3px] text-muted whitespace-nowrap">
                   {e.report ? new Date(e.report).toISOString().slice(0, 10) : '—'}

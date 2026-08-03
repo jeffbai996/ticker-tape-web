@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseEarningsHistory, matchReportDate, reactionAfter, earningsSummary, peersOf } from '../../src/lib/earnings.js'
+import { parseEarningsHistory, matchReportDate, reactionAfter, earningsSummary, peersOf, parseCalendarRows, mergeQuarters } from '../../src/lib/earnings.js'
 
 const DAY = 86_400_000
 
@@ -123,5 +123,36 @@ describe('peersOf', () => {
   it('returns empty for symbols outside every bucket', () => {
     expect(peersOf('^GSPC')).toEqual([])
     expect(peersOf('')).toEqual([])
+  })
+})
+
+describe('parseCalendarRows + mergeQuarters (deep history)', () => {
+  const cal = {
+    finance: { result: [{ documents: [{
+      columns: [{ id: 'ticker' }, { id: 'startdatetime' }, { id: 'epsactual' }, { id: 'epsestimate' }, { id: 'epssurprisepct' }],
+      rows: [
+        ['MU', '2026-06-25T16:05:00Z', 2.5, 2.3, 8.7],
+        ['MU', '2024-03-20T16:05:00Z', 1.1, 1.0, 10.0],
+        ['MU', '2023-12-20T16:05:00Z', null, 0.9, null],
+      ],
+    }] }] },
+  }
+  it('parses report/eps columns, percent → fraction', () => {
+    const rows = parseCalendarRows(cal)
+    expect(rows).toHaveLength(3)
+    expect(rows[0].epsActual).toBe(2.5)
+    expect(rows[0].surprisePct).toBeCloseTo(0.087)
+    expect(rows[1].report).toBe(Date.parse('2024-03-20T16:05:00Z'))
+  })
+  it('merge keeps v10 as authority and extends with older prints', () => {
+    const v10 = [{ quarter: Date.parse('2026-05-31'), epsEstimate: 2.3, epsActual: 2.5, surprisePct: 0.087 }]
+    const merged = mergeQuarters(v10, parseCalendarRows(cal))
+    // 2026-06-25 report falls in the v10 quarter's window → same print, skipped;
+    // 2023 row has no actual → dropped; 2024 survives as an extension
+    expect(merged).toHaveLength(2)
+    expect(merged[0].quarter).toBe(v10[0].quarter)
+    expect(merged[1].quarter).toBeNull()
+    expect(merged[1].report).toBe(Date.parse('2024-03-20T16:05:00Z'))
+    expect(merged[1].epsActual).toBe(1.1)
   })
 })
