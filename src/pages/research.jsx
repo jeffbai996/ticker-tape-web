@@ -9,6 +9,7 @@ import { fetchEarningsImpact } from '../lib/earnings.js'
 import { fetchAnalysts } from '../lib/fundamentals.js'
 import { fetchProfile, fetchHolders } from '../lib/fundamentals.js'
 import { fetchFilings } from '../lib/edgar.js'
+import { wireUrl } from '../lib/wire.js'
 import { bsDelta } from '../lib/bs.js'
 import { vwapSeries } from '../lib/vwap.js'
 import { LineSeries } from 'lightweight-charts'
@@ -677,6 +678,7 @@ function AnalystsView({ symbol }) {
                 <th class="px-2 py-2 text-left">{tl('From')}</th>
                 <th class="px-2 py-2 text-left">{tl('To')}</th>
                 <th class="px-2 py-2 text-right">{tl('PT prior')}</th>
+                <th class="px-1 py-2"></th>
                 <th class="px-3 py-2 text-right">{tl('PT new')}</th>
               </tr>
             </thead>
@@ -691,6 +693,9 @@ function AnalystsView({ symbol }) {
                   <td class={`px-2 py-[4px] whitespace-nowrap font-medium ${GRADE_TONE(h.to)}`}>{h.to || '—'}</td>
                   <td class="px-2 py-[4px] text-right text-muted whitespace-nowrap">
                     {h.priorPt != null ? fmtPrice(h.priorPt) : '—'}
+                  </td>
+                  <td class="px-1 py-[4px] text-center text-muted">
+                    {h.pt != null && h.priorPt != null ? '→' : ''}
                   </td>
                   <td class={`px-3 py-[4px] text-right whitespace-nowrap ${
                     h.pt != null && h.priorPt != null
@@ -862,6 +867,63 @@ function FilingsView({ symbol }) {
   )
 }
 
+function SymbolWireView({ symbol }) {
+  const [rows, setRows] = useState(null)
+  const [err, setErr] = useState('')
+  const base = wireUrl()
+  useEffect(() => {
+    let dead = false
+    setRows(null)
+    setErr('')
+    if (!base) return
+    fetch(`${base.replace(/\/$/, '')}/api/events?symbols=${encodeURIComponent(symbol)}&limit=60&newest=1`,
+          { signal: AbortSignal.timeout(10_000) })
+      .then((r) => r.json())
+      .then((out) => { if (!dead) setRows(out.events || []) })
+      .catch((e) => { if (!dead) setErr(String(e.message || e)) })
+    return () => { dead = true }
+  }, [symbol, base])
+
+  if (!base) {
+    return (
+      <div class="px-1 font-mono text-[11px] text-muted max-w-xl leading-relaxed">
+        no wire backend configured — this tab shows everything your fragwire
+        service has captured on {symbol} (releases, filings, price moves,
+        live-call digests). set the endpoint on the <a class="text-accent" href="#/wire">wire tab</a> first.
+      </div>
+    )
+  }
+  if (err) return <div class="px-1 font-mono text-[11px] text-down">wire unreachable: {err}</div>
+  if (rows === null) return <div class="px-1 font-mono text-[11px] text-muted">{tt('common.loading')}</div>
+  if (!rows.length) return <div class="px-1 font-mono text-[11px] text-muted">nothing on the wire for {symbol} yet</div>
+  const CODE = { earnings_release: 'ERN', filing: 'FIL', headline: 'NWS',
+    macro_print: 'ECO', price_move: 'PX', digest: 'DIG',
+    transcript_chunk: 'LIV', brief: 'BRF' }
+  return (
+    <div class="flex flex-col gap-3 max-w-3xl">
+      <SectionCard title={`${tl('On the wire')} · ${symbol}`}>
+        <div class="font-mono text-[11.5px]">
+          {rows.map((e) => (
+            <div key={e.id} class="grid grid-cols-[86px_36px_1fr] gap-x-2.5 items-baseline px-3 py-[3px] border-t border-line first:border-0 hover:bg-surface-2">
+              <span class="text-muted whitespace-nowrap">
+                {new Date(e.ts_event * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toLowerCase()}
+                {' '}
+                {new Date(e.ts_event * 1000).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', timeZone: 'America/New_York' })}
+              </span>
+              <span class={`text-[10px] tracking-wider ${e.type === 'earnings_release' || e.type === 'price_move' ? 'text-accent font-semibold' : 'text-muted'}`}>
+                {CODE[e.type] || (e.type || '').slice(0, 3).toUpperCase()}
+              </span>
+              {e.url
+                ? <a class="text-ink-2 hover:text-accent truncate" href={e.url} target="_blank" rel="noopener">{e.headline}</a>
+                : <span class="text-ink-2 truncate">{e.headline}</span>}
+            </div>
+          ))}
+        </div>
+      </SectionCard>
+    </div>
+  )
+}
+
 function SymbolPrompt() {
   const [value, setValue] = useState('')
   const go = (e) => {
@@ -973,6 +1035,7 @@ export function Research({ route }) {
           { id: 'holders', label: tl('Holders'), href: `#/research/${symbol.toLowerCase()}/holders` },
           { id: 'filings', label: tl('Filings'), href: `#/research/${symbol.toLowerCase()}/filings` },
           { id: 'profile', label: tl('Profile'), href: `#/research/${symbol.toLowerCase()}/profile` },
+          { id: 'wire', label: tl('Wire'), href: `#/research/${symbol.toLowerCase()}/wire` },
         ].map((tab) => (
           <a
             key={tab.label}
@@ -1006,6 +1069,8 @@ export function Research({ route }) {
         <HoldersView symbol={symbol} />
       ) : route.view === 'filings' ? (
         <FilingsView symbol={symbol} />
+      ) : route.view === 'wire' ? (
+        <SymbolWireView symbol={symbol} />
       ) : route.view === 'profile' ? (
         <ProfileView symbol={symbol} />
       ) : route.view === 'analysts' ? (
