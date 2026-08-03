@@ -12,6 +12,7 @@ import {
 } from '../lib/backtest.js'
 import { demoFillsCsv, loadFillsCsv, saveFillsCsv, closesByDateFromChart } from '../lib/backtestData.js'
 import { proxyBase } from '../lib/feed.js'
+import { wireUrl } from '../lib/wire.js'
 import { createPCache } from '../lib/pcache.js'
 
 const SYMBOLS = DEMO_POSITIONS.map((p) => p.symbol)
@@ -25,7 +26,14 @@ function priceMapOf(live) {
   return out
 }
 
-function DemoBanner() {
+function DemoBanner({ live, account, margin }) {
+  if (live) {
+    return (
+      <div class="mx-1 mb-2 px-3 py-1.5 bg-surface-1 border border-up/50 rounded-lg font-mono text-[11px] text-up font-bold tracking-wider select-none">
+        LIVE · {account || 'ibkr'}{margin?.cushion_pct != null ? ` · cushion ${margin.cushion_pct > 0 ? '+' : ''}${margin.cushion_pct}%` : ''}
+      </div>
+    )
+  }
   return (
     <div class="mx-1 mb-2 px-3 py-1.5 bg-accent-soft border border-accent rounded-lg font-mono text-[11px] text-accent font-bold tracking-wider">
       {tt('demo.banner')}
@@ -43,8 +51,8 @@ const signedMoney = (v) =>
 
 const pnlCls = (v) => (v == null ? 'text-muted' : v >= 0 ? 'text-up' : 'text-down')
 
-function Positions({ priceMap }) {
-  const rows = positionRows(DEMO_POSITIONS, priceMap)
+function Positions({ priceMap, positions }) {
+  const rows = positionRows(positions, priceMap)
   const tot = (k) => (rows.every((r) => r[k] != null) ? rows.reduce((s, r) => s + r[k], 0) : null)
 
   return (
@@ -102,8 +110,8 @@ function AccountStat({ label, value, cls = 'text-ink' }) {
   )
 }
 
-function Account({ priceMap }) {
-  const s = accountSummary(DEMO_POSITIONS, priceMap)
+function Account({ priceMap, positions }) {
+  const s = accountSummary(positions, priceMap)
   return (
     <div class="max-w-4xl">
       <div class="px-1 pb-2 font-mono text-[11px] text-muted">
@@ -125,14 +133,14 @@ function Account({ priceMap }) {
   )
 }
 
-function Sizing({ priceMap }) {
+function Sizing({ priceMap, positions }) {
   const [symbol, setSymbol] = useState('MSFT')
   const [targetPct, setTargetPct] = useState('10')
   const sym = symbol.trim().toUpperCase()
   const live = useQuotes(sym ? [sym] : [])
   const q = live[sym]?.quote
-  const s = accountSummary(DEMO_POSITIONS, priceMap)
-  const held = DEMO_POSITIONS.find((p) => p.symbol === sym)?.shares || 0
+  const s = accountSummary(positions, priceMap)
+  const held = positions.find((p) => p.symbol === sym)?.shares || 0
   const r = q && s.nlv
     ? sizeForWeight({ nlv: s.nlv, price: q.price, targetPct: Number(targetPct) || 0, currentShares: held })
     : null
@@ -173,9 +181,9 @@ function Sizing({ priceMap }) {
   )
 }
 
-function Carry({ priceMap }) {
+function Carry({ priceMap, positions }) {
   const [lev, setLev] = useState(1.5)
-  const s = accountSummary(DEMO_POSITIONS, priceMap)
+  const s = accountSummary(positions, priceMap)
   const c = s.nlv ? carryAt({ nlv: s.nlv, targetLeverage: lev }) : null
 
   return (
@@ -207,10 +215,10 @@ function Carry({ priceMap }) {
   )
 }
 
-function Cockpit({ priceMap }) {
-  const rows = positionRows(DEMO_POSITIONS, priceMap)
-  const s = accountSummary(DEMO_POSITIONS, priceMap)
-  const grid = stressGrid(DEMO_POSITIONS, priceMap)
+function Cockpit({ priceMap, positions }) {
+  const rows = positionRows(positions, priceMap)
+  const s = accountSummary(positions, priceMap)
+  const grid = stressGrid(positions, priceMap)
   const weights = rows.map((r) => r.weight).filter((w) => w != null)
   const top = weights.length ? Math.max(...weights) : null
   const hhi = weights.length ? weights.reduce((a, w) => a + (w / 100) ** 2, 0) : null
@@ -269,9 +277,9 @@ function Cockpit({ priceMap }) {
   )
 }
 
-function Timeline({ priceMap }) {
+function Timeline({ priceMap, positions }) {
   const el = useRef(null)
-  const s = accountSummary(DEMO_POSITIONS, priceMap)
+  const s = accountSummary(positions, priceMap)
 
   useEffect(() => {
     if (!el.current || s.nlv == null) return
@@ -585,9 +593,45 @@ function Backtest() {
   )
 }
 
+function useLiveBook() {
+  // tailnet: fragwire fronts ibkr-mcp — the real book replaces the demo
+  const [book, setBook] = useState(null)
+  useEffect(() => {
+    const base = wireUrl()
+    if (!base) return
+    let dead = false
+    const pull = () => fetch(`${base.replace(/\/$/, '')}/api/portfolio`,
+        { signal: AbortSignal.timeout(10_000) })
+      .then((r) => r.json())
+      .then((out) => {
+        if (!dead && out.ok && out.positions?.length) {
+          setBook({
+            positions: out.positions.map((x) => ({
+              symbol: x.symbol, shares: x.shares, avgCost: x.avg_cost,
+            })),
+            margin: out.margin || null,
+            account: out.account || '',
+          })
+        }
+      })
+      .catch(() => {})
+    pull()
+    const t = setInterval(pull, 60_000)
+    return () => { dead = true; clearInterval(t) }
+  }, [])
+  return book
+}
+
 export function Portfolio({ route }) {
-  const live = useQuotes(SYMBOLS)
-  const priceMap = priceMapOf(live)
+  const book = useLiveBook()
+  const positions = book?.positions || DEMO_POSITIONS
+  const symbols = positions.map((p) => p.symbol)
+  const live = useQuotes(symbols)
+  const priceMap = {}
+  for (const s of symbols) {
+    const q = live[s]?.quote
+    if (q) priceMap[s] = q
+  }
   const view = route.sub || 'positions'
 
   const View = {
@@ -602,8 +646,8 @@ export function Portfolio({ route }) {
 
   return (
     <div class="flex-1 p-3 select-text min-w-0">
-      <DemoBanner />
-      <View priceMap={priceMap} />
+      <DemoBanner live={!!book} account={book?.account} margin={book?.margin} />
+      <View priceMap={priceMap} positions={positions} />
     </div>
   )
 }
