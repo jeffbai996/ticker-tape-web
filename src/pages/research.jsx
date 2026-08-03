@@ -1018,9 +1018,15 @@ function DesCell({ n, label, value, tone, big }) {
 
 function DesBand({ symbol, bars }) {
   const [f, setF] = useState(null)
+  const [yr, setYr] = useState(null)
+  const [cal, setCal] = useState(null)
+  const [prof, setProf] = useState(null)
   useEffect(() => {
-    setF(null)
+    setF(null); setYr(null); setCal(null); setProf(null)
     fetchFundamentals(symbol).then(setF).catch(() => setF({}))
+    fetchHistory(symbol, '1Y').then(setYr).catch(() => {})
+    fetchEarningsDate(symbol).then(setCal).catch(() => {})
+    fetchProfile(symbol).then(setProf).catch(() => {})
   }, [symbol])
   const cached = getCached(symbol)
   const q = cached?.quote
@@ -1033,6 +1039,19 @@ function DesBand({ symbol, bars }) {
     if (first && price != null) ytd = ((price / first.close) - 1) * 100
   }
   const tone = (v) => (v == null ? 'text-muted' : v >= 0 ? 'text-up' : 'text-down')
+  // trailing returns off the 1Y daily series — bars are oldest-first seconds
+  const ret = (days) => {
+    const bs = yr?.bars
+    if (!bs?.length || price == null) return null
+    const cutoff = Date.now() / 1000 - days * 86400
+    const b = bs.find((x) => x.time >= cutoff)
+    return b && b !== bs[bs.length - 1] ? ((price / b.close) - 1) * 100 : null
+  }
+  const ret1y = yr?.bars?.length && price != null
+    ? ((price / yr.bars[0].close) - 1) * 100 : null
+  const yNow = new Date().getFullYear()
+  const yFirst = yr?.bars?.find((b) => new Date(b.time * 1000).getFullYear() === yNow)
+  const ytdFull = yFirst && price != null ? ((price / yFirst.close) - 1) * 100 : null
   const wkPos = f?.fiftyTwoWeekHigh != null && f?.fiftyTwoWeekLow != null && price != null
     ? (price - f.fiftyTwoWeekLow) / (f.fiftyTwoWeekHigh - f.fiftyTwoWeekLow) : null
   return (
@@ -1072,6 +1091,23 @@ function DesBand({ symbol, bars }) {
         value={f?.freeCashflow != null ? fmtBig(f.freeCashflow) : null} />
       <DesCell n={16} label={tl('Div yld')}
         value={f?.dividendYield != null ? fmtFracPct(f.dividendYield) : '—'} />
+      <DesCell n={17} label="Ret 1w / 1m"
+        value={ret(7) != null ? `${fmtPct(ret(7))} / ${fmtPct(ret(30))}` : null}
+        tone={tone(ret(30))} />
+      <DesCell n={18} label="Ret 3m / 6m"
+        value={ret(91) != null ? `${fmtPct(ret(91))} / ${fmtPct(ret(182))}` : null}
+        tone={tone(ret(182))} />
+      <DesCell n={19} label="Ret ytd / 1y"
+        value={ytdFull != null || ret1y != null ? `${fmtPct(ytdFull)} / ${fmtPct(ret1y)}` : null}
+        tone={tone(ret1y)} />
+      <DesCell n={20} label={tl('Next ern')}
+        value={cal?.date ? `${new Date(cal.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toLowerCase()} · ${Math.max(0, Math.round((cal.date - Date.now()) / 86400000))}d` : null} />
+      <DesCell n={21} label={tl('Sector')} value={prof?.sector || null} />
+      <DesCell n={22} label={tl('Industry')} value={prof?.industry || null} />
+      <DesCell n={23} label={tl('Employees')}
+        value={prof?.employees != null ? prof.employees.toLocaleString('en-US') : null} />
+      <DesCell n={24} label="Avg $ vol"
+        value={f?.averageVolume != null && price != null ? fmtBig(f.averageVolume * price) : null} />
     </div>
   )
 }
@@ -1407,7 +1443,6 @@ export function Research({ route }) {
           <div class="flex flex-col gap-3 min-w-0">
             <AiReport
               label="AI report"
-              hint="one-page memo on this name: quote, technicals, analyst targets, next earnings"
               filename={`${symbol.toLowerCase()}-report.md`}
               buildPrompt={() => buildMemoPrompt(symbol)}
               archive={{ kind: 'memo', symbol, title: `${symbol} memo` }}
