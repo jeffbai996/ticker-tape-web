@@ -21,9 +21,13 @@ export const HELP_TEXT = [
   row2('intra SYM', 'intraday + VWAP', 'opt SYM', 'options chain'),
   row2('ei SYM', 'earnings impact', 'an SYM', 'analysts'),
   row2('ins SYM', 'insider activity', 'n SYM', 'news'),
+  row2('hold SYM', 'holders', 'fil SYM', 'SEC filings'),
+  row2('prof SYM', 'company profile', 'wire SYM', 'fragwire trail'),
   section('screens'),
   row2('vs A B \\[C…]', 'compare', 'screen A B', 'valuation grid'),
   row2('m s hm movers', 'markets views', 'er · cal', 'earnings · calendar'),
+  row2('market sectors …', 'full names work too', 'wire · today', 'wire · calendar'),
+  row2('pos acct cockpit', 'portfolio views', 'carry timeline', 'more portfolio'),
   row2('b|brief', 'briefing + AI', 'pos · acct', 'demo portfolio'),
   row2('alerts', 'alert center', 'chat \\[q]', 'AI chat'),
   row('bt|backtest', 'fills ledger replay'),
@@ -58,6 +62,14 @@ export function parseCommand(input) {
     pnl: '#/portfolio', alerts: '#/alerts', port: '#/portfolio',
     b: '#/brief', brief: '#/brief', briefing: '#/brief',
     bt: '#/portfolio/backtest', backtest: '#/portfolio/backtest',
+    market: '#/markets', markets: '#/markets', sectors: '#/markets/sectors',
+    commodities: '#/markets/commodities', heatmap: '#/markets/heatmap',
+    earnings: '#/markets/earnings', calendar: '#/markets/calendar',
+    today: '#/markets/calendar', positions: '#/portfolio',
+    account: '#/portfolio/account', cockpit: '#/portfolio/cockpit',
+    carry: '#/portfolio/carry', timeline: '#/portfolio/timeline',
+    sizing: '#/portfolio/sizing', wire: '#/wire',
+    dash: '#/', dashboard: '#/', research: '#/research',
   }
   if (cmd in NAVS && !args.length) return { type: 'nav', hash: NAVS[cmd] }
 
@@ -67,6 +79,12 @@ export function parseCommand(input) {
     intra: 'intraday', opt: 'options', options: 'options',
     ei: 'earnings', ins: 'insider', insider: 'insider',
     an: 'analysts', analysts: 'analysts',
+    hold: 'holders', holders: 'holders', fil: 'filings', filings: 'filings',
+    prof: 'profile', profile: 'profile', memo: null,
+    ratings: 'analysts', technicals: null, lookup: null,
+  }
+  if (cmd === 'wire' && args.length === 1 && SYM.test(args[0])) {
+    return research(args[0], 'wire')
   }
   if (cmd in VIEWS && args.length >= 1 && SYM.test(args[0])) {
     return research(args[0], VIEWS[cmd])
