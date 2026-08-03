@@ -63,6 +63,13 @@ body {
   .font-mono {
     font-weight: 500;
   }
+  /* Weight hierarchy (Jeff 2026-08-03): we're off the terminal, so use the
+     axis — secondary/muted data drops back to 400 and the primary figures
+     hold 500+. One rule instead of retouching every cell. */
+  .font-mono.text-muted, .font-mono.text-ink-2,
+  .font-mono .text-muted, .font-mono .text-ink-2 {
+    font-weight: 400;
+  }
 }
 
 /* Hide a scroll region's bar entirely (status-bar index strip). */
