@@ -97,3 +97,11 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .time-wheel-face, .time-wheel-old, .time-wheel-new { transition: none !important; }
 }
+
+/* Anthropic Sans for table text on the markets pages (Jeff 2026-08-03).
+   Falls back to Jakarta on the public build — the font file ships only in
+   the tailnet deployment. */
+.font-anth, .markets-page table {
+  font-family: "Anthropic Sans", "Plus Jakarta Sans", system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+}

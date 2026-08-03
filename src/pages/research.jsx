@@ -1061,49 +1061,132 @@ function DesBand({ symbol, bars }) {
 
 function SymbolPrompt() {
   const [value, setValue] = useState('')
+  const watchlist = useWatchlist()
+  const recents = (() => {
+    try { return JSON.parse(localStorage.getItem('tape-recent-syms') || '[]') }
+    catch { return [] }
+  })()
   const go = (e) => {
     e.preventDefault()
     const sym = value.trim().toUpperCase()
     if (sym) location.hash = hrefFor('research', sym.toLowerCase())
   }
+  const FUNCS = [
+    ['1', 'Overview', 'chart · DES stat band · technicals · fundamentals · news', ''],
+    ['2', 'Chart', 'full workbench — overlays, RSI/MACD panes, compare mode', '/intraday'],
+    ['3', 'Options', 'chain with greeks', '/options'],
+    ['4', 'Earnings', 'years of prints, surprises, price reactions', '/earnings'],
+    ['5', 'Analysts', 'rec trend, price targets, rating changes', '/analysts'],
+    ['6', 'Insider', 'insider transactions', '/insider'],
+    ['7', 'Holders', 'institutional + insider ownership', '/holders'],
+    ['8', 'Filings', 'the SEC trail', '/filings'],
+    ['9', 'Profile', 'sector, business, officers', '/profile'],
+    ['0', 'Wire', 'everything fragwire captured on the name', '/wire'],
+  ]
+  const openSym = (sym, view = '') =>
+    (location.hash = `#/research/${sym.toLowerCase()}${view}`)
   return (
-    <div class="flex-1 flex items-center justify-center p-8">
-      <form onSubmit={go} class="w-full max-w-sm bg-surface-1 border border-line rounded-2xl p-6">
-        <h1 class="text-base font-semibold text-ink mb-3">Research a symbol</h1>
-        <div class="flex gap-2">
-          <input
-            value={value}
-            onInput={(e) => setValue(e.target.value)}
-            placeholder="NVDA, SPY, BTC-USD…"
-            class="flex-1 bg-surface-0 border border-line-2 rounded-lg px-3 py-2 font-mono text-[13px] text-ink outline-none focus:border-accent"
-          />
-          <button
-            type="submit"
-            class="bg-accent text-surface-0 font-mono font-bold text-[12px] px-4 rounded-lg hover:opacity-90"
-          >
-            GO
-          </button>
-        </div>
-      </form>
-    </div>
-  )
-}
+    <div class="flex-1 p-6 select-none">
+      <div class="max-w-4xl mx-auto flex flex-col gap-4">
+        <form onSubmit={go} class="bg-surface-1 border border-line rounded-2xl p-5">
+          <h1 class="font-mono font-bold text-[13px] tracking-wider text-accent uppercase mb-1">Research</h1>
+          <p class="font-mono text-[11px] text-muted mb-3">
+            type a symbol — or hit a number once a name is open. every function below works on any listed security.
+          </p>
+          <div class="flex gap-2 max-w-sm">
+            <input
+              value={value}
+              onInput={(e) => setValue(e.target.value)}
+              placeholder="NVDA, SPY, BTC-USD…"
+              class="flex-1 bg-surface-0 border border-line-2 rounded-lg px-3 py-2 font-mono text-[13px] text-ink outline-none focus:border-accent"
+            />
+            <button type="submit" class="bg-accent text-surface-0 font-mono font-bold text-[12px] px-4 rounded-lg hover:opacity-90">GO</button>
+          </div>
+        </form>
 
-function WatchStar({ symbol }) {
-  const watched = useWatchlist().includes(symbol)
-  return (
-    <button
-      onClick={() => (watched ? unwatch(symbol) : watch(symbol))}
-      title={watched ? 'unwatch' : 'watch'}
-      class={`text-[15px] leading-none ${watched ? 'text-accent' : 'text-muted hover:text-accent'}`}
-    >
-      {watched ? '★' : '☆'}
-    </button>
+        <div class="grid gap-4 md:grid-cols-2">
+          <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
+            <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
+              <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">Functions</h2>
+            </header>
+            <div class="py-1">
+              {FUNCS.map(([n, name, desc, view]) => (
+                <button
+                  key={n}
+                  onClick={() => { const target = recents[0] || watchlist[0]; if (target) openSym(target, view) }}
+                  class="w-full text-left px-3 py-[5px] font-mono text-[11.5px] hover:bg-surface-2 flex gap-2 items-baseline"
+                >
+                  <span class="text-accent w-5">{n})</span>
+                  <span class="text-ink w-20">{name}</span>
+                  <span class="text-muted truncate">{desc}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <div class="flex flex-col gap-4">
+            <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
+              <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
+                <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">Watchlist</h2>
+              </header>
+              <div class="p-2.5 flex flex-wrap gap-1.5">
+                {watchlist.slice(0, 16).map((sym) => (
+                  <button
+                    key={sym}
+                    onClick={() => openSym(sym)}
+                    class="font-mono text-[11px] px-2 py-1 rounded border border-line text-ink-2 hover:text-accent hover:border-accent/60"
+                  >
+                    {sym}
+                  </button>
+                ))}
+              </div>
+            </section>
+            {recents.length > 0 && (
+              <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
+                <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
+                  <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">Recent</h2>
+                </header>
+                <div class="p-2.5 flex flex-wrap gap-1.5">
+                  {recents.slice(0, 10).map((sym) => (
+                    <button
+                      key={sym}
+                      onClick={() => openSym(sym)}
+                      class="font-mono text-[11px] px-2 py-1 rounded border border-line text-ink-2 hover:text-accent hover:border-accent/60"
+                    >
+                      {sym}
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
+            <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
+              <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
+                <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">From the terminal</h2>
+              </header>
+              <div class="p-3 font-mono text-[11px] text-muted leading-relaxed">
+                <span class="text-ink-2">MU</span> open research · <span class="text-ink-2">ta MU</span> chart ·{' '}
+                <span class="text-ink-2">an MU</span> analysts · <span class="text-ink-2">vs MU NVDA</span> compare ·{' '}
+                <span class="text-ink-2">w MU</span> watch — full list: <span class="text-ink-2">h</span>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 
 export function Research({ route }) {
   const symbol = route.sub
+  useEffect(() => {
+    if (!symbol) return
+    try {
+      const cur = JSON.parse(localStorage.getItem('tape-recent-syms') || '[]')
+        .filter((s) => s !== symbol.toUpperCase())
+      cur.unshift(symbol.toUpperCase())
+      localStorage.setItem('tape-recent-syms', JSON.stringify(cur.slice(0, 12)))
+    } catch { /* storage unavailable */ }
+  }, [symbol])
   const [rangeKey, setRangeKey] = useState('6M')
   const [hist, setHist] = useState(null)
   const [err, setErr] = useState(null)
