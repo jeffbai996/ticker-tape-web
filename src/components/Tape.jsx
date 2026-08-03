@@ -1,5 +1,6 @@
 import { useQuotes, useWatchlist } from '../hooks.js'
 import { fmtPrice, fmtPct } from '../lib/format.js'
+import { hrefFor } from '../lib/route.js'
 
 // The namesake: a continuously scrolling quote marquee. The list is doubled
 // so the -50% keyframe loops seamlessly.
@@ -15,11 +16,15 @@ export function Tape() {
         {[...items, ...items].map(({ symbol, q }, i) => {
           const up = (q?.pct ?? 0) >= 0
           return (
-            <span key={`${symbol}-${i}`} class="flex items-baseline gap-1.5 whitespace-nowrap">
-              <span class="text-ink font-bold">{symbol}</span>
+            <a
+              key={`${symbol}-${i}`}
+              href={hrefFor('research', symbol.toLowerCase())}
+              class="flex items-baseline gap-1.5 whitespace-nowrap hover:no-underline group"
+            >
+              <span class="text-ink font-bold group-hover:text-accent">{symbol}</span>
               <span class="text-ink-2">{q ? fmtPrice(q.price) : '—'}</span>
               {q && <span class={up ? 'text-up' : 'text-down'}>{fmtPct(q.pct)}</span>}
-            </span>
+            </a>
           )
         })}
       </div>

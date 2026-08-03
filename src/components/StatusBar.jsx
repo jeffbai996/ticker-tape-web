@@ -2,6 +2,8 @@ import { useEffect, useState } from 'preact/hooks'
 import { useQuotes } from '../hooks.js'
 import { INDICES } from '../lib/symbols.js'
 import { marketState } from '../lib/marketState.js'
+import { useRef } from 'preact/hooks'
+import { paintRollingTime, CLOCK_ZONES } from '../lib/rollclock.js'
 import { fmtPrice, fmtPct } from '../lib/format.js'
 import { tl, getLocale, setLocale } from '../lib/i18n.js'
 
@@ -38,6 +40,45 @@ function useOnline() {
   return online
 }
 
+// amber rolodex clock with a click-to-cycle timezone (ET → HKT → PT).
+// IANA zone names mean DST is the platform's problem, not ours.
+function RollingClock() {
+  const el = useRef(null)
+  const [zi, setZi] = useState(() => {
+    const saved = localStorage.getItem('tape-clock-tz')
+    const i = CLOCK_ZONES.findIndex((z) => z.id === saved)
+    return i >= 0 ? i : 0
+  })
+  useEffect(() => {
+    const paint = () => {
+      if (el.current) {
+        paintRollingTime(el.current, new Date().toLocaleTimeString('en-US',
+          { hour12: false, timeZone: CLOCK_ZONES[zi].id }))
+      }
+    }
+    paint()
+    const t = setInterval(paint, 1000)
+    return () => clearInterval(t)
+  }, [zi])
+  const cycle = () => {
+    const n = (zi + 1) % CLOCK_ZONES.length
+    setZi(n)
+    localStorage.setItem('tape-clock-tz', CLOCK_ZONES[n].id)
+  }
+  return (
+    <button
+      onClick={cycle}
+      class="flex items-baseline gap-1 whitespace-nowrap font-mono group"
+      title="cycle timezone (ET → HKT → PT)"
+    >
+      <span ref={el} class="inline-flex items-baseline text-accent font-semibold text-[12px]" />
+      <span class="text-[8.5px] tracking-wider text-muted group-hover:text-white">
+        {CLOCK_ZONES[zi].label}
+      </span>
+    </button>
+  )
+}
+
 export function StatusBar() {
   const [now, setNow] = useState(() => new Date())
   const online = useOnline()
@@ -51,7 +92,6 @@ export function StatusBar() {
   const strip = INDICES.map((i) =>
     state !== 'open' && FUTURES_SWAP[i.symbol] ? FUTURES_SWAP[i.symbol] : i)
   const quotes = useQuotes(strip.map((i) => i.symbol))
-  const clock = now.toLocaleTimeString('en-US', { hour12: false, timeZone: 'America/New_York' })
   const chipLabel = holiday ? 'HOLIDAY' : state.toUpperCase()
 
   return (
@@ -80,13 +120,11 @@ export function StatusBar() {
         })}
       </div>
 
-      <span class="text-ink-2 whitespace-nowrap flex items-center gap-1.5">
-        {clock} ET
-        <span
-          class={`inline-block w-1.5 h-1.5 rounded-full ${online ? 'bg-up' : 'bg-down'}`}
-          title={online ? 'online' : 'offline'}
-        />
-      </span>
+      <RollingClock />
+      <span
+        class={`inline-block w-1.5 h-1.5 rounded-full ${online ? 'bg-up' : 'bg-down'}`}
+        title={online ? 'online' : 'offline'}
+      />
       <button
         onClick={() => setLocale(getLocale() === 'en' ? 'zh' : 'en')}
         class="px-1.5 py-0.5 rounded border border-line text-muted hover:text-ink hover:border-line-2"
