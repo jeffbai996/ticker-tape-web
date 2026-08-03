@@ -198,7 +198,6 @@ function Movers() {
     <div class="flex flex-col gap-2 max-w-5xl">
       <AiReport
         label="AI market read"
-        hint="one paragraph on today's movers — the driving theme, signal vs noise"
         filename="market-read.md"
         buildPrompt={buildMoversPrompt}
         archive={{ kind: 'market-read', title: 'market read' }}
