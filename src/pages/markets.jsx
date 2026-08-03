@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'preact/hooks'
 import { useQuotes, useWatchlist } from '../hooks.js'
+import { AiReport } from '../components/AiReport.jsx'
+import { BRIEFING_SYSTEM } from '../lib/briefing.js'
 import { MARKET_GROUPS, SECTORS, COMMODITY_GROUPS, ECON_EVENTS, upcomingEvents } from '../lib/markets.js'
 import { loadCatalysts, onCatalystsChange, removeCatalyst, mergedEvents } from '../lib/catalysts.js'
 import { fetchEarningsDate } from '../lib/fundamentals.js'
@@ -181,11 +183,31 @@ function Movers() {
   const byPct = [...priced].sort((a, b) => b.q.pct - a.q.pct)
   const byVol = [...priced].sort((a, b) => (b.q.volume ?? 0) - (a.q.volume ?? 0))
 
+  const buildMoversPrompt = async () => {
+    const line = (r) => `${r.symbol} ${r.q.price?.toFixed(2)} ${r.q.pct > 0 ? '+' : ''}${r.q.pct.toFixed(2)}%`
+    return {
+      system: BRIEFING_SYSTEM,
+      prompt: 'Today\'s watchlist tape.\nGainers: '
+        + byPct.slice(0, 8).map(line).join(', ')
+        + '\nLosers: ' + byPct.slice(-8).reverse().map(line).join(', ')
+        + '\n\nWrite a tight market read: what theme is driving the dispersion,'
+        + ' which moves look like signal vs noise, one risk. Under 150 words.',
+    }
+  }
   return (
-    <div class="grid gap-2 lg:grid-cols-3 max-w-5xl">
-      <MoverTable title={tl('Gainers')} rows={byPct.slice(0, 10)} />
-      <MoverTable title={tl('Losers')} rows={byPct.slice(-10).reverse()} />
-      <MoverTable title={tl('Most active')} rows={byVol.slice(0, 10)} metric="volume" />
+    <div class="flex flex-col gap-2 max-w-5xl">
+      <AiReport
+        label="AI market read"
+        hint="one paragraph on today's movers — the driving theme, signal vs noise"
+        filename="market-read.md"
+        buildPrompt={buildMoversPrompt}
+        archive={{ kind: 'market-read', title: 'market read' }}
+      />
+      <div class="grid gap-2 lg:grid-cols-3">
+        <MoverTable title={tl('Gainers')} rows={byPct.slice(0, 10)} />
+        <MoverTable title={tl('Losers')} rows={byPct.slice(-10).reverse()} />
+        <MoverTable title={tl('Most active')} rows={byVol.slice(0, 10)} metric="volume" />
+      </div>
     </div>
   )
 }

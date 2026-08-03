@@ -1247,6 +1247,7 @@ export function Research({ route }) {
           <div class="flex flex-col gap-3 min-w-0">
             <AiReport
               label="AI report"
+              hint="one-page memo on this name: quote, technicals, analyst targets, next earnings"
               filename={`${symbol.toLowerCase()}-report.md`}
               buildPrompt={() => buildMemoPrompt(symbol)}
               archive={{ kind: 'memo', symbol, title: `${symbol} memo` }}
