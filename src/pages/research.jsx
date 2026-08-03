@@ -508,7 +508,7 @@ function EarningsView({ symbol }) {
   const pctTone = (v) => (v == null ? 'text-muted' : v >= 0 ? 'text-up' : 'text-down')
 
   return (
-    <div class="flex flex-col gap-3 max-w-4xl">
+    <div class="flex flex-col gap-3">
       <section class="bg-surface-1 border border-line rounded-xl flex flex-wrap divide-x divide-line">
         <SummaryStat
           label={tl('Beat rate')}
@@ -614,7 +614,8 @@ function AnalystsView({ symbol }) {
   const tg = data.targets
 
   return (
-    <div class="flex flex-col gap-3 max-w-3xl">
+    <div class="grid gap-3 items-start xl:grid-cols-[400px_minmax(0,1fr)]">
+      <div class="flex flex-col gap-3 min-w-0">
       {t9 && total > 0 && (
         <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
           <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
@@ -666,8 +667,9 @@ function AnalystsView({ symbol }) {
         </section>
       )}
 
+      </div>
       {data.history.length > 0 && (
-        <section class="bg-surface-1 border border-line rounded-xl overflow-x-auto">
+        <section class="bg-surface-1 border border-line rounded-xl overflow-x-auto min-w-0">
           <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
             <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Recent rating changes')}</h2>
           </header>
@@ -749,7 +751,8 @@ function ProfileView({ symbol }) {
   if (p === null) return <div class="px-1 font-mono text-[11px] text-muted">{tt('common.loading')}</div>
   if (!p) return <div class="px-1 font-mono text-[11px] text-muted">no profile for {symbol}</div>
   return (
-    <div class="flex flex-col gap-3 max-w-3xl">
+    <div class="grid gap-3 items-start xl:grid-cols-2">
+      <div class="flex flex-col gap-3 min-w-0">
       <SectionCard title={tl('Company')}>
         <div class="p-4 pt-3 font-mono text-[12px] flex flex-wrap gap-x-6 gap-y-1">
           <span><span class="text-muted">{tl('Sector')}</span> <span class="text-ink">{p.sector || '—'}</span></span>
@@ -764,6 +767,7 @@ function ProfileView({ symbol }) {
           <p class="p-4 pt-3 text-[12.5px] leading-relaxed text-ink-2 max-w-[74ch]">{p.summary}</p>
         </SectionCard>
       )}
+      </div>
       {p.officers.length > 0 && (
         <SectionCard title={tl('Officers')}>
           <table class="w-full border-collapse font-mono text-[11px]">
@@ -789,7 +793,7 @@ function HoldersView({ symbol }) {
   if (h === null) return <div class="px-1 font-mono text-[11px] text-muted">{tt('common.loading')}</div>
   if (!h) return <div class="px-1 font-mono text-[11px] text-muted">no ownership data for {symbol}</div>
   return (
-    <div class="flex flex-col gap-3 max-w-3xl">
+    <div class="flex flex-col gap-3">
       <SectionCard title={tl('Ownership')}>
         <div class="p-4 pt-3 font-mono text-[12px] flex flex-wrap gap-x-6 gap-y-1">
           <span><span class="text-muted">{tl('Institutions')}</span> <span class="text-ink">{h.institutionsPct != null ? fmtFracPct(h.institutionsPct) : '—'}</span>{h.institutionsCount != null && <span class="text-muted"> · {h.institutionsCount.toLocaleString()} {tl('holders')}</span>}</span>
@@ -836,7 +840,7 @@ function FilingsView({ symbol }) {
   if (d === null) return <div class="px-1 font-mono text-[11px] text-muted">{tt('common.loading')}</div>
   if (!d.filings.length) return <div class="px-1 font-mono text-[11px] text-muted">no SEC filings for {symbol}</div>
   return (
-    <div class="flex flex-col gap-3 max-w-3xl">
+    <div class="flex flex-col gap-3 max-w-6xl">
       <SectionCard title={tl('SEC filings')}>
         <table class="w-full border-collapse font-mono text-[11px]">
           <thead>
@@ -901,7 +905,7 @@ function SymbolWireView({ symbol }) {
     macro_print: 'ECO', price_move: 'PX', digest: 'DIG',
     transcript_chunk: 'LIV', brief: 'BRF' }
   return (
-    <div class="flex flex-col gap-3 max-w-3xl">
+    <div class="flex flex-col gap-3 max-w-6xl">
       <SectionCard title={`${tl('On the wire')} · ${symbol}`}>
         <div class="font-mono text-[11.5px]">
           {rows.map((e) => (
