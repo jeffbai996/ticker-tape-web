@@ -1176,6 +1176,19 @@ function SymbolPrompt() {
   )
 }
 
+function WatchStar({ symbol }) {
+  const watched = useWatchlist().includes(symbol)
+  return (
+    <button
+      onClick={() => (watched ? unwatch(symbol) : watch(symbol))}
+      title={watched ? 'unwatch' : 'watch'}
+      class={`text-[15px] leading-none ${watched ? 'text-accent' : 'text-muted hover:text-accent'}`}
+    >
+      {watched ? '★' : '☆'}
+    </button>
+  )
+}
+
 export function Research({ route }) {
   const symbol = route.sub
   useEffect(() => {
