@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { createChart, CandlestickSeries } from 'lightweight-charts'
+import { createChart, CandlestickSeries, HistogramSeries } from 'lightweight-charts'
 import { useQuotes } from '../hooks.js'
 import { fetchHistory, fetchNews, RANGES } from '../lib/history.js'
 import { fetchFundamentals } from '../lib/fundamentals.js'
@@ -46,9 +46,32 @@ async function buildMemoPrompt(symbol) {
   }
 }
 
+const OV_KEY = 'tape-chart-ov'
+const SMA_COLORS = { 20: '#f59e0b', 50: '#22d3ee', 200: '#c084fc' }
+
+function rollingSma(bars, n) {
+  const out = []
+  let sum = 0
+  for (let i = 0; i < bars.length; i++) {
+    sum += bars[i].close
+    if (i >= n) sum -= bars[i - n].close
+    if (i >= n - 1) out.push({ time: bars[i].time, value: sum / n })
+  }
+  return out
+}
+
 function Candles({ bars, intraday }) {
   const el = useRef(null)
   const chartRef = useRef(null)
+  const [ov, setOv] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(OV_KEY) || '{"vol":true}') }
+    catch { return { vol: true } }
+  })
+  const toggle = (k) => setOv((cur) => {
+    const next = { ...cur, [k]: !cur[k] }
+    localStorage.setItem(OV_KEY, JSON.stringify(next))
+    return next
+  })
 
   useEffect(() => {
     if (!el.current) return
@@ -76,17 +99,61 @@ function Candles({ bars, intraday }) {
       wickUpColor: '#3fb950',
       wickDownColor: '#f85149',
     })
-    chartRef.current = { chart, series }
+    chartRef.current = { chart, series, extra: [] }
     return () => chart.remove()
   }, [intraday])
 
   useEffect(() => {
-    if (!chartRef.current || !bars) return
-    chartRef.current.series.setData(bars)
-    chartRef.current.chart.timeScale().fitContent()
-  }, [bars])
+    const c = chartRef.current
+    if (!c || !bars) return
+    c.series.setData(bars)
+    c.extra.forEach((sr) => { try { c.chart.removeSeries(sr) } catch { /* gone */ } })
+    c.extra = []
+    for (const n of [20, 50, 200]) {
+      if (!ov['sma' + n] || bars.length < n) continue
+      const line = c.chart.addSeries(LineSeries, {
+        color: SMA_COLORS[n], lineWidth: 1,
+        priceLineVisible: false, lastValueVisible: false,
+      })
+      line.setData(rollingSma(bars, n))
+      c.extra.push(line)
+    }
+    if (ov.vol && bars.some((b) => b.volume)) {
+      const vol = c.chart.addSeries(HistogramSeries, {
+        priceScaleId: 'vol', priceFormat: { type: 'volume' },
+        priceLineVisible: false, lastValueVisible: false,
+      })
+      c.chart.priceScale('vol').applyOptions({
+        scaleMargins: { top: 0.82, bottom: 0 },
+      })
+      vol.setData(bars.map((b) => ({
+        time: b.time, value: b.volume || 0,
+        color: b.close >= b.open ? 'rgba(63,185,80,.35)' : 'rgba(248,81,73,.35)',
+      })))
+      c.extra.push(vol)
+    }
+    c.chart.timeScale().fitContent()
+  }, [bars, ov])
 
-  return <div ref={el} class="h-[380px] w-full" />
+  return (
+    <div>
+      <div class="flex gap-1 px-1 pb-1.5 select-none">
+        {[['sma20', 'SMA 20'], ['sma50', 'SMA 50'], ['sma200', 'SMA 200'], ['vol', 'VOL']].map(([k, label]) => (
+          <button
+            key={k}
+            onClick={() => toggle(k)}
+            class={`font-mono text-[9.5px] px-1.5 py-0.5 rounded border tracking-wider ${
+              ov[k] ? 'border-accent/60 text-accent' : 'border-line text-muted hover:text-ink'
+            }`}
+            style={ov[k] && k.startsWith('sma') ? { color: SMA_COLORS[k.slice(3)], borderColor: SMA_COLORS[k.slice(3)] + '99' } : undefined}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <div ref={el} class="h-[352px] w-full" />
+    </div>
+  )
 }
 
 function Stat({ label, value, cls = 'text-ink' }) {
@@ -935,6 +1002,62 @@ function SymbolWireView({ symbol }) {
   )
 }
 
+// DES-style stat band under the overview chart — numbered blocks, dense
+// mono, the bloomberg register (Jeff's GSK DES reference, 2026-08-03)
+function DesCell({ n, label, value, tone }) {
+  return (
+    <div class="flex flex-col gap-0.5 px-3 py-2 min-w-0">
+      <span class="text-[9px] text-muted uppercase tracking-wider whitespace-nowrap">
+        {n != null && <span class="text-accent/80">{n}) </span>}{label}
+      </span>
+      <span class={`font-mono text-[12px] whitespace-nowrap ${tone || 'text-ink'}`}>{value ?? '—'}</span>
+    </div>
+  )
+}
+
+function DesBand({ symbol, bars }) {
+  const [f, setF] = useState(null)
+  useEffect(() => {
+    setF(null)
+    fetchFundamentals(symbol).then(setF).catch(() => setF({}))
+  }, [symbol])
+  const cached = getCached(symbol)
+  const q = cached?.quote
+  const price = q?.price ?? (bars?.length ? bars[bars.length - 1].close : null)
+  const pct = q?.pct ?? null
+  let ytd = null
+  if (bars?.length > 1) {
+    const y = new Date().getFullYear()
+    const first = bars.find((b) => new Date(b.time * 1000).getFullYear() === y)
+    if (first && price != null) ytd = ((price / first.close) - 1) * 100
+  }
+  const tone = (v) => (v == null ? 'text-muted' : v >= 0 ? 'text-up' : 'text-down')
+  const wkPos = f?.fiftyTwoWeekHigh != null && f?.fiftyTwoWeekLow != null && price != null
+    ? (price - f.fiftyTwoWeekLow) / (f.fiftyTwoWeekHigh - f.fiftyTwoWeekLow) : null
+  return (
+    <div class="border-t border-line grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 divide-x divide-line select-none">
+      <DesCell n={1} label={tl('Px / Chg')}
+        value={price != null ? `${fmtPrice(price)}${pct != null ? ` ${fmtPct(pct)}` : ''}` : null}
+        tone={tone(pct)} />
+      <DesCell n={2} label="52wk H / L"
+        value={f?.fiftyTwoWeekHigh != null ? `${fmtPrice(f.fiftyTwoWeekHigh)} / ${fmtPrice(f.fiftyTwoWeekLow)}` : null} />
+      <DesCell n={3} label={tl('52wk pos')}
+        value={wkPos != null ? `${Math.round(wkPos * 100)}%` : null}
+        tone={wkPos != null && wkPos > 0.5 ? 'text-up' : 'text-ink-2'} />
+      <DesCell n={4} label="YTD"
+        value={ytd != null ? fmtPct(ytd) : null} tone={tone(ytd)} />
+      <DesCell n={5} label={tl('Mkt cap / EV')}
+        value={f?.marketCap != null ? `${fmtBig(f.marketCap)}${f.enterpriseValue ? ` / ${fmtBig(f.enterpriseValue)}` : ''}` : null} />
+      <DesCell n={6} label={tl('Shrs out / float')}
+        value={f?.sharesOutstanding != null ? `${fmtVol(f.sharesOutstanding)}${f.floatShares ? ` / ${fmtVol(f.floatShares)}` : ''}` : null} />
+      <DesCell n={7} label={tl('Vol / avg')}
+        value={f?.volume != null ? `${fmtVol(f.volume)}${f.averageVolume ? ` / ${fmtVol(f.averageVolume)}` : ''}` : null} />
+      <DesCell n={8} label={tl('Open / prev')}
+        value={f?.open != null ? `${fmtPrice(f.open)} / ${fmtPrice(f.previousClose)}` : null} />
+    </div>
+  )
+}
+
 function SymbolPrompt() {
   const [value, setValue] = useState('')
   const go = (e) => {
@@ -996,6 +1119,26 @@ export function Research({ route }) {
       .catch((e) => setErr(String(e.message || e)))
   }, [symbol, rangeKey])
 
+  // bloomberg speed keys: the tab numbers are commands — press 3, land on
+  // Options. 0 = the tenth tab. Inputs keep their digits.
+  useEffect(() => {
+    if (!symbol) return
+    const VIEWS = [null, 'intraday', 'options', 'earnings', 'analysts',
+                   'insider', 'holders', 'filings', 'profile', 'wire']
+    const onKey = (e) => {
+      if (e.target instanceof HTMLInputElement
+          || e.target instanceof HTMLTextAreaElement
+          || e.metaKey || e.ctrlKey || e.altKey) return
+      if (!/^[0-9]$/.test(e.key)) return
+      const i = e.key === '0' ? 9 : Number(e.key) - 1
+      if (i >= VIEWS.length) return
+      const v = VIEWS[i]
+      location.hash = `#/research/${symbol.toLowerCase()}${v ? '/' + v : ''}`
+    }
+    addEventListener('keydown', onKey)
+    return () => removeEventListener('keydown', onKey)
+  }, [symbol])
+
   if (!symbol) return <SymbolPrompt />
 
   const q = live[symbol]?.quote
@@ -1035,7 +1178,7 @@ export function Research({ route }) {
         </div>
       </div>
 
-      <div class="flex gap-1 px-1 pb-2">
+      <div class="flex gap-1 px-1 pb-2 select-none">
         {[
           { id: null, label: tl('Overview'), href: `#/research/${symbol.toLowerCase()}` },
           { id: 'intraday', label: tl('Intraday'), href: `#/research/${symbol.toLowerCase()}/intraday` },
@@ -1047,7 +1190,7 @@ export function Research({ route }) {
           { id: 'filings', label: tl('Filings'), href: `#/research/${symbol.toLowerCase()}/filings` },
           { id: 'profile', label: tl('Profile'), href: `#/research/${symbol.toLowerCase()}/profile` },
           { id: 'wire', label: tl('Wire'), href: `#/research/${symbol.toLowerCase()}/wire` },
-        ].map((tab) => (
+        ].map((tab, ti) => (
           <a
             key={tab.label}
             href={tab.href}
@@ -1057,7 +1200,7 @@ export function Research({ route }) {
                 : 'border-line text-muted hover:text-ink hover:bg-surface-2'
             }`}
           >
-            {tab.label}
+            <span class="opacity-60">{(ti + 1) % 10})</span> {tab.label}
           </a>
         ))}
       </div>
@@ -1088,7 +1231,8 @@ export function Research({ route }) {
         <AnalystsView symbol={symbol} />
       ) : (
         <div class="grid gap-2 xl:grid-cols-[1fr_320px]">
-          <section class="bg-surface-1 border border-line rounded-xl p-2 min-w-0">
+          <section class="bg-surface-1 border border-line rounded-xl min-w-0 overflow-hidden">
+            <div class="p-2 pb-0">
             {hist ? (
               <Candles bars={hist.bars} intraday={hist.intraday} />
             ) : (
@@ -1096,6 +1240,8 @@ export function Research({ route }) {
                 {err ? 'no chart' : 'loading…'}
               </div>
             )}
+            </div>
+            <DesBand symbol={symbol} bars={hist?.bars} />
           </section>
           <div class="flex flex-col gap-3 min-w-0">
             <AiReport

@@ -10,8 +10,8 @@ const MODULES = 'summaryDetail,defaultKeyStatistics,financialData'
 const TTL = 60 * 60_000
 
 const FIELDS = {
-  summaryDetail: ['trailingPE', 'dividendYield', 'beta', 'marketCap', 'fiftyTwoWeekLow', 'fiftyTwoWeekHigh'],
-  defaultKeyStatistics: ['forwardPE', 'pegRatio', 'enterpriseToEbitda', 'shortPercentOfFloat', 'priceToBook', 'enterpriseValue'],
+  summaryDetail: ['trailingPE', 'dividendYield', 'beta', 'marketCap', 'fiftyTwoWeekLow', 'fiftyTwoWeekHigh', 'volume', 'averageVolume', 'open', 'previousClose'],
+  defaultKeyStatistics: ['forwardPE', 'pegRatio', 'enterpriseToEbitda', 'shortPercentOfFloat', 'priceToBook', 'enterpriseValue', 'sharesOutstanding', 'floatShares'],
   financialData: [
     'grossMargins', 'operatingMargins', 'profitMargins', 'returnOnEquity',
     'debtToEquity', 'freeCashflow', 'targetMeanPrice', 'recommendationKey',
@@ -39,7 +39,7 @@ function crumbBase() {
   return 'https://yf-proxy.2phakhvpgh.workers.dev'
 }
 
-const cache = createPCache('fund_cache_v1', { max: 40 })
+const cache = createPCache('fund_cache_v2', { max: 40 })
 const calCache = createPCache('cal_cache_v1', { max: 60 })
 const CAL_TTL = 6 * 60 * 60_000
 
