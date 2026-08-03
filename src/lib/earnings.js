@@ -74,6 +74,46 @@ export function earningsSummary(events) {
   }
 }
 
+/** Calendar rows (report datetime + eps columns) → normalized quarters.
+ * The calendar's surprise column is a percent; v10's is a fraction — this
+ * normalizes to fraction so downstream math has one unit. */
+export function parseCalendarRows(data) {
+  const doc = data?.finance?.result?.[0]?.documents?.[0]
+  const cols = (doc?.columns || []).map((c) => c.id)
+  const di = cols.indexOf('startdatetime')
+  const ai = cols.indexOf('epsactual')
+  const ei = cols.indexOf('epsestimate')
+  const si = cols.indexOf('epssurprisepct')
+  if (di < 0) return []
+  return (doc?.rows || [])
+    .map((r) => ({
+      report: Date.parse(r[di]),
+      epsActual: ai >= 0 && r[ai] != null ? Number(r[ai]) : null,
+      epsEstimate: ei >= 0 && r[ei] != null ? Number(r[ei]) : null,
+      surprisePct: si >= 0 && r[si] != null ? Number(r[si]) / 100 : null,
+    }))
+    .filter((x) => Number.isFinite(x.report))
+    .sort((a, b) => b.report - a.report)
+}
+
+/** v10 quarters (4 newest, authoritative) + calendar prints going back years.
+ * A calendar report inside a v10 quarter's report window is the same print —
+ * skipped. Older prints extend the table with quarter=null (the calendar
+ * knows report dates, not fiscal quarter-ends — no guessed dates). */
+export function mergeQuarters(v10, calRows) {
+  const extras = calRows.filter((c) =>
+    c.epsActual != null
+    && !v10.some((q) => c.report > q.quarter
+      && c.report <= q.quarter + REPORT_WINDOW_DAYS * DAY))
+  const orderKey = (e) => e.report ?? (e.quarter + 45 * DAY)
+  return [
+    ...v10,
+    ...extras.map((c) => ({ quarter: null, report: c.report,
+      epsEstimate: c.epsEstimate, epsActual: c.epsActual,
+      surprisePct: c.surprisePct })),
+  ].sort((a, b) => orderKey(b) - orderKey(a))
+}
+
 /** Watchlist-bucket mates, for peer reaction context. */
 export function peersOf(symbol) {
   const sym = (symbol || '').toUpperCase()
@@ -81,18 +121,22 @@ export function peersOf(symbol) {
   return bucket ? bucket.symbols.filter((s) => s !== sym) : []
 }
 
-/** Full earnings impact: quarters + report dates + own/peer price reactions. */
+/** Full earnings impact: several years of quarters (v10 recent + calendar
+ * history) + report dates + own/peer price reactions. */
 export async function fetchEarningsImpact(symbol) {
-  const [quarters, dates] = await Promise.all([
+  const [quarters, calRows] = await Promise.all([
     fetchEarningsHistory(symbol),
-    fetchReportDates(symbol).catch(() => []), // calendar index is patchy — degrade to surprise-only
+    fetchEarningsCalendar(symbol).catch(() => []), // patchy — degrade to 4q
   ])
-  if (!quarters.length) return { events: [], summary: earningsSummary([]) }
+  if (!quarters.length && !calRows.length) {
+    return { events: [], summary: earningsSummary([]) }
+  }
+  const dates = calRows.map((c) => c.report)
 
-  // Daily bars are only needed for quarters we can pin to a report date.
-  const anyDated = quarters.some((q) => matchReportDate(q.quarter, dates))
+  // Daily bars are only needed when at least one quarter pins to a date.
+  const anyDated = calRows.length > 0
   const bars = anyDated
-    ? await fetchHistory(symbol, '2Y').then((h) => h.bars).catch(() => [])
+    ? await fetchHistory(symbol, '5Y').then((h) => h.bars).catch(() => [])
     : []
   const peers = anyDated ? peersOf(symbol).slice(0, 5) : []
   const peerBars = {}
@@ -102,19 +146,19 @@ export async function fetchEarningsImpact(symbol) {
     ),
   )
 
-  const events = quarters.map((q) => {
-    const report = matchReportDate(q.quarter, dates)
-    return {
-      ...q,
-      report,
-      priceMove: report ? reactionAfter(bars, report) : null,
-      peers: report
-        ? peers
-            .map((p) => ({ sym: p, move: reactionAfter(peerBars[p] || [], report) }))
-            .filter((x) => x.move != null)
-        : [],
-    }
-  })
+  const dated = quarters.map((q) => ({
+    ...q,
+    report: matchReportDate(q.quarter, dates),
+  }))
+  const events = mergeQuarters(dated, calRows).map((q) => ({
+    ...q,
+    priceMove: q.report ? reactionAfter(bars, q.report) : null,
+    peers: q.report
+      ? peers
+          .map((p) => ({ sym: p, move: reactionAfter(peerBars[p] || [], q.report) }))
+          .filter((x) => x.move != null)
+      : [],
+  }))
   return { events, summary: earningsSummary(events) }
 }
 
@@ -142,11 +186,12 @@ export async function fetchEarningsHistory(symbol) {
   return value
 }
 
-const rdCache = createPCache('erd_cache_v1', { max: 30 })
+const rdCache = createPCache('erd_cache_v2', { max: 30 })
 const RD_TTL = 24 * 60 * 60_000
 
-/** Historical report datetimes (epoch ms, may be incomplete) via the earnings calendar. */
-export async function fetchReportDates(symbol) {
+/** Historical earnings prints via the calendar: report datetimes + eps
+ * actual/estimate/surprise, ~10 years at size 40 (index may be incomplete). */
+export async function fetchEarningsCalendar(symbol) {
   const hit = rdCache.get(symbol)
   if (hit && Date.now() - hit.ts < RD_TTL) return hit.value
 
@@ -154,10 +199,11 @@ export async function fetchReportDates(symbol) {
     sortType: 'DESC',
     entityIdType: 'earnings',
     sortField: 'startdatetime',
-    includeFields: ['ticker', 'startdatetime', 'epsactual'],
+    includeFields: ['ticker', 'startdatetime', 'epsactual', 'epsestimate',
+                    'epssurprisepct'],
     query: { operator: 'and', operands: [{ operator: 'eq', operands: ['ticker', symbol.toUpperCase()] }] },
     offset: 0,
-    size: 20,
+    size: 40,
   })
   const resp = await fetch(`${crumbBase()}/v1/finance/visualization?lang=en-US&region=US`, {
     method: 'POST',
@@ -165,14 +211,8 @@ export async function fetchReportDates(symbol) {
     body,
     signal: AbortSignal.timeout(12_000),
   })
-  if (!resp.ok) throw new Error(`report dates ${symbol}: HTTP ${resp.status}`)
-  const data = await resp.json()
-  const doc = data?.finance?.result?.[0]?.documents?.[0]
-  const cols = (doc?.columns || []).map((c) => c.id)
-  const di = cols.indexOf('startdatetime')
-  const value = di < 0 ? [] : (doc.rows || [])
-    .map((r) => Date.parse(r[di]))
-    .filter((t) => Number.isFinite(t))
+  if (!resp.ok) throw new Error(`earnings calendar ${symbol}: HTTP ${resp.status}`)
+  const value = parseCalendarRows(await resp.json())
   rdCache.set(symbol, { value, ts: Date.now() })
   return value
 }
