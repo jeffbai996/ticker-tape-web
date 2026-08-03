@@ -8,6 +8,7 @@
   "background_color": "#050609",
   "theme_color": "#050609",
   "icons": [
-    { "src": "/ticker-tape-web-demo/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+    { "src": "/ticker-tape-web-demo/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/ticker-tape-web-demo/apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" }
   ]
 }
