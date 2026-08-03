@@ -679,10 +679,11 @@ function AnalystsView({ symbol }) {
                 <th class="px-3 py-2 text-left">{tl('Date')}</th>
                 <th class="px-2 py-2 text-left">{tl('Firm')}</th>
                 <th class="px-2 py-2 text-left">{tl('From')}</th>
+                <th class="w-6 px-1 py-2"></th>
                 <th class="px-2 py-2 text-left">{tl('To')}</th>
-                <th class="px-2 py-2 text-right">{tl('PT prior')}</th>
-                <th class="px-1 py-2"></th>
-                <th class="px-3 py-2 text-right">{tl('PT new')}</th>
+                <th class="px-2 py-2 text-right">{tl('Past PT')}</th>
+                <th class="w-8 px-1 py-2"></th>
+                <th class="px-3 py-2 text-right">{tl('New PT')}</th>
               </tr>
             </thead>
             <tbody>
@@ -693,11 +694,16 @@ function AnalystsView({ symbol }) {
                   </td>
                   <td class="px-2 py-[4px] text-ink whitespace-nowrap max-w-44 truncate">{h.firm}</td>
                   <td class="px-2 py-[4px] whitespace-nowrap text-muted">{h.from || '—'}</td>
+                  <td class="w-6 px-1 py-[4px] text-center">
+                    {h.action === 'up' ? <span class="text-up">▲</span>
+                      : h.action === 'down' ? <span class="text-down">▼</span>
+                      : ''}
+                  </td>
                   <td class={`px-2 py-[4px] whitespace-nowrap font-medium ${GRADE_TONE(h.to)}`}>{h.to || '—'}</td>
                   <td class="px-2 py-[4px] text-right text-muted whitespace-nowrap">
                     {h.priorPt != null ? fmtPrice(h.priorPt) : '—'}
                   </td>
-                  <td class="px-1 py-[4px] text-center text-muted">
+                  <td class="w-8 px-1 py-[4px] text-center text-muted">
                     {h.pt != null && h.priorPt != null ? '→' : ''}
                   </td>
                   <td class={`px-3 py-[4px] text-right whitespace-nowrap ${
