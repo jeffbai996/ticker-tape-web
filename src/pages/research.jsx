@@ -216,6 +216,13 @@ function News({ symbol }) {
 }
 
 function OptionSide({ title, rows, spot, t, type }) {
+  // Relative IV heat: hot = top quartile within the visible side. A static
+  // threshold can't work across names — 40% IV is sleepy on some, wild on others.
+  const ivs = rows.map((r) => r.iv).filter((v) => v != null).sort((a, b) => a - b)
+  const ivHot = ivs.length >= 8 ? ivs[Math.floor(ivs.length * 0.75)] : null
+  const maxOi = Math.max(...rows.map((r) => r.oi || 0), 1)
+  // First strike at/above spot — the amber rule sits on this row's top edge.
+  const crossIdx = spot != null ? rows.findIndex((r) => r.strike >= spot) : -1
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden min-w-0">
       <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
@@ -236,25 +243,45 @@ function OptionSide({ title, rows, spot, t, type }) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((c) => {
+            {rows.map((c, i) => {
               const delta = bsDelta({ spot, strike: c.strike, t, iv: c.iv, type })
+              const ad = delta != null ? Math.abs(delta) : null
+              // Hierarchy by tradability: the 0.35–0.65 belly pops, deep ITM
+              // reads solid, far OTM recedes.
+              const deltaCls =
+                ad == null ? 'text-muted'
+                : ad >= 0.35 && ad <= 0.65 ? 'text-accent'
+                : ad > 0.85 ? 'text-ink' : 'text-muted'
+              const hotIv = ivHot != null && c.iv != null && c.iv >= ivHot
+              const unusual = c.volume != null && c.oi > 0 && c.volume > c.oi
+              const oiPct = Math.round(((c.oi || 0) / maxOi) * 100)
               return (
                 <tr
                   key={c.strike}
-                  class={`border-t border-line ${c.itm ? 'bg-accent-soft/40' : ''} hover:bg-surface-2`}
+                  class={`border-t ${i === crossIdx ? 'border-accent/60' : 'border-line'} ${c.itm ? 'bg-accent-soft/40' : ''} hover:bg-surface-2`}
                 >
                   <td class="px-2 py-[3px] text-right font-bold text-ink">{fmtPrice(c.strike)}</td>
                   <td class="px-2 py-[3px] text-right text-ink">{c.last != null ? fmtPrice(c.last) : '—'}</td>
-                  <td class="px-2 py-[3px] text-right text-ink-2">{c.bid != null ? fmtPrice(c.bid) : '—'}</td>
-                  <td class="px-2 py-[3px] text-right text-ink-2">{c.ask != null ? fmtPrice(c.ask) : '—'}</td>
-                  <td class="px-2 py-[3px] text-right text-ink-2">
+                  <td class="px-2 py-[3px] text-right text-up/90">{c.bid != null ? fmtPrice(c.bid) : '—'}</td>
+                  <td class="px-2 py-[3px] text-right text-down/90">{c.ask != null ? fmtPrice(c.ask) : '—'}</td>
+                  <td class={`px-2 py-[3px] text-right ${hotIv ? 'text-accent' : 'text-ink-2'}`}>
                     {c.iv != null ? `${(c.iv * 100).toFixed(0)}%` : '—'}
                   </td>
-                  <td class="px-2 py-[3px] text-right text-ink-2">
+                  <td class={`px-2 py-[3px] text-right ${deltaCls}`}>
                     {delta != null ? delta.toFixed(2) : '—'}
                   </td>
-                  <td class="px-2 py-[3px] text-right text-muted">{c.volume ?? '—'}</td>
-                  <td class="px-2 py-[3px] text-right text-muted">{c.oi ?? '—'}</td>
+                  <td class={`px-2 py-[3px] text-right ${unusual ? 'text-accent font-bold' : 'text-muted'}`}>
+                    {c.volume ?? '—'}
+                  </td>
+                  <td
+                    class="px-2 py-[3px] text-right text-muted"
+                    // Right-anchored depth fill scaled to the deepest OI in view;
+                    // inline because a per-row percent can't be a Tailwind class.
+                    // rgba is --color-accent at 0.10.
+                    style={c.oi ? { background: `linear-gradient(to left, rgba(245,158,11,0.10) ${oiPct}%, transparent ${oiPct}%)` } : undefined}
+                  >
+                    {c.oi ?? '—'}
+                  </td>
                 </tr>
               )
             })}
@@ -313,7 +340,7 @@ function OptionsView({ symbol }) {
         </select>
         {chain.spot != null && (
           <span class="font-mono text-[11px] text-muted">
-            spot <span class="text-ink">{fmtPrice(chain.spot)}</span> · shaded = ITM · Δ via Black-Scholes from IV
+            spot <span class="text-ink">{fmtPrice(chain.spot)}</span> · amber rule = spot · shaded = ITM · Δ via Black-Scholes from IV · <span class="text-accent">vol</span> = vol&gt;OI
           </span>
         )}
       </div>
