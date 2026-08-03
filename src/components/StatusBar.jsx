@@ -93,14 +93,23 @@ export function StatusBar() {
     state !== 'open' && FUTURES_SWAP[i.symbol] ? FUTURES_SWAP[i.symbol] : i)
   const quotes = useQuotes(strip.map((i) => i.symbol))
   const chipLabel = holiday ? 'HOLIDAY' : state.toUpperCase()
+  // "session closes in 2h 14m" on hover — ET boundary walk, DST via Intl
+  const etParts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: 'numeric', hour12: false }).formatToParts(now)
+  const etMins = Number(etParts.find((p) => p.type === 'hour').value) % 24 * 60
+    + Number(etParts.find((p) => p.type === 'minute').value)
+  const EDGES = [[240, 'pre-market opens'], [570, 'session opens'], [960, 'session closes'], [1200, 'after-hours ends']]
+  const edge = EDGES.find(([m]) => etMins < m)
+  const chipTitle = holiday ? holiday
+    : edge ? `${edge[1]} in ${Math.floor((edge[0] - etMins) / 60)}h ${(edge[0] - etMins) % 60}m`
+    : 'next session monday'
 
   return (
-    <header class="flex items-center gap-3 px-3 h-9 shrink-0 bg-surface-1 border-b border-line font-mono text-[11px]">
-      <a href="#/" class="font-bold text-accent tracking-tight text-[13px] hover:no-underline">ticker-tape</a>
+    <header class="flex items-center gap-3 px-3 h-9 shrink-0 bg-surface-1 border-b border-line font-mono text-[11px] select-none">
+      <a href="#/" class="font-bold text-accent tracking-tight text-[13px] hover:no-underline hover:text-ink transition-colors">ticker-tape</a>
 
       <span
         class={`px-1.5 py-px rounded border text-[10px] font-sans font-bold tracking-wider whitespace-nowrap ${STATE_CHIP[holiday ? 'closed' : state]}`}
-        title={holiday || undefined}
+        title={chipTitle}
       >
         {tl(chipLabel)}
       </span>
