@@ -19,7 +19,7 @@ export function Tape() {
             <a
               key={`${symbol}-${i}`}
               href={hrefFor('research', symbol.toLowerCase())}
-              class="flex items-baseline gap-1.5 whitespace-nowrap hover:no-underline group"
+              class="flex items-baseline gap-1.5 whitespace-nowrap hover:no-underline group rounded px-1.5 -mx-1 py-0.5 hover:bg-surface-2 transition-colors"
             >
               <span class="text-ink font-bold group-hover:text-accent">{symbol}</span>
               <span class="text-ink-2">{q ? fmtPrice(q.price) : '—'}</span>
