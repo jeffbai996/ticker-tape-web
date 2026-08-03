@@ -11,7 +11,7 @@ const STATE_CHIP = {
   open: 'text-up border-up/50 bg-up/10',
   pre: 'text-accent border-accent/50 bg-accent-soft',
   post: 'text-[#c084fc] border-[#c084fc]/50 bg-[#c084fc]/10',
-  closed: 'text-muted border-line-2 bg-surface-2',
+  closed: 'text-down border-down/50 bg-down/10',
 }
 
 // Outside regular hours the cash indices freeze — swap in the 24h futures
@@ -59,7 +59,7 @@ export function StatusBar() {
       <a href="#/" class="font-bold text-accent tracking-tight text-[13px] hover:no-underline">ticker-tape</a>
 
       <span
-        class={`px-1.5 py-px rounded border text-[10px] font-bold tracking-wider whitespace-nowrap ${STATE_CHIP[holiday ? 'closed' : state]}`}
+        class={`px-1.5 py-px rounded border text-[10px] font-sans font-bold tracking-wider whitespace-nowrap ${STATE_CHIP[holiday ? 'closed' : state]}`}
         title={holiday || undefined}
       >
         {tl(chipLabel)}
