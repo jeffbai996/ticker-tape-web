@@ -68,7 +68,7 @@ function RollingClock() {
   return (
     <button
       onClick={cycle}
-      class="flex items-baseline gap-1 whitespace-nowrap font-mono group"
+      class="flex items-baseline gap-1 whitespace-nowrap font-anth group"
       title="cycle timezone (ET → HKT → PT)"
     >
       <span ref={el} class="inline-flex items-baseline text-accent font-semibold text-[12px]" />

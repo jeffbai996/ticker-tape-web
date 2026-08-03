@@ -16,7 +16,7 @@ function QuoteRow({ label, data, unit }) {
     <tr class="border-b border-line last:border-0 hover:bg-surface-2">
       <td class="px-3 py-[3px] text-[12px] text-ink whitespace-nowrap">{label}</td>
       {unit !== undefined && <td class="px-2 py-[3px] font-mono text-[10px] text-muted">{unit}</td>}
-      <td class="px-2 py-[3px] font-mono text-[12px] text-ink text-right">{q ? fmtPrice(q.price) : '—'}</td>
+      <td class="px-2 py-[3px] font-mono font-semibold text-[12px] text-ink text-right">{q ? fmtPrice(q.price) : '—'}</td>
       <td class={`px-2 py-[3px] font-mono text-[12px] text-right ${q ? (up ? 'text-up' : 'text-down') : 'text-muted'}`}>
         {q ? fmtChange(q.change) : ''}
       </td>
@@ -161,7 +161,7 @@ function MoverTable({ title, rows, metric }) {
               <tr key={symbol} class="border-b border-line last:border-0 hover:bg-surface-2 cursor-pointer"
                 onClick={() => (location.hash = `#/research/${symbol.toLowerCase()}`)}>
                 <td class="px-3 py-[3px] font-bold text-accent">{symbol}</td>
-                <td class="px-2 py-[3px] text-right text-ink">{fmtPrice(q?.price)}</td>
+                <td class="px-2 py-[3px] text-right text-ink font-semibold">{fmtPrice(q?.price)}</td>
                 <td class={`px-3 py-[3px] text-right ${up ? 'text-up' : 'text-down'}`}>
                   {metric === 'volume' ? fmtVol(q?.volume) : fmtPct(q?.pct)}
                 </td>

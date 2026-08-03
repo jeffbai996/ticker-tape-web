@@ -1005,13 +1005,13 @@ function SymbolWireView({ symbol }) {
 
 // DES-style stat band under the overview chart — numbered blocks, dense
 // mono, the bloomberg register (Jeff's GSK DES reference, 2026-08-03)
-function DesCell({ n, label, value, tone }) {
+function DesCell({ n, label, value, tone, big }) {
   return (
     <div class="flex flex-col gap-0.5 px-3 py-2 min-w-0">
       <span class="text-[9px] text-muted uppercase tracking-wider whitespace-nowrap">
         {n != null && <span class="text-accent/80">{n}) </span>}{label}
       </span>
-      <span class={`font-mono text-[12px] whitespace-nowrap ${tone || 'text-ink'}`}>{value ?? '—'}</span>
+      <span class={`font-mono whitespace-nowrap ${big ? 'text-[14px] font-semibold' : 'text-[12px]'} ${tone || 'text-ink'}`}>{value ?? '—'}</span>
     </div>
   )
 }
@@ -1037,7 +1037,7 @@ function DesBand({ symbol, bars }) {
     ? (price - f.fiftyTwoWeekLow) / (f.fiftyTwoWeekHigh - f.fiftyTwoWeekLow) : null
   return (
     <div class="border-t border-line grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 divide-x divide-line select-none">
-      <DesCell n={1} label={tl('Px / Chg')}
+      <DesCell n={1} label={tl('Px / Chg')} big
         value={price != null ? `${fmtPrice(price)}${pct != null ? ` ${fmtPct(pct)}` : ''}` : null}
         tone={tone(pct)} />
       <DesCell n={2} label="52wk H / L"
@@ -1237,7 +1237,7 @@ export function Research({ route }) {
           <>
             <span class="text-[12px] text-muted">{q.name}</span>
             <span class="font-mono text-lg text-ink">{fmtPrice(q.price)}</span>
-            <span class={`font-mono text-[13px] ${up ? 'text-up' : 'text-down'}`}>
+            <span class={`font-mono font-semibold text-[15px] ${up ? 'text-up' : 'text-down'}`}>
               {fmtChange(q.change)} {fmtPct(q.pct)}
             </span>
             {q.volume != null && (
