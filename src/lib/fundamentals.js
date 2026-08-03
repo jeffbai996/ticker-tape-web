@@ -151,3 +151,77 @@ export async function fetchFundamentals(symbol) {
   cache.set(symbol, { value, ts: Date.now() })
   return value
 }
+
+/** Pure: company profile from assetProfile. */
+export function parseProfile(result) {
+  const p = result?.assetProfile
+  if (!p) return null
+  return {
+    sector: p.sector ?? null,
+    industry: p.industry ?? null,
+    employees: p.fullTimeEmployees ?? null,
+    city: p.city ?? null,
+    state: p.state ?? null,
+    country: p.country ?? null,
+    website: p.website ?? null,
+    summary: p.longBusinessSummary ?? null,
+    officers: (p.companyOfficers || [])
+      .filter((o) => o?.name)
+      .slice(0, 8)
+      .map((o) => ({ name: o.name, title: o.title ?? '',
+                     pay: o.totalPay?.raw ?? null })),
+  }
+}
+
+const profCache = createPCache('prof_cache_v1', { max: 30 })
+const PROF_TTL = 7 * 24 * 60 * 60_000
+
+export async function fetchProfile(symbol) {
+  const hit = profCache.get(symbol)
+  if (hit && Date.now() - hit.ts < PROF_TTL) return hit.value
+  const url = `${crumbBase()}/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=assetProfile`
+  const resp = await fetch(url, { signal: AbortSignal.timeout(12_000) })
+  if (!resp.ok) throw new Error(`profile ${symbol}: HTTP ${resp.status}`)
+  const data = await resp.json()
+  const value = parseProfile(data?.quoteSummary?.result?.[0])
+  profCache.set(symbol, { value, ts: Date.now() })
+  return value
+}
+
+/** Pure: ownership breakdown + top institutional holders. */
+export function parseHolders(result) {
+  const raw = (v) => (v != null && typeof v === 'object' ? v.raw : v)
+  const b = result?.majorHoldersBreakdown
+  const rows = (result?.institutionOwnership?.ownershipList || [])
+    .filter((o) => o?.organization)
+    .slice(0, 15)
+    .map((o) => ({
+      org: o.organization,
+      pctHeld: raw(o.pctHeld) ?? null,
+      position: raw(o.position) ?? null,
+      value: raw(o.value) ?? null,
+      reportDate: raw(o.reportDate) != null ? raw(o.reportDate) * 1000 : null,
+    }))
+  if (!b && !rows.length) return null
+  return {
+    insidersPct: raw(b?.insidersPercentHeld) ?? null,
+    institutionsPct: raw(b?.institutionsPercentHeld) ?? null,
+    institutionsCount: raw(b?.institutionsCount) ?? null,
+    top: rows,
+  }
+}
+
+const holdCache = createPCache('hold_cache_v1', { max: 30 })
+const HOLD_TTL = 24 * 60 * 60_000
+
+export async function fetchHolders(symbol) {
+  const hit = holdCache.get(symbol)
+  if (hit && Date.now() - hit.ts < HOLD_TTL) return hit.value
+  const url = `${crumbBase()}/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=majorHoldersBreakdown,institutionOwnership`
+  const resp = await fetch(url, { signal: AbortSignal.timeout(12_000) })
+  if (!resp.ok) throw new Error(`holders ${symbol}: HTTP ${resp.status}`)
+  const data = await resp.json()
+  const value = parseHolders(data?.quoteSummary?.result?.[0])
+  holdCache.set(symbol, { value, ts: Date.now() })
+  return value
+}
