@@ -36,6 +36,13 @@ export function fmtFracPct(v) {
   return `${(v * 100).toFixed(2)}%`
 }
 
+/** 0..1 position of v inside [lo, hi], clamped; null when the range is
+ *  missing or degenerate (lo === hi would divide by zero). */
+export function rangePos(lo, hi, v) {
+  if (lo == null || hi == null || v == null || hi <= lo) return null
+  return Math.min(1, Math.max(0, (v - lo) / (hi - lo)))
+}
+
 export function fmtVol(v) {
   if (v == null || Number.isNaN(v)) return DASH
   if (v >= 1e9) return `${(v / 1e9).toFixed(1)}B`

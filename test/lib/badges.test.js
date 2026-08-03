@@ -25,6 +25,12 @@ describe('techBadges', () => {
     expect(b.rs).toBeCloseTo(10, 1)
   })
 
+  it('exposes the 52w low/high bounds behind offHigh', () => {
+    const b = techBadges({ closes: rising, volumes: vols })
+    expect(b.low52).toBe(100)
+    expect(b.high52).toBe(349)
+  })
+
   it('omits RS without a benchmark and survives short series', () => {
     expect(techBadges({ closes: rising, volumes: vols }).rs).toBeNull()
     const short = techBadges({ closes: [1, 2, 3], volumes: [1, 2, 3] })
