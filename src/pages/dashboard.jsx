@@ -83,20 +83,30 @@ function Badges({ tech, earnDays }) {
 
 // ── Range meter (fills the row's wide-screen dead zone): DAY 265.83 ──●── 272.40 ──
 
-function RangeBar({ label, lo, hi, v, cls = '' }) {
+// Static class strings per tone — Tailwind's scanner can't see interpolated names.
+const BAR_TONE = {
+  up: { fill: 'bg-up/40', mark: 'bg-up' },
+  down: { fill: 'bg-down/40', mark: 'bg-down' },
+  accent: { fill: 'bg-accent/40', mark: 'bg-accent' },
+}
+
+function RangeBar({ label, lo, hi, v, tone = 'accent', cls = '' }) {
   const pos = rangePos(lo, hi, v)
   if (pos == null) return null
+  const t = BAR_TONE[tone] || BAR_TONE.accent
+  const pct = `${(pos * 100).toFixed(1)}%`
   return (
-    <span class={`hidden xl:flex items-center gap-1.5 font-mono text-[10px] whitespace-nowrap ${cls}`}>
-      <span class="text-muted">{label}</span>
-      <span class="text-ink-2">{fmtPrice(lo)}</span>
+    <span class={`hidden xl:flex items-center gap-1.5 font-mono text-[9px] whitespace-nowrap ${cls}`}>
+      <span class="text-muted tracking-wider">{label}</span>
+      <span class="text-muted">{fmtPrice(lo)}</span>
       <span class="relative w-14 h-[3px] bg-line rounded-full shrink-0">
+        <span class={`absolute inset-y-0 left-0 rounded-full ${t.fill}`} style={{ width: pct }} />
         <span
-          class="absolute top-1/2 -translate-y-1/2 w-[3px] h-[7px] bg-accent rounded-sm"
-          style={{ left: `calc(${(pos * 100).toFixed(1)}% - 1.5px)` }}
+          class={`absolute top-1/2 -translate-y-1/2 w-[3px] h-[7px] rounded-sm ${t.mark}`}
+          style={{ left: `calc(${pct} - 1.5px)` }}
         />
       </span>
-      <span class="text-ink-2">{fmtPrice(hi)}</span>
+      <span class="text-muted">{fmtPrice(hi)}</span>
     </span>
   )
 }
@@ -129,7 +139,7 @@ function TuiRow({ symbol, data, earnDays }) {
         )}
         {q && (
           <span class="ml-auto flex items-baseline gap-4">
-            <RangeBar label="DAY" lo={q.dayLow} hi={q.dayHigh} v={q.price} />
+            <RangeBar label="DAY" lo={q.dayLow} hi={q.dayHigh} v={q.price} tone={up ? 'up' : 'down'} />
             {q.volume != null && (
               <span class="text-muted text-[10px] hidden sm:inline">{fmtVol(q.volume)}</span>
             )}
@@ -140,7 +150,11 @@ function TuiRow({ symbol, data, earnDays }) {
         <Histo bars={data?.histo} />
         <Badges tech={data?.tech} earnDays={earnDays} />
         {data?.tech && (
-          <RangeBar label="52W" lo={data.tech.low52} hi={data.tech.high52} v={q?.price} cls="ml-auto" />
+          <RangeBar
+            label="52W" lo={data.tech.low52} hi={data.tech.high52} v={q?.price}
+            tone={data.tech.offHigh != null && data.tech.offHigh <= -15 ? 'down' : 'accent'}
+            cls="ml-auto"
+          />
         )}
       </div>
     </a>
