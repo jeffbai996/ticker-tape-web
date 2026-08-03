@@ -105,9 +105,18 @@ body {
   .time-wheel-face, .time-wheel-old, .time-wheel-new { transition: none !important; }
 }
 
-/* Anthropic Sans for table text on the markets pages (Jeff 2026-08-03).
-   Falls back to Jakarta on the public build — the font file ships only in
-   the tailnet deployment. */
+/* Anthropic Sans (Jeff 2026-08-03). The woff2 lives in gitignored
+   private/fonts/ and is copied into dist-tailnet by build:tailnet — the
+   public build 404s the file and falls back to Jakarta, which is exactly
+   the licensing line: never redistributed, real on the tailnet. */
+@font-face {
+  font-family: "Anthropic Sans";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/AnthropicSansVariable-TextRegular.woff2") format("woff2");
+}
+
 .font-anth, .markets-page table {
   font-family: "Anthropic Sans", "Plus Jakarta Sans", system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
