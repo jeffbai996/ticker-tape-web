@@ -56,6 +56,15 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* Plex Mono 400 reads thin on the dark surfaces; 500 is the smidge up.
+   Lives in the base layer so utility weights (font-bold etc.) still win —
+   an unlayered rule here would flatten bold to 500. */
+@layer base {
+  .font-mono {
+    font-weight: 500;
+  }
+}
+
 /* Hide a scroll region's bar entirely (status-bar index strip). */
 .no-scrollbar {
   scrollbar-width: none;
