@@ -1,5 +1,6 @@
 import { useState } from 'preact/hooks'
 import { streamChat } from '../lib/chatClient.js'
+import { wireUrl } from '../lib/wire.js'
 import { saveReport } from '../lib/archive.js'
 import { tl } from '../lib/i18n.js'
 
@@ -54,15 +55,32 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
     try {
       const { system, prompt } = await buildPrompt()
       let acc = ''
-      await streamChat({
-        model: REPORT_MODEL,
-        system,
-        messages: [{ role: 'user', content: prompt }],
-        onDelta: (d) => {
-          acc += d
-          setText(acc)
-        },
-      })
+      const wire = wireUrl()
+      if (wire) {
+        // tailnet: the fragwire router writes it — claude subscription →
+        // local model → metered API last. $0 marginal, telemetered.
+        const resp = await fetch(`${wire.replace(/\/$/, '')}/api/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ system, prompt,
+            purpose: (archive?.kind || 'ttw-report') }),
+          signal: AbortSignal.timeout(240_000),
+        })
+        const out = await resp.json()
+        if (!out.ok) throw new Error(out.error || 'wire generation failed')
+        acc = out.text
+        setText(acc)
+      } else {
+        await streamChat({
+          model: REPORT_MODEL,
+          system,
+          messages: [{ role: 'user', content: prompt }],
+          onDelta: (d) => {
+            acc += d
+            setText(acc)
+          },
+        })
+      }
       if (archive) saveReport({ ...archive, text: acc })
     } catch (err) {
       setError(String(err.message || err))
