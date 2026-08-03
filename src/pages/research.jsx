@@ -236,7 +236,8 @@ function OptionSide({ title, rows, spot, t, type }) {
           <thead>
             <tr class="text-[9px] text-muted uppercase tracking-wider bg-surface-2/60">
               <th class="px-2 py-1.5 text-right">Strike</th>
-              <th class="px-2 py-1.5 text-right">Last</th>
+              {/* Last goes first on phones: bid/ask carry the live market. */}
+              <th class="px-2 py-1.5 text-right max-sm:hidden">Last</th>
               <th class="px-2 py-1.5 text-right">Bid</th>
               <th class="px-2 py-1.5 text-right">Ask</th>
               <th class="px-2 py-1.5 text-right">IV</th>
@@ -264,7 +265,7 @@ function OptionSide({ title, rows, spot, t, type }) {
                   class={`border-t ${i === crossIdx ? 'border-accent/60' : 'border-line'} ${c.itm ? 'bg-accent-soft/40' : ''} hover:bg-surface-2`}
                 >
                   <td class="px-2 py-[3px] text-right font-bold text-ink">{fmtPrice(c.strike)}</td>
-                  <td class="px-2 py-[3px] text-right text-ink">{c.last != null ? fmtPrice(c.last) : '—'}</td>
+                  <td class="px-2 py-[3px] text-right text-ink max-sm:hidden">{c.last != null ? fmtPrice(c.last) : '—'}</td>
                   <td class="px-2 py-[3px] text-right text-up/90">{c.bid != null ? fmtPrice(c.bid) : '—'}</td>
                   <td class="px-2 py-[3px] text-right text-down/90">{c.ask != null ? fmtPrice(c.ask) : '—'}</td>
                   <td class={`px-2 py-[3px] text-right ${hotIv ? 'text-accent' : 'text-ink-2'}`}>

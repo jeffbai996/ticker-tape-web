@@ -136,7 +136,8 @@ function TuiRow({ symbol, data, earnDays }) {
           </span>
         )}
       </div>
-      <div class="flex items-center gap-3 pt-[2px] pl-16 max-sm:pl-0">
+      {/* Phone width: badges scroll sideways instead of clipping mid-badge. */}
+      <div class="flex items-center gap-3 pt-[2px] pl-16 max-sm:pl-0 max-sm:overflow-x-auto no-scrollbar">
         <Histo bars={data?.histo} />
         <Badges tech={data?.tech} earnDays={earnDays} />
         {data?.tech && (
