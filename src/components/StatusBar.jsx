@@ -9,8 +9,8 @@ import { tl, getLocale, setLocale } from '../lib/i18n.js'
 // status classes. Post-market shares the purple used for AH quotes.
 const STATE_CHIP = {
   open: 'text-up border-up/50 bg-up/10',
-  pre: 'text-accent border-accent/50 bg-accent-soft',
-  post: 'text-[#c084fc] border-[#c084fc]/50 bg-[#c084fc]/10',
+  pre: 'text-[#c864ff] border-[#c864ff]/50 bg-[#c864ff]/10',
+  post: 'text-[#5ba8d9] border-[#5ba8d9]/50 bg-[#5ba8d9]/10',
   closed: 'text-down border-down/50 bg-down/10',
 }
 
