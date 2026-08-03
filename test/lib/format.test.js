@@ -1,5 +1,23 @@
 import { describe, it, expect } from 'vitest'
-import { fmtPrice, fmtPct, fmtChange, fmtVol } from '../../src/lib/format.js'
+import { fmtPrice, fmtPct, fmtChange, fmtVol, rangePos } from '../../src/lib/format.js'
+
+describe('rangePos', () => {
+  it('places a value proportionally between lo and hi', () => {
+    expect(rangePos(100, 200, 150)).toBeCloseTo(0.5)
+    expect(rangePos(100, 200, 100)).toBe(0)
+    expect(rangePos(100, 200, 200)).toBe(1)
+  })
+  it('clamps values that drift outside the range', () => {
+    expect(rangePos(100, 200, 90)).toBe(0)
+    expect(rangePos(100, 200, 260)).toBe(1)
+  })
+  it('returns null on missing or degenerate ranges', () => {
+    expect(rangePos(null, 200, 150)).toBeNull()
+    expect(rangePos(100, null, 150)).toBeNull()
+    expect(rangePos(100, 200, null)).toBeNull()
+    expect(rangePos(100, 100, 100)).toBeNull()
+  })
+})
 
 describe('fmtPrice', () => {
   it('renders two decimals with thousands separators', () => {

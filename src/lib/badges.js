@@ -25,6 +25,7 @@ export function techBadges({ closes, volumes }, benchCloses = null) {
   }
 
   const high52 = Math.max(...closes)
+  const low52 = Math.min(...closes)
   const offHigh = high52 > 0 ? ((current - high52) / high52) * 100 : null
 
   let rs = null
@@ -41,6 +42,8 @@ export function techBadges({ closes, volumes }, benchCloses = null) {
     above200: s200 != null ? current > s200 : null,
     volRatio,
     offHigh,
+    low52,
+    high52,
     rs,
   }
 }

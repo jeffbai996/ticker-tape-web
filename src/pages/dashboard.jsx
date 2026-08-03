@@ -11,7 +11,7 @@ import { fetchHistory } from '../lib/history.js'
 import {
   getWidgets, addWidget, removeWidget, moveWidget, onWidgetsChange, WIDGET_TYPES,
 } from '../lib/widgets.js'
-import { fmtPrice, fmtPct, fmtChange, fmtVol } from '../lib/format.js'
+import { fmtPrice, fmtPct, fmtChange, fmtVol, rangePos } from '../lib/format.js'
 import { Histo } from '../components/Histo.jsx'
 import { tl } from '../lib/i18n.js'
 
@@ -81,6 +81,26 @@ function Badges({ tech, earnDays }) {
   )
 }
 
+// ── Range meter (fills the row's wide-screen dead zone): DAY 265.83 ──●── 272.40 ──
+
+function RangeBar({ label, lo, hi, v, cls = '' }) {
+  const pos = rangePos(lo, hi, v)
+  if (pos == null) return null
+  return (
+    <span class={`hidden xl:flex items-center gap-1.5 font-mono text-[10px] whitespace-nowrap ${cls}`}>
+      <span class="text-muted">{label}</span>
+      <span class="text-ink-2">{fmtPrice(lo)}</span>
+      <span class="relative w-14 h-[3px] bg-line rounded-full shrink-0">
+        <span
+          class="absolute top-1/2 -translate-y-1/2 w-[3px] h-[7px] bg-accent rounded-sm"
+          style={{ left: `calc(${(pos * 100).toFixed(1)}% - 1.5px)` }}
+        />
+      </span>
+      <span class="text-ink-2">{fmtPrice(hi)}</span>
+    </span>
+  )
+}
+
 function TuiRow({ symbol, data, earnDays }) {
   const q = data?.quote
   const up = (q?.pct ?? 0) >= 0
@@ -107,13 +127,21 @@ function TuiRow({ symbol, data, earnDays }) {
             </span>
           </span>
         )}
-        {q?.volume != null && (
-          <span class="text-muted text-[10px] ml-auto hidden sm:inline">{fmtVol(q.volume)}</span>
+        {q && (
+          <span class="ml-auto flex items-baseline gap-4">
+            <RangeBar label="DAY" lo={q.dayLow} hi={q.dayHigh} v={q.price} />
+            {q.volume != null && (
+              <span class="text-muted text-[10px] hidden sm:inline">{fmtVol(q.volume)}</span>
+            )}
+          </span>
         )}
       </div>
       <div class="flex items-center gap-3 pt-[2px] pl-16 max-sm:pl-0">
         <Histo bars={data?.histo} />
         <Badges tech={data?.tech} earnDays={earnDays} />
+        {data?.tech && (
+          <RangeBar label="52W" lo={data.tech.low52} hi={data.tech.high52} v={q?.price} cls="ml-auto" />
+        )}
       </div>
     </a>
   )
@@ -437,7 +465,10 @@ export function Dashboard() {
         )}
       </div>
 
-      <div class="grid gap-2 xl:grid-cols-[1fr_230px] min-w-0">
+      {/* lg (1024px) not xl: the rail used to vanish one browser-zoom notch in.
+          1024 keeps it alive through two more notches (115%, 125%) on a 1376px
+          CSS viewport before genuinely running out of room. */}
+      <div class="grid gap-2 lg:grid-cols-[1fr_230px] min-w-0">
         <section class="bg-surface-1 border border-line rounded-xl overflow-hidden min-w-0">
           {groupRows(watchlist).map((g) => (
             <div key={g.name}>
