@@ -51,7 +51,9 @@ function Row({ ev, hot, open, onToggle }) {
       } ${expandable ? 'cursor-pointer' : ''}`}
       onClick={expandable ? onToggle : undefined}
     >
-      <div class="grid grid-cols-[64px_56px_36px_1fr_auto] gap-x-2.5 items-baseline px-2.5 py-[3px] text-[12px] leading-[1.55]">
+      {/* Phone width: meta on line 1, headline unclipped on line 2 — a 10-char
+          truncated headline defeats the point of a wire. */}
+      <div class="grid grid-cols-[64px_56px_36px_1fr_auto] max-sm:grid-cols-[64px_auto_auto_1fr] gap-x-2.5 items-baseline px-2.5 py-[3px] text-[12px] leading-[1.55]">
         <span class={hot ? '' : 'text-muted'}>{rowTime(ev.ts_event)}</span>
         <span class={hot ? 'font-semibold' : 'text-accent font-medium'}>
           {(ev.symbols || []).join(' ') || '—'}
@@ -59,16 +61,19 @@ function Row({ ev, hot, open, onToggle }) {
         <span class={`text-[10px] tracking-wider ${hot ? '' : CODE_TONE[ev.type] || 'text-muted'}`}>
           {TYPE_CODE[ev.type] || String(ev.type).slice(0, 3).toUpperCase()}
         </span>
-        <span class={`truncate ${hot ? '' : ev.type === 'earnings_release' ? 'text-ink font-semibold' : 'text-ink-2'}`} title={ev.headline}>
+        <span
+          class={`truncate max-sm:whitespace-normal max-sm:line-clamp-2 max-sm:col-span-full max-sm:row-start-2 ${hot ? '' : ev.type === 'earnings_release' ? 'text-ink font-semibold' : 'text-ink-2'}`}
+          title={ev.headline}
+        >
           {ev.url ? (
             <a href={ev.url} target="_blank" rel="noopener" class="hover:text-accent" onClick={(e) => e.stopPropagation()}>{ev.headline}</a>
           ) : ev.headline}
           {ev.story_cluster && <span class="text-accent font-bold"> ×{ev.story_cluster.count}</span>}
         </span>
-        <span class={`text-[10.5px] ${hot ? '' : lat < 60 ? 'text-up' : 'text-muted'}`}>{latTxt}</span>
+        <span class={`text-[10.5px] max-sm:row-start-1 max-sm:col-start-4 max-sm:justify-self-end ${hot ? '' : lat < 60 ? 'text-up' : 'text-muted'}`}>{latTxt}</span>
       </div>
       {open && ev.story_cluster && (
-        <div class="px-2.5 pb-2 pl-[168px] flex flex-col gap-0.5">
+        <div class="px-2.5 pb-2 pl-[168px] max-sm:pl-2.5 flex flex-col gap-0.5">
           <p class="text-[8.5px] uppercase tracking-wider text-muted">{ev.story_cluster.count} outlets on this story</p>
           {ev.story_cluster.members.map((m) => (
             <p key={m.id} class="text-[11.5px] font-mono truncate">
@@ -79,7 +84,7 @@ function Row({ ev, hot, open, onToggle }) {
         </div>
       )}
       {open && ev.live_call && (
-        <div class="px-2.5 pb-2 pl-[168px] flex flex-col gap-1.5">
+        <div class="px-2.5 pb-2 pl-[168px] max-sm:pl-2.5 flex flex-col gap-1.5">
           {ev.live_call.digests.map((dg) => (
             <p key={dg.id} class="text-[11.5px] leading-relaxed text-ink-2 max-w-[72ch] border-l-2 border-accent pl-2.5">
               <span class="text-[8.5px] uppercase tracking-wider text-muted mr-1.5">digest #{(dg.meta || {}).digest_n || ''}</span>
@@ -97,7 +102,7 @@ function Row({ ev, hot, open, onToggle }) {
         </div>
       )}
       {open && !ev.live_call && (
-        <div class="px-2.5 pb-2 pl-[168px]">
+        <div class="px-2.5 pb-2 pl-[168px] max-sm:pl-2.5">
           {ev.body && <p class="text-[11.5px] leading-relaxed text-ink-2 max-w-[72ch]">{ev.body}</p>}
           {Object.keys(ev.numbers || {}).length > 0 && (
             <div class="flex flex-wrap gap-1.5 mt-1.5">
