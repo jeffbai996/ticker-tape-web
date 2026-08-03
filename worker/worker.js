@@ -56,8 +56,19 @@ export default {
             return jsonResp({ status: 'ok', proxy: 'yf-cors' });
         }
 
+        // SEC EDGAR pass-through — sec.gov sends no CORS headers, and its
+        // fair-access policy wants a declared contact UA. Two endpoints only.
+        if (path === '/sec/tickers') {
+            return proxySec('https://www.sec.gov/files/company_tickers.json', 86400);
+        }
+        if (path.startsWith('/sec/submissions/')) {
+            const name = path.slice('/sec/submissions/'.length);
+            if (!/^CIK\d{10}\.json$/.test(name)) return jsonResp({ error: 'bad CIK' }, 400);
+            return proxySec(`https://data.sec.gov/submissions/${name}`, 600);
+        }
+
         if (!path.startsWith('/v1/') && !path.startsWith('/v7/') && !path.startsWith('/v8/') && !path.startsWith('/v10/') && !path.startsWith('/ws/')) {
-            return jsonResp({ error: 'Use /v1/, /v7/, /v8/, /v10/ endpoints' }, 400);
+            return jsonResp({ error: 'Use /v1/, /v7/, /v8/, /v10/, /sec/ endpoints' }, 400);
         }
 
         try {
@@ -195,6 +206,25 @@ async function refreshCrumb() {
     } catch (e) {
         console.error('Crumb refresh failed:', e);
         return false;
+    }
+}
+
+async function proxySec(target, maxAge) {
+    try {
+        const resp = await fetch(target, {
+            headers: {
+                'User-Agent': 'ticker-tape-web research (contact: jeffbai996.github.io)',
+                'Accept': 'application/json',
+            },
+        });
+        if (!resp.ok) return jsonResp({ error: `SEC returned ${resp.status}` }, resp.status);
+        return new Response(await resp.text(), {
+            status: 200,
+            headers: { ...CORS_HEADERS, 'Content-Type': 'application/json',
+                       'Cache-Control': `public, max-age=${maxAge}` },
+        });
+    } catch (err) {
+        return jsonResp({ error: `SEC proxy error: ${err.message}` }, 502);
     }
 }
 
