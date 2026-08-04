@@ -115,7 +115,7 @@ function TuiRow({ symbol, data, earnDays }) {
       <div class="flex gap-4 min-w-0">
         <div class="flex-1 min-w-0 overflow-hidden">
           <div class="flex items-baseline gap-2.5 max-sm:gap-2 font-mono text-[13px] max-sm:text-[12px] flex-nowrap min-w-0">
-            <span class="text-ink font-bold font-tick w-14 max-sm:w-12 shrink-0">{symbol}</span>
+            <span class="text-ink font-bold font-tick text-[12px] w-14 max-sm:w-12 shrink-0">{symbol}</span>
             <span class="text-ink font-semibold w-20 max-sm:w-[4.5rem] text-right shrink-0">{q ? fmtPrice(q.price) : '—'}</span>
             {q && (
               <span class={`${up ? 'text-up' : 'text-down'} whitespace-nowrap w-[8.5rem] max-sm:w-auto shrink-0`}>
@@ -145,7 +145,7 @@ function TuiRow({ symbol, data, earnDays }) {
         <div class="hidden @min-[430px]:flex shrink-0 flex-col justify-center gap-1 font-mono text-[11px]">
           <span class="flex items-baseline gap-1.5">
             <RangeBar label="DAY" lo={q?.dayLow} hi={q?.dayHigh} v={q?.price} />
-            <span class="w-[4.5rem] text-right hidden @min-[800px]:inline">
+            <span class="w-[4.5rem] text-right hidden @min-[655px]:inline">
               {q?.volume != null && (
                 <>
                   <span class="text-accent/70">VOL</span>{' '}
@@ -158,7 +158,7 @@ function TuiRow({ symbol, data, earnDays }) {
             {data?.tech && (
               <RangeBar label="52W" lo={data.tech.low52} hi={data.tech.high52} v={q?.price} />
             )}
-            <span class="w-[4.5rem] text-right hidden @min-[800px]:inline">
+            <span class="w-[4.5rem] text-right hidden @min-[655px]:inline">
               {avgVol != null && (
                 <>
                   <span class="text-accent/60 text-[9px]">AVG</span>{' '}

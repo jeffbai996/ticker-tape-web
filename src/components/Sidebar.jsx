@@ -11,7 +11,7 @@ function WatchRow({ symbol, q }) {
   const up = (q?.pct ?? 0) >= 0
   return (
     <div class="wl-row group flex items-baseline px-3 py-[3px] font-mono text-[11px]">
-      <a href={`#/research/${symbol.toLowerCase()}`} class="text-ink font-bold font-tick w-14 hover:no-underline hover:bg-transparent">
+      <a href={`#/research/${symbol.toLowerCase()}`} class="text-ink font-bold font-tick text-[10px] w-14 hover:no-underline hover:bg-transparent">
         {symbol}
       </a>
       <span class="text-ink-2 font-medium ml-auto">{q ? <FlashPrice price={q.price} fmt={fmtPrice} /> : '—'}</span>

@@ -122,7 +122,7 @@ function StripCell({ symbol, label, q }) {
   return (
     <a href={hrefFor('research', symbol.toLowerCase())}
        class="hl-row flex items-baseline gap-1.5 whitespace-nowrap leading-5 px-1.5 hover:no-underline">
-      <span class="text-muted/60">{tl(label)}</span>
+      <span class="text-muted/60 font-tick text-[10px]">{tl(label)}</span>
       <span class={`font-semibold ${isVix ? vixClass(q?.price) : 'text-ink-2'}`}>{q ? <FlashPrice price={q.price} fmt={fmtPrice} /> : '—'}</span>
       {q && !isVix && <span class={`text-[10px] ${up ? 'text-up' : 'text-down'}`}>{fmtPct(q.pct)}</span>}
     </a>
