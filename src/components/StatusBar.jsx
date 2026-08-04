@@ -89,7 +89,7 @@ function StripCell({ symbol, label, q }) {
        class="flex items-baseline gap-1.5 whitespace-nowrap hover:no-underline hover:bg-accent-soft rounded px-1 -mx-1">
       <span class="text-muted/60">{tl(label)}</span>
       <span class={isVix ? vixClass(q?.price) : 'text-ink-2'}>{q ? <FlashPrice price={q.price} fmt={fmtPrice} /> : '—'}</span>
-      {q && !isVix && <span class={up ? 'text-up' : 'text-down'}>{fmtPct(q.pct)}</span>}
+      {q && !isVix && <span class={`text-[10px] ${up ? 'text-up' : 'text-down'}`}>{fmtPct(q.pct)}</span>}
     </a>
   )
 }
