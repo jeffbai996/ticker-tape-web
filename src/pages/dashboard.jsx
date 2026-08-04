@@ -11,7 +11,7 @@ import { fetchHistory } from '../lib/history.js'
 import {
   getWidgets, addWidget, removeWidget, moveWidget, onWidgetsChange, WIDGET_TYPES,
 } from '../lib/widgets.js'
-import { fmtPrice, fmtPct, fmtChange, fmtVol, rangePos } from '../lib/format.js'
+import { fmtPrice, fmtPct, fmtChange, fmtVol, fmtBig, rangePos } from '../lib/format.js'
 import { Histo } from '../components/Histo.jsx'
 import { tl } from '../lib/i18n.js'
 
@@ -87,16 +87,27 @@ function RangeBar({ label, lo, hi, v, cls = '' }) {
   const pos = rangePos(lo, hi, v)
   if (pos == null) return null
   return (
-    <span class={`hidden xl:flex items-center gap-1.5 font-mono text-[10px] whitespace-nowrap ${cls}`}>
-      <span class="text-muted">{label}</span>
-      <span class="text-ink-2">{fmtPrice(lo)}</span>
+    <span class={`hidden lg:flex items-center gap-1.5 font-mono text-[10px] whitespace-nowrap ${cls}`}>
+      <span class="text-accent/70">{label}</span>
+      <span class="text-down/80">{fmtPrice(lo)}</span>
       <span class="relative w-14 h-[3px] bg-line rounded-full shrink-0">
         <span
-          class="absolute top-1/2 -translate-y-1/2 w-[3px] h-[7px] bg-accent rounded-sm"
+          class="absolute top-1/2 -translate-y-1/2 w-[3px] h-[7px] bg-accent-2 rounded-sm"
           style={{ left: `calc(${(pos * 100).toFixed(1)}% - 1.5px)` }}
         />
       </span>
-      <span class="text-ink-2">{fmtPrice(hi)}</span>
+      <span class="text-up/80">{fmtPrice(hi)}</span>
+    </span>
+  )
+}
+
+// label + value, the row's unit of readable data — a bare number hanging in
+// space reads as noise (Jeff 2026-08-03)
+function Cell({ label, children }) {
+  return (
+    <span class="whitespace-nowrap">
+      <span class="text-accent/70">{label}</span>{' '}
+      <span class="text-ink">{children}</span>
     </span>
   )
 }
@@ -105,6 +116,11 @@ function TuiRow({ symbol, data, earnDays }) {
   const q = data?.quote
   const up = (q?.pct ?? 0) >= 0
   const extUp = (q?.extPct ?? 0) >= 0
+  // today's range as a % of the prior close — one number for "is this thing
+  // actually moving today", which the high/low pair alone doesn't say
+  const rngPct = q?.dayHigh != null && q?.dayLow != null && q?.prevClose
+    ? ((q.dayHigh - q.dayLow) / q.prevClose) * 100 : null
+  const heavy = (data?.tech?.volRatio ?? 0) >= 1.5
   return (
     <a
       href={`#/research/${symbol.toLowerCase()}`}
@@ -128,10 +144,25 @@ function TuiRow({ symbol, data, earnDays }) {
           </span>
         )}
         {q && (
-          <span class="ml-auto flex items-baseline gap-4">
+          <span class="ml-auto flex items-baseline gap-4 font-mono text-[10px]">
+            {q.prevClose != null && (
+              <span class="hidden lg:inline"><Cell label="PREV">{fmtPrice(q.prevClose)}</Cell></span>
+            )}
+            {rngPct != null && (
+              <span class="hidden xl:inline whitespace-nowrap">
+                <span class="text-accent/70">RNG</span>{' '}
+                <span class={rngPct >= 3 ? 'text-accent' : 'text-ink'}>{rngPct.toFixed(1)}%</span>
+              </span>
+            )}
+            {q.volume != null && q.price != null && (
+              <span class="hidden xl:inline"><Cell label="$VOL">{fmtBig(q.volume * q.price)}</Cell></span>
+            )}
             <RangeBar label="DAY" lo={q.dayLow} hi={q.dayHigh} v={q.price} />
             {q.volume != null && (
-              <span class="text-muted text-[10px] hidden sm:inline">{fmtVol(q.volume)}</span>
+              <span class="hidden sm:inline whitespace-nowrap">
+                <span class="text-accent/70">VOL</span>{' '}
+                <span class={heavy ? 'text-accent' : 'text-ink'}>{fmtVol(q.volume)}</span>
+              </span>
             )}
           </span>
         )}
