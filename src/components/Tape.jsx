@@ -23,7 +23,7 @@ export function Tape() {
             >
               <span class="text-ink font-bold group-hover:text-accent" style="font-family: 'Plus Jakarta Sans', sans-serif">{symbol}</span>
               <span class="text-ink-2">{q ? fmtPrice(q.price) : '—'}</span>
-              {q && <span class={up ? 'text-up' : 'text-down'}>{fmtPct(q.pct)}</span>}
+              {q && <span class={`text-[10px] ${up ? 'text-up' : 'text-down'}`}>{fmtPct(q.pct)}</span>}
             </a>
           )
         })}

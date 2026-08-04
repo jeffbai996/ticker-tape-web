@@ -14,7 +14,7 @@ function WatchRow({ symbol, q }) {
         {symbol}
       </a>
       <span class="text-ink-2 font-medium ml-auto">{q ? <FlashPrice price={q.price} fmt={fmtPrice} /> : '—'}</span>
-      <span class={`w-16 text-right font-semibold ${q ? (up ? 'text-up' : 'text-down') : 'text-muted'}`}>
+      <span class={`w-16 text-right font-semibold text-[10px] ${q ? (up ? 'text-up' : 'text-down') : 'text-muted'}`}>
         {q ? fmtPct(q.pct) : ''}
       </span>
       <button
