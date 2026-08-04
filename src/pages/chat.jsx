@@ -245,25 +245,28 @@ export function Chat() {
     <div class="flex-1 flex flex-col p-3 min-h-0 min-w-0 select-text">
       <div class="flex items-center gap-3 px-1 pb-2 flex-wrap">
         <h1 class="font-bold text-lg text-ink" style="font-family: 'Plus Jakarta Sans', sans-serif">{tl('AI Chat')}</h1>
-        {!onWire && <select
-          value={model}
-          onChange={(e) => {
-            setModel(e.currentTarget.value)
-            localStorage.setItem('chat_model', e.currentTarget.value)
-          }}
-          class="bg-surface-2 border border-line rounded-md px-2 py-1 font-mono text-[11px] text-ink outline-none"
-        >
-          {(models.length ? models : [{ key: model, label: model }]).map((m) => (
-            <option key={m.key} value={m.key}>{m.label}</option>
-          ))}
-        </select>}
+        {!onWire && <label class="flex items-center gap-1.5 bg-surface-2 border border-line rounded-lg pl-2.5 pr-1 py-1 focus-within:border-accent/70 hover:border-line-2 transition-colors">
+          <span class="font-mono text-[9px] uppercase tracking-wider text-muted">model</span>
+          <select
+            value={model}
+            onChange={(e) => {
+              setModel(e.currentTarget.value)
+              localStorage.setItem('chat_model', e.currentTarget.value)
+            }}
+            class="bg-transparent font-mono text-[11px] text-ink outline-none pr-1 cursor-pointer"
+          >
+            {(models.length ? models : [{ key: model, label: model }]).map((m) => (
+              <option key={m.key} value={m.key}>{m.label}</option>
+            ))}
+          </select>
+        </label>}
         {onWire && (
           <span class="font-mono text-[10px] text-muted border border-line rounded-md px-2 py-1"
                 title="answers come from your own subscription via fragwire — no metered API, no cap">
             via <span class="text-accent">wire</span>
           </span>
         )}
-        {!onWire && <div class="flex items-center border border-line rounded-md overflow-hidden" title="thinking effort">
+        {!onWire && <div class="flex items-center gap-0.5 bg-surface-2 border border-line rounded-lg p-0.5" title="thinking effort">
           {['auto', 'off', 'low', 'medium', 'high'].map((lv) => (
             <button
               key={lv}
@@ -271,8 +274,10 @@ export function Chat() {
                 setEffort(lv)
                 localStorage.setItem('chat_effort', lv)
               }}
-              class={`px-2 py-1 font-mono text-[10px] border-r border-line last:border-r-0 ${
-                effort === lv ? 'bg-accent text-black font-bold' : 'text-ink-2 hover:text-ink'
+              class={`px-2 py-[3px] font-mono text-[10px] rounded-md transition-colors ${
+                effort === lv
+                  ? 'bg-accent text-black font-bold'
+                  : 'text-muted hover:text-ink hover:bg-surface-3'
               }`}
             >
               {lv}
@@ -408,7 +413,10 @@ export function Chat() {
       </div>
 
       <form onSubmit={send} class="max-w-3xl w-full pt-2">
-        <div class="flex items-end gap-2 bg-surface-1 border border-line rounded-2xl px-3 py-2 focus-within:border-accent/70 transition-colors">
+        {/* items-center keeps a one-line placeholder vertically centered
+            against the 32px send button; the textarea grows downward from
+            there (Jeff 2026-08-04: "placeholder isn't centered"). */}
+        <div class="flex items-center gap-2 bg-surface-1 border border-line rounded-2xl px-3 py-1.5 focus-within:border-accent/70 focus-within:shadow-[0_0_0_1px_rgba(245,158,11,0.15)] transition-all">
           <textarea
             ref={inputRef}
             value={input}
@@ -421,7 +429,7 @@ export function Chat() {
               if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(e) }
             }}
             placeholder={tt('chat.placeholder')}
-            class="flex-1 bg-transparent resize-none outline-none text-[13.5px] leading-relaxed text-ink placeholder:text-muted max-h-40 font-anth"
+            class="flex-1 bg-transparent resize-none outline-none text-[13.5px] leading-[21px] py-[5.5px] text-ink placeholder:text-muted max-h-40 font-anth"
           />
           <button
             type="submit"
