@@ -72,7 +72,7 @@ function RollingClock() {
       title="cycle timezone (ET → HKT → PT)"
     >
       <span ref={el} class="inline-flex items-baseline text-accent font-semibold text-[12px]" />
-      <span class="text-[8.5px] tracking-wider text-muted group-hover:text-white">
+      <span class="text-[8.5px] tracking-wider text-muted group-hover:text-white hover:text-white transition-colors">
         {CLOCK_ZONES[zi].label}
       </span>
     </button>
