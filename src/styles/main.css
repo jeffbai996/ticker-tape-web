@@ -125,6 +125,15 @@ body {
    re-runs hit testing on pointer events, so a CSS hover on a scrolling belt
    sticks to whichever item happened to be under the cursor at the last
    mousemove and then slides away with it. */
+/* Watchlist row: one explicit rule rather than an arbitrary-opacity utility,
+   which Tailwind's generator handles inconsistently. The whole row lights,
+   with an amber edge marking it. */
+.wl-row:hover {
+  background: rgba(245, 158, 11, 0.20);
+  box-shadow: inset 3px 0 0 0 var(--color-accent);
+}
+.wl-row:hover a { background: transparent; }
+
 .hl-row:hover,
 .tape-hot {
   background: rgba(245, 158, 11, 0.22);
