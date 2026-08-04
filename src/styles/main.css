@@ -89,11 +89,22 @@ body {
 .tape-scroll {
   animation: tape-scroll 60s linear infinite;
 }
-/* :hover never fires on a moving target — the browser only re-evaluates on
-   pointer move, so the belt must stop under the cursor for highlights (and
-   clicks) to land. */
-.tape-scroll:hover {
-  animation-play-state: paused;
+/* Row highlight, loud enough to actually see. accent-soft (13% amber) computes
+   to #292010 on this background — a ~30-value delta that reads as nothing in
+   motion. This is the real affordance: bright wash, amber rule, lit text.
+   `.tape-hot` is applied by pointer tracking, not :hover — the browser only
+   re-runs hit testing on pointer events, so a CSS hover on a scrolling belt
+   sticks to whichever item happened to be under the cursor at the last
+   mousemove and then slides away with it. */
+.hl-row:hover,
+.tape-hot {
+  background: rgba(245, 158, 11, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.85);
+  border-radius: 3px;
+}
+.hl-row:hover *,
+.tape-hot * {
+  color: #fff !important;
 }
 @keyframes tape-scroll {
   from { transform: translateX(0); }

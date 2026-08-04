@@ -91,16 +91,16 @@ function RangeBar({ label, lo, hi, v, cls = '' }) {
   const pos = rangePos(lo, hi, v)
   if (pos == null) return null
   return (
-    <span class={`hidden @min-[430px]:flex items-center gap-1.5 font-mono text-[11px] whitespace-nowrap ${cls}`}>
-      <span class="text-accent/70 w-7">{label}</span>
-      <span class="text-down/80 w-16 text-right hidden @min-[620px]:inline">{fmtPrice(lo)}</span>
-      <span class="relative w-14 h-[3px] bg-line rounded-full shrink-0">
+    <span class={`hidden @min-[430px]:flex items-center gap-1 font-mono text-[11px] font-normal whitespace-nowrap ${cls}`}>
+      <span class="text-accent/60 font-normal text-[9px] w-6">{label}</span>
+      <span class="text-down/80 w-14 text-right hidden @min-[620px]:inline">{fmtPrice(lo)}</span>
+      <span class="relative w-14 h-[3px] bg-line rounded-full shrink-0 mx-0.5">
         <span
           class="absolute top-1/2 -translate-y-1/2 w-[3px] h-[7px] bg-accent-2 rounded-sm"
           style={{ left: `calc(${(pos * 100).toFixed(1)}% - 1.5px)` }}
         />
       </span>
-      <span class="text-up/80 w-16 hidden @min-[620px]:inline">{fmtPrice(hi)}</span>
+      <span class="text-up/80 w-14 hidden @min-[620px]:inline">{fmtPrice(hi)}</span>
     </span>
   )
 }
@@ -145,7 +145,7 @@ function TuiRow({ symbol, data, earnDays }) {
             construction — sharing the text rows made them wrap and overflow
             once the row ran out of width (Jeff 2026-08-03). */}
         <div class="hidden @min-[430px]:flex shrink-0 flex-col justify-center gap-1 font-mono text-[11px]">
-          <span class="flex items-baseline gap-2.5">
+          <span class="flex items-baseline gap-1.5">
             <RangeBar label="DAY" lo={q?.dayLow} hi={q?.dayHigh} v={q?.price} />
             <span class="w-[4.5rem] text-right hidden @min-[800px]:inline">
               {q?.volume != null && (
@@ -156,7 +156,7 @@ function TuiRow({ symbol, data, earnDays }) {
               )}
             </span>
           </span>
-          <span class="flex items-baseline gap-2.5">
+          <span class="flex items-baseline gap-1.5">
             {data?.tech && (
               <RangeBar label="52W" lo={data.tech.low52} hi={data.tech.high52} v={q?.price} />
             )}
