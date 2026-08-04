@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
 import { useQuotes, useWatchlist } from '../hooks.js'
 import { fmtPrice, fmtPct } from '../lib/format.js'
 import { hrefFor } from '../lib/route.js'
+import { tapeworthy, wireUrl } from '../lib/wire.js'
 
 // The namesake: a continuously scrolling quote marquee. The list is doubled
 // so the -50% keyframe loops seamlessly.
@@ -60,9 +61,35 @@ function usePointerHighlight(ref) {
   }, [ref])
 }
 
+/**
+ * Breaking headlines off the user's own fragwire, spliced into the belt. Only
+ * runs when they've pointed the app at an endpoint; the public build never
+ * calls anything. Refreshes on the same cadence as the wire panel.
+ */
+function useWireHeadlines() {
+  const [rows, setRows] = useState([])
+  useEffect(() => {
+    const base = wireUrl()
+    if (!base) return
+    let dead = false
+    const pull = () => {
+      fetch(`${base.replace(/\/$/, '')}/api/events?limit=60&newest=1`,
+            { signal: AbortSignal.timeout(8000) })
+        .then((r) => r.json())
+        .then((out) => { if (!dead) setRows(tapeworthy(out.events || [])) })
+        .catch(() => {})
+    }
+    pull()
+    const t = setInterval(pull, 60_000)
+    return () => { dead = true; clearInterval(t) }
+  }, [])
+  return rows
+}
+
 export function Tape() {
   const watchlist = useWatchlist()
   const quotes = useQuotes(watchlist)
+  const heads = useWireHeadlines()
   const items = watchlist.map((s) => ({ symbol: s, q: quotes[s]?.quote }))
   const wrap = useRef(null)
   usePointerHighlight(wrap)
@@ -70,6 +97,20 @@ export function Tape() {
   return (
     <div ref={wrap} class="h-7 shrink-0 bg-black border-b border-line overflow-hidden relative">
       <div class="tape-scroll flex items-center h-full gap-6 w-max font-mono text-[11px] pr-6">
+        {[...heads, ...heads].map((e, i) => (
+          <a
+            key={`h-${e.id}-${i}`}
+            data-tape-item
+            href={e.symbols?.[0] ? hrefFor('research', e.symbols[0].toLowerCase()) : '#/wire'}
+            class="flex items-baseline gap-2 whitespace-nowrap hover:no-underline px-1.5 -mx-1 py-0.5"
+            title={e.headline}
+          >
+            <span class="text-[9px] font-bold tracking-wider text-black bg-accent px-1 rounded-sm">
+              {e.type === 'price_move' ? 'MOVE' : 'WIRE'}
+            </span>
+            <span class="text-accent font-semibold max-w-[46ch] truncate">{e.headline}</span>
+          </a>
+        ))}
         {[...items, ...items].map(({ symbol, q }, i) => {
           const up = (q?.pct ?? 0) >= 0
           return (

@@ -6,6 +6,9 @@
 
 import { streamChat } from './chatClient.js'
 import { TOOL_DEFS, executeTool } from './tools.js'
+import {
+  parseToolCall, toolProtocol, wireChatAvailable, wireComplete,
+} from './wirechat.js'
 
 const MAX_ROUNDS = 6
 
@@ -34,7 +37,47 @@ export function trimHistory(history, max) {
  *  - onRound(entries): transcript grew — entries appended so far this turn
  * Resolves with the full list of new entries (assistant/tool messages).
  */
+/**
+ * Same loop, but over fragwire's subscription router. No native tool-calling
+ * on that path, so tools ride the JSON protocol in wirechat.js — the model
+ * answers with one JSON object to call a tool and prose to answer.
+ */
+async function runAgenticOverWire({ system, messages, onRound }) {
+  const added = []
+  const sys = `${system}\n\n${toolProtocol()}`
+  for (let round = 0; round < MAX_ROUNDS; round++) {
+    const convo = [...messages, ...added]
+      .filter((m) => m.role !== 'tool' || m.content)
+      .map((m) => (m.role === 'tool'
+        ? { role: 'user', content: `TOOL_RESULT ${m.name}: ${m.content}` }
+        : { role: m.role, content: m.content }))
+    const last = round === MAX_ROUNDS - 1
+    const { text } = await wireComplete({
+      system: last ? `${system}\n\nAnswer now with what you have.` : sys,
+      messages: convo,
+    })
+    const call = last ? null : parseToolCall(text)
+    if (!call) {
+      added.push({ role: 'assistant', content: text })
+      onRound?.([...added])
+      return added
+    }
+    const id = `w${round}`
+    added.push({ role: 'assistant', content: '', toolCalls: [{ id, name: call.name, args: call.args }] })
+    onRound?.([...added])
+    const result = await executeTool(call.name, call.args)
+    added.push({ role: 'tool', id, name: call.name, content: result })
+    onRound?.([...added])
+  }
+  return added
+}
+
 export async function runAgentic({ model, effort, system, messages, onDelta, onRound }) {
+  // Private build talks to the user's own router; the metered API is the
+  // fallback for anyone without one.
+  if (wireChatAvailable()) {
+    return runAgenticOverWire({ system, messages, onRound })
+  }
   const added = []
   const convo = () => [...messages, ...added]
 
