@@ -18,6 +18,10 @@
 
   --color-accent: #f59e0b;
   --color-accent-soft: rgba(245, 158, 11, 0.13);
+  /* selection cyan — "which one is active" states, so amber can stay the
+     brand/command color without meaning everything (Jeff 2026-08-03) */
+  --color-accent-2: #3ecbe8;
+  --color-accent-2-soft: rgba(62, 203, 232, 0.12);
 
   --color-up: #3fb950;
   --color-down: #f85149;
