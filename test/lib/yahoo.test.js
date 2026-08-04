@@ -105,6 +105,36 @@ describe('quoteFromV7', () => {
     expect(q.pct).toBeCloseTo(0)
   })
 
+  it('uses the pre-market quote during PRE even when stale AH fields remain', async () => {
+    const { quoteFromV7 } = await import('../../src/lib/yahoo.js')
+    const q = quoteFromV7({
+      symbol: 'AAPL', marketState: 'PRE', regularMarketPrice: 100,
+      preMarketPrice: 101, preMarketChangePercent: 1,
+      postMarketPrice: 99, postMarketChangePercent: -1,
+    })
+    expect(q).toMatchObject({ extLabel: 'PRE', extPrice: 101, extPct: 1 })
+  })
+
+  it('uses the after-hours quote during POST', async () => {
+    const { quoteFromV7 } = await import('../../src/lib/yahoo.js')
+    const q = quoteFromV7({
+      symbol: 'AAPL', marketState: 'POST', regularMarketPrice: 100,
+      preMarketPrice: 101, preMarketChangePercent: 1,
+      postMarketPrice: 102, postMarketChangePercent: 2,
+    })
+    expect(q).toMatchObject({ extLabel: 'AH', extPrice: 102, extPct: 2 })
+  })
+
+  it('does not surface stale extended-hours fields during REGULAR', async () => {
+    const { quoteFromV7 } = await import('../../src/lib/yahoo.js')
+    const q = quoteFromV7({
+      symbol: 'AAPL', marketState: 'REGULAR', regularMarketPrice: 100,
+      preMarketPrice: 101, postMarketPrice: 102,
+    })
+    expect(q.extLabel).toBeUndefined()
+    expect(q.extPrice).toBeUndefined()
+  })
+
   it('degrades to safe defaults on an empty row', async () => {
     const { quoteFromV7 } = await import('../../src/lib/yahoo.js')
     const q = quoteFromV7(null)
