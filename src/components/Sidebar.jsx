@@ -4,7 +4,7 @@ import { tl } from '../lib/i18n.js'
 import { useQuotes, useWatchlist } from '../hooks.js'
 import { FlashPrice } from './Fig.jsx'
 import { watch, unwatch } from '../lib/watchlist.js'
-import { fmtPrice, fmtPct } from '../lib/format.js'
+import { fmtPriceBare, fmtPct } from '../lib/format.js'
 import { lastGoodTs } from '../lib/feed.js'
 
 function WatchRow({ symbol, q }) {
@@ -14,7 +14,7 @@ function WatchRow({ symbol, q }) {
       <a href={`#/research/${symbol.toLowerCase()}`} class="text-ink font-bold font-tick text-[10px] w-14 hover:no-underline hover:bg-transparent">
         {symbol}
       </a>
-      <span class="text-ink-2 font-medium ml-auto">{q ? <FlashPrice price={q.price} fmt={fmtPrice} /> : '—'}</span>
+      <span class="text-ink-2 font-medium ml-auto">{q ? <FlashPrice price={q.price} fmt={fmtPriceBare} /> : '—'}</span>
       <span class={`w-16 text-right font-semibold text-[10px] ${q ? (up ? 'text-up' : 'text-down') : 'text-muted'}`}>
         {q ? fmtPct(q.pct) : ''}
       </span>
