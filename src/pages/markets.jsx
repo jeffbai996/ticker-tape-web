@@ -9,44 +9,110 @@ import { tl } from '../lib/i18n.js'
 import { EarningsDay } from '../components/EarningsDay.jsx'
 import { fmtPrice, fmtPct, fmtChange, fmtVol } from '../lib/format.js'
 import { Histo } from '../components/Histo.jsx'
+import { FlashPrice } from '../components/Fig.jsx'
+import { hrefFor } from '../lib/route.js'
+import { rangePos } from '../lib/format.js'
 
-function QuoteRow({ label, data, unit }) {
+/** Where the last trade sits inside today's range — the dashboard's meter,
+ *  shrunk to fit a table cell. */
+function DayMeter({ q }) {
+  const pos = rangePos(q?.dayLow, q?.dayHigh, q?.price)
+  if (pos == null) return null
+  return (
+    <span class="relative block w-12 h-[3px] bg-line rounded-full"
+          title={`${fmtPrice(q.dayLow)} – ${fmtPrice(q.dayHigh)}`}>
+      <span class="absolute top-1/2 -translate-y-1/2 w-[3px] h-[7px] bg-accent-2 rounded-sm"
+            style={{ left: `calc(${(pos * 100).toFixed(1)}% - 1.5px)` }} />
+    </span>
+  )
+}
+
+/** A yield spread computed from two rows above it — inverted curves are the
+ *  point, so the sign gets the colour rather than the day's direction. */
+function SpreadRow({ label, hint, spread, quotes }) {
+  const [a, b] = spread
+  const qa = quotes[a]?.quote?.price
+  const qb = quotes[b]?.quote?.price
+  const val = qa != null && qb != null ? qa - qb : null
+  return (
+    <tr class="border-b border-line last:border-0 bg-white/[0.02]">
+      <td class="px-3 py-[3px] text-[12px] text-ink-2 whitespace-nowrap font-anth">
+        {label} <span class="text-muted text-[10px]">{hint}</span>
+      </td>
+      <td class={`px-2 py-[3px] font-mono font-semibold text-[12px] text-right w-24 ${
+        val == null ? 'text-muted' : val >= 0 ? 'text-up' : 'text-down'}`}>
+        {val == null ? '—' : `${val >= 0 ? '+' : ''}${val.toFixed(2)}`}
+      </td>
+      <td class="px-2 py-[3px] text-right font-mono text-[10px] text-muted w-20">
+        {val == null ? '' : `${Math.round(val * 100)}bp`}
+      </td>
+      <td colSpan={3} />
+    </tr>
+  )
+}
+
+function QuoteRow({ label, symbol, data, unit }) {
   const q = data?.quote
   const up = (q?.pct ?? 0) >= 0
+  const tone = q ? (up ? 'text-up' : 'text-down') : 'text-muted'
   return (
-    <tr class="border-b border-line last:border-0 hover:bg-surface-3">
-      <td class="px-3 py-[3px] text-[12px] text-ink whitespace-nowrap">{label}</td>
-      {unit !== undefined && <td class="px-2 py-[3px] font-mono text-[10px] text-muted">{unit}</td>}
-      <td class="px-2 py-[3px] font-mono font-semibold text-[12px] text-ink text-right">{q ? fmtPrice(q.price) : '—'}</td>
-      <td class={`px-2 py-[3px] font-mono text-[12px] text-right ${q ? (up ? 'text-up' : 'text-down') : 'text-muted'}`}>
+    <tr
+      class="border-b border-line last:border-0 hover:bg-white/[0.035] cursor-pointer"
+      onClick={() => { if (symbol) location.hash = hrefFor('research', symbol.toLowerCase()) }}
+    >
+      <td class="px-3 py-[3px] text-[12px] text-ink whitespace-nowrap font-anth">{label}</td>
+      {unit !== undefined && <td class="px-2 py-[3px] font-tick text-[10px] text-muted">{unit}</td>}
+      <td class="px-2 py-[3px] font-mono font-semibold text-[12px] text-ink text-right w-24">
+        {q ? <FlashPrice price={q.price} fmt={fmtPrice} /> : '—'}
+      </td>
+      <td class={`px-2 py-[3px] font-mono text-[11px] text-right w-20 ${tone}`}>
         {q ? fmtChange(q.change) : ''}
       </td>
-      <td class={`px-2 py-[3px] font-mono text-[12px] text-right ${q ? (up ? 'text-up' : 'text-down') : 'text-muted'}`}>
+      <td class={`px-2 py-[3px] font-mono text-[11px] text-right w-16 ${tone}`}>
         {q ? fmtPct(q.pct) : ''}
       </td>
-      <td class="px-2 py-[3px] hidden @[420px]:table-cell">
-        <Histo bars={data?.histo} width={84} />
+      <td class="px-2 py-[3px] hidden @[380px]:table-cell w-14"><DayMeter q={q} /></td>
+      <td class="px-2 py-[3px] hidden @[460px]:table-cell">
+        <Histo bars={data?.histo} width={84} class="w-[84px] @max-[560px]:w-[52px]" />
       </td>
     </tr>
   )
 }
 
 function GroupCard({ name, items, quotes, withUnits }) {
+  const pcts = items.filter((i) => !i.spread)
+    .map((i) => quotes[i.symbol]?.quote?.pct).filter((v) => v != null)
+  const avg = pcts.length ? pcts.reduce((a, b) => a + b, 0) / pcts.length : null
+  const green = pcts.filter((v) => v >= 0).length
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden @container">
-      <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-        <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">{tl(name)}</h2>
+      <header class="flex items-baseline gap-2 px-2.5 py-1 border-b border-line-2 bg-surface-2">
+        <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">{tl(name)}</h2>
+        {avg != null && (
+          <>
+            <span class={`font-mono text-[11px] font-semibold ${avg >= 0 ? 'text-up' : 'text-down'}`}>
+              {fmtPct(avg)}
+            </span>
+            <span class="ml-auto font-mono text-[9.5px] text-muted" title="advancing / total">
+              {green}/{pcts.length}
+            </span>
+          </>
+        )}
       </header>
       <table class="w-full border-collapse">
         <tbody>
-          {items.map((it) => (
+          {items.map((it) => (it.spread ? (
+            <SpreadRow key={it.label} label={tl(it.label)} hint={it.hint}
+                       spread={it.spread} quotes={quotes} />
+          ) : (
             <QuoteRow
               key={it.symbol}
+              symbol={it.symbol}
               label={tl(it.label)}
               unit={withUnits ? it.unit : undefined}
               data={quotes[it.symbol]}
             />
-          ))}
+          )))}
         </tbody>
       </table>
     </section>
@@ -54,10 +120,10 @@ function GroupCard({ name, items, quotes, withUnits }) {
 }
 
 function Overview() {
-  const symbols = MARKET_GROUPS.flatMap((g) => g.items.map((i) => i.symbol))
+  const symbols = MARKET_GROUPS.flatMap((g) => g.items.map((i) => i.symbol)).filter(Boolean)
   const quotes = useQuotes(symbols)
   return (
-    <div class="grid gap-2 lg:grid-cols-2 2xl:grid-cols-3">
+    <div class="grid gap-2 md:grid-cols-2 xl:grid-cols-3 min-[1800px]:grid-cols-4">
       {MARKET_GROUPS.map((g) => (
         <GroupCard key={g.name} name={g.name} items={g.items} quotes={quotes} />
       ))}
@@ -74,7 +140,7 @@ function Sectors() {
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden max-w-2xl">
       <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-        <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">
+        <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">
           {tl('Sector ETFs — today')}
         </h2>
       </header>
@@ -152,7 +218,7 @@ function MoverTable({ title, rows, metric }) {
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
       <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-        <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">{title}</h2>
+        <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">{title}</h2>
       </header>
       <table class="w-full border-collapse font-mono text-[11px]">
         <tbody>
@@ -247,7 +313,7 @@ function Earnings() {
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden max-w-xl">
       <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-        <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">
+        <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">
           {tl('Upcoming earnings — watchlist')}
         </h2>
       </header>
@@ -298,7 +364,7 @@ function Calendar() {
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden max-w-xl">
       <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-        <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">
+        <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">
           {tl('Economic calendar — next 90 days')}
         </h2>
       </header>

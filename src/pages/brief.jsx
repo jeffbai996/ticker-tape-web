@@ -28,7 +28,7 @@ function ArchivePanel() {
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
       <header class="px-3 py-1.5 border-b border-line-2 bg-surface-2">
-        <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">
+        <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">
           {tl('Archive')} <span class="text-muted normal-case tracking-normal">({reports.length})</span>
         </h2>
       </header>
@@ -111,7 +111,7 @@ export function Brief() {
 
         <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
           <header class="px-3 py-1.5 border-b border-line-2 bg-surface-2">
-            <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Data')}</h2>
+            <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Data')}</h2>
           </header>
           <pre class="px-3 py-2 font-mono text-[11px] leading-relaxed text-ink-2 whitespace-pre-wrap overflow-x-auto">
             {text || tt('common.loading')}

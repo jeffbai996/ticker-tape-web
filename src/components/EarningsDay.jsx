@@ -206,7 +206,7 @@ export function EarningsDay({ symbols }) {
     <div class="grid gap-2 lg:grid-cols-[220px_1fr] min-w-0">
       <section class="bg-surface-1 border border-line rounded-xl overflow-hidden self-start">
         <header class="px-3 py-1.5 border-b border-line-2 bg-surface-2">
-          <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">
+          <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">
             {tl('Docket')}
           </h2>
         </header>

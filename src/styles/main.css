@@ -162,7 +162,18 @@ body {
   src: url("/fonts/AnthropicSansVariable-TextRegular.woff2") format("woff2");
 }
 
-.font-anth, .markets-page table {
+/* Tickers and section headings get their own mono — the same face fragwire
+   uses for data, so a symbol reads as a symbol and not as body text
+   (Jeff 2026-08-04). */
+.font-tick {
+  font-family: "Geist Mono", "IBM Plex Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.font-anth,
+.markets-page table,
+.markets-page h2,
+.markets-page footer {
   font-family: "Anthropic Sans", "Plus Jakarta Sans", system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
 }

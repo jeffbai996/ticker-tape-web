@@ -160,7 +160,7 @@ export function StatusBar() {
       <a href="#/" class="font-bold text-accent tracking-tight text-[13px] hover:no-underline hover:text-ink transition-colors">ticker-tape</a>
 
       <span
-        class={`px-1.5 py-px rounded border text-[10px] font-sans font-bold tracking-wider whitespace-nowrap ${STATE_CHIP[holiday ? 'closed' : state]}`}
+        class={`px-1.5 py-px rounded border text-[10px] font-anth font-bold tracking-wider whitespace-nowrap ${STATE_CHIP[holiday ? 'closed' : state]}`}
         title={chipTitle}
       >
         {tl(chipLabel)}
