@@ -1359,6 +1359,20 @@ export function Research({ route }) {
 
   const q = live[symbol]?.quote
   const up = (q?.pct ?? 0) >= 0
+  const [railOpen, setRailOpen] = useState(false)
+  const rail = (
+    <>
+      <AiReport
+        label="AI report"
+        filename={`${symbol.toLowerCase()}-report.md`}
+        buildPrompt={() => buildMemoPrompt(symbol)}
+        archive={{ kind: 'memo', symbol, title: `${symbol} memo` }}
+      />
+      <Technicals symbol={symbol} />
+      <Fundamentals symbol={symbol} />
+      <News symbol={symbol} />
+    </>
+  )
 
   return (
     <div class="flex-1 p-3 select-text min-w-0">
@@ -1446,7 +1460,7 @@ export function Research({ route }) {
       ) : route.view === 'analysts' ? (
         <AnalystsView symbol={symbol} />
       ) : (
-        <div class="grid gap-2 xl:grid-cols-[1fr_320px]">
+        <div class="grid gap-2 lg:grid-cols-[1fr_320px]">
           <section class="bg-surface-1 border border-line rounded-xl min-w-0 overflow-hidden">
             <div class="p-2 pb-0">
             {hist ? (
@@ -1460,17 +1474,21 @@ export function Research({ route }) {
             <DesBand symbol={symbol} bars={hist?.bars} />
             <WireMini symbol={symbol} />
           </section>
-          <div class="flex flex-col gap-3 min-w-0">
-            <AiReport
-              label="AI report"
-              filename={`${symbol.toLowerCase()}-report.md`}
-              buildPrompt={() => buildMemoPrompt(symbol)}
-              archive={{ kind: 'memo', symbol, title: `${symbol} memo` }}
-            />
-            <Technicals symbol={symbol} />
-            <Fundamentals symbol={symbol} />
-            <News symbol={symbol} />
-          </div>
+          <div class="max-lg:hidden flex flex-col gap-3 min-w-0">{rail}</div>
+          {/* below lg the rail lives behind a right-edge grip: a slide-over
+             panel, not a stack the user has to scroll past */}
+          <button
+            onClick={() => setRailOpen(!railOpen)}
+            title={railOpen ? 'hide panel' : 'show panel'}
+            class={`lg:hidden fixed top-1/2 -translate-y-1/2 z-50 py-4 px-0.5 rounded-l-md border border-r-0 border-line bg-surface-1 font-mono text-[10px] leading-[0.6] text-muted hover:text-ink transition-all ${railOpen ? 'right-[320px]' : 'right-0'}`}
+          >
+            ⋮
+          </button>
+          {railOpen && (
+            <aside class="lg:hidden fixed right-0 top-0 bottom-0 w-[320px] z-40 overflow-y-auto bg-surface-0 border-l border-line p-2 flex flex-col gap-3">
+              {rail}
+            </aside>
+          )}
         </div>
       )}
     </div>
