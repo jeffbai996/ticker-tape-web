@@ -4,17 +4,18 @@ import { tl } from '../lib/i18n.js'
 import { useQuotes, useWatchlist } from '../hooks.js'
 import { watch, unwatch } from '../lib/watchlist.js'
 import { fmtPrice, fmtPct } from '../lib/format.js'
+import { Fig } from './Fig.jsx'
 
 function WatchRow({ symbol, q }) {
   const up = (q?.pct ?? 0) >= 0
   return (
-    <div class="group flex items-baseline px-3 py-[3px] font-mono text-[11px] hover:bg-surface-2">
-      <a href={`#/research/${symbol.toLowerCase()}`} class="text-ink font-bold w-14 hover:no-underline">
+    <div class="group flex items-baseline px-3 py-[3px] font-mono hover:bg-surface-2">
+      <a href={`#/research/${symbol.toLowerCase()}`} class="text-ink font-bold text-[11.5px] w-14 hover:no-underline">
         {symbol}
       </a>
-      <span class="text-ink-2 ml-auto">{q ? fmtPrice(q.price) : '—'}</span>
-      <span class={`w-16 text-right ${q ? (up ? 'text-up' : 'text-down') : 'text-muted'}`}>
-        {q ? fmtPct(q.pct) : ''}
+      <span class="text-ink font-medium text-[11px] ml-auto">{q ? fmtPrice(q.price) : '—'}</span>
+      <span class={`w-16 text-right text-[10px] ${q ? (up ? 'text-up' : 'text-down') : 'text-muted'}`}>
+        {q ? <Fig v={fmtPct(q.pct)} /> : ''}
       </span>
       <button
         onClick={() => unwatch(symbol)}

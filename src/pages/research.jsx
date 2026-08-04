@@ -23,6 +23,7 @@ import { getCached } from '../lib/feed.js'
 import { fetchEarningsDate } from '../lib/fundamentals.js'
 import { memoPrompt, BRIEFING_SYSTEM } from '../lib/briefing.js'
 import { AiReport } from '../components/AiReport.jsx'
+import { Fig } from '../components/Fig.jsx'
 import { ChartSuite } from '../components/ChartSuite.jsx'
 
 /** Snapshot whatever the page already knows about a symbol into a memo
@@ -64,6 +65,7 @@ function rollingSma(bars, n) {
 function Candles({ bars, intraday }) {
   const el = useRef(null)
   const chartRef = useRef(null)
+  const legendRef = useRef(null)
   const [ov, setOv] = useState(() => {
     try { return JSON.parse(localStorage.getItem(OV_KEY) || '{"vol":true}') }
     catch { return { vol: true } }
@@ -101,6 +103,22 @@ function Candles({ bars, intraday }) {
       wickDownColor: '#f85149',
     })
     chartRef.current = { chart, series, extra: [] }
+    // crosshair legend: O H L C ±% vol at the top-left, like a real terminal
+    chart.subscribeCrosshairMove((param) => {
+      const lg = legendRef.current
+      if (!lg) return
+      const b = param?.seriesData?.get(series)
+      if (!b || b.open == null) { lg.style.display = 'none'; return }
+      const up = b.close >= b.open
+      const pct = ((b.close / b.open) - 1) * 100
+      lg.style.display = 'block'
+      lg.innerHTML =
+        `<span style="color:#79828d">O</span> ${b.open.toFixed(2)} ` +
+        `<span style="color:#79828d">H</span> ${b.high.toFixed(2)} ` +
+        `<span style="color:#79828d">L</span> ${b.low.toFixed(2)} ` +
+        `<span style="color:#79828d">C</span> <span style="color:${up ? '#3fb950' : '#f85149'}">${b.close.toFixed(2)} ${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%</span>` +
+        (b.volume ? ` <span style="color:#79828d">V</span> ${fmtVol(b.volume)}` : '')
+    })
     return () => chart.remove()
   }, [intraday])
 
@@ -152,7 +170,10 @@ function Candles({ bars, intraday }) {
           </button>
         ))}
       </div>
-      <div ref={el} class="h-[352px] w-full" />
+      <div class="relative">
+        <div ref={legendRef} class="absolute left-2 top-1 z-10 font-mono text-[10.5px] text-ink pointer-events-none" style="display:none" />
+        <div ref={el} class="h-[352px] w-full" />
+      </div>
     </div>
   )
 }
@@ -1010,7 +1031,7 @@ function DesCell({ n, label, value, tone, big }) {
   return (
     <div class="flex flex-col gap-0.5 px-2.5 py-1.5 min-w-0">
       <span class="text-[8.5px] text-muted uppercase tracking-wider truncate">{label}</span>
-      <span class={`font-mono min-w-0 truncate ${big ? 'text-[13px] font-semibold' : 'text-[11px]'} ${tone || 'text-ink'}`} title={value ?? ''}>{value ?? '—'}</span>
+      <span class={`font-mono min-w-0 truncate ${big ? 'text-[14px] font-semibold' : 'text-[12.5px] font-medium'} ${tone || 'text-ink'}`} title={value ?? ''}><Fig v={value} /></span>
     </div>
   )
 }
