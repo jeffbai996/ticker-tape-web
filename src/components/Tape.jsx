@@ -22,7 +22,7 @@ export function Tape() {
               class="flex items-baseline gap-1.5 whitespace-nowrap hover:no-underline group rounded px-1.5 -mx-1 py-0.5 hover:bg-accent-soft hover:outline hover:outline-1 hover:outline-accent/40 transition-colors"
             >
               <span class="text-ink font-bold group-hover:text-accent" style="font-family: 'Plus Jakarta Sans', sans-serif">{symbol}</span>
-              <span class="text-ink-2">{q ? fmtPrice(q.price) : '—'}</span>
+              <span class="text-ink-2 font-semibold">{q ? fmtPrice(q.price) : '—'}</span>
               {q && <span class={`text-[10px] ${up ? 'text-up' : 'text-down'}`}>{fmtPct(q.pct)}</span>}
             </a>
           )
