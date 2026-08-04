@@ -1400,6 +1400,7 @@ export function Research({ route }) {
 
   const q = live[symbol]?.quote
   const up = (q?.pct ?? 0) >= 0
+  const extUp = (q?.extPct ?? 0) >= 0
   const [railOpen, setRailOpen] = useState(false)
   const rail = (
     <>
@@ -1430,6 +1431,17 @@ export function Research({ route }) {
             </span>
             {q.volume != null && (
               <span class="font-mono text-[11px] text-muted">vol {fmtVol(q.volume)}</span>
+            )}
+            {q.extLabel && q.extPrice != null && (
+              <span class="font-mono text-[12px] whitespace-nowrap">
+                <span class="text-[#c084fc]">{q.extLabel}</span>{' '}
+                <span class="text-ink-2">{fmtPrice(q.extPrice)}</span>
+                {q.extPct != null && (
+                  <span class={`ml-1.5 ${extUp ? 'text-up' : 'text-down'}`}>
+                    {extUp ? '▲' : '▼'}{Math.abs(q.extPct).toFixed(2)}%
+                  </span>
+                )}
+              </span>
             )}
           </>
         )}

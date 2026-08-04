@@ -36,10 +36,10 @@ export function quoteFromV7(row) {
 
   // Extended hours: post-market after the close, pre-market before the open.
   let ext = {}
-  if (row?.postMarketPrice != null && row?.marketState !== 'REGULAR') {
-    ext = { extLabel: 'AH', extPrice: row.postMarketPrice, extPct: row.postMarketChangePercent ?? null }
-  } else if (row?.preMarketPrice != null && (row?.marketState === 'PRE' || row?.marketState === 'PREPRE')) {
+  if (row?.preMarketPrice != null && (row?.marketState === 'PRE' || row?.marketState === 'PREPRE')) {
     ext = { extLabel: 'PRE', extPrice: row.preMarketPrice, extPct: row.preMarketChangePercent ?? null }
+  } else if (row?.postMarketPrice != null && (row?.marketState === 'POST' || row?.marketState === 'POSTPOST' || row?.marketState === 'CLOSED')) {
+    ext = { extLabel: 'AH', extPrice: row.postMarketPrice, extPct: row.postMarketChangePercent ?? null }
   }
 
   return {
