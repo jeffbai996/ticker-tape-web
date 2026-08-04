@@ -153,7 +153,9 @@ body {
 /* Tape marquee: list rendered twice, scroll half the total width, loop. */
 .tape-scroll {
   animation: tape-scroll 60s linear infinite;
+  will-change: transform;
 }
+.tape-cycle { flex: none; }
 /* Row highlight, loud enough to actually see. accent-soft (13% amber) computes
    to #292010 on this background — a ~30-value delta that reads as nothing in
    motion. This is the real affordance: bright wash, amber rule, lit text.
