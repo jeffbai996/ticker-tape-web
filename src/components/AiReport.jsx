@@ -109,7 +109,7 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
       <header class="flex items-center gap-2 px-3 py-1.5 border-b border-line-2 bg-surface-2">
-        <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase flex items-center gap-1.5"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3m0 12v3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1M3 12h3m12 0h3M5.6 18.4l2.1-2.1m8.6-8.6 2.1-2.1"/><circle cx="12" cy="12" r="3.5"/></svg>{tl(label)}</h2>
+        <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase flex items-center gap-1.5"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3m0 12v3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1M3 12h3m12 0h3M5.6 18.4l2.1-2.1m8.6-8.6 2.1-2.1"/><circle cx="12" cy="12" r="3.5"/></svg>{tl(label)}</h2>
         {hint && <span class="font-mono text-[9.5px] text-muted normal-case tracking-normal">{hint}</span>}
         <div class="ml-auto flex items-center gap-2">
           {text && !busy && (

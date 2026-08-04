@@ -209,7 +209,7 @@ function Technicals({ symbol }) {
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
       <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-        <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Technicals — daily')}</h2>
+        <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Technicals — daily')}</h2>
       </header>
       <Stat label="SMA 20" value={fmtPrice(sma(closes, 20))} cls={smaCls(20)} />
       <Stat label="SMA 50" value={fmtPrice(sma(closes, 50))} cls={smaCls(50)} />
@@ -243,7 +243,7 @@ function Fundamentals({ symbol }) {
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
       <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2 flex items-baseline gap-2">
-        <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Fundamentals')}</h2>
+        <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Fundamentals')}</h2>
         {f?.recommendationKey && (
           <span class="font-mono text-[10px] text-ink-2 uppercase">{f.recommendationKey.replace('_', ' ')}</span>
         )}
@@ -284,7 +284,7 @@ function News({ symbol }) {
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
       <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-        <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">{tl('News')}</h2>
+        <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">{tl('News')}</h2>
       </header>
       {items == null && <div class="px-3 py-3 text-[11px] text-muted font-mono">{tt('common.loading')}</div>}
       {items?.length === 0 && <div class="px-3 py-3 text-[11px] text-muted font-mono">{tl('no headlines')}</div>}
@@ -318,7 +318,7 @@ function OptionSide({ title, rows, spot, t, type }) {
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden min-w-0">
       <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-        <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">{title}</h2>
+        <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">{title}</h2>
       </header>
       <div class="overflow-x-auto">
         <table class="w-full border-collapse font-mono text-[11px]">
@@ -708,7 +708,7 @@ function AnalystsView({ symbol }) {
       {t9 && total > 0 && (
         <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
           <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-            <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">
+            <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">
               {tl('Rec trend')} · {total} {tl('Analysts').toLowerCase()}
             </h2>
           </header>
@@ -734,7 +734,7 @@ function AnalystsView({ symbol }) {
       {tg.mean != null && (
         <section class="bg-surface-1 border border-line rounded-xl overflow-hidden font-mono text-[12px]">
           <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-            <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">
+            <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">
               {tl('Price targets')}{tg.analysts != null && ` · ${tg.analysts}`}
             </h2>
           </header>
@@ -760,7 +760,7 @@ function AnalystsView({ symbol }) {
       {data.history.length > 0 && (
         <section class="bg-surface-1 border border-line rounded-xl overflow-x-auto min-w-0">
           <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-            <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Recent rating changes')}</h2>
+            <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Recent rating changes')}</h2>
           </header>
           <table class="w-full border-collapse font-mono text-[11px]">
             <thead>
@@ -816,7 +816,7 @@ function SectionCard({ title, children }) {
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
       <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-        <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">{title}</h2>
+        <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">{title}</h2>
       </header>
       {children}
     </section>
@@ -1180,7 +1180,7 @@ function SymbolPrompt() {
         <div class="grid gap-4 md:grid-cols-2">
           <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
             <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-              <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">Functions</h2>
+              <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">Functions</h2>
             </header>
             <div class="py-1">
               {FUNCS.map(([n, name, desc, view]) => (
@@ -1200,7 +1200,7 @@ function SymbolPrompt() {
           <div class="flex flex-col gap-4">
             <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
               <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-                <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">Watchlist</h2>
+                <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">Watchlist</h2>
               </header>
               <div class="p-2.5 flex flex-wrap gap-1.5">
                 {watchlist.slice(0, 16).map((sym) => (
@@ -1217,7 +1217,7 @@ function SymbolPrompt() {
             {recents.length > 0 && (
               <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
                 <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-                  <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">Recent</h2>
+                  <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">Recent</h2>
                 </header>
                 <div class="p-2.5 flex flex-wrap gap-1.5">
                   {recents.slice(0, 10).map((sym) => (
@@ -1234,7 +1234,7 @@ function SymbolPrompt() {
             )}
             <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
               <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-                <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">From the terminal</h2>
+                <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">From the terminal</h2>
               </header>
               <div class="p-3 font-mono text-[11px] text-muted leading-relaxed">
                 <span class="text-ink-2">MU</span> open research · <span class="text-ink-2">ta MU</span> chart ·{' '}

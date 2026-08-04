@@ -44,12 +44,30 @@ export const MARKET_GROUPS = [
     ],
   },
   {
-    name: 'Rates & Vol',
+    // Curve rows are derived from the yields above them — `spread` names the
+    // two symbols to subtract. Every symbol here was probe-checked against
+    // the proxy; ^RVX returns nothing and is deliberately absent.
+    name: 'Rates',
+    items: [
+      { symbol: '^IRX', label: '3M Bill' },
+      { symbol: '^FVX', label: '5Y Yield' },
+      { symbol: '^TNX', label: '10Y Yield' },
+      { symbol: '^TYX', label: '30Y Yield' },
+      { label: '10Y − 3M', spread: ['^TNX', '^IRX'], hint: 'curve' },
+      { label: '30Y − 5Y', spread: ['^TYX', '^FVX'], hint: 'long end' },
+    ],
+  },
+  {
+    name: 'Volatility',
     items: [
       { symbol: '^VIX', label: 'VIX' },
-      { symbol: '^TNX', label: '10Y Yield' },
-      { symbol: '^FVX', label: '5Y Yield' },
-      { symbol: '^TYX', label: '30Y Yield' },
+      { symbol: '^VIX9D', label: 'VIX 9D' },
+      { symbol: '^VVIX', label: 'VVIX' },
+      { symbol: '^VXN', label: 'Nasdaq VXN' },
+      { symbol: '^MOVE', label: 'MOVE (bonds)' },
+      { symbol: '^SKEW', label: 'SKEW' },
+      { symbol: '^OVX', label: 'Oil OVX' },
+      { symbol: '^GVZ', label: 'Gold GVZ' },
     ],
   },
   {
