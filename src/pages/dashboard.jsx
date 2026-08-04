@@ -136,8 +136,11 @@ function TuiRow({ symbol, data, earnDays }) {
             {/* extended hours reads a tier below the regular quote — on a
                 phone it was the same size as the print and clipped off the
                 right edge (Jeff 2026-08-04) */}
+            {/* w-auto, not a fixed w-28: the change column before it is fixed
+                so AH starts aligned anyway, and a fixed width clipped the pct
+                mid-glyph at in-between widths (Jeff 2026-08-04, screenshot) */}
             {q?.extLabel && q.extPrice != null && (
-              <span class="whitespace-nowrap text-[12px] max-sm:text-[10px] w-28 max-sm:w-auto shrink-0 max-sm:ml-auto">
+              <span class="whitespace-nowrap text-[12px] max-sm:text-[10px] w-auto shrink-0 max-sm:ml-auto">
                 <span class="text-[#c084fc]">{q.extLabel}</span>{' '}
                 <span class="text-ink-2"><FlashPrice price={q.extPrice} fmt={fmtPriceBare} /></span>{' '}
                 <span class={extUp ? 'text-up' : 'text-down'}>
@@ -555,9 +558,10 @@ export function Dashboard() {
 
   return (
     <div class="flex-1 p-3 select-text min-w-0">
-      {/* Thesis strip: bucket averages at a glance. On a phone it wrapped to
-          four lines of prime real estate — one swipeable line instead. */}
-      <div class="flex items-baseline gap-x-4 gap-y-1 px-1 pb-2 font-mono text-[10px] flex-wrap max-sm:flex-nowrap max-sm:overflow-x-auto no-scrollbar">
+      {/* Thesis strip: bucket averages at a glance. One swipeable line at
+          every width — it wrapped to four lines of prime real estate
+          (Jeff 2026-08-04: "keep it all on one line somehow"). */}
+      <div class="flex items-baseline gap-x-4 px-1 pb-2 font-mono text-[10px] flex-nowrap overflow-x-auto no-scrollbar">
         {BUCKETS.map((b) => {
           const inList = b.symbols.filter((s) => watchlist.includes(s))
           const avg = bucketAvg(inList)
