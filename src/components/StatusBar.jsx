@@ -157,7 +157,16 @@ export function StatusBar() {
 
   return (
     <header class="flex items-center gap-3 px-3 h-9 shrink-0 bg-black border-b border-line font-mono text-[11px] select-none">
-      <a href="#/" class="font-bold text-accent tracking-tight text-[13px] hover:no-underline hover:text-ink transition-colors">ticker-tape</a>
+      {/* the wordmark is a link home and never looked like one — it now lights
+          up (amber wash + rule) under the pointer (Jeff 2026-08-04) */}
+      <a
+        href="#/"
+        title="dashboard"
+        class="font-bold text-accent tracking-tight text-[13px] -mx-1 px-1 py-0.5 rounded border border-transparent
+               hover:no-underline hover:bg-accent-soft hover:border-accent/40 hover:text-accent transition-colors"
+      >
+        ticker-tape
+      </a>
 
       <span
         class={`px-1.5 py-px rounded border text-[10px] font-anth font-bold tracking-wider whitespace-nowrap ${STATE_CHIP[holiday ? 'closed' : state]}`}

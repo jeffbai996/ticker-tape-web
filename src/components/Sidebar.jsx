@@ -35,13 +35,15 @@ function AddSymbol() {
     e.preventDefault()
     if (watch(value)) setValue('')
   }
+  // Dashed box + "+ add" reads as a control; the old bare underline with a
+  // "+ SYM" placeholder was invisible (Jeff 2026-08-04). Same 56px footprint.
   return (
-    <form onSubmit={submit} class="ml-auto">
+    <form onSubmit={submit} class="ml-auto" title={tl('add symbol')}>
       <input
         value={value}
         onInput={(e) => setValue(e.currentTarget.value)}
-        placeholder="+ SYM"
-        class="w-14 bg-transparent border-b border-line text-[10px] font-mono text-ink uppercase outline-none focus:border-accent placeholder:text-muted"
+        placeholder="+ add"
+        class="w-14 bg-transparent border border-dashed border-line-2 rounded px-1 text-[10px] font-mono text-ink uppercase outline-none hover:border-accent/60 focus:border-solid focus:border-accent placeholder:text-ink-2 placeholder:normal-case"
       />
     </form>
   )

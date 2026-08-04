@@ -114,6 +114,42 @@ body {
   display: none;
 }
 
+/* Hover-reveal for clipped text (company names) — the BaiCloud music/games
+   overflow-title pattern. The mask only bites text that actually reaches the
+   last 12% of the box, so short names look untouched; long ones fade at the
+   edge and slide in full on hover. Distance + duration come from Marquee.jsx.
+   In @layer components on purpose: unlayered rules outrank Tailwind's utility
+   layer, and an unlayered `.mq { display: inline-block }` quietly beat the
+   `hidden` and `max-w-*` utilities on the call sites. */
+@layer components {
+  .mq {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    vertical-align: bottom;
+    -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent);
+    mask-image: linear-gradient(90deg, #000 88%, transparent);
+  }
+  .mq-inner {
+    display: inline-block;
+    min-width: max-content;
+    will-change: transform;
+    transition: transform 0.38s ease;
+  }
+  .mq.is-scrolling .mq-inner {
+    transform: translateX(calc(-1 * var(--mq-dist)));
+    transition-duration: var(--mq-dur);
+    transition-timing-function: linear;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .mq-inner {
+      transition: none !important;
+      transform: none !important;
+    }
+  }
+}
+
 /* Tape marquee: list rendered twice, scroll half the total width, loop. */
 .tape-scroll {
   animation: tape-scroll 60s linear infinite;

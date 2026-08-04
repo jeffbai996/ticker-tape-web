@@ -17,6 +17,7 @@ import { LineSeries } from 'lightweight-charts'
 import { sma, rsi, macd, bollinger } from '../lib/indicators.js'
 import { fmtPrice, fmtPct, fmtChange, fmtVol, fmtBig, fmtRatio, fmtFracPct } from '../lib/format.js'
 import { hrefFor } from '../lib/route.js'
+import { Marquee } from '../components/Marquee.jsx'
 import { tl, t as tt } from '../lib/i18n.js'
 import { watch, unwatch } from '../lib/watchlist.js'
 import { useWatchlist } from '../hooks.js'
@@ -26,6 +27,15 @@ import { memoPrompt, BRIEFING_SYSTEM } from '../lib/briefing.js'
 import { AiReport } from '../components/AiReport.jsx'
 import { Fig } from '../components/Fig.jsx'
 import { ChartSuite } from '../components/ChartSuite.jsx'
+
+/** Read-and-clear a command-bar ride-along (chart range, options expiry). */
+function consumePrefill(key) {
+  try {
+    const v = sessionStorage.getItem(key)
+    if (v) sessionStorage.removeItem(key)
+    return v
+  } catch { return null }
+}
 
 /** Snapshot whatever the page already knows about a symbol into a memo
  *  prompt. Fetches are cache-first, so this is cheap at click time. */
@@ -390,6 +400,14 @@ function OptionsView({ symbol }) {
   const [expiration, setExpiration] = useState(null)
   const [chain, setChain] = useState(null)
   const [err, setErr] = useState(null)
+  // `opt SYM 2026-09-18` from the command bar: hold the wanted date until the
+  // chain arrives, then snap to the exact expiry or the first one after it.
+  const [wantDate, setWantDate] = useState(() => consumePrefill('opt_expiry'))
+  useEffect(() => {
+    const onExpiry = (e) => { setWantDate(e.detail); sessionStorage.removeItem('opt_expiry') }
+    window.addEventListener('tape:opt-expiry', onExpiry)
+    return () => window.removeEventListener('tape:opt-expiry', onExpiry)
+  }, [])
 
   useEffect(() => {
     setChain(null)
@@ -398,6 +416,15 @@ function OptionsView({ symbol }) {
       .then(setChain)
       .catch((e) => setErr(String(e.message || e)))
   }, [symbol, expiration])
+
+  useEffect(() => {
+    if (!chain || !wantDate || !chain.expirations?.length) return
+    const iso = (x) => new Date(x * 1000).toISOString().slice(0, 10)
+    const hit = chain.expirations.find((x) => iso(x) >= wantDate)
+      || chain.expirations[chain.expirations.length - 1]
+    setWantDate(null)
+    if (hit !== chain.expiration) setExpiration(hit)
+  }, [chain])
 
   if (err) {
     return (
@@ -1328,7 +1355,12 @@ export function Research({ route }) {
       localStorage.setItem('tape-recent-syms', JSON.stringify(cur.slice(0, 12)))
     } catch { /* storage unavailable */ }
   }, [symbol])
-  const [rangeKey, setRangeKey] = useState('6M')
+  const [rangeKey, setRangeKey] = useState(() => consumePrefill('chart_range') || '6M')
+  useEffect(() => {
+    const onRange = (e) => { setRangeKey(e.detail); sessionStorage.removeItem('chart_range') }
+    window.addEventListener('tape:chart-range', onRange)
+    return () => window.removeEventListener('tape:chart-range', onRange)
+  }, [])
   const [hist, setHist] = useState(null)
   const [err, setErr] = useState(null)
   // Header quote comes from the live 1D feed — a multi-month chart fetch
@@ -1390,7 +1422,8 @@ export function Research({ route }) {
         <WatchStar symbol={symbol} />
         {q && (
           <>
-            <span class="text-[12px] text-muted font-anth">{q.name}</span>
+            {/* long names used to run off the right edge mid-word on a phone */}
+            <Marquee text={q.name} class="text-[12px] text-muted font-anth max-w-[46vw]" />
             <span class="font-mono text-lg text-ink">{fmtPrice(q.price)}</span>
             <span class={`font-mono font-semibold text-[15px] ${up ? 'text-up' : 'text-down'}`}>
               {fmtChange(q.change)} {fmtPct(q.pct)}
