@@ -6,6 +6,7 @@ import { fetchFundamentals } from '../lib/fundamentals.js'
 import { fetchOptions } from '../lib/options.js'
 import { fetchInsider } from '../lib/fundamentals.js'
 import { fetchEarningsImpact } from '../lib/earnings.js'
+import { reconcileQuarters } from '../lib/earnings.js'
 import { fetchAnalysts } from '../lib/fundamentals.js'
 import { fetchProfile, fetchHolders } from '../lib/fundamentals.js'
 import { fetchFilings } from '../lib/edgar.js'
@@ -209,7 +210,7 @@ function Technicals({ symbol }) {
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
       <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-        <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Technicals — daily')}</h2>
+        <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Technicals — daily')}</h2>
       </header>
       <Stat label="SMA 20" value={fmtPrice(sma(closes, 20))} cls={smaCls(20)} />
       <Stat label="SMA 50" value={fmtPrice(sma(closes, 50))} cls={smaCls(50)} />
@@ -243,7 +244,7 @@ function Fundamentals({ symbol }) {
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
       <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2 flex items-baseline gap-2">
-        <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Fundamentals')}</h2>
+        <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Fundamentals')}</h2>
         {f?.recommendationKey && (
           <span class="font-mono text-[10px] text-ink-2 uppercase">{f.recommendationKey.replace('_', ' ')}</span>
         )}
@@ -284,7 +285,7 @@ function News({ symbol }) {
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
       <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-        <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">{tl('News')}</h2>
+        <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{tl('News')}</h2>
       </header>
       {items == null && <div class="px-3 py-3 text-[11px] text-muted font-mono">{tt('common.loading')}</div>}
       {items?.length === 0 && <div class="px-3 py-3 text-[11px] text-muted font-mono">{tl('no headlines')}</div>}
@@ -318,7 +319,7 @@ function OptionSide({ title, rows, spot, t, type }) {
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden min-w-0">
       <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-        <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">{title}</h2>
+        <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{title}</h2>
       </header>
       <div class="overflow-x-auto">
         <table class="w-full border-collapse font-mono text-[11px]">
@@ -595,6 +596,8 @@ function EarningsView({ symbol }) {
 
   const s = data.summary
   const pctTone = (v) => (v == null ? 'text-muted' : v >= 0 ? 'text-up' : 'text-down')
+  const rows = reconcileQuarters(data.events)
+  const anyPeers = rows.some((e) => e.peers?.length)
 
   return (
     <div class="flex flex-col gap-3">
@@ -626,17 +629,21 @@ function EarningsView({ symbol }) {
               <th class="px-2 py-2 text-right">{tl('EPS act')}</th>
               <th class="px-2 py-2 text-right">{tl('Surprise')}</th>
               <th class="px-2 py-2 text-right">{tl('Reaction')}</th>
-              <th class="px-3 py-2 text-left">{tl('Peers')}</th>
+              {anyPeers && <th class="px-3 py-2 text-left">{tl('Peers')}</th>}
             </tr>
           </thead>
           <tbody>
-            {data.events.map((e) => (
-              <tr key={e.quarter ?? e.report} class="border-t border-line hover:bg-surface-3">
-                <td class="px-3 py-[3px] text-ink-2 whitespace-nowrap">
+            {rows.map((e) => (
+              <tr key={`${e.quarter ?? ''}-${e.report ?? ''}`} class="border-t border-line hover:bg-surface-3">
+                <td class={`px-3 py-[3px] whitespace-nowrap ${e.quarterInferred ? 'text-muted italic' : 'text-ink-2'}`}
+                    title={e.quarterInferred ? 'fiscal quarter inferred from the report date' : undefined}>
                   {e.quarter ? new Date(e.quarter).toISOString().slice(0, 10) : '—'}
                 </td>
-                <td class="px-2 py-[3px] text-muted whitespace-nowrap">
-                  {e.report ? new Date(e.report).toISOString().slice(0, 10) : '—'}
+                <td class={`px-2 py-[3px] whitespace-nowrap ${e.reportInferred ? 'text-muted italic' : 'text-muted'}`}
+                    title={e.reportInferred ? 'estimated from this name’s typical reporting lag' : undefined}>
+                  {e.report
+                    ? `${e.reportInferred ? '~' : ''}${new Date(e.report).toISOString().slice(0, 10)}`
+                    : '—'}
                 </td>
                 <td class="px-2 py-[3px] text-right text-ink-2">{e.epsEstimate != null ? e.epsEstimate.toFixed(2) : '—'}</td>
                 <td class="px-2 py-[3px] text-right text-ink">{e.epsActual.toFixed(2)}</td>
@@ -646,16 +653,18 @@ function EarningsView({ symbol }) {
                 <td class={`px-2 py-[3px] text-right ${pctTone(e.priceMove)}`}>
                   {e.priceMove != null ? fmtPct(e.priceMove) : '—'}
                 </td>
-                <td class="px-3 py-[3px] whitespace-nowrap">
-                  {e.peers.length
-                    ? e.peers.map((p) => (
-                        <span key={p.sym} class="mr-2">
-                          <span class="text-muted">{p.sym}</span>{' '}
-                          <span class={pctTone(p.move)}>{fmtPct(p.move)}</span>
-                        </span>
-                      ))
-                    : <span class="text-muted">—</span>}
-                </td>
+                {anyPeers && (
+                  <td class="px-3 py-[3px] whitespace-nowrap">
+                    {e.peers?.length
+                      ? e.peers.map((p) => (
+                          <span key={p.sym} class="mr-2">
+                            <span class="text-muted">{p.sym}</span>{' '}
+                            <span class={pctTone(p.move)}>{fmtPct(p.move)}</span>
+                          </span>
+                        ))
+                      : ''}
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -708,7 +717,7 @@ function AnalystsView({ symbol }) {
       {t9 && total > 0 && (
         <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
           <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-            <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">
+            <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">
               {tl('Rec trend')} · {total} {tl('Analysts').toLowerCase()}
             </h2>
           </header>
@@ -734,7 +743,7 @@ function AnalystsView({ symbol }) {
       {tg.mean != null && (
         <section class="bg-surface-1 border border-line rounded-xl overflow-hidden font-mono text-[12px]">
           <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-            <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">
+            <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">
               {tl('Price targets')}{tg.analysts != null && ` · ${tg.analysts}`}
             </h2>
           </header>
@@ -760,7 +769,7 @@ function AnalystsView({ symbol }) {
       {data.history.length > 0 && (
         <section class="bg-surface-1 border border-line rounded-xl overflow-x-auto min-w-0">
           <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-            <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Recent rating changes')}</h2>
+            <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Recent rating changes')}</h2>
           </header>
           <table class="w-full border-collapse font-mono text-[11px]">
             <thead>
@@ -816,7 +825,7 @@ function SectionCard({ title, children }) {
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
       <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-        <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">{title}</h2>
+        <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{title}</h2>
       </header>
       {children}
     </section>
@@ -1180,7 +1189,7 @@ function SymbolPrompt() {
         <div class="grid gap-4 md:grid-cols-2">
           <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
             <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-              <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">Functions</h2>
+              <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">Functions</h2>
             </header>
             <div class="py-1">
               {FUNCS.map(([n, name, desc, view]) => (
@@ -1200,7 +1209,7 @@ function SymbolPrompt() {
           <div class="flex flex-col gap-4">
             <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
               <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-                <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">Watchlist</h2>
+                <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">Watchlist</h2>
               </header>
               <div class="p-2.5 flex flex-wrap gap-1.5">
                 {watchlist.slice(0, 16).map((sym) => (
@@ -1217,7 +1226,7 @@ function SymbolPrompt() {
             {recents.length > 0 && (
               <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
                 <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-                  <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">Recent</h2>
+                  <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">Recent</h2>
                 </header>
                 <div class="p-2.5 flex flex-wrap gap-1.5">
                   {recents.slice(0, 10).map((sym) => (
@@ -1234,7 +1243,7 @@ function SymbolPrompt() {
             )}
             <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
               <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-                <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">From the terminal</h2>
+                <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">From the terminal</h2>
               </header>
               <div class="p-3 font-mono text-[11px] text-muted leading-relaxed">
                 <span class="text-ink-2">MU</span> open research · <span class="text-ink-2">ta MU</span> chart ·{' '}
