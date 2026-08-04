@@ -4,7 +4,8 @@ import { INDICES } from '../lib/symbols.js'
 import { marketState } from '../lib/marketState.js'
 import { useRef } from 'preact/hooks'
 import { paintRollingTime, CLOCK_ZONES } from '../lib/rollclock.js'
-import { usePriceFlash } from '../hooks.js'
+import { FlashPrice } from './Fig.jsx'
+import { hrefFor } from '../lib/route.js'
 import { fmtPrice, fmtPct } from '../lib/format.js'
 import { tl, getLocale, setLocale } from '../lib/i18n.js'
 
@@ -83,13 +84,13 @@ function RollingClock() {
 function StripCell({ symbol, label, q }) {
   const up = (q?.pct ?? 0) >= 0
   const isVix = symbol === '^VIX'
-  const flash = usePriceFlash(q?.price)
   return (
-    <span class="flex items-baseline gap-1.5 whitespace-nowrap">
+    <a href={hrefFor('research', symbol.toLowerCase())}
+       class="flex items-baseline gap-1.5 whitespace-nowrap hover:no-underline hover:bg-accent-soft rounded px-1 -mx-1">
       <span class="text-muted/60">{tl(label)}</span>
-      <span class={`px-1 -mx-1 ${isVix ? vixClass(q?.price) : 'text-ink-2'} ${flash}`}>{q ? fmtPrice(q.price) : '—'}</span>
+      <span class={isVix ? vixClass(q?.price) : 'text-ink-2'}>{q ? <FlashPrice price={q.price} fmt={fmtPrice} /> : '—'}</span>
       {q && !isVix && <span class={up ? 'text-up' : 'text-down'}>{fmtPct(q.pct)}</span>}
-    </span>
+    </a>
   )
 }
 
