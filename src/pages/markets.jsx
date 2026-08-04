@@ -6,6 +6,7 @@ import { MARKET_GROUPS, SECTORS, COMMODITY_GROUPS, ECON_EVENTS, upcomingEvents }
 import { loadCatalysts, onCatalystsChange, removeCatalyst, mergedEvents } from '../lib/catalysts.js'
 import { fetchEarningsDate } from '../lib/fundamentals.js'
 import { tl } from '../lib/i18n.js'
+import { EarningsDay } from '../components/EarningsDay.jsx'
 import { fmtPrice, fmtPct, fmtChange, fmtVol } from '../lib/format.js'
 import { Histo } from '../components/Histo.jsx'
 
@@ -211,6 +212,16 @@ function Movers() {
   )
 }
 
+// Earnings day mode replaces the old flat "upcoming" table: the docket picks
+// a name, the panel is the event itself (implied vs realized move, reaction
+// history, the wire on that name).
+function EarningsTab() {
+  const watchlist = useWatchlist()
+  // ETFs have no earnings — skip the obvious ones to save requests.
+  const named = watchlist.filter((s) => !['SPY', 'QQQ', 'IWM', 'GLD', 'TLT'].includes(s))
+  return <EarningsDay symbols={named} />
+}
+
 function Earnings() {
   const watchlist = useWatchlist()
   const [rows, setRows] = useState({})
@@ -335,7 +346,7 @@ export function Markets({ route }) {
       {view === 'sectors' && <Sectors />}
       {view === 'heatmap' && <Heatmap />}
       {view === 'commodities' && <Commodities />}
-      {view === 'earnings' && <Earnings />}
+      {view === 'earnings' && <EarningsTab />}
       {view === 'calendar' && <Calendar />}
     </div>
   )
