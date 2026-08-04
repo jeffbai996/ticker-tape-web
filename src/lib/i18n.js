@@ -134,6 +134,8 @@ const LABELS = {
   // Buckets
   'Megacaps': '大型科技', 'Semis & AI': '半导体与AI', 'Software & Media': '软件与媒体',
   'Old Economy': '传统经济', 'ETFs & Macro': 'ETF与宏观',
+  'Semis': '半导体', 'Software & AI': '软件与AI', 'Consumer & Media': '消费与媒体',
+  'Health': '医疗', 'Staples': '必需消费', 'Energy & Industrials': '能源与工业',
   // Market groups
   'US Equity': '美国股指', 'US Futures': '美股期货', Europe: '欧洲',
   'Asia-Pacific': '亚太', 'Rates & Vol': '利率与波动', FX: '外汇', Crypto: '加密货币',
@@ -173,6 +175,8 @@ const LABELS = {
   General: '其他',
   Briefing: '晨报', Data: '数据', copy: '复制', generate: '生成', regenerate: '重新生成',
   'AI synthesis': 'AI 综述', 'AI memo': 'AI 备忘录', 'AI report': 'AI 报告',
+  'add symbol': '添加代码', add: '添加', 'already on the list': '已在自选股中',
+  'not a symbol': '代码无效',
   widget: '组件', cancel: '取消', pulse: '广度', earnings: '财报', calendar: '日历',
   movers: '异动', chart: '图表', Movers: '异动',
   'Technicals — daily': '技术指标 — 日线', Name: '姓名', 'no headlines': '暂无新闻',
@@ -195,7 +199,7 @@ const LABELS = {
   'Per year': '每年', 'Per month': '每月', 'Per day': '每日', 'Stress test': '压力测试',
   'Market move': '市场变动', 'Book P&L': '组合盈亏', 'Top position': '最大持仓',
   'Concentration (HHI)': '集中度 (HHI)', 'Demo betas': '演示Beta',
-  Send: '发送', clear: '清空',
+  Send: '发送', clear: '清空', export: '导出',
   Pulse: '市场脉搏', Hi: '高', Lo: '低', Spd: '价差', down: '跌',
   Median: '中位', Green: '上涨',
   // Backtest
