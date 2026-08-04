@@ -12,7 +12,7 @@ export function quoteFromChart(result) {
 
   return {
     symbol: m.symbol || '',
-    name: m.shortName || m.longName || '',
+    name: m.longName || m.shortName || '',   // shortName is Yahoo-truncated at 31 chars
     price,
     change,
     pct,
@@ -44,7 +44,7 @@ export function quoteFromV7(row) {
 
   return {
     symbol: row?.symbol || '',
-    name: row?.shortName || row?.longName || '',
+    name: row?.longName || row?.shortName || '',   // shortName is Yahoo-truncated
     price,
     change,
     pct,
