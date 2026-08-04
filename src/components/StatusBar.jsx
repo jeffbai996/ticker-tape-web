@@ -121,7 +121,7 @@ export function StatusBar() {
           const isVix = symbol === '^VIX'
           return (
             <span key={symbol} class="flex items-baseline gap-1.5 whitespace-nowrap">
-              <span class="text-muted">{tl(label)}</span>
+              <span class="text-muted/60">{tl(label)}</span>
               <span class={isVix ? vixClass(q?.price) : 'text-ink-2'}>{q ? fmtPrice(q.price) : '—'}</span>
               {q && !isVix && <span class={up ? 'text-up' : 'text-down'}>{fmtPct(q.pct)}</span>}
             </span>
