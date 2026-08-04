@@ -216,7 +216,7 @@ export function ChartSuite({ symbol }) {
     <button
       onClick={cb}
       title={tip}
-      class={`font-mono text-[9.5px] px-1.5 py-0.5 rounded border tracking-wider whitespace-nowrap ${
+      class={`font-mono text-[9.5px] px-1.5 py-0.5 rounded border tracking-wider whitespace-nowrap shrink-0 ${
         on ? 'border-accent-2/70 text-accent-2' : 'border-line text-muted hover:text-ink'}`}
       style={on && color ? { color, borderColor: color + '99' } : undefined}
     >
@@ -226,14 +226,14 @@ export function ChartSuite({ symbol }) {
 
   return (
     <div class="flex flex-col gap-1.5 select-none">
-      <div class="flex flex-wrap items-center gap-1 px-1">
+      <div class="flex flex-nowrap items-center gap-1 px-1 overflow-x-auto no-scrollbar">
         {RANGES.map((r) => chip(prefs.range === r.key, r.key.toLowerCase(), () => setP({ range: r.key }), null, `${r.range} of ${r.interval} bars`))}
         <span class="w-2" />
         {['candles', 'line', 'area'].map((t) =>
           chip(prefs.type === t && !cmp, t.toUpperCase(), () => setP({ type: t }), null, `draw as ${t}`))}
         {chip(prefs.log && !cmp, 'LOG', () => setP({ log: !prefs.log }), null, 'logarithmic price scale — equal % moves get equal height')}
       </div>
-      <div class="flex flex-wrap items-center gap-1 px-1">
+      <div class="flex flex-nowrap items-center gap-1 px-1 overflow-x-auto no-scrollbar">
         {chip(prefs.ov.sma20, 'SMA 20', () => toggleOv('sma20'), SMA_COLORS.sma20, '20-period simple moving average')}
         {chip(prefs.ov.sma50, 'SMA 50', () => toggleOv('sma50'), SMA_COLORS.sma50, '50-period simple moving average')}
         {chip(prefs.ov.sma200, 'SMA 200', () => toggleOv('sma200'), SMA_COLORS.sma200, '200-period simple moving average — the trend line')}
