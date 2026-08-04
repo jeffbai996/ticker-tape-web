@@ -17,6 +17,7 @@ import { addAlert, conditionText } from './alerts.js'
 import { pulseStats } from './pulse.js'
 import { ECON_EVENTS } from './markets.js'
 import { loadCatalysts, addCatalyst, mergedEvents, CATALYST_TYPES } from './catalysts.js'
+import { addMemory, removeMemory } from './chatMemory.js'
 
 const SYM_RE = /^[A-Za-z0-9.^=-]{1,12}$/
 const MAX_SYMBOLS = 15
@@ -332,6 +333,24 @@ export const TOOL_DEFS = [
     },
   },
   {
+    name: 'memory_add',
+    description: 'Persist a fact across conversations. ONLY when the user explicitly asks to remember something.',
+    parameters: {
+      type: 'object',
+      properties: { text: { type: 'string', description: 'The fact to remember' } },
+      required: ['text'],
+    },
+  },
+  {
+    name: 'memory_delete',
+    description: 'Delete a persistent memory by id. ONLY when the user explicitly asks to forget it.',
+    parameters: {
+      type: 'object',
+      properties: { id: { type: 'number', description: 'Memory id' } },
+      required: ['id'],
+    },
+  },
+  {
     name: 'navigate',
     description: 'Jump the app to a view. view: dashboard, markets, sectors, heatmap, movers, earnings, calendar, screen, alerts, portfolio, briefing, or research (needs symbol; optional sub: chart, intraday, options, earnings, insider, analysts).',
     parameters: {
@@ -357,6 +376,13 @@ const EXECUTORS = {
   set_alert: setAlertTool,
   get_calendar: getCalendarTool,
   add_catalyst: addCatalystTool,
+  memory_add: ({ text }) => {
+    const m = addMemory(text)
+    return m ? { ok: true, id: m.id } : { error: 'empty memory' }
+  },
+  memory_delete: ({ id }) => (removeMemory(id)
+    ? { ok: true, deleted: id }
+    : { error: `no memory #${id}` }),
   navigate: navigateTool,
 }
 
@@ -373,6 +399,8 @@ const TOOL_VERBS = {
   set_alert: 'alert',
   get_calendar: 'calendar',
   add_catalyst: 'catalyst',
+  memory_add: 'remember',
+  memory_delete: 'forget',
   navigate: 'open',
 }
 

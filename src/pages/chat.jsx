@@ -5,22 +5,32 @@ import { toolLabel } from '../lib/tools.js'
 import { MdLite } from '../components/AiReport.jsx'
 import { tl, t as tt } from '../lib/i18n.js'
 import { wireChatAvailable } from '../lib/wirechat.js'
+import { buildChatContext, hasLiveBook } from '../lib/chatContext.js'
+import { loadMemories, removeMemory, applyMemoryTags } from '../lib/chatMemory.js'
 
-// Generic on purpose: the assistant knows about markets and this app, and is
-// told it has no account or personal data (it genuinely has none).
-const SYSTEM =
-  'You are the assistant inside ticker-tape-web, a public demo market dashboard ' +
-  '(dashboard, markets, per-symbol research, screening, alerts, and a synthetic ' +
-  'DEMO portfolio). You have tools: live quotes, technicals, earnings, market ' +
-  'pulse, the macro calendar (plus adding user catalysts to it), watchlist ' +
-  'read/write, alert arming, and app navigation. Use them for ' +
-  'anything involving current prices, technicals, or the watchlist instead of ' +
-  'answering from memory; call several in one round when that is faster. ' +
-  'You have no access to any personal, account, or portfolio data — the ' +
-  'portfolio section is a clearly-labeled synthetic demo. Be concise.'
+// Base prompt stays generic in source. Whether the assistant has a real book
+// is decided at runtime by whether the viewer wired in their own fragwire —
+// the public no-endpoint build keeps the demo disclaimer.
+function baseSystem() {
+  const common =
+    'You are the assistant inside ticker-tape-web, a market dashboard ' +
+    '(dashboard, markets, per-symbol research, screening, alerts, portfolio). ' +
+    'You have tools: live quotes, technicals, earnings, market ' +
+    'pulse, the macro calendar (plus adding user catalysts to it), watchlist ' +
+    'read/write, alert arming, persistent memory, and app navigation. Use them for ' +
+    'anything involving current prices, technicals, or the watchlist instead of ' +
+    'answering from memory; call several in one round when that is faster. '
+  const book = hasLiveBook()
+    ? 'A LIVE PORTFOLIO block in your context is the user\'s real book — treat ' +
+      'position and margin questions as real. '
+    : 'You have no access to any personal, account, or portfolio data — the ' +
+      'portfolio section is a clearly-labeled synthetic demo. '
+  return common + book + 'Be concise.'
+}
 
 const HISTORY_KEY = 'chat_history_v1'
-const MAX_TURNS = 40
+const STORE_MAX = 400     // what the browser keeps and the page renders
+const MODEL_WINDOW = 48   // what a single turn actually sends to the model
 
 function loadHistory() {
   try {
@@ -32,8 +42,26 @@ function loadHistory() {
 
 function saveHistory(h) {
   try {
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(trimHistory(h, MAX_TURNS)))
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(trimHistory(h, STORE_MAX)))
   } catch { /* best-effort */ }
+}
+
+/** Download the transcript as markdown (CLI `export` parity). */
+function exportChat(history) {
+  const stamp = (m) => (m.ts ? ` _${new Date(m.ts).toLocaleString()}_` : '')
+  const lines = [`# ticker-tape chat export — ${new Date().toISOString().slice(0, 16)}`, '']
+  for (const m of history) {
+    if (m.role === 'user') lines.push(`**You**${stamp(m)}`, '', m.content, '', '---', '')
+    else if (m.role === 'assistant' && m.content) {
+      lines.push(`**Assistant**${m.model ? ` (${m.model})` : ''}${stamp(m)}`, '', m.content, '', '---', '')
+    }
+  }
+  const blob = new Blob([lines.join('\n')], { type: 'text/markdown' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = `chat_${new Date().toISOString().slice(0, 10)}.md`
+  a.click()
+  URL.revokeObjectURL(a.href)
 }
 
 const SUGGESTIONS = [
@@ -111,10 +139,15 @@ export function Chat() {
   const onWire = wireChatAvailable()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
+  const [notice, setNotice] = useState(null)          // memory-tag confirmations
+  const [memOpen, setMemOpen] = useState(false)
+  const [memories, setMemories] = useState(loadMemories)
   const scrollRef = useRef(null)
   const inputRef = useRef(null)
 
   useEffect(() => {
+    // on the wire path the worker is never used — don't ask it anything
+    if (wireChatAvailable()) return
     fetchChatModels().then((d) => {
       setModels(d.models)
       if (!d.models.some((candidate) => candidate.key === model)) {
@@ -122,7 +155,7 @@ export function Chat() {
         localStorage.setItem('chat_model', 'flash')
       }
     }).catch(() => {})
-    if (!wireChatAvailable()) fetchSpend().then(setSpend).catch(() => {})
+    fetchSpend().then(setSpend).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -134,23 +167,52 @@ export function Chat() {
     const text = input.trim()
     if (!text || busy) return
     setError(null)
+    setNotice(null)
     setInput('')
     if (inputRef.current) inputRef.current.style.height = 'auto'
     setBusy(true)
 
-    const base = [...history, { role: 'user', content: text }]
+    const base = [...history, { role: 'user', content: text, ts: Date.now(), model }]
     let added = []
     let live = ''
     const paint = () =>
       setHistory([...base, ...added, ...(live ? [{ role: 'assistant', content: live }] : [])])
     paint()
 
+    // CLI parity: volatile context (clock, memories, quotes, book, news for
+    // mentioned symbols) rebuilt per turn and appended to the base prompt.
+    let system = baseSystem()
+    try {
+      system += '\n\n' + await buildChatContext(text)
+    } catch { /* context is best-effort — a bare prompt still answers */ }
+
+    const finish = () => {
+      // Apply + strip [MEMORY…] tags from whatever the model said, stamp
+      // the new entries, then persist.
+      const notes = []
+      const stamped = added.map((m) => {
+        if (m.role === 'assistant' && m.content) {
+          const r = applyMemoryTags(m.content)
+          notes.push(...r.notes)
+          return { ...m, content: r.text, ts: Date.now(), model }
+        }
+        return m.role === 'assistant' ? { ...m, ts: Date.now(), model } : m
+      })
+      if (notes.length) {
+        setNotice(notes.join(' · '))
+        setMemories(loadMemories())
+      }
+      const done = [...base, ...stamped]
+      setHistory(done)
+      saveHistory(done)
+    }
+
     try {
       await runAgentic({
         model,
         effort,
-        system: SYSTEM,
-        messages: base,
+        system,
+        messages: trimHistory(base, MODEL_WINDOW),
         onDelta: (d) => {
           live += d
           paint()
@@ -161,17 +223,13 @@ export function Chat() {
           paint()
         },
       })
-      const done = [...base, ...added]
-      setHistory(done)
-      saveHistory(done)
+      finish()
     } catch (err) {
       setError(String(err.message || err))
-      const done = [...base, ...added]
-      setHistory(done)
-      saveHistory(done)
+      finish()
     } finally {
       setBusy(false)
-      fetchSpend().then(setSpend).catch(() => {})
+      if (!onWire) fetchSpend().then(setSpend).catch(() => {})
     }
   }
 
@@ -222,6 +280,19 @@ export function Chat() {
           ))}
         </div>}
         <div class="ml-auto flex items-center gap-3">
+          <button
+            onClick={() => { setMemories(loadMemories()); setMemOpen((v) => !v) }}
+            class={`font-mono text-[10px] ${memOpen ? 'text-accent' : 'text-muted hover:text-ink'}`}
+            title="persistent memories — the assistant carries these into every conversation"
+          >
+            mem {memories.length}
+          </button>
+          {history.length > 0 && (
+            <button onClick={() => exportChat(history)} class="font-mono text-[10px] text-muted hover:text-ink"
+              title="download the transcript as markdown">
+              {tl('export')}
+            </button>
+          )}
           {history.length > 0 && (
             <button onClick={clear} class="font-mono text-[10px] text-muted hover:text-down">
               {tl('clear')}
@@ -229,6 +300,29 @@ export function Chat() {
           )}
         </div>
       </div>
+
+      {memOpen && (
+        <div class="max-w-3xl w-full mb-2 bg-surface-1 border border-line rounded-xl px-3 py-2">
+          <div class="font-mono text-[9px] tracking-wider text-muted uppercase pb-1">
+            memories — say “remember …” / “forget #N” in chat to manage
+          </div>
+          {memories.length === 0 && (
+            <div class="font-anth text-[12px] text-muted">nothing saved yet</div>
+          )}
+          {memories.map((m) => (
+            <div key={m.id} class="flex items-baseline gap-2 py-0.5 font-mono text-[11px]">
+              <span class="text-accent shrink-0">#{m.id}</span>
+              <span class="text-ink-2 flex-1 min-w-0">{m.text}</span>
+              <button
+                onClick={() => { removeMemory(m.id); setMemories(loadMemories()) }}
+                class="text-muted hover:text-down shrink-0" title="delete"
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div ref={scrollRef} class="flex-1 overflow-y-auto min-h-0 max-w-3xl w-full flex flex-col gap-2 px-1">
         {history.length === 0 && (
@@ -274,7 +368,8 @@ export function Chat() {
           }
           if (m.role === 'assistant') {
             return (
-              <div key={i} class="group self-start max-w-[95%] relative">
+              <div key={i} class="group self-start max-w-[95%] relative"
+                title={m.ts ? `${m.model ? `${m.model} · ` : ''}${new Date(m.ts).toLocaleString()}` : undefined}>
                 <div class="rounded-2xl border px-3.5 py-2.5 text-[13.5px] leading-relaxed bg-surface-1 border-line text-ink font-anth">
                   {m.content
                     ? <MdLite text={m.content} />
@@ -303,6 +398,9 @@ export function Chat() {
         })}
         {busy && ['user', 'tool'].includes(history[history.length - 1]?.role) && (
           <div class="self-start px-1"><Thinking /></div>
+        )}
+        {notice && (
+          <div class="self-start font-mono text-[10px] text-up px-1">{notice}</div>
         )}
         {error && (
           <div class="self-start font-mono text-[11px] text-down px-1">{error}</div>
