@@ -86,6 +86,21 @@ function useWireHeadlines() {
   return rows
 }
 
+// The category, not a blanket WIRE stamp — an ERN pill and a FED pill read
+// differently at a glance (Jeff 2026-08-04).
+const TAPE_CODE = {
+  price_move: 'MOVE',
+  earnings_release: 'ERN',
+  filing: 'FIL',
+  fed_headline: 'FED',
+  fed_speech: 'FED',
+  macro_print: 'MACRO',
+  headline: 'NEWS',
+  digest: 'AUDIO',
+  transcript_chunk: 'AUDIO',
+  brief: 'BRIEF',
+}
+
 export function Tape() {
   const watchlist = useWatchlist()
   const quotes = useQuotes(watchlist)
@@ -106,7 +121,7 @@ export function Tape() {
             title={e.headline}
           >
             <span class="text-[9px] font-bold tracking-wider text-black bg-accent px-1 rounded-sm">
-              {e.type === 'price_move' ? 'MOVE' : 'WIRE'}
+              {TAPE_CODE[e.type] || 'WIRE'}
             </span>
             <span class="text-accent font-semibold max-w-[46ch] truncate">{e.headline}</span>
           </a>
