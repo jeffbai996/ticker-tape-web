@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
 import { useQuotes } from '../hooks.js'
 import { INDICES } from '../lib/symbols.js'
 import { marketState } from '../lib/marketState.js'
-import { useRef } from 'preact/hooks'
 import { paintRollingTime, CLOCK_ZONES } from '../lib/rollclock.js'
 import { FlashPrice } from './Fig.jsx'
 import { hrefFor } from '../lib/route.js'
@@ -40,6 +39,42 @@ function useOnline() {
     return () => { removeEventListener('online', up); removeEventListener('offline', down) }
   }, [])
   return online
+}
+
+/**
+ * Edge-hover auto-scroll for a horizontally scrollable strip: the closer the
+ * pointer sits to an edge, the faster it creeps that way. Trackpad and drag
+ * scrolling keep working on their own; this is for mouse users with no
+ * horizontal wheel.
+ */
+function useEdgeScroll(ref, zone = 70, maxSpeed = 9) {
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    let raf = 0
+    let speed = 0
+    const step = () => {
+      raf = speed ? requestAnimationFrame(step) : 0
+      if (speed) el.scrollLeft += speed
+    }
+    const move = (e) => {
+      const r = el.getBoundingClientRect()
+      const fromRight = r.right - e.clientX
+      const fromLeft = e.clientX - r.left
+      if (fromRight < zone) speed = ((zone - fromRight) / zone) * maxSpeed
+      else if (fromLeft < zone) speed = -((zone - fromLeft) / zone) * maxSpeed
+      else speed = 0
+      if (speed && !raf) raf = requestAnimationFrame(step)
+    }
+    const stop = () => { speed = 0; cancelAnimationFrame(raf); raf = 0 }
+    el.addEventListener('mousemove', move)
+    el.addEventListener('mouseleave', stop)
+    return () => {
+      el.removeEventListener('mousemove', move)
+      el.removeEventListener('mouseleave', stop)
+      cancelAnimationFrame(raf)
+    }
+  }, [ref, zone, maxSpeed])
 }
 
 // amber rolodex clock with a click-to-cycle timezone (ET → HKT → PT).
@@ -97,6 +132,8 @@ function StripCell({ symbol, label, q }) {
 export function StatusBar() {
   const [now, setNow] = useState(() => new Date())
   const online = useOnline()
+  const stripRef = useRef(null)
+  useEdgeScroll(stripRef)
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000)
@@ -129,11 +166,10 @@ export function StatusBar() {
         {tl(chipLabel)}
       </span>
 
-      {/* wrap inside a one-line-tall clip box: cells that do not fit fall to an
-          invisible second row, so the strip never slices a figure in half. The
-          box is centred in the bar so it lines up with the wordmark and clock. */}
-      <div class="flex-1 min-w-0 flex items-center overflow-hidden">
-        <div class="w-full flex items-baseline gap-4 flex-wrap max-h-5">
+      {/* one scrollable line, centred in the bar so it lines up with the
+          wordmark: swipe it, drag it, or hover an edge to creep along. */}
+      <div class="flex-1 min-w-0 flex items-center">
+        <div ref={stripRef} class="w-full flex items-baseline gap-4 overflow-x-auto no-scrollbar py-0.5">
           {strip.map(({ symbol, label }) => (
             <StripCell key={symbol} symbol={symbol} label={label} q={quotes[symbol]?.quote} />
           ))}
