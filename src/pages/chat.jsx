@@ -5,8 +5,14 @@ import { toolLabel } from '../lib/tools.js'
 import { MdLite } from '../components/AiReport.jsx'
 import { tl, t as tt } from '../lib/i18n.js'
 import { wireChatAvailable } from '../lib/wirechat.js'
+import { useQuotes, useWatchlist } from '../hooks.js'
+import { useEarningsDays } from './dashboard.jsx'
+import { ECON_EVENTS } from '../lib/markets.js'
+import { loadCatalysts, mergedEvents } from '../lib/catalysts.js'
+import { fmtPct } from '../lib/format.js'
 import { buildChatContext, hasLiveBook } from '../lib/chatContext.js'
-import { loadMemories, removeMemory, applyMemoryTags } from '../lib/chatMemory.js'
+import { loadMemories, addMemory, editMemory, removeMemory, applyMemoryTags } from '../lib/chatMemory.js'
+import { loadJournal, addJournalEntry, removeJournalEntry, searchJournal } from '../lib/journal.js'
 
 // Base prompt stays generic in source. Whether the assistant has a real book
 // is decided at runtime by whether the viewer wired in their own fragwire —
@@ -70,6 +76,94 @@ const SUGGESTIONS = [
   "what's on the calendar this week?",
   'open TSLA research',
 ]
+
+/**
+ * Launchpad quick actions, computed from live data so the pad stays current:
+ * an earnings print today suggests its own summary, a big mover suggests its
+ * own "why", the next macro event suggests its own read.
+ */
+function dynamicActions({ watchlist, quotes, earnDays, nextEvent, book }) {
+  const acts = []
+  const reporting = watchlist.filter((s) => earnDays[s] === 0).slice(0, 2)
+  for (const s of reporting) acts.push(`summarize ${s}'s earnings report`)
+  const soon = watchlist.filter((s) => earnDays[s] > 0 && earnDays[s] <= 3)
+    .sort((a, b) => earnDays[a] - earnDays[b])[0]
+  if (soon) acts.push(`what should I watch in ${soon}'s earnings (${earnDays[soon]}d out)?`)
+  const movers = watchlist
+    .map((s) => ({ s, pct: quotes[s]?.quote?.pct }))
+    .filter((x) => x.pct != null && Math.abs(x.pct) >= 3)
+    .sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct))
+    .slice(0, 2)
+  for (const m of movers) {
+    acts.push(`what's driving ${m.s} ${m.pct > 0 ? 'up' : 'down'} ${Math.abs(m.pct).toFixed(1)}% today?`)
+  }
+  if (nextEvent && nextEvent.days <= 5) {
+    acts.push(`what does ${nextEvent.rawLabel || nextEvent.label} (${nextEvent.days === 0 ? 'today' : `${nextEvent.days}d`}) mean for ${book ? 'my book' : 'the market'}?`)
+  }
+  if (book) acts.push('how is my book positioned this week?')
+  for (const s of SUGGESTIONS) {
+    if (acts.length >= 7) break
+    acts.push(s)
+  }
+  return acts.slice(0, 7)
+}
+
+/** Inline-editable row shared by the memory and journal drawers. */
+function NoteRow({ id, text, meta, onSave, onDelete }) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(text)
+  if (editing) {
+    return (
+      <div class="flex items-start gap-2 py-1 font-mono text-[11px]">
+        <span class="text-accent shrink-0 pt-0.5">#{id}</span>
+        <textarea
+          value={draft}
+          rows={2}
+          onInput={(e) => setDraft(e.currentTarget.value)}
+          class="flex-1 bg-surface-2 border border-accent/50 rounded-md px-2 py-1 text-ink outline-none resize-y font-anth text-[12px]"
+        />
+        <button onClick={() => { onSave(draft); setEditing(false) }}
+          class="text-up hover:brightness-125 shrink-0 pt-0.5">✓</button>
+        <button onClick={() => { setDraft(text); setEditing(false) }}
+          class="text-muted hover:text-ink shrink-0 pt-0.5">✕</button>
+      </div>
+    )
+  }
+  return (
+    <div class="group flex items-baseline gap-2 py-1 font-mono text-[11px] border-b border-line-2/60 last:border-0">
+      <span class="text-accent shrink-0">#{id}</span>
+      <span class="text-ink-2 flex-1 min-w-0 font-anth text-[12px] leading-snug">{text}</span>
+      {meta && <span class="text-muted text-[9px] shrink-0">{meta}</span>}
+      {onSave && (
+        <button onClick={() => setEditing(true)} title="edit"
+          class="opacity-0 group-hover:opacity-100 text-muted hover:text-accent shrink-0">✎</button>
+      )}
+      <button onClick={onDelete} title="delete"
+        class="opacity-0 group-hover:opacity-100 text-muted hover:text-down shrink-0">✕</button>
+    </div>
+  )
+}
+
+/** Add-line at the bottom of a drawer. */
+function NoteAdd({ placeholder, onAdd }) {
+  const [v, setV] = useState('')
+  const submit = (e) => {
+    e.preventDefault()
+    if (!v.trim()) return
+    onAdd(v.trim())
+    setV('')
+  }
+  return (
+    <form onSubmit={submit} class="flex items-center gap-2 pt-1.5">
+      <input value={v} onInput={(e) => setV(e.currentTarget.value)} placeholder={placeholder}
+        class="flex-1 bg-surface-2 border border-line rounded-md px-2 py-1 font-anth text-[12px] text-ink outline-none focus:border-accent/60 placeholder:text-muted" />
+      <button type="submit" disabled={!v.trim()}
+        class="font-mono text-[10px] px-2 py-1 rounded-md border border-line text-muted hover:text-ink hover:border-accent/50 disabled:opacity-40">
+        add
+      </button>
+    </form>
+  )
+}
 
 /** Three-dot pulse — a spinner reads as an error state, this reads as work. */
 function Thinking() {
@@ -140,10 +234,20 @@ export function Chat() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [notice, setNotice] = useState(null)          // memory-tag confirmations
-  const [memOpen, setMemOpen] = useState(false)
+  const [drawer, setDrawer] = useState(null)          // 'mem' | 'journal' | null
   const [memories, setMemories] = useState(loadMemories)
+  const [journal, setJournal] = useState(loadJournal)
+  const [jrFilter, setJrFilter] = useState('')
   const scrollRef = useRef(null)
   const inputRef = useRef(null)
+
+  // Launchpad fuel — live quotes, earnings proximity, next calendar event.
+  // useQuotes polls, so the pad's suggestions refresh on their own.
+  const watchlist = useWatchlist()
+  const quotes = useQuotes(history.length === 0 ? watchlist : [])
+  const earnDays = useEarningsDays(history.length === 0 ? watchlist : [])
+  const nextEvent = mergedEvents(ECON_EVENTS, loadCatalysts(),
+    new Date().toISOString().slice(0, 10), 30)[0] || null
 
   useEffect(() => {
     // on the wire path the worker is never used — don't ask it anything
@@ -286,11 +390,18 @@ export function Chat() {
         </div>}
         <div class="ml-auto flex items-center gap-3">
           <button
-            onClick={() => { setMemories(loadMemories()); setMemOpen((v) => !v) }}
-            class={`font-mono text-[10px] ${memOpen ? 'text-accent' : 'text-muted hover:text-ink'}`}
+            onClick={() => { setMemories(loadMemories()); setDrawer(drawer === 'mem' ? null : 'mem') }}
+            class={`font-mono text-[10px] ${drawer === 'mem' ? 'text-accent' : 'text-muted hover:text-ink'}`}
             title="persistent memories — the assistant carries these into every conversation"
           >
             mem {memories.length}
+          </button>
+          <button
+            onClick={() => { setJournal(loadJournal()); setDrawer(drawer === 'journal' ? null : 'journal') }}
+            class={`font-mono text-[10px] ${drawer === 'journal' ? 'text-accent' : 'text-muted hover:text-ink'}`}
+            title="trade journal — your own decisions and rationale, searchable"
+          >
+            journal {journal.length}
           </button>
           {history.length > 0 && (
             <button onClick={() => exportChat(history)} class="font-mono text-[10px] text-muted hover:text-ink"
@@ -306,57 +417,134 @@ export function Chat() {
         </div>
       </div>
 
-      {memOpen && (
-        <div class="max-w-3xl w-full mb-2 bg-surface-1 border border-line rounded-xl px-3 py-2">
+      {drawer === 'mem' && (
+        <div class="max-w-3xl w-full mb-2 bg-surface-1 border border-line rounded-xl px-3 py-2 max-h-[38vh] overflow-y-auto">
           <div class="font-mono text-[9px] tracking-wider text-muted uppercase pb-1">
-            memories — say “remember …” / “forget #N” in chat to manage
+            memories — injected into every turn · “remember …” / “forget #N” in chat also works
           </div>
           {memories.length === 0 && (
-            <div class="font-anth text-[12px] text-muted">nothing saved yet</div>
+            <div class="font-anth text-[12px] text-muted py-1">nothing saved yet</div>
           )}
           {memories.map((m) => (
-            <div key={m.id} class="flex items-baseline gap-2 py-0.5 font-mono text-[11px]">
-              <span class="text-accent shrink-0">#{m.id}</span>
-              <span class="text-ink-2 flex-1 min-w-0">{m.text}</span>
-              <button
-                onClick={() => { removeMemory(m.id); setMemories(loadMemories()) }}
-                class="text-muted hover:text-down shrink-0" title="delete"
-              >
-                ✕
-              </button>
-            </div>
+            <NoteRow key={m.id} id={m.id} text={m.text}
+              meta={new Date(m.ts).toISOString().slice(0, 10)}
+              onSave={(t) => { editMemory(m.id, t); setMemories(loadMemories()) }}
+              onDelete={() => { removeMemory(m.id); setMemories(loadMemories()) }} />
           ))}
+          <NoteAdd placeholder="add a memory…"
+            onAdd={(t) => { addMemory(t); setMemories(loadMemories()) }} />
+        </div>
+      )}
+
+      {drawer === 'journal' && (
+        <div class="max-w-3xl w-full mb-2 bg-surface-1 border border-line rounded-xl px-3 py-2 max-h-[38vh] overflow-y-auto">
+          <div class="flex items-center gap-2 pb-1">
+            <span class="font-mono text-[9px] tracking-wider text-muted uppercase">
+              trade journal — “journal: …” in chat also works
+            </span>
+            <input value={jrFilter} onInput={(e) => setJrFilter(e.currentTarget.value)}
+              placeholder="search…"
+              class="ml-auto bg-surface-2 border border-line rounded-md px-2 py-0.5 font-mono text-[10px] text-ink outline-none focus:border-accent/60 w-32 placeholder:text-muted" />
+          </div>
+          {(jrFilter ? searchJournal(jrFilter) : journal).slice(-30).reverse().map((e) => (
+            <NoteRow key={e.id} id={e.id} text={e.text}
+              meta={`${new Date(e.ts).toISOString().slice(0, 10)}${e.symbols.length ? ` · ${e.symbols.join(' ')}` : ''}`}
+              onDelete={() => { removeJournalEntry(e.id); setJournal(loadJournal()) }} />
+          ))}
+          {(jrFilter ? searchJournal(jrFilter) : journal).length === 0 && (
+            <div class="font-anth text-[12px] text-muted py-1">
+              {jrFilter ? 'no matches' : 'nothing logged yet'}
+            </div>
+          )}
+          <NoteAdd placeholder="log a decision, a read, a why…"
+            onAdd={(t) => { addJournalEntry(t); setJournal(loadJournal()) }} />
         </div>
       )}
 
       <div ref={scrollRef} class="flex-1 overflow-y-auto min-h-0 max-w-3xl w-full flex flex-col gap-2 px-1">
-        {history.length === 0 && (
-          <div class="pt-10 flex flex-col items-start gap-4 max-w-lg">
-            <div>
-              <div class="text-ink text-[15px] font-anth">
-                {onWire
-                  ? 'Ask about a ticker, a sector, or how this app works.'
-                  : tt('chat.empty')}
+        {history.length === 0 && (() => {
+          const book = hasLiveBook()
+          const acts = dynamicActions({ watchlist, quotes, earnDays, nextEvent, book })
+          const movers = watchlist
+            .map((s) => ({ s, pct: quotes[s]?.quote?.pct }))
+            .filter((x) => x.pct != null)
+            .sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct))
+            .slice(0, 3)
+          const nextEarn = watchlist
+            .filter((s) => earnDays[s] != null && earnDays[s] >= 0)
+            .sort((a, b) => earnDays[a] - earnDays[b])
+            .slice(0, 3)
+          return (
+            <div class="pt-6 flex flex-col items-start gap-5 w-full">
+              <div>
+                <div class="text-ink text-[16px] font-anth font-semibold">
+                  {onWire
+                    ? 'Ask about a ticker, a sector, or the book.'
+                    : tt('chat.empty')}
+                </div>
+                <div class="text-muted text-[12px] font-anth pt-1">
+                  live quotes · technicals · calendar · watchlist · alerts · memory · journal · navigation
+                </div>
               </div>
-              <div class="text-muted text-[12px] font-anth pt-1">
-                it can pull live quotes and technicals, read the calendar, edit
-                your watchlist, arm alerts, and move you around the app.
+
+              {/* right now — the pad rebuilds itself from live data */}
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full">
+                <div class="bg-surface-1 border border-line rounded-xl px-3 py-2">
+                  <div class="font-mono text-[9px] tracking-wider text-muted uppercase pb-1">moving now</div>
+                  {movers.length ? movers.map(({ s, pct }) => (
+                    <a key={s} href={`#/research/${s.toLowerCase()}`} class="flex items-baseline justify-between font-mono text-[12px] py-0.5 hover:no-underline">
+                      <span class="text-ink font-bold">{s}</span>
+                      <span class={pct >= 0 ? 'text-up' : 'text-down'}>{fmtPct(pct)}</span>
+                    </a>
+                  )) : <div class="font-mono text-[11px] text-muted py-1">loading…</div>}
+                </div>
+                <div class="bg-surface-1 border border-line rounded-xl px-3 py-2">
+                  <div class="font-mono text-[9px] tracking-wider text-muted uppercase pb-1">next earnings</div>
+                  {nextEarn.length ? nextEarn.map((s) => (
+                    <a key={s} href={`#/research/${s.toLowerCase()}/earnings`} class="flex items-baseline justify-between font-mono text-[12px] py-0.5 hover:no-underline">
+                      <span class="text-ink font-bold">{s}</span>
+                      <span class={earnDays[s] === 0 ? 'text-imminent font-bold' : earnDays[s] <= 7 ? 'text-down' : 'text-accent'}>
+                        {earnDays[s]}d
+                      </span>
+                    </a>
+                  )) : <div class="font-mono text-[11px] text-muted py-1">loading…</div>}
+                </div>
+                <div class="bg-surface-1 border border-line rounded-xl px-3 py-2">
+                  <div class="font-mono text-[9px] tracking-wider text-muted uppercase pb-1">on the calendar</div>
+                  {nextEvent ? (
+                    <a href="#/markets/calendar" class="block font-mono text-[12px] py-0.5 hover:no-underline">
+                      <span class="text-ink">{nextEvent.label}</span>{' '}
+                      <span class={nextEvent.days <= 1 ? 'text-imminent font-bold' : nextEvent.days <= 7 ? 'text-down' : 'text-accent'}>
+                        {nextEvent.days === 0 ? 'today' : `${nextEvent.days}d`}
+                      </span>
+                    </a>
+                  ) : <div class="font-mono text-[11px] text-muted py-1">clear runway</div>}
+                </div>
               </div>
+
+              <div class="flex flex-wrap gap-1.5">
+                {acts.map((sug) => (
+                  <button
+                    key={sug}
+                    type="button"
+                    onClick={() => { setInput(sug); inputRef.current?.focus() }}
+                    class="font-anth text-[12px] text-ink-2 border border-line rounded-full px-3 py-1 hover:border-accent/60 hover:text-ink hover:bg-accent-soft transition-colors"
+                  >
+                    {sug}
+                  </button>
+                ))}
+              </div>
+
+              {(memories.length > 0 || journal.length > 0) && (
+                <div class="font-mono text-[10px] text-muted">
+                  {memories.length > 0 && <span>{memories.length} memories</span>}
+                  {memories.length > 0 && journal.length > 0 && ' · '}
+                  {journal.length > 0 && <span>{journal.length} journal entries</span>}
+                </div>
+              )}
             </div>
-            <div class="flex flex-wrap gap-1.5">
-              {SUGGESTIONS.map((sug) => (
-                <button
-                  key={sug}
-                  type="button"
-                  onClick={() => { setInput(sug); inputRef.current?.focus() }}
-                  class="font-anth text-[12px] text-ink-2 border border-line rounded-full px-3 py-1 hover:border-accent/60 hover:text-ink"
-                >
-                  {sug}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+          )
+        })()}
         {history.map((m, i) => {
           if (m.role === 'tool') return null
           if (m.role === 'assistant' && m.toolCalls?.length) {
@@ -383,14 +571,30 @@ export function Chat() {
                       : null}
                 </div>
                 {m.content && (
-                  <button
-                    type="button"
-                    onClick={() => navigator.clipboard?.writeText(m.content)}
-                    title="copy"
-                    class="absolute -top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-surface-2 border border-line rounded-md px-1.5 py-0.5 font-mono text-[9px] text-muted hover:text-ink"
-                  >
-                    copy
-                  </button>
+                  <div class="absolute -top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() => navigator.clipboard?.writeText(m.content)}
+                      title="copy"
+                      class="bg-surface-2 border border-line rounded-md px-1.5 py-0.5 font-mono text-[9px] text-muted hover:text-ink"
+                    >
+                      copy
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // CLI `journal save` parity: the exchange, not just the answer
+                        const q = history[i - 1]?.role === 'user' ? history[i - 1].content : ''
+                        const e = addJournalEntry(`${q ? `Q: ${q}\n\n` : ''}A: ${m.content}`)
+                        setJournal(loadJournal())
+                        setNotice(e ? `✓ exchange saved to journal #${e.id}` : null)
+                      }}
+                      title="save this exchange to the trade journal"
+                      class="bg-surface-2 border border-line rounded-md px-1.5 py-0.5 font-mono text-[9px] text-muted hover:text-accent"
+                    >
+                      → journal
+                    </button>
+                  </div>
                 )}
               </div>
             )

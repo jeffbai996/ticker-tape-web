@@ -5,6 +5,10 @@ import { addAlert, conditionText } from '../lib/alerts.js'
 import { addCatalyst, removeCatalyst, loadCatalysts } from '../lib/catalysts.js'
 import { getCached } from '../lib/feed.js'
 import { loadUserGroups, saveUserGroup, removeUserGroup } from '../lib/usergroups.js'
+import { loadMemories, addMemory, editMemory, removeMemory } from '../lib/chatMemory.js'
+import {
+  loadJournal, addJournalEntry, removeJournalEntry, searchJournal,
+} from '../lib/journal.js'
 import { fetchDividends } from '../lib/history.js'
 import { fetchFundamentals } from '../lib/fundamentals.js'
 import { fmtPrice, fmtPct } from '../lib/format.js'
@@ -199,6 +203,52 @@ export function CommandBar() {
       print(cmd, removeUserGroup(plan.name)
         ? `[green]✓[/] removed group [bold]${plan.name}[/]`
         : `[red]no group "${plan.name}"[/]`)
+    } else if (plan.type === 'mem_list') {
+      const mems = loadMemories()
+      print(cmd, mems.length
+        ? mems.map((m) => `[bold #00c8ff]#${String(m.id).padEnd(3)}[/]${m.text.slice(0, 70).padEnd(72)}[#808080]${new Date(m.ts).toISOString().slice(0, 10)}[/]`).join('\n')
+        : 'no memories — mem add TEXT, or ask the AI chat to remember something')
+    } else if (plan.type === 'mem_add') {
+      const m = addMemory(plan.text)
+      print(cmd, m ? `[green]✓[/] memory #${m.id} saved` : '[red]empty memory[/]')
+    } else if (plan.type === 'mem_edit') {
+      print(cmd, editMemory(plan.id, plan.text)
+        ? `[green]✓[/] memory #${plan.id} updated` : `[red]no memory #${plan.id}[/]`)
+    } else if (plan.type === 'mem_rm') {
+      print(cmd, removeMemory(plan.id)
+        ? `[green]✓[/] memory #${plan.id} deleted` : `[red]no memory #${plan.id}[/]`)
+    } else if (plan.type === 'mem_show') {
+      const m = loadMemories().find((x) => x.id === plan.id)
+      print(cmd, m
+        ? `[bold]#${m.id}[/]  ${m.text}\n[#808080]saved ${new Date(m.ts).toLocaleString()}[/]`
+        : `[red]no memory #${plan.id}[/]`)
+    } else if (plan.type === 'journal_list') {
+      const entries = loadJournal().slice(-15)
+      print(cmd, entries.length
+        ? entries.map((e) => `[bold #00c8ff]#${String(e.id).padEnd(3)}[/]${e.text.replace(/\n/g, ' ').slice(0, 60).padEnd(62)}[#808080]${new Date(e.ts).toISOString().slice(0, 10)}${e.symbols.length ? `  [${e.symbols.join(' ')}]` : ''}[/]`).join('\n')
+        : 'no journal entries — journal add TEXT')
+    } else if (plan.type === 'journal_add') {
+      const e = addJournalEntry(plan.text)
+      print(cmd, e
+        ? `[green]✓[/] journal #${e.id} saved [#808080](${e.symbols.length ? e.symbols.join(' ') : 'no symbols'})[/]`
+        : '[red]empty entry[/]')
+    } else if (plan.type === 'journal_rm') {
+      const m = plan.range.match(/^(\d+)(?:-(\d+))?$/)
+      const lo = Number(m[1])
+      const hi = Number(m[2] || m[1])
+      let n = 0
+      for (let i = lo; i <= hi; i++) if (removeJournalEntry(i)) n++
+      print(cmd, n ? `[green]✓[/] deleted ${n} journal ${n === 1 ? 'entry' : 'entries'}` : `[red]nothing in #${plan.range}[/]`)
+    } else if (plan.type === 'journal_search') {
+      const hits = searchJournal(plan.term).slice(-10)
+      print(cmd, hits.length
+        ? hits.map((e) => `[bold #00c8ff]#${String(e.id).padEnd(3)}[/]${e.text.replace(/\n/g, ' ').slice(0, 64)}  [#808080]${new Date(e.ts).toISOString().slice(0, 10)}[/]`).join('\n')
+        : `[#808080]nothing matching "${plan.term}"[/]`)
+    } else if (plan.type === 'journal_show') {
+      const e = loadJournal().find((x) => x.id === plan.id)
+      print(cmd, e
+        ? `[bold]#${e.id}[/]  [#808080]${new Date(e.ts).toLocaleString()}${e.symbols.length ? `  [${e.symbols.join(' ')}]` : ''}[/]\n${e.text}`
+        : `[red]no journal #${plan.id}[/]`)
     } else if (plan.type === 'div') {
       const sym = plan.symbol
       print(cmd, `[#808080]fetching ${sym} dividends…[/]`)
