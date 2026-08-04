@@ -115,7 +115,7 @@ function TuiRow({ symbol, data, earnDays }) {
         <span class="text-ink w-20 text-right">{q ? fmtPrice(q.price) : '—'}</span>
         {q && (
           <span class={`${up ? 'text-up' : 'text-down'} whitespace-nowrap`}>
-            {up ? '▲' : '▼'} {fmtChange(Math.abs(q.change)).replace('+', '')} ({fmtPct(q.pct)})
+            {up ? '▲' : '▼'} {fmtChange(Math.abs(q.change)).replace('+', '')} <span class="font-light">({fmtPct(q.pct)})</span>
           </span>
         )}
         {q?.extLabel && q.extPrice != null && (
