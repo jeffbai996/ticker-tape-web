@@ -189,10 +189,11 @@ function PulsePanel({ quotes }) {
   if (!s) return null
   const tone = (v) => (v >= 0 ? 'text-up' : 'text-down')
   return (
-    <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
+    <section class="bg-surface-1 border border-line rounded-xl overflow-hidden flex flex-col max-h-[42vh]">
       <header class="px-3 py-1.5 border-b border-line-2 bg-surface-2">
-        <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Pulse')}</h2>
+        <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Pulse')}</h2>
       </header>
+      <div class="overflow-y-auto min-h-0">
       <div class="py-1">
         <PulseRow label="A/D" value={`${s.adv} / ${s.dec}`} cls={s.adv >= s.dec ? 'text-up' : 'text-down'} />
         <PulseRow label={tl('Avg')} value={fmtPct(s.avg)} cls={tone(s.avg)} />
@@ -209,6 +210,7 @@ function PulsePanel({ quotes }) {
         <PulseRow label="Mov >2%" value={`${s.movers}/${s.total}`} />
         <PulseRow label="Flt <1%" value={String(s.flat)} />
       </div>
+    </div>
     </section>
   )
 }
@@ -224,14 +226,17 @@ function MacroCalPanel() {
   const events = mergedEvents(ECON_EVENTS, cats, new Date().toISOString().slice(0, 10), 60).slice(0, 8)
   if (!events.length) return null
   const dayCls = (d) =>
-    d <= 3 ? 'text-down font-bold' : d <= 7 ? 'text-down' : d <= 30 ? 'text-accent' : 'text-muted'
+    d <= 0 ? 'text-imminent font-bold'
+      : d <= 3 ? 'text-down font-bold' : d <= 7 ? 'text-down'
+      : d <= 30 ? 'text-accent' : 'text-muted'
   return (
-    <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
+    <section class="bg-surface-1 border border-line rounded-xl overflow-hidden flex flex-col max-h-[42vh]">
       <header class="px-3 py-1.5 border-b border-line-2 bg-surface-2">
-        <a href="#/markets/calendar" class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase hover:no-underline">
+        <a href="#/markets/calendar" class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase hover:no-underline">
           {tl('Calendar')}
         </a>
       </header>
+      <div class="overflow-y-auto min-h-0">
       <div class="py-1">
         {events.map((e) => (
           <div key={`${e.date}-${e.type}-${e.id ?? ''}`} class="flex items-baseline gap-2 px-3 py-[2px] font-mono text-[11px]">
@@ -243,6 +248,7 @@ function MacroCalPanel() {
           </div>
         ))}
       </div>
+    </div>
     </section>
   )
 }
@@ -255,10 +261,11 @@ function EarningsPanel({ symbols, days }) {
     .slice(0, 9)
   if (!upcoming.length) return null
   return (
-    <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
+    <section class="bg-surface-1 border border-line rounded-xl overflow-hidden flex flex-col max-h-[42vh]">
       <header class="px-3 py-1.5 border-b border-line-2 bg-surface-2">
-        <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Earnings')}</h2>
+        <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Earnings')}</h2>
       </header>
+      <div class="overflow-y-auto min-h-0">
       <div class="py-1">
         {upcoming.map(({ symbol, d }) => (
           <a key={symbol} href={`#/research/${symbol.toLowerCase()}/earnings`}
@@ -268,6 +275,7 @@ function EarningsPanel({ symbols, days }) {
           </a>
         ))}
       </div>
+    </div>
     </section>
   )
 }
@@ -429,7 +437,7 @@ function RailWidget({ w, all, watchlist, earnDays }) {
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
       {title && (
         <header class="px-3 py-1.5 border-b border-line-2 bg-surface-2">
-          <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">{title}</h2>
+          <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{title}</h2>
         </header>
       )}
       {w.type === 'movers' && <MoversPanel quotes={all} />}

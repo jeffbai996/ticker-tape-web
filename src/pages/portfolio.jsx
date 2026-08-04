@@ -227,7 +227,7 @@ function Cockpit({ priceMap, positions }) {
     <div class="max-w-2xl flex flex-col gap-3">
       <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
         <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-          <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Stress test')}</h2>
+          <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Stress test')}</h2>
         </header>
         <table class="w-full border-collapse font-mono text-[11px]">
           <thead>
@@ -351,7 +351,7 @@ function FillsEditor({ csv, isDemo, onSave, onResetDemo }) {
         class="w-full flex items-center justify-between px-3 py-2 bg-surface-2 hover:bg-surface-3"
         onClick={() => setOpen((v) => !v)}
       >
-        <span class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">
+        <span class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">
           {tl('Fills ledger')}
         </span>
         <span class="font-mono text-[10px] text-muted">{open ? '▲' : '▼'}</span>

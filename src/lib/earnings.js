@@ -216,3 +216,69 @@ export async function fetchEarningsCalendar(symbol) {
   rdCache.set(symbol, { value, ts: Date.now() })
   return value
 }
+
+/**
+ * Fiscal quarter-end months a company actually uses, learned from the
+ * quarters we do have. NVDA ends Jan/Apr/Jul/Oct; TSLA ends Mar/Jun/Sep/Dec —
+ * snapping everything to calendar quarters would mislabel half the tape.
+ */
+export function fiscalMonths(events) {
+  const months = new Set()
+  for (const e of events || []) {
+    if (e.quarter != null) months.add(new Date(e.quarter).getUTCMonth())
+  }
+  return [...months].sort((a, b) => a - b)
+}
+
+/**
+ * The fiscal quarter a report covers: the most recent quarter-end at least
+ * `minLagDays` before the print. Returns null when we've learned no pattern.
+ */
+export function quarterForReport(reportMs, months, minLagDays = 10) {
+  if (!reportMs || !months?.length) return null
+  const cutoff = new Date(reportMs - minLagDays * 86_400_000)
+  let best = null
+  for (let back = 0; back < 6; back++) {
+    const probe = new Date(Date.UTC(cutoff.getUTCFullYear(), cutoff.getUTCMonth() - back + 1, 0))
+    if (!months.includes(probe.getUTCMonth())) continue
+    if (probe.getTime() <= cutoff.getTime()) { best = probe.getTime(); break }
+  }
+  return best
+}
+
+/** Median days between a quarter ending and the company reporting it. */
+export function medianReportLag(events) {
+  const lags = (events || [])
+    .filter((e) => e.quarter != null && e.report != null)
+    .map((e) => (e.report - e.quarter) / 86_400_000)
+    .filter((d) => d > 0 && d < 120)
+    .sort((a, b) => a - b)
+  if (!lags.length) return null
+  return Math.round(lags[Math.floor(lags.length / 2)])
+}
+
+/**
+ * Fill the gaps the two upstream sources leave: v10 gives recent quarters
+ * with no report date, the calendar gives report dates with no quarter.
+ * Anything inferred is flagged so the UI can mark it rather than pass it off
+ * as reported fact.
+ */
+export function reconcileQuarters(events) {
+  const months = fiscalMonths(events)
+  // Quarters first: the two sources are disjoint (v10 has quarters with no
+  // report date, the calendar has report dates with no quarter), so nothing
+  // has both until this pass — and without a complete row there's no lag to
+  // learn. Infer quarters, then measure the lag off those, then backfill the
+  // missing report dates.
+  const withQuarters = (events || []).map((e) => {
+    if (e.quarter != null || e.report == null) return e
+    const q = quarterForReport(e.report, months)
+    return q ? { ...e, quarter: q, quarterInferred: true } : e
+  })
+  const lag = medianReportLag(withQuarters)
+  return withQuarters.map((e) => (
+    e.report == null && e.quarter != null && lag != null
+      ? { ...e, report: e.quarter + lag * 86_400_000, reportInferred: true }
+      : e
+  ))
+}

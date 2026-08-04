@@ -206,7 +206,7 @@ export function EarningsDay({ symbols }) {
     <div class="grid gap-2 lg:grid-cols-[220px_1fr] min-w-0">
       <section class="bg-surface-1 border border-line rounded-xl overflow-hidden self-start">
         <header class="px-3 py-1.5 border-b border-line-2 bg-surface-2">
-          <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">
+          <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">
             {tl('Docket')}
           </h2>
         </header>
@@ -216,7 +216,8 @@ export function EarningsDay({ symbols }) {
         <div class="max-h-[70vh] overflow-y-auto">
           {docket.map((e) => {
             const on = active?.sym === e.sym
-            const urgent = e.days <= 1 ? 'text-down' : e.days <= 7 ? 'text-accent' : 'text-muted'
+            const urgent = e.days <= 0 ? 'text-imminent font-bold'
+              : e.days <= 1 ? 'text-down' : e.days <= 7 ? 'text-accent' : 'text-muted'
             return (
               <button key={e.sym} onClick={() => setPick(e.sym)}
                 class={`w-full flex items-baseline gap-2 px-3 py-[3px] font-mono text-[11px] border-b border-line last:border-0 ${
