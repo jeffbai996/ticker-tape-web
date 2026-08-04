@@ -87,7 +87,7 @@ function GroupCard({ name, items, quotes, withUnits }) {
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden @container">
       <header class="flex items-baseline gap-2 px-2.5 py-1 border-b border-line-2 bg-surface-2">
-        <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">{tl(name)}</h2>
+        <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{tl(name)}</h2>
         {avg != null && (
           <>
             <span class={`font-mono text-[11px] font-semibold ${avg >= 0 ? 'text-up' : 'text-down'}`}>
@@ -140,7 +140,7 @@ function Sectors() {
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden max-w-2xl">
       <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-        <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">
+        <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">
           {tl('Sector ETFs — today')}
         </h2>
       </header>
@@ -218,7 +218,7 @@ function MoverTable({ title, rows, metric }) {
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
       <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-        <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">{title}</h2>
+        <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{title}</h2>
       </header>
       <table class="w-full border-collapse font-mono text-[11px]">
         <tbody>
@@ -313,7 +313,7 @@ function Earnings() {
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden max-w-xl">
       <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-        <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">
+        <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">
           {tl('Upcoming earnings — watchlist')}
         </h2>
       </header>
@@ -323,7 +323,8 @@ function Earnings() {
       <table class="w-full border-collapse font-mono text-[12px]">
         <tbody>
           {upcoming.map((e) => {
-            const cls = e.days <= 7 ? 'text-down' : e.days <= 21 ? 'text-accent' : 'text-ink-2'
+            const cls = e.days <= 0 ? 'text-imminent font-bold'
+              : e.days <= 7 ? 'text-down' : e.days <= 21 ? 'text-accent' : 'text-ink-2'
             return (
               <tr
                 key={e.sym}
@@ -364,7 +365,7 @@ function Calendar() {
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden max-w-xl">
       <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-        <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">
+        <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">
           {tl('Economic calendar — next 90 days')}
         </h2>
       </header>

@@ -4,17 +4,19 @@
    colors (Jeff 2026-07-03): amber accent, green/red P&L, 1px hairline borders.
    Green/red are reserved for live/P&L semantics, amber for interactive/brand. */
 @theme {
-  --color-surface-0: #050609;
-  --color-surface-1: #0b0d11;
-  --color-surface-2: #12141a;
-  --color-surface-3: #1a1d24;
+  /* OLED black throughout, matching fragwire's palette exactly — hairlines
+     carry the structure instead of surface steps (Jeff 2026-08-04). */
+  --color-surface-0: #000000;
+  --color-surface-1: #000000;
+  --color-surface-2: #0d0d0f;
+  --color-surface-3: #17171b;
 
   --color-ink: #e7ecf3;
   --color-ink-2: #a6adb6;
   --color-muted: #79828d;
 
-  --color-line: rgba(255, 255, 255, 0.10);
-  --color-line-2: rgba(255, 255, 255, 0.14);
+  --color-line: rgba(231, 236, 243, 0.14);
+  --color-line-2: rgba(231, 236, 243, 0.18);
 
   --color-accent: #f59e0b;
   --color-accent-soft: rgba(245, 158, 11, 0.13);
@@ -23,6 +25,10 @@
      a third hue competed with the green/red that carry actual meaning. */
   --color-accent-2: #d6dce4;
   --color-accent-2-soft: rgba(214, 220, 228, 0.10);
+
+  /* Same-day earnings: deeper than the P&L red so "reports today" doesn't
+     read as "down today" (Jeff 2026-08-04). */
+  --color-imminent: #c31432;
 
   --color-up: #3fb950;
   --color-down: #f85149;
