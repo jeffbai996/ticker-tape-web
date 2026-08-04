@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { useQuotes, useWatchlist } from '../hooks.js'
 import { fmtPrice, fmtPct } from '../lib/format.js'
 import { hrefFor } from '../lib/route.js'
+import { tapeEntries } from '../lib/tape.js'
 import { tapeworthy, wireUrl } from '../lib/wire.js'
 
 // The namesake: a continuously scrolling quote marquee. The list is doubled
@@ -106,41 +107,51 @@ export function Tape() {
   const quotes = useQuotes(watchlist)
   const heads = useWireHeadlines()
   const items = watchlist.map((s) => ({ symbol: s, q: quotes[s]?.quote }))
+  const entries = tapeEntries(heads, items)
   const wrap = useRef(null)
   usePointerHighlight(wrap)
 
   return (
     <div ref={wrap} class="h-7 shrink-0 bg-black border-b border-line overflow-hidden relative">
-      <div class="tape-scroll flex items-center h-full gap-6 w-max font-mono text-[11px] pr-6">
-        {[...heads, ...heads].map((e, i) => (
-          <a
-            key={`h-${e.id}-${i}`}
-            data-tape-item
-            href={e.symbols?.[0] ? hrefFor('research', e.symbols[0].toLowerCase()) : '#/wire'}
-            class="flex items-baseline gap-2 whitespace-nowrap hover:no-underline px-1.5 -mx-1 py-0.5"
-            title={e.headline}
-          >
-            <span class="text-[9px] font-bold tracking-wider text-black bg-accent px-1 rounded-sm">
-              {TAPE_CODE[e.type] || 'WIRE'}
-            </span>
-            <span class="text-accent font-semibold max-w-[46ch] truncate">{e.headline}</span>
-          </a>
+      <div class="tape-scroll flex h-full w-max font-mono text-[11px]">
+        {[0, 1].map((copy) => (
+          <div key={copy} class="tape-cycle flex items-center h-full gap-6 pr-6">
+            {entries.map(({ kind, data }, i) => {
+              if (kind === 'headline') {
+                const e = data
+                return (
+                  <a
+                    key={`h-${e.id}-${i}`}
+                    data-tape-item
+                    href={e.symbols?.[0] ? hrefFor('research', e.symbols[0].toLowerCase()) : '#/wire'}
+                    class="flex items-baseline gap-2 whitespace-nowrap hover:no-underline px-1.5 -mx-1 py-0.5"
+                    title={e.headline}
+                  >
+                    <span class="text-[9px] font-bold tracking-wider text-black bg-accent px-1 rounded-sm">
+                      {TAPE_CODE[e.type] || 'WIRE'}
+                    </span>
+                    <span class="text-accent font-semibold max-w-[46ch] truncate">{e.headline}</span>
+                  </a>
+                )
+              }
+
+              const { symbol, q } = data
+              const up = (q?.pct ?? 0) >= 0
+              return (
+                <a
+                  key={`q-${symbol}-${i}`}
+                  data-tape-item
+                  href={hrefFor('research', symbol.toLowerCase())}
+                  class="flex items-baseline gap-1.5 whitespace-nowrap hover:no-underline px-1.5 -mx-1 py-0.5"
+                >
+                  <span class="text-ink font-bold font-tick text-[10px]">{symbol}</span>
+                  <span class="text-ink-2 font-semibold">{q ? fmtPrice(q.price) : '—'}</span>
+                  {q && <span class={`text-[10px] ${up ? 'text-up' : 'text-down'}`}>{fmtPct(q.pct)}</span>}
+                </a>
+              )
+            })}
+          </div>
         ))}
-        {[...items, ...items].map(({ symbol, q }, i) => {
-          const up = (q?.pct ?? 0) >= 0
-          return (
-            <a
-              key={`${symbol}-${i}`}
-              data-tape-item
-              href={hrefFor('research', symbol.toLowerCase())}
-              class="flex items-baseline gap-1.5 whitespace-nowrap hover:no-underline px-1.5 -mx-1 py-0.5"
-            >
-              <span class="text-ink font-bold font-tick text-[10px]">{symbol}</span>
-              <span class="text-ink-2 font-semibold">{q ? fmtPrice(q.price) : '—'}</span>
-              {q && <span class={`text-[10px] ${up ? 'text-up' : 'text-down'}`}>{fmtPct(q.pct)}</span>}
-            </a>
-          )
-        })}
       </div>
     </div>
   )
