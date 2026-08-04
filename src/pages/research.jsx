@@ -1390,7 +1390,7 @@ export function Research({ route }) {
         <WatchStar symbol={symbol} />
         {q && (
           <>
-            <span class="text-[12px] text-muted">{q.name}</span>
+            <span class="text-[12px] text-muted font-anth">{q.name}</span>
             <span class="font-mono text-lg text-ink">{fmtPrice(q.price)}</span>
             <span class={`font-mono font-semibold text-[15px] ${up ? 'text-up' : 'text-down'}`}>
               {fmtChange(q.change)} {fmtPct(q.pct)}
