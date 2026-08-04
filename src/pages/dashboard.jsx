@@ -60,18 +60,18 @@ function Badges({ tech, earnDays }) {
       <span class={above ? 'text-up' : 'text-down'}>{above ? '>' : '<'}{n}</span>
     )
   return (
-    <div class="flex items-baseline gap-2 max-sm:gap-1 font-mono text-[11px] max-sm:text-[10px] whitespace-nowrap">
-      <span class={`w-8 ${rsiCls}`}>{r != null ? `R${Math.round(r)}` : ''}</span>
-      <span class="w-8 text-accent">{earnDays != null ? `${earnDays}d` : ''}</span>
-      <span class="w-8">{smaBadge(tech.above50, 50)}</span>
-      <span class="w-10">{smaBadge(tech.above200, 200)}</span>
-      <span class={`w-11 ${tech.volRatio >= 1.5 ? 'text-accent' : 'text-muted'}`}>
+    <div class="flex items-baseline gap-1.5 max-sm:gap-1 font-mono text-[11px] max-sm:text-[10px] whitespace-nowrap">
+      <span class={`w-7 ${rsiCls}`}>{r != null ? `R${Math.round(r)}` : ''}</span>
+      <span class="w-7 text-accent">{earnDays != null ? `${earnDays}d` : ''}</span>
+      <span class="w-7">{smaBadge(tech.above50, 50)}</span>
+      <span class="w-9">{smaBadge(tech.above200, 200)}</span>
+      <span class={`w-10 ${tech.volRatio >= 1.5 ? 'text-accent' : 'text-muted'}`}>
         {tech.volRatio != null ? `${tech.volRatio.toFixed(1)}xv` : ''}
       </span>
-      <span class={`w-12 text-right ${tech.offHigh <= -15 ? 'text-down' : 'text-ink-2'}`}>
+      <span class={`w-11 text-right ${tech.offHigh <= -15 ? 'text-down' : 'text-ink-2'}`}>
         {tech.offHigh != null ? `${Math.round(tech.offHigh)}%H` : ''}
       </span>
-      <span class={`w-12 text-right ${(tech.rs ?? 0) >= 0 ? 'text-up' : 'text-down'}`}>
+      <span class={`w-11 text-right ${(tech.rs ?? 0) >= 0 ? 'text-up' : 'text-down'}`}>
         {tech.rs != null ? `${tech.rs >= 0 ? '+' : ''}${Math.round(tech.rs)}%R` : ''}
       </span>
     </div>
@@ -103,6 +103,10 @@ function TuiRow({ symbol, data, earnDays }) {
   const up = (q?.pct ?? 0) >= 0
   const extUp = (q?.extPct ?? 0) >= 0
   const heavy = (data?.tech?.volRatio ?? 0) >= 1.5
+  // the 20-day average the ratio was measured against — VOL alone says
+  // nothing without it, and it costs no extra fetch
+  const avgVol = q?.volume != null && data?.tech?.volRatio
+    ? q.volume / data.tech.volRatio : null
   return (
     <a
       href={`#/research/${symbol.toLowerCase()}`}
@@ -129,7 +133,7 @@ function TuiRow({ symbol, data, earnDays }) {
             )}
           </div>
           {/* Phone width: badges scroll sideways instead of clipping mid-badge. */}
-          <div class="flex items-center gap-4 pt-[2px] pl-[4.15rem] max-sm:pl-0 min-w-0 @min-[430px]:overflow-hidden max-sm:overflow-x-auto no-scrollbar">
+          <div class="flex items-center gap-2.5 pt-[2px] pl-0 min-w-0 @min-[430px]:overflow-hidden max-sm:overflow-x-auto no-scrollbar">
             <Histo bars={data?.histo} width={150} height={24}
               class="w-[150px] @max-[900px]:w-[84px] @max-[640px]:w-[52px] @max-[430px]:w-[38px]" />
             <Badges tech={data?.tech} earnDays={earnDays} />
@@ -154,7 +158,14 @@ function TuiRow({ symbol, data, earnDays }) {
             {data?.tech && (
               <RangeBar label="52W" lo={data.tech.low52} hi={data.tech.high52} v={q?.price} />
             )}
-            <span class="w-[4.5rem] hidden @min-[800px]:inline" />
+            <span class="w-[4.5rem] text-right hidden @min-[800px]:inline">
+              {avgVol != null && (
+                <>
+                  <span class="text-accent/60 text-[9px]">AVG</span>{' '}
+                  <span class="text-ink-2 font-normal">{fmtVol(avgVol)}</span>
+                </>
+              )}
+            </span>
           </span>
         </div>
       </div>
