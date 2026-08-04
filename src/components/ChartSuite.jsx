@@ -216,7 +216,7 @@ export function ChartSuite({ symbol }) {
     <button
       onClick={cb}
       class={`font-mono text-[9.5px] px-1.5 py-0.5 rounded border tracking-wider whitespace-nowrap ${
-        on ? 'border-accent/70 text-accent' : 'border-line text-muted hover:text-ink'}`}
+        on ? 'border-accent-2/70 text-accent-2' : 'border-line text-muted hover:text-ink'}`}
       style={on && color ? { color, borderColor: color + '99' } : undefined}
     >
       {label}

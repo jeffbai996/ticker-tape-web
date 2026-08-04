@@ -144,7 +144,7 @@ function Candles({ bars, intraday }) {
             key={k}
             onClick={() => toggle(k)}
             class={`font-mono text-[9.5px] px-1.5 py-0.5 rounded border tracking-wider ${
-              ov[k] ? 'border-accent/60 text-accent' : 'border-line text-muted hover:text-ink'
+              ov[k] ? 'border-accent-2/60 text-accent-2' : 'border-line text-muted hover:text-ink'
             }`}
             style={ov[k] && k.startsWith('sma') ? { color: SMA_COLORS[k.slice(3)], borderColor: SMA_COLORS[k.slice(3)] + '99' } : undefined}
           >
@@ -1054,7 +1054,7 @@ function DesBand({ symbol, bars }) {
   const wkPos = f?.fiftyTwoWeekHigh != null && f?.fiftyTwoWeekLow != null && price != null
     ? (price - f.fiftyTwoWeekLow) / (f.fiftyTwoWeekHigh - f.fiftyTwoWeekLow) : null
   return (
-    <div class="border-t border-line grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 divide-x divide-line select-none">
+    <div class="border-t border-line grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 divide-x divide-line select-none">
       <DesCell n={1} label={tl('Px / Chg')} big
         value={price != null ? `${fmtPrice(price)}${pct != null ? ` ${fmtPct(pct)}` : ''}` : null}
         tone={tone(pct)} />
@@ -1363,7 +1363,7 @@ export function Research({ route }) {
               onClick={() => setRangeKey(r.key)}
               class={`font-mono text-[11px] px-2 py-1 rounded-md border ${
                 rangeKey === r.key
-                  ? 'border-accent text-accent bg-accent-soft'
+                  ? 'border-accent-2 text-accent-2 bg-accent-2-soft'
                   : 'border-line text-muted hover:text-ink hover:bg-surface-2'
               }`}
             >
@@ -1391,11 +1391,11 @@ export function Research({ route }) {
             href={tab.href}
             class={`font-mono text-[11px] px-2.5 py-1 rounded-md border hover:no-underline ${
               route.view === tab.id
-                ? 'border-accent text-accent bg-accent-soft'
+                ? 'border-accent-2 text-accent-2 bg-accent-2-soft'
                 : 'border-line text-muted hover:text-ink hover:bg-surface-2'
             }`}
           >
-            <span class="opacity-60">{(ti + 1) % 10})</span> {tab.label}
+            <span class="text-accent">{(ti + 1) % 10})</span> {tab.label}
           </a>
         ))}
       </div>
