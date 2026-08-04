@@ -6,6 +6,7 @@ import { CATALYST_TYPES } from './catalysts.js'
 
 const SYM = /^[A-Za-z0-9.^=-]{1,12}$/
 const DATE = /^\d{4}-\d{2}-\d{2}$/
+const RANGE_KEYS = ['1D', '5D', '1M', '3M', '6M', 'YTD', '1Y', '2Y', '5Y']
 
 // Multi-line help in the CLI help screen's exact register: bold-info command
 // column, dim descriptions, amber ═══ sections (rendered via lib/rich.js).
@@ -31,10 +32,17 @@ export const HELP_TEXT = [
   row2('b|brief', 'briefing + AI', 'pos · acct', 'demo portfolio'),
   row2('alerts', 'alert center', 'chat \\[q]', 'AI chat'),
   row('bt|backtest', 'fills ledger replay'),
+  row2('corr', 'correlation grid', 'margin|trades', 'account · fills'),
   section('actions'),
   row2('w|uw SYM', 'watch / unwatch', 'alert SYM > N', 'arm price alert'),
   row2('cat', 'list catalysts', 'cat rm N', 'remove catalyst'),
   row('cat add DATE …', '\\[SYM] \\[type] label — type: product conf policy capex macro'),
+  row2('group NAME SYM…', 'name a bucket', 'group rm NAME', 'ungroup'),
+  row2('div SYM', 'dividend history', 'chart SYM 6m', 'range works now'),
+  row('opt SYM DATE', 'jump straight to a 2026-09-18 expiry'),
+  section('console'),
+  row2('clear', 'wipe the console', 'copy \\[N]', 'copy output to clipboard'),
+  row2('lang \\[en|zh]', 'switch language', 'h · q', 'help · quit'),
 ].join('\n')
 
 const low = (s) => s.toLowerCase()
@@ -70,6 +78,18 @@ export function parseCommand(input) {
     carry: '#/portfolio/carry', timeline: '#/portfolio/timeline',
     sizing: '#/portfolio/sizing', wire: '#/wire',
     dash: '#/', dashboard: '#/', research: '#/research',
+    // ── CLI parity pass (Jeff 2026-08-04: "still missing some cli commands").
+    // Every alias below already had a page here; only the word was missing.
+    r: '#/research', e: '#/markets/earnings', surprises: '#/markets/earnings',
+    corr: '#/screen/correlation', correlation: '#/screen/correlation',
+    screening: '#/screen', compare: '#/screen/compare',
+    valuation: '#/screen/valuation',
+    watchlist: '#/', tape: '#/',
+    hf: '#/portfolio/cockpit',              // CLI's "high finance" cockpit
+    trades: '#/portfolio/timeline',         // fills, in date order
+    margin: '#/portfolio/account', cushion: '#/portfolio/account',
+    headroom: '#/portfolio/account',
+    heat: '#/markets/heatmap', comm: '#/markets/commodities',
   }
   if (cmd in NAVS && !args.length) return { type: 'nav', hash: NAVS[cmd] }
 
@@ -82,12 +102,30 @@ export function parseCommand(input) {
     hold: 'holders', holders: 'holders', fil: 'filings', filings: 'filings',
     prof: 'profile', profile: 'profile', memo: null,
     ratings: 'analysts', technicals: null, lookup: null,
+    // CLI spellings that had no web equivalent word
+    impact: 'earnings', earn: 'earnings', rating: 'analysts', detail: null,
   }
   if (cmd === 'wire' && args.length === 1 && SYM.test(args[0])) {
     return research(args[0], 'wire')
   }
   if (cmd in VIEWS && args.length >= 1 && SYM.test(args[0])) {
-    return research(args[0], VIEWS[cmd])
+    const plan = research(args[0], VIEWS[cmd])
+    // CLI parity: `chart SYM 6m` picks the range, `opt SYM 2026-09-18` the
+    // expiry. The extra arg rides on the nav plan; the view consumes it.
+    if ((cmd === 'ta' || cmd === 'chart') && args[1]) {
+      const r = args[1].toUpperCase()
+      if (!RANGE_KEYS.includes(r)) {
+        return { type: 'msg', text: `[bold ${INF}]usage[/] [${DIM}]chart SYM 1d·5d·1m·3m·6m·ytd·1y·2y·5y[/]` }
+      }
+      plan.range = r
+    }
+    if ((cmd === 'opt' || cmd === 'options') && args[1]) {
+      if (!DATE.test(args[1])) {
+        return { type: 'msg', text: `[bold ${INF}]usage[/] [${DIM}]opt SYM 2026-09-18[/]` }
+      }
+      plan.expiry = args[1]
+    }
+    return plan
   }
 
   if ((cmd === 'w' || cmd === 'watch') && args.length === 1 && SYM.test(args[0])) {
@@ -105,13 +143,57 @@ export function parseCommand(input) {
     return { type: 'msg', text: `[bold ${INF}]usage[/] [${DIM}]alert SYM > 123.45[/]` }
   }
 
+  // console + session commands the CLI has and this bar didn't
+  if (cmd === 'clear' || cmd === 'cls') return { type: 'clear' }
+  if (cmd === 'lang') {
+    const want = low(args[0] || '')
+    if (!args.length) return { type: 'lang', locale: null }        // toggle
+    if (want === 'en' || want === 'zh') return { type: 'lang', locale: want }
+    return { type: 'msg', text: `[bold ${INF}]usage[/] [${DIM}]lang · lang en · lang zh[/]` }
+  }
+  if (cmd === 'copy') {
+    const n = args.length ? Number(args[0]) : null
+    if (args.length && !Number.isInteger(n)) {
+      return { type: 'msg', text: `[bold ${INF}]usage[/] [${DIM}]copy · copy 3 (nth console entry)[/]` }
+    }
+    return { type: 'copy', n }
+  }
+  // whatif buy NVDA 100 — the sizing page is the web's version of that math
+  if (cmd === 'whatif' || cmd === 'wi') {
+    return {
+      type: 'nav_msg',
+      hash: '#/portfolio/sizing',
+      text: `[${DIM}]whatif runs on the sizing page — position math, no order tickets here[/]`,
+    }
+  }
+
   // vs A B [C…] → compare; screen A B → valuation grid
-  if ((cmd === 'vs' || cmd === 'screen') && args.length >= 1 && args.every((a) => SYM.test(a))) {
+  if ((cmd === 'vs' || cmd === 'compare' || cmd === 'screen') && args.length >= 1 && args.every((a) => SYM.test(a))) {
     return {
       type: 'screen',
       symbols: args.map((a) => a.toUpperCase()),
-      view: cmd === 'vs' ? 'compare' : 'valuation',
+      view: cmd === 'screen' ? 'valuation' : 'compare',
     }
+  }
+
+  // group · group NAME SYM… · group rm NAME  (CLI watchlist groups)
+  if (cmd === 'group' || cmd === 'groups') {
+    if (!args.length) return { type: 'group_list' }
+    if (low(args[0]) === 'rm' && args.length === 2) {
+      return { type: 'group_rm', name: args[1] }
+    }
+    if (args.length >= 2 && args.slice(1).every((a) => SYM.test(a))) {
+      return { type: 'group_add', name: args[0], symbols: args.slice(1).map((a) => a.toUpperCase()) }
+    }
+    return { type: 'msg', text: `[bold ${INF}]usage[/] [${DIM}]group · group semis NVDA AMD TSM · group rm semis[/]` }
+  }
+
+  // div SYM — dividend profile + payout history in the console
+  if (cmd === 'div' || cmd === 'dividends') {
+    if (args.length === 1 && SYM.test(args[0])) {
+      return { type: 'div', symbol: args[0].toUpperCase() }
+    }
+    return { type: 'msg', text: `[bold ${INF}]usage[/] [${DIM}]div SYM[/]` }
   }
 
   // cat · cat rm N · cat add DATE [SYM] [type] label…

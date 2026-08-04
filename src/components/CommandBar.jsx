@@ -4,8 +4,12 @@ import { watch, unwatch } from '../lib/watchlist.js'
 import { addAlert, conditionText } from '../lib/alerts.js'
 import { addCatalyst, removeCatalyst, loadCatalysts } from '../lib/catalysts.js'
 import { getCached } from '../lib/feed.js'
+import { loadUserGroups, saveUserGroup, removeUserGroup } from '../lib/usergroups.js'
+import { fetchDividends } from '../lib/history.js'
+import { fetchFundamentals } from '../lib/fundamentals.js'
 import { fmtPrice, fmtPct } from '../lib/format.js'
 import { parseRich, TUI } from '../lib/rich.js'
+import { getLocale, setLocale } from '../lib/i18n.js'
 
 // The TUI's bottom command line, with a real output console: every command
 // echoes into a drop-up log (like the CLI's main pane) instead of a blink-
@@ -45,10 +49,51 @@ export function CommandBar() {
   const [histIdx, setHistIdx] = useState(-1)
   const history = useRef([])
   const scrollRef = useRef(null)
+  // console height is a preference: drag the top edge, it sticks
+  const [consoleH, setConsoleH] = useState(() => {
+    const v = parseInt(localStorage.getItem('console_h') || '', 10)
+    return v >= 120 ? v : 288
+  })
+  const startDrag = (e) => {
+    e.preventDefault()
+    const grip = e.currentTarget
+    grip.setPointerCapture(e.pointerId)
+    const startY = e.clientY
+    const startH = consoleH
+    const move = (ev) => setConsoleH(
+      Math.max(120, Math.min(window.innerHeight * 0.8, startH + (startY - ev.clientY))))
+    const up = () => {
+      grip.removeEventListener('pointermove', move)
+      grip.removeEventListener('pointerup', up)
+      setConsoleH((h) => {
+        const r = Math.round(h)
+        localStorage.setItem('console_h', String(r))
+        return r
+      })
+    }
+    grip.addEventListener('pointermove', move)
+    grip.addEventListener('pointerup', up)
+  }
 
   useEffect(() => {
     scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight)
   }, [log])
+
+  // `/` from anywhere focuses the command line (unless you're already typing
+  // somewhere) — the slash never lands in the input.
+  const inputRef = useRef(null)
+  useEffect(() => {
+    const onSlash = (e) => {
+      if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return
+      const t = e.target
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA'
+        || t.tagName === 'SELECT' || t.isContentEditable)) return
+      e.preventDefault()
+      inputRef.current?.focus()
+    }
+    window.addEventListener('keydown', onSlash)
+    return () => window.removeEventListener('keydown', onSlash)
+  }, [])
 
   const print = (cmd, text) => {
     setLog((l) => [...l.slice(-40), { id: nextId++, cmd, text }])
@@ -68,6 +113,16 @@ export function CommandBar() {
     setValue('')
 
     if (plan.type === 'nav') {
+      // chart range / options expiry ride-alongs: storage covers a view that
+      // mounts after the hash change, the event covers one already mounted.
+      if (plan.range) {
+        sessionStorage.setItem('chart_range', plan.range)
+        window.dispatchEvent(new CustomEvent('tape:chart-range', { detail: plan.range }))
+      }
+      if (plan.expiry) {
+        sessionStorage.setItem('opt_expiry', plan.expiry)
+        window.dispatchEvent(new CustomEvent('tape:opt-expiry', { detail: plan.expiry }))
+      }
       location.hash = plan.hash
       const sym = plan.hash.match(/#\/research\/([a-z0-9.^=-]+)/)?.[1]?.toUpperCase()
       print(cmd, (sym && quoteEcho(sym)) || `→ ${plan.hash.replace('#/', '') || 'dashboard'}`)
@@ -104,6 +159,69 @@ export function CommandBar() {
       sessionStorage.setItem('chat_prefill', plan.q)
       location.hash = '#/chat'
       print(cmd, `→ chat: ${plan.q}`)
+    } else if (plan.type === 'nav_msg') {
+      location.hash = plan.hash
+      print(cmd, plan.text)
+    } else if (plan.type === 'clear') {
+      setLog([])
+      setOpen(false)
+    } else if (plan.type === 'lang') {
+      const next = plan.locale || (getLocale() === 'en' ? 'zh' : 'en')
+      setLocale(next)
+      print(cmd, `[green]✓[/] ${next === 'zh' ? '中文' : 'english'}`)
+    } else if (plan.type === 'copy') {
+      // `copy` = last output, `copy N` = that console entry, CLI-style
+      const entry = plan.n == null ? log[log.length - 1] : log[plan.n - 1]
+      if (!entry) {
+        print(cmd, `[red]nothing at ${plan.n ?? 'the end'} of the console[/]`)
+      } else {
+        const plain = parseRich(entry.text).map((s) => s.text).join('')
+        navigator.clipboard?.writeText(`${entry.cmd}\n${plain}`)
+          .then(() => print(cmd, `[green]✓[/] copied ${plan.n ? `#${plan.n}` : 'last output'}`))
+          .catch(() => print(cmd, '[red]clipboard blocked by the browser[/]'))
+      }
+    } else if (plan.type === 'group_list') {
+      const groups = Object.entries(loadUserGroups())
+      print(cmd, groups.length
+        ? groups.map(([n, syms]) => `[bold #00c8ff]${n.padEnd(14)}[/]${syms.join(' ')}`).join('\n')
+        : 'no groups — group semis NVDA AMD TSM')
+    } else if (plan.type === 'group_add') {
+      const saved = saveUserGroup(plan.name, plan.symbols)
+      if (!saved) {
+        print(cmd, `[red]bad group — name must be a word, symbols must be symbols[/]`)
+      } else {
+        // a group you can't see is useless: pull members onto the watchlist
+        const added = saved.filter((s) => watch(s))
+        print(cmd, `[green]✓[/] group [bold]${plan.name}[/]: ${saved.join(' ')}`
+          + (added.length ? ` [#808080](+${added.length} to watchlist)[/]` : ''))
+      }
+    } else if (plan.type === 'group_rm') {
+      print(cmd, removeUserGroup(plan.name)
+        ? `[green]✓[/] removed group [bold]${plan.name}[/]`
+        : `[red]no group "${plan.name}"[/]`)
+    } else if (plan.type === 'div') {
+      const sym = plan.symbol
+      print(cmd, `[#808080]fetching ${sym} dividends…[/]`)
+      Promise.all([
+        fetchDividends(sym).catch(() => []),
+        fetchFundamentals(sym).catch(() => null),
+      ]).then(([hist, f]) => {
+        const lines = []
+        if (f?.dividendYield != null || f?.dividendRate != null) {
+          const bits = []
+          if (f.dividendRate != null) bits.push(`rate $${f.dividendRate.toFixed(2)}/yr`)
+          if (f.dividendYield != null) bits.push(`yield ${(f.dividendYield * 100).toFixed(2)}%`)
+          if (f.payoutRatio != null) bits.push(`payout ${(f.payoutRatio * 100).toFixed(0)}%`)
+          if (f.exDividendDate != null) bits.push(`ex-div ${new Date(f.exDividendDate * 1000).toISOString().slice(0, 10)}`)
+          lines.push(`[bold]${sym}[/] ${bits.join(' · ')}`)
+        }
+        if (hist.length) {
+          lines.push(...hist.slice(0, 10).map((d) =>
+            `${new Date(d.date * 1000).toISOString().slice(0, 10)}  [green]$${+d.amount.toFixed(4)}[/]`))
+          if (hist.length > 10) lines.push(`[#808080]… ${hist.length - 10} more in the last 5y[/]`)
+        }
+        print(cmd, lines.length ? lines.join('\n') : `[#808080]${sym} pays no dividend[/]`)
+      })
     } else if (plan.type === 'msg') {
       print(cmd, plan.text)
     }
@@ -135,6 +253,11 @@ export function CommandBar() {
     <div class="max-md:hidden relative shrink-0">
       {open && log.length > 0 && (
         <div class="absolute bottom-full left-0 right-0 z-40 bg-surface-1/95 backdrop-blur border-t border-line shadow-[0_-8px_24px_rgba(0,0,0,0.5)]">
+          <div onPointerDown={startDrag}
+            class="h-2.5 cursor-ns-resize touch-none flex items-center justify-center group/grip"
+            title="drag to resize">
+            <div class="w-10 h-[3px] rounded bg-line group-hover/grip:bg-accent group-active/grip:bg-accent" />
+          </div>
           <div class="flex items-center px-3 py-1 border-b border-line-2">
             <span class="font-mono text-[9px] tracking-wider text-muted uppercase">console</span>
             <button
@@ -145,7 +268,8 @@ export function CommandBar() {
               ✕
             </button>
           </div>
-          <div ref={scrollRef} class="max-h-56 overflow-y-auto px-3 py-1.5 font-mono text-[11px] leading-relaxed select-text">
+          <div ref={scrollRef} style={{ maxHeight: `${consoleH}px` }}
+            class="overflow-y-auto px-3 py-1.5 font-mono text-[11px] leading-relaxed select-text">
             {log.map((entry) => (
               <div key={entry.id} class="pb-1">
                 <div class="text-muted">
@@ -163,10 +287,11 @@ export function CommandBar() {
       >
         <span class="text-accent font-bold shrink-0">ticker&gt;</span>
         <input
+          ref={inputRef}
           value={value}
           onInput={(e) => setValue(e.currentTarget.value)}
           onKeyDown={onKey}
-          placeholder="type command or symbol…  (h = help)"
+          placeholder="type command or symbol…  (/ focuses · h = help)"
           class="flex-1 bg-transparent outline-none text-ink placeholder:text-muted min-w-0"
         />
         {log.length > 0 && !open && (
