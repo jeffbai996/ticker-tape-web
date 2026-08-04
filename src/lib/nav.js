@@ -52,6 +52,11 @@ export const NAV = [
 
 if (PRIVATE_BUILD) NAV.push(CHAT_SECTION)
 
+// The private build isn't a demo: the portfolio is real (fragwire fronts the
+// gateway) and the wire is the operator's own — the showcase badges only
+// make sense on the public origin.
+if (PRIVATE_BUILD) for (const s of NAV) delete s.badge
+
 export const IS_PRIVATE_BUILD = PRIVATE_BUILD
 
 export const DEFAULT_SECTION = 'dashboard'

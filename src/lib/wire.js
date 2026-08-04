@@ -4,14 +4,24 @@
 // /api/stream, additive-only), and events render entirely client-side in
 // their browser. Without an endpoint the panel runs on synthetic demo events.
 
+import { IS_PRIVATE_BUILD } from './nav.js'
+
 const KEY = 'tape-wire-url'
 
 export function wireUrl() {
   try {
-    return localStorage.getItem(KEY) || ''
-  } catch {
-    return ''
+    const saved = localStorage.getItem(KEY)
+    if (saved) return saved
+  } catch { /* fall through to the build default */ }
+  // Private tailnet build: default to the fragwire on the host already
+  // serving this page — chat and the wire panel work out of the box instead
+  // of dying against the public worker's CORS wall (Jeff 2026-08-04).
+  // Still derived, never hardcoded; the public build gets no default.
+  if (IS_PRIVATE_BUILD && typeof location !== 'undefined'
+      && location.hostname.endsWith('.ts.net')) {
+    return `https://${location.hostname}:${WIRE_UI_PORT}`
   }
+  return ''
 }
 
 export function setWireUrl(url) {
@@ -22,6 +32,27 @@ export function setWireUrl(url) {
     else localStorage.removeItem(KEY)
   } catch { /* private mode: panel just stays in demo */ }
   return clean
+}
+
+// Port fragwire's own UI answers on. Only ever combined with the host the page
+// is ALREADY being served from, so no internal hostname lives in this repo.
+const WIRE_UI_PORT = 8459
+
+/** Where the wire's own board lives, for a "open the source" link.
+ *  Prefers the configured endpoint's origin — that IS the viewer's fragwire,
+ *  whoever they are. The private tailnet build falls back to the wire port on
+ *  the same tailnet host serving this page; the public build gets nothing,
+ *  because a public origin has no business advertising someone's tailnet. */
+export function fragwireHome() {
+  const ep = wireUrl()
+  if (ep) {
+    try {
+      return new URL(ep).origin
+    } catch { /* malformed endpoint — fall through to the host guess */ }
+  }
+  if (!IS_PRIVATE_BUILD) return ''
+  const host = typeof location === 'undefined' ? '' : location.hostname
+  return host.endsWith('.ts.net') ? `https://${host}:${WIRE_UI_PORT}` : ''
 }
 
 export async function fetchEvents(base, { sinceId = 0, limit = 100 } = {}) {

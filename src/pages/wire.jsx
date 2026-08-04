@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import {
-  wireUrl, setWireUrl, fetchEvents, fetchToday, fetchMeta,
+  wireUrl, setWireUrl, fragwireHome, fetchEvents, fetchToday, fetchMeta,
   demoBackfill, demoEvent, demoToday, rankEvents, collapseSessions, clusterStories, TYPE_CODE,
 } from '../lib/wire.js'
 import { getWatchlist } from '../lib/watchlist.js'
@@ -301,6 +301,7 @@ export function Wire() {
   }
 
   const stateTone = { demo: 'text-muted', connecting: 'text-muted', live: 'text-accent', error: 'text-down' }
+  const wireHome = fragwireHome()      // re-reads on endpoint change via `endpoint` state
 
   return (
     <div class="flex flex-col gap-2 flex-1 min-w-0 p-3">
@@ -321,6 +322,19 @@ export function Wire() {
         <span class={`font-mono text-[11px] uppercase tracking-widest ${stateTone[state]}`}>
           {state === 'demo' ? 'demo wire — synthetic events' : state}
         </span>
+        {/* Straight through to the board this tape is mirroring — this page is
+            a reader, the wire's own UI has the tuning, alerts and reader. */}
+        {wireHome && (
+          <a
+            href={wireHome}
+            target="_blank"
+            rel="noopener"
+            class="font-mono text-[11px] text-ink-2 hover:text-accent hover:no-underline border border-line rounded-md px-2 py-0.5"
+            title="open the wire's own board"
+          >
+            fragwire ↗
+          </a>
+        )}
         {error && <span class="font-mono text-[11px] text-down">{error}</span>}
         {endpoint && (
           <button
