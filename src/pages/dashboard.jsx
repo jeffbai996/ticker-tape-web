@@ -61,26 +61,20 @@ function Badges({ tech, earnDays }) {
       <span class={above ? 'text-up' : 'text-down'}>{above ? '>' : '<'}{n}</span>
     )
   return (
-    <div class="flex items-baseline gap-2.5 font-mono text-[11px] whitespace-nowrap">
-      <span class={rsiCls}>{r != null ? `R${Math.round(r)}` : ''}</span>
-      {earnDays != null && <span class="text-accent">{earnDays}d</span>}
-      {smaBadge(tech.above50, 50)}
-      {smaBadge(tech.above200, 200)}
-      {tech.volRatio != null && (
-        <span class={tech.volRatio >= 1.5 ? 'text-accent' : 'text-muted'}>
-          {tech.volRatio.toFixed(1)}xv
-        </span>
-      )}
-      {tech.offHigh != null && (
-        <span class={tech.offHigh <= -15 ? 'text-down' : 'text-ink-2'}>
-          {Math.round(tech.offHigh)}%H
-        </span>
-      )}
-      {tech.rs != null && (
-        <span class={tech.rs >= 0 ? 'text-up' : 'text-down'}>
-          {tech.rs >= 0 ? '+' : ''}{Math.round(tech.rs)}%R
-        </span>
-      )}
+    <div class="flex items-baseline gap-2 max-sm:gap-1 font-mono text-[11px] max-sm:text-[10px] whitespace-nowrap">
+      <span class={`w-8 ${rsiCls}`}>{r != null ? `R${Math.round(r)}` : ''}</span>
+      <span class="w-8 text-accent">{earnDays != null ? `${earnDays}d` : ''}</span>
+      <span class="w-8">{smaBadge(tech.above50, 50)}</span>
+      <span class="w-10">{smaBadge(tech.above200, 200)}</span>
+      <span class={`w-11 ${tech.volRatio >= 1.5 ? 'text-accent' : 'text-muted'}`}>
+        {tech.volRatio != null ? `${tech.volRatio.toFixed(1)}xv` : ''}
+      </span>
+      <span class={`w-12 text-right ${tech.offHigh <= -15 ? 'text-down' : 'text-ink-2'}`}>
+        {tech.offHigh != null ? `${Math.round(tech.offHigh)}%H` : ''}
+      </span>
+      <span class={`w-12 text-right ${(tech.rs ?? 0) >= 0 ? 'text-up' : 'text-down'}`}>
+        {tech.rs != null ? `${tech.rs >= 0 ? '+' : ''}${Math.round(tech.rs)}%R` : ''}
+      </span>
     </div>
   )
 }
@@ -121,12 +115,12 @@ function TuiRow({ symbol, data, earnDays }) {
             <span class="text-ink font-bold w-20 max-sm:w-14 shrink-0">{symbol}</span>
             <span class="text-ink font-semibold w-24 max-sm:w-20 text-right shrink-0">{q ? fmtPrice(q.price) : '—'}</span>
             {q && (
-              <span class={`${up ? 'text-up' : 'text-down'} whitespace-nowrap`}>
+              <span class={`${up ? 'text-up' : 'text-down'} whitespace-nowrap w-[9.5rem] max-sm:w-auto shrink-0`}>
                 {up ? '▲' : '▼'} {fmtChange(Math.abs(q.change)).replace('+', '')} <span class="font-normal text-[11px]">({fmtPct(q.pct)})</span>
               </span>
             )}
             {q?.extLabel && q.extPrice != null && (
-              <span class="whitespace-nowrap text-[12px] hidden @min-[780px]:inline">
+              <span class="whitespace-nowrap text-[12px] hidden @min-[780px]:inline w-[8.5rem] shrink-0">
                 <span class="text-[#c084fc]">{q.extLabel}</span>{' '}
                 <span class="text-ink-2">{fmtPrice(q.extPrice)}</span>{' '}
                 <span class={extUp ? 'text-up' : 'text-down'}>
@@ -137,7 +131,8 @@ function TuiRow({ symbol, data, earnDays }) {
           </div>
           {/* Phone width: badges scroll sideways instead of clipping mid-badge. */}
           <div class="flex items-center gap-4 pt-[2px] pl-20 max-sm:pl-0 min-w-0 @min-[430px]:overflow-hidden max-sm:overflow-x-auto no-scrollbar">
-            <span class="hidden @min-[820px]:inline"><Histo bars={data?.histo} width={150} height={24} /></span>
+            <Histo bars={data?.histo} width={150} height={24}
+              class="w-[150px] @max-[900px]:w-[84px] @max-[640px]:w-[52px] @max-[430px]:w-[38px]" />
             <Badges tech={data?.tech} earnDays={earnDays} />
           </div>
         </div>
