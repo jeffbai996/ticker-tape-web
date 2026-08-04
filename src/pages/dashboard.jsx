@@ -91,16 +91,16 @@ function RangeBar({ label, lo, hi, v, cls = '' }) {
   const pos = rangePos(lo, hi, v)
   if (pos == null) return null
   return (
-    <span class={`hidden lg:flex items-center gap-1.5 font-mono text-[11px] whitespace-nowrap ${cls}`}>
+    <span class={`hidden @min-[430px]:flex items-center gap-1.5 font-mono text-[11px] whitespace-nowrap ${cls}`}>
       <span class="text-accent/70 w-7">{label}</span>
-      <span class="text-down/80 w-16 text-right">{fmtPrice(lo)}</span>
+      <span class="text-down/80 w-16 text-right hidden @min-[620px]:inline">{fmtPrice(lo)}</span>
       <span class="relative w-14 h-[3px] bg-line rounded-full shrink-0">
         <span
           class="absolute top-1/2 -translate-y-1/2 w-[3px] h-[7px] bg-accent-2 rounded-sm"
           style={{ left: `calc(${(pos * 100).toFixed(1)}% - 1.5px)` }}
         />
       </span>
-      <span class="text-up/80 w-16">{fmtPrice(hi)}</span>
+      <span class="text-up/80 w-16 hidden @min-[620px]:inline">{fmtPrice(hi)}</span>
     </span>
   )
 }
@@ -116,17 +116,17 @@ function TuiRow({ symbol, data, earnDays }) {
       class="block px-3 py-[3px] border-b border-line last:border-0 hover:bg-surface-3 hover:no-underline"
     >
       <div class="flex gap-4 min-w-0">
-        <div class="flex-1 min-w-0">
-          <div class="flex items-baseline gap-5 font-mono text-[13px] flex-wrap">
-            <span class="text-ink font-bold w-20">{symbol}</span>
-            <span class="text-ink font-semibold w-24 text-right">{q ? fmtPrice(q.price) : '—'}</span>
+        <div class="flex-1 min-w-0 overflow-hidden">
+          <div class="flex items-baseline gap-5 max-sm:gap-3 font-mono text-[13px] max-sm:text-[12px] flex-nowrap min-w-0">
+            <span class="text-ink font-bold w-20 max-sm:w-14 shrink-0">{symbol}</span>
+            <span class="text-ink font-semibold w-24 max-sm:w-20 text-right shrink-0">{q ? fmtPrice(q.price) : '—'}</span>
             {q && (
               <span class={`${up ? 'text-up' : 'text-down'} whitespace-nowrap`}>
                 {up ? '▲' : '▼'} {fmtChange(Math.abs(q.change)).replace('+', '')} <span class="font-normal text-[11px]">({fmtPct(q.pct)})</span>
               </span>
             )}
             {q?.extLabel && q.extPrice != null && (
-              <span class="whitespace-nowrap text-[12px]">
+              <span class="whitespace-nowrap text-[12px] hidden @min-[780px]:inline">
                 <span class="text-[#c084fc]">{q.extLabel}</span>{' '}
                 <span class="text-ink-2">{fmtPrice(q.extPrice)}</span>{' '}
                 <span class={extUp ? 'text-up' : 'text-down'}>
@@ -136,18 +136,18 @@ function TuiRow({ symbol, data, earnDays }) {
             )}
           </div>
           {/* Phone width: badges scroll sideways instead of clipping mid-badge. */}
-          <div class="flex items-center gap-4 pt-[2px] pl-20 max-sm:pl-0 max-sm:overflow-x-auto no-scrollbar">
-            <Histo bars={data?.histo} width={150} height={24} />
+          <div class="flex items-center gap-4 pt-[2px] pl-20 max-sm:pl-0 min-w-0 @min-[430px]:overflow-hidden max-sm:overflow-x-auto no-scrollbar">
+            <span class="hidden @min-[820px]:inline"><Histo bars={data?.histo} width={150} height={24} /></span>
             <Badges tech={data?.tech} earnDays={earnDays} />
           </div>
         </div>
         {/* Meters live in their own fixed column so DAY and 52W align by
             construction — sharing the text rows made them wrap and overflow
             once the row ran out of width (Jeff 2026-08-03). */}
-        <div class="hidden lg:flex shrink-0 flex-col justify-center gap-1 font-mono text-[11px]">
+        <div class="hidden @min-[430px]:flex shrink-0 flex-col justify-center gap-1 font-mono text-[11px]">
           <span class="flex items-baseline gap-2.5">
             <RangeBar label="DAY" lo={q?.dayLow} hi={q?.dayHigh} v={q?.price} />
-            <span class="w-[4.5rem] text-right">
+            <span class="w-[4.5rem] text-right hidden @min-[800px]:inline">
               {q?.volume != null && (
                 <>
                   <span class="text-accent/70">VOL</span>{' '}
@@ -160,7 +160,7 @@ function TuiRow({ symbol, data, earnDays }) {
             {data?.tech && (
               <RangeBar label="52W" lo={data.tech.low52} hi={data.tech.high52} v={q?.price} />
             )}
-            <span class="w-[4.5rem]" />
+            <span class="w-[4.5rem] hidden @min-[800px]:inline" />
           </span>
         </div>
       </div>
@@ -494,7 +494,7 @@ export function Dashboard() {
           1024 keeps it alive through two more notches (115%, 125%) on a 1376px
           CSS viewport before genuinely running out of room. */}
       <div class="grid gap-2 lg:grid-cols-[1fr_230px] min-w-0">
-        <section class="bg-surface-1 border border-line rounded-xl overflow-hidden min-w-0">
+        <section class="@container bg-surface-1 border border-line rounded-xl overflow-hidden min-w-0">
           {ordered.map((g, gi) => {
             const folded = isCollapsed(g.name, groupPrefs)
             return (
