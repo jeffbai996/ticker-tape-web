@@ -2,13 +2,13 @@
   "name": "ticker-tape",
   "short_name": "ticker-tape",
   "description": "Bloomberg-style live market dashboard",
-  "start_url": "/ticker-tape-web/",
-  "scope": "/ticker-tape-web/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#050609",
   "theme_color": "#050609",
   "icons": [
-    { "src": "/ticker-tape-web/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
-    { "src": "/ticker-tape-web/apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" }
+    { "src": "./favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "./apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" }
   ]
 }
