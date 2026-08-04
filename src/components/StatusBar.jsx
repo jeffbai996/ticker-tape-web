@@ -105,7 +105,7 @@ function RollingClock() {
   return (
     <button
       onClick={cycle}
-      class="flex items-baseline gap-1 whitespace-nowrap font-anth group"
+      class="flex items-baseline gap-1 whitespace-nowrap font-anth group px-1.5 py-0.5 rounded hover:bg-accent-soft hover:outline hover:outline-1 hover:outline-accent/50"
       title="cycle timezone (ET → HKT → PT)"
     >
       <span ref={el} class="inline-flex items-baseline text-accent font-semibold text-[12px]" />
