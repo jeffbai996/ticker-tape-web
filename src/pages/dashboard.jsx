@@ -14,8 +14,11 @@ import {
   getGroupPrefs, isCollapsed, moveGroup, onGroupsChange, orderGroups,
   toggleCollapsed,
 } from '../lib/catgroups.js'
+import { watch, isWatched } from '../lib/watchlist.js'
+import { loadUserGroups, onUserGroupsChange } from '../lib/usergroups.js'
 import { fmtPrice, fmtPriceBare, fmtPct, fmtChange, fmtVol, rangePos } from '../lib/format.js'
 import { Histo } from '../components/Histo.jsx'
+import { Marquee } from '../components/Marquee.jsx'
 import { FlashPrice } from '../components/Fig.jsx'
 import { tl } from '../lib/i18n.js'
 
@@ -112,19 +115,29 @@ function TuiRow({ symbol, data, earnDays }) {
     <a
       href={`#/research/${symbol.toLowerCase()}`}
       class="block px-3 py-[3px] border-b border-line last:border-0 hover:bg-white/[0.035] hover:no-underline"
+      title={q?.name ? `${symbol} — ${q.name}` : symbol}
     >
       <div class="flex gap-4 min-w-0">
         <div class="flex-1 min-w-0 overflow-hidden">
           <div class="flex items-baseline gap-2.5 max-sm:gap-2 font-mono text-[13px] max-sm:text-[12px] flex-nowrap min-w-0">
             <span class="text-ink font-bold font-tick text-[12px] w-14 max-sm:w-12 shrink-0">{symbol}</span>
+            {/* CLI parity: `[bold]{sym}[/][dim]{name}[/]` — fixed width so the
+                price column stays aligned, and it only appears once the row is
+                wide enough to spend 120px on it. Hover title carries it at any
+                width (Jeff 2026-08-04). */}
+            <Marquee text={q?.name || ''} title={q?.name ? `${symbol} — ${q.name}` : symbol}
+              class="hidden @min-[820px]:inline-block w-[120px] shrink-0 text-[10.5px] text-muted font-normal font-anth" />
             <span class="text-ink font-semibold w-20 max-sm:w-[4.5rem] text-right shrink-0">{q ? fmtPrice(q.price) : '—'}</span>
             {q && (
               <span class={`${up ? 'text-up' : 'text-down'} whitespace-nowrap w-[8.5rem] max-sm:w-auto shrink-0`}>
-                {up ? '▲' : '▼'} {fmtChange(Math.abs(q.change)).replace('+', '')} <span class="font-normal text-[11px]">({fmtPct(q.pct)})</span>
+                {up ? '▲' : '▼'} {fmtChange(Math.abs(q.change)).replace('+', '')} <span class="font-normal text-[11px] max-sm:text-[10px]">({fmtPct(q.pct)})</span>
               </span>
             )}
+            {/* extended hours reads a tier below the regular quote — on a
+                phone it was the same size as the print and clipped off the
+                right edge (Jeff 2026-08-04) */}
             {q?.extLabel && q.extPrice != null && (
-              <span class="whitespace-nowrap text-[12px] w-28 max-sm:w-auto shrink-0">
+              <span class="whitespace-nowrap text-[12px] max-sm:text-[10px] w-28 max-sm:w-auto shrink-0 max-sm:ml-auto">
                 <span class="text-[#c084fc]">{q.extLabel}</span>{' '}
                 <span class="text-ink-2"><FlashPrice price={q.extPrice} fmt={fmtPriceBare} /></span>{' '}
                 <span class={extUp ? 'text-up' : 'text-down'}>
@@ -254,7 +267,7 @@ function MacroCalPanel() {
   )
 }
 
-function EarningsPanel({ symbols, days }) {
+function EarningsPanel({ symbols, days, quotes = {} }) {
   const upcoming = symbols
     .filter((s) => days[s] != null)
     .map((s) => ({ symbol: s, d: days[s] }))
@@ -268,14 +281,22 @@ function EarningsPanel({ symbols, days }) {
       </header>
       <div class="overflow-y-auto min-h-0">
       <div class="py-1">
-        {upcoming.map(({ symbol, d }) => (
-          <a key={symbol} href={`#/research/${symbol.toLowerCase()}/earnings`}
-            class="flex justify-between px-3 py-[2px] font-mono text-[11px] hover:bg-surface-3 hover:no-underline">
-            <span class="text-ink font-bold">{symbol}</span>
-            <span class={d <= 0 ? 'text-imminent font-bold'
-              : d <= 7 ? 'text-down' : d <= 21 ? 'text-accent' : 'text-ink-2'}>{d}d</span>
-          </a>
-        ))}
+        {upcoming.map(({ symbol, d }) => {
+          // the quote feed already carries shortName — no extra fetch
+          const name = quotes[symbol]?.quote?.name || ''
+          return (
+            <a key={symbol} href={`#/research/${symbol.toLowerCase()}/earnings`}
+              class="flex items-baseline gap-2 px-3 py-[2px] font-mono text-[11px] hover:bg-surface-3 hover:no-underline"
+              title={name || symbol}>
+              <span class="text-ink font-bold shrink-0">{symbol}</span>
+              {/* company name, quiet — the CLI's `[dim]{name}[/]`, sliding into
+                  view on hover when the rail is too narrow to hold it */}
+              <Marquee text={name} class="flex-1 min-w-0 text-right text-[9.5px] text-muted" />
+              <span class={`shrink-0 ${d <= 0 ? 'text-imminent font-bold'
+                : d <= 7 ? 'text-down' : d <= 21 ? 'text-accent' : 'text-ink-2'}`}>{d}d</span>
+            </a>
+          )
+        })}
       </div>
     </div>
     </section>
@@ -415,12 +436,71 @@ function AddWidget() {
   )
 }
 
-/** Watchlist split into bucket groups (TUI's `── group ──` separators). */
+/** Add-to-watchlist control, pinned as the last row of the watchlist card.
+ *  The only affordances used to be the sidebar's 56px "+ SYM" input and the
+ *  command bar's `w SYM` — neither reads as a control, and the sidebar is
+ *  hidden entirely below 768px (Jeff 2026-08-04: "not very obvious where to
+ *  add tickers"). Mirrors AddWidget's dashed-button → inline-form idiom. */
+function AddSymbolRow() {
+  const [open, setOpen] = useState(false)
+  const [sym, setSym] = useState('')
+  const [err, setErr] = useState('')
+  const input = useRef(null)
+  useEffect(() => { if (open) input.current?.focus() }, [open])
+  const close = () => { setOpen(false); setSym(''); setErr('') }
+  const submit = (e) => {
+    e.preventDefault()
+    const v = sym.trim().toUpperCase()
+    if (!v) return close()
+    if (watch(v)) return close()
+    // watch() returns null for invalid / duplicate / list-full — say which.
+    setErr(isWatched(v) ? `${v} ${tl('already on the list')}` : `${tl('not a symbol')}: ${v}`)
+  }
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        class="w-full border-t border-line px-3 py-2 text-left font-mono text-[11px] tracking-wider text-muted hover:text-accent hover:bg-white/[0.035]"
+      >
+        + {tl('add symbol')}
+      </button>
+    )
+  }
+  return (
+    <form onSubmit={submit} class="flex items-center gap-2 border-t border-line px-3 py-1.5">
+      <input
+        ref={input}
+        value={sym}
+        onInput={(e) => { setSym(e.currentTarget.value); setErr('') }}
+        onKeyDown={(e) => e.key === 'Escape' && close()}
+        placeholder="SYM"
+        class="w-24 bg-transparent border border-line rounded px-1.5 py-0.5 font-mono text-[11px] text-ink uppercase outline-none focus:border-accent placeholder:text-muted"
+      />
+      <button type="submit" class="font-mono text-[11px] px-2 py-0.5 rounded border border-line text-ink-2 hover:border-accent hover:text-accent">
+        {tl('add')}
+      </button>
+      <button type="button" onClick={close} class="font-mono text-[10px] text-muted hover:text-ink">
+        {tl('cancel')}
+      </button>
+      {err && <span class="font-mono text-[10px] text-down">{err}</span>}
+    </form>
+  )
+}
+
+/** Watchlist split into bucket groups (TUI's `── group ──` separators).
+ *  User groups (`group semis NVDA …` in the command bar) come first and claim
+ *  their symbols away from the built-in buckets. */
 function groupRows(watchlist) {
   const groups = []
   const seen = new Set()
+  for (const [name, syms] of Object.entries(loadUserGroups())) {
+    const inList = syms.filter((s) => watchlist.includes(s) && !seen.has(s))
+    if (!inList.length) continue
+    groups.push({ name, symbols: inList })
+    inList.forEach((s) => seen.add(s))
+  }
   for (const b of BUCKETS) {
-    const syms = b.symbols.filter((s) => watchlist.includes(s))
+    const syms = b.symbols.filter((s) => watchlist.includes(s) && !seen.has(s))
     if (!syms.length) continue
     groups.push({ name: b.name, symbols: syms })
     syms.forEach((s) => seen.add(s))
@@ -430,9 +510,9 @@ function groupRows(watchlist) {
   return groups
 }
 
-function RailWidget({ w, all, watchlist, earnDays }) {
+function RailWidget({ w, all, watchlist, earnDays, quotes }) {
   if (w.type === 'pulse') return <PulsePanel quotes={all} />
-  if (w.type === 'earnings') return <EarningsPanel symbols={watchlist} days={earnDays} />
+  if (w.type === 'earnings') return <EarningsPanel symbols={watchlist} days={earnDays} quotes={quotes} />
   if (w.type === 'calendar') return <MacroCalPanel />
   const title = w.type === 'movers' ? tl('Movers') : null
   return (
@@ -455,6 +535,8 @@ export function Dashboard() {
   const [widgets, setWidgets] = useState(getWidgets)
   const [groupPrefs, setGroupPrefs] = useState(getGroupPrefs)
   useEffect(() => onGroupsChange(setGroupPrefs), [])
+  const [, bumpGroups] = useState(0)
+  useEffect(() => onUserGroupsChange(() => bumpGroups((n) => n + 1)), [])
   const ordered = orderGroups(groupRows(watchlist), groupPrefs.order)
   const names = ordered.map((g) => g.name)
   useEffect(() => onWidgetsChange((w) => setWidgets([...w])), [])
@@ -473,8 +555,9 @@ export function Dashboard() {
 
   return (
     <div class="flex-1 p-3 select-text min-w-0">
-      {/* Thesis strip: bucket averages at a glance */}
-      <div class="flex items-baseline gap-x-4 gap-y-1 px-1 pb-2 font-mono text-[10px] flex-wrap">
+      {/* Thesis strip: bucket averages at a glance. On a phone it wrapped to
+          four lines of prime real estate — one swipeable line instead. */}
+      <div class="flex items-baseline gap-x-4 gap-y-1 px-1 pb-2 font-mono text-[10px] flex-wrap max-sm:flex-nowrap max-sm:overflow-x-auto no-scrollbar">
         {BUCKETS.map((b) => {
           const inList = b.symbols.filter((s) => watchlist.includes(s))
           const avg = bucketAvg(inList)
@@ -521,11 +604,12 @@ export function Dashboard() {
               </div>
             )
           })}
+          <AddSymbolRow />
         </section>
         <div class="flex flex-col gap-3 min-w-0">
           {widgets.map((w) => (
             <WidgetFrame key={w.id} id={w.id}>
-              <RailWidget w={w} all={all} watchlist={watchlist} earnDays={earnDays} />
+              <RailWidget w={w} all={all} watchlist={watchlist} earnDays={earnDays} quotes={quotes} />
             </WidgetFrame>
           ))}
           <AddWidget />
