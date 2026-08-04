@@ -271,7 +271,8 @@ function EarningsPanel({ symbols, days }) {
           <a key={symbol} href={`#/research/${symbol.toLowerCase()}/earnings`}
             class="flex justify-between px-3 py-[2px] font-mono text-[11px] hover:bg-surface-3 hover:no-underline">
             <span class="text-ink font-bold">{symbol}</span>
-            <span class={d <= 7 ? 'text-down' : d <= 21 ? 'text-accent' : 'text-ink-2'}>{d}d</span>
+            <span class={d <= 0 ? 'text-imminent font-bold'
+              : d <= 7 ? 'text-down' : d <= 21 ? 'text-accent' : 'text-ink-2'}>{d}d</span>
           </a>
         ))}
       </div>
