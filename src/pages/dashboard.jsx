@@ -288,10 +288,10 @@ function EarningsPanel({ symbols, days, quotes = {} }) {
             <a key={symbol} href={`#/research/${symbol.toLowerCase()}/earnings`}
               class="flex items-baseline gap-2 px-3 py-[2px] font-mono text-[11px] hover:bg-surface-3 hover:no-underline"
               title={name || symbol}>
-              <span class="text-ink font-bold shrink-0">{symbol}</span>
+              <span class="text-ink font-bold shrink-0 font-anth">{symbol}</span>
               {/* company name, quiet — the CLI's `[dim]{name}[/]`, sliding into
                   view on hover when the rail is too narrow to hold it */}
-              <Marquee text={name} class="flex-1 min-w-0 text-right text-[9.5px] text-muted" />
+              <Marquee text={name} class="flex-1 min-w-0 text-right text-[9px] text-muted font-anth font-light" />
               <span class={`shrink-0 ${d <= 0 ? 'text-imminent font-bold'
                 : d <= 7 ? 'text-down' : d <= 21 ? 'text-accent' : 'text-ink-2'}`}>{d}d</span>
             </a>
