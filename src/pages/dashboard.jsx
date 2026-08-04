@@ -115,7 +115,7 @@ function TuiRow({ symbol, data, earnDays }) {
       <div class="flex gap-4 min-w-0">
         <div class="flex-1 min-w-0 overflow-hidden">
           <div class="flex items-baseline gap-2.5 max-sm:gap-2 font-mono text-[13px] max-sm:text-[12px] flex-nowrap min-w-0">
-            <span class="text-ink font-bold w-14 max-sm:w-12 shrink-0">{symbol}</span>
+            <span class="text-ink font-bold font-tick w-14 max-sm:w-12 shrink-0">{symbol}</span>
             <span class="text-ink font-semibold w-20 max-sm:w-[4.5rem] text-right shrink-0">{q ? fmtPrice(q.price) : '—'}</span>
             {q && (
               <span class={`${up ? 'text-up' : 'text-down'} whitespace-nowrap w-[8.5rem] max-sm:w-auto shrink-0`}>
@@ -191,7 +191,7 @@ function PulsePanel({ quotes }) {
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
       <header class="px-3 py-1.5 border-b border-line-2 bg-surface-2">
-        <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Pulse')}</h2>
+        <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Pulse')}</h2>
       </header>
       <div class="py-1">
         <PulseRow label="A/D" value={`${s.adv} / ${s.dec}`} cls={s.adv >= s.dec ? 'text-up' : 'text-down'} />
@@ -228,7 +228,7 @@ function MacroCalPanel() {
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
       <header class="px-3 py-1.5 border-b border-line-2 bg-surface-2">
-        <a href="#/markets/calendar" class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase hover:no-underline">
+        <a href="#/markets/calendar" class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase hover:no-underline">
           {tl('Calendar')}
         </a>
       </header>
@@ -257,7 +257,7 @@ function EarningsPanel({ symbols, days }) {
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
       <header class="px-3 py-1.5 border-b border-line-2 bg-surface-2">
-        <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Earnings')}</h2>
+        <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Earnings')}</h2>
       </header>
       <div class="py-1">
         {upcoming.map(({ symbol, d }) => (
@@ -429,7 +429,7 @@ function RailWidget({ w, all, watchlist, earnDays }) {
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
       {title && (
         <header class="px-3 py-1.5 border-b border-line-2 bg-surface-2">
-          <h2 class="font-mono font-bold text-[11px] tracking-wider text-accent uppercase">{title}</h2>
+          <h2 class="font-tick font-bold text-[11px] tracking-wider text-accent uppercase">{title}</h2>
         </header>
       )}
       {w.type === 'movers' && <MoversPanel quotes={all} />}
