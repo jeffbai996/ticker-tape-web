@@ -132,21 +132,16 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* price tick flash — green/red box pulse on change (inset shadow: no layout
-   shift), the activity signal every trading front-end uses */
-.px-flash-up { --flash: 63, 185, 80; }
-.px-flash-down { --flash: 248, 81, 73; }
+/* tick flash — inverse video on the digits that changed: solid block,
+   one hard blink, snap off. no rounding, no fade — terminal shit. */
 .px-flash-up, .px-flash-down {
-  border-radius: 3px;
-  animation: px-flash 0.9s ease-out;
+  color: #000;
+  animation: px-blink 0.7s linear;
 }
-@keyframes px-flash {
-  0% {
-    box-shadow: inset 0 0 0 1px rgba(var(--flash), 0.9);
-    background: rgba(var(--flash), 0.16);
-  }
-  100% {
-    box-shadow: inset 0 0 0 1px rgba(var(--flash), 0);
-    background: transparent;
-  }
+.px-flash-up { background: #3fb950; }
+.px-flash-down { background: #f85149; }
+@keyframes px-blink {
+  0%, 45% { opacity: 1; }
+  46%, 55% { opacity: 0; }
+  56%, 100% { opacity: 1; }
 }

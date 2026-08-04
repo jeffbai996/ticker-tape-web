@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'preact/hooks'
+import { useEffect, useState } from 'preact/hooks'
 import { track, subscribe, getCached } from './lib/feed.js'
 import {
   loadAlerts, onAlertsChange, markTriggered, conditionText,
@@ -144,21 +144,3 @@ export function useAlertEngine() {
   return { toasts, dismiss }
 }
 
-
-// Uptick/downtick flash: returns a class that pulses a green/red box around
-// a price for ~a second after it changes — the classic terminal tick signal.
-export function usePriceFlash(price) {
-  const prev = useRef(price)
-  const [dir, setDir] = useState(null)
-  useEffect(() => {
-    if (price == null || prev.current == null || price === prev.current) {
-      prev.current = price
-      return
-    }
-    setDir(price > prev.current ? 'up' : 'down')
-    prev.current = price
-    const t = setTimeout(() => setDir(null), 900)
-    return () => clearTimeout(t)
-  }, [price])
-  return dir ? `px-flash-${dir}` : ''
-}
