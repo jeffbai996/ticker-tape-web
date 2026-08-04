@@ -132,7 +132,7 @@ const LABELS = {
   '+ Add alert': '+ 添加提醒', 'Alert triggered': '提醒触发',
   'SMA cross': 'SMA交叉', Volume: '成交量',
   // Buckets
-  'Mega Tech': '大型科技', 'Semis & AI': '半导体与AI', 'Software & Media': '软件与媒体',
+  'Megacaps': '大型科技', 'Semis & AI': '半导体与AI', 'Software & Media': '软件与媒体',
   'Old Economy': '传统经济', 'ETFs & Macro': 'ETF与宏观',
   // Market groups
   'US Equity': '美国股指', 'US Futures': '美股期货', Europe: '欧洲',

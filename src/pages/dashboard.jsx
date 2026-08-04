@@ -11,7 +11,11 @@ import { fetchHistory } from '../lib/history.js'
 import {
   getWidgets, addWidget, removeWidget, moveWidget, onWidgetsChange, WIDGET_TYPES,
 } from '../lib/widgets.js'
-import { fmtPrice, fmtPct, fmtChange, fmtVol, fmtBig, rangePos } from '../lib/format.js'
+import {
+  getGroupPrefs, isCollapsed, moveGroup, onGroupsChange, orderGroups,
+  toggleCollapsed,
+} from '../lib/catgroups.js'
+import { fmtPrice, fmtPct, fmtChange, fmtVol, rangePos } from '../lib/format.js'
 import { Histo } from '../components/Histo.jsx'
 import { tl } from '../lib/i18n.js'
 
@@ -57,7 +61,7 @@ function Badges({ tech, earnDays }) {
       <span class={above ? 'text-up' : 'text-down'}>{above ? '>' : '<'}{n}</span>
     )
   return (
-    <div class="flex items-baseline gap-2.5 font-mono text-[10px] whitespace-nowrap">
+    <div class="flex items-baseline gap-2.5 font-mono text-[11px] whitespace-nowrap">
       <span class={rsiCls}>{r != null ? `R${Math.round(r)}` : ''}</span>
       {earnDays != null && <span class="text-accent">{earnDays}d</span>}
       {smaBadge(tech.above50, 50)}
@@ -87,10 +91,10 @@ function RangeBar({ label, lo, hi, v, cls = '' }) {
   const pos = rangePos(lo, hi, v)
   if (pos == null) return null
   return (
-    <span class={`hidden lg:flex items-center gap-1.5 font-mono text-[10px] whitespace-nowrap ${cls}`}>
+    <span class={`hidden lg:flex items-center gap-1.5 font-mono text-[11px] whitespace-nowrap ${cls}`}>
       <span class="text-accent/70">{label}</span>
       <span class="text-down/80">{fmtPrice(lo)}</span>
-      <span class="relative w-14 h-[3px] bg-line rounded-full shrink-0">
+      <span class="relative w-16 h-[3px] bg-line rounded-full shrink-0">
         <span
           class="absolute top-1/2 -translate-y-1/2 w-[3px] h-[7px] bg-accent-2 rounded-sm"
           style={{ left: `calc(${(pos * 100).toFixed(1)}% - 1.5px)` }}
@@ -116,26 +120,22 @@ function TuiRow({ symbol, data, earnDays }) {
   const q = data?.quote
   const up = (q?.pct ?? 0) >= 0
   const extUp = (q?.extPct ?? 0) >= 0
-  // today's range as a % of the prior close — one number for "is this thing
-  // actually moving today", which the high/low pair alone doesn't say
-  const rngPct = q?.dayHigh != null && q?.dayLow != null && q?.prevClose
-    ? ((q.dayHigh - q.dayLow) / q.prevClose) * 100 : null
   const heavy = (data?.tech?.volRatio ?? 0) >= 1.5
   return (
     <a
       href={`#/research/${symbol.toLowerCase()}`}
       class="block px-3 py-[3px] border-b border-line last:border-0 hover:bg-surface-2 hover:no-underline"
     >
-      <div class="flex items-baseline gap-3 font-mono text-[12px] flex-wrap">
-        <span class="text-ink font-bold w-16">{symbol}</span>
-        <span class="text-ink w-20 text-right">{q ? fmtPrice(q.price) : '—'}</span>
+      <div class="flex items-baseline gap-5 font-mono text-[13px] flex-wrap">
+        <span class="text-ink font-bold w-20">{symbol}</span>
+        <span class="text-ink font-semibold w-24 text-right">{q ? fmtPrice(q.price) : '—'}</span>
         {q && (
           <span class={`${up ? 'text-up' : 'text-down'} whitespace-nowrap`}>
-            {up ? '▲' : '▼'} {fmtChange(Math.abs(q.change)).replace('+', '')} <span class="font-normal text-[10px]">({fmtPct(q.pct)})</span>
+            {up ? '▲' : '▼'} {fmtChange(Math.abs(q.change)).replace('+', '')} <span class="font-normal text-[11px]">({fmtPct(q.pct)})</span>
           </span>
         )}
         {q?.extLabel && q.extPrice != null && (
-          <span class="whitespace-nowrap text-[11px]">
+          <span class="whitespace-nowrap text-[12px]">
             <span class="text-[#c084fc]">{q.extLabel}</span>{' '}
             <span class="text-ink-2">{fmtPrice(q.extPrice)}</span>{' '}
             <span class={extUp ? 'text-up' : 'text-down'}>
@@ -144,18 +144,9 @@ function TuiRow({ symbol, data, earnDays }) {
           </span>
         )}
         {q && (
-          <span class="ml-auto flex items-baseline gap-4 font-mono text-[10px]">
+          <span class="ml-auto flex items-baseline gap-2.5 font-mono text-[11px]">
             {q.prevClose != null && (
               <span class="hidden lg:inline"><Cell label="PREV">{fmtPrice(q.prevClose)}</Cell></span>
-            )}
-            {rngPct != null && (
-              <span class="hidden xl:inline whitespace-nowrap">
-                <span class="text-accent/70">RNG</span>{' '}
-                <span class={rngPct >= 3 ? 'text-accent' : 'text-ink'}>{rngPct.toFixed(1)}%</span>
-              </span>
-            )}
-            {q.volume != null && q.price != null && (
-              <span class="hidden xl:inline"><Cell label="$VOL">{fmtBig(q.volume * q.price)}</Cell></span>
             )}
             <RangeBar label="DAY" lo={q.dayLow} hi={q.dayHigh} v={q.price} />
             {q.volume != null && (
@@ -168,8 +159,8 @@ function TuiRow({ symbol, data, earnDays }) {
         )}
       </div>
       {/* Phone width: badges scroll sideways instead of clipping mid-badge. */}
-      <div class="flex items-center gap-3 pt-[2px] pl-16 max-sm:pl-0 max-sm:overflow-x-auto no-scrollbar">
-        <Histo bars={data?.histo} />
+      <div class="flex items-center gap-4 pt-[2px] pl-20 max-sm:pl-0 max-sm:overflow-x-auto no-scrollbar">
+        <Histo bars={data?.histo} width={150} height={24} />
         <Badges tech={data?.tech} earnDays={earnDays} />
         {data?.tech && (
           <RangeBar label="52W" lo={data.tech.low52} hi={data.tech.high52} v={q?.price} cls="ml-auto" />
@@ -449,6 +440,10 @@ export function Dashboard() {
   const quotes = useQuotes(watchlist)
   const earnDays = useEarningsDays(watchlist)
   const [widgets, setWidgets] = useState(getWidgets)
+  const [groupPrefs, setGroupPrefs] = useState(getGroupPrefs)
+  useEffect(() => onGroupsChange(setGroupPrefs), [])
+  const ordered = orderGroups(groupRows(watchlist), groupPrefs.order)
+  const names = ordered.map((g) => g.name)
   useEffect(() => onWidgetsChange((w) => setWidgets([...w])), [])
 
   // 10s tick keeps the "updated" line and stale banner honest between fetches.
@@ -502,16 +497,34 @@ export function Dashboard() {
           CSS viewport before genuinely running out of room. */}
       <div class="grid gap-2 lg:grid-cols-[1fr_230px] min-w-0">
         <section class="bg-surface-1 border border-line rounded-xl overflow-hidden min-w-0">
-          {groupRows(watchlist).map((g) => (
-            <div key={g.name}>
-              <div class="px-3 pt-1.5 pb-0.5 font-mono text-[10px] text-muted tracking-wider border-b border-line">
-                ── {tl(g.name)} ──
+          {ordered.map((g) => {
+            const folded = isCollapsed(g.name, groupPrefs)
+            return (
+              <div key={g.name}>
+                <div class="group flex items-center gap-2 px-3 pt-1.5 pb-0.5 font-mono text-[11px] text-muted tracking-wider border-b border-line select-none">
+                  <button onClick={() => toggleCollapsed(g.name)}
+                          class="flex items-baseline gap-2 hover:text-ink"
+                          title={folded ? 'expand' : 'collapse'}>
+                    ── {tl(g.name)} ──
+                    {folded && (
+                      <span class="text-[9px] text-ink-2 border border-line rounded-full px-1.5 py-px leading-none tracking-normal">
+                        {g.symbols.length}
+                      </span>
+                    )}
+                  </button>
+                  <span class="ml-auto hidden group-hover:flex gap-0.5">
+                    <button onClick={() => moveGroup(g.name, -1, names)}
+                            class="text-[10px] text-muted hover:text-ink px-1" title="move up">↑</button>
+                    <button onClick={() => moveGroup(g.name, 1, names)}
+                            class="text-[10px] text-muted hover:text-ink px-1" title="move down">↓</button>
+                  </span>
+                </div>
+                {!folded && g.symbols.map((s) => (
+                  <TuiRow key={s} symbol={s} data={quotes[s]} earnDays={earnDays[s]} />
+                ))}
               </div>
-              {g.symbols.map((s) => (
-                <TuiRow key={s} symbol={s} data={quotes[s]} earnDays={earnDays[s]} />
-              ))}
-            </div>
-          ))}
+            )
+          })}
         </section>
         <div class="flex flex-col gap-3 min-w-0">
           {widgets.map((w) => (
