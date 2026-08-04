@@ -1,19 +1,19 @@
 import { useState } from 'preact/hooks'
 import { NAV, hrefFor } from '../lib/route.js'
 import { tl } from '../lib/i18n.js'
-import { usePriceFlash, useQuotes, useWatchlist } from '../hooks.js'
+import { useQuotes, useWatchlist } from '../hooks.js'
+import { FlashPrice } from './Fig.jsx'
 import { watch, unwatch } from '../lib/watchlist.js'
 import { fmtPrice, fmtPct } from '../lib/format.js'
 
 function WatchRow({ symbol, q }) {
   const up = (q?.pct ?? 0) >= 0
-  const flash = usePriceFlash(q?.price)
   return (
     <div class="group flex items-baseline px-3 py-[3px] font-mono text-[11px] hover:bg-accent-soft">
       <a href={`#/research/${symbol.toLowerCase()}`} class="text-ink font-bold w-14 hover:no-underline">
         {symbol}
       </a>
-      <span class={`text-ink-2 font-medium ml-auto px-1 -mx-1 ${flash}`}>{q ? fmtPrice(q.price) : '—'}</span>
+      <span class="text-ink-2 font-medium ml-auto">{q ? <FlashPrice price={q.price} fmt={fmtPrice} /> : '—'}</span>
       <span class={`w-16 text-right font-semibold ${q ? (up ? 'text-up' : 'text-down') : 'text-muted'}`}>
         {q ? fmtPct(q.pct) : ''}
       </span>
