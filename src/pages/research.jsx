@@ -1388,7 +1388,7 @@ export function Research({ route }) {
                   : 'border-line text-muted hover:text-ink hover:bg-surface-2'
               }`}
             >
-              {r.key}
+              {r.key.toLowerCase()}
             </button>
           ))}
         </div>
