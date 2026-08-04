@@ -132,16 +132,8 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* tick flash — inverse video on the digits that changed: solid block,
-   one hard blink, snap off. no rounding, no fade — terminal shit. */
-.px-flash-up, .px-flash-down {
-  color: #000;
-  animation: px-blink 0.7s linear;
-}
-.px-flash-up { background: #3fb950; }
-.px-flash-down { background: #f85149; }
-@keyframes px-blink {
-  0%, 45% { opacity: 1; }
-  46%, 55% { opacity: 0; }
-  56%, 100% { opacity: 1; }
-}
+/* tick flash — inverse video on the digits that changed. bright 8-bit block,
+   on for one second, then gone. no blink, no fade, no rounding. */
+.px-flash-up, .px-flash-down { color: #000; }
+.px-flash-up { background: #00ff55; }
+.px-flash-down { background: #ff2222; }
