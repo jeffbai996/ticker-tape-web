@@ -55,7 +55,7 @@ function SymbolInput({ value, onChange }) {
       />
       <button
         type="submit"
-        class="bg-accent text-surface-0 font-mono font-bold text-[11px] px-3 rounded-lg hover:opacity-90"
+        class="bg-accent text-surface-0 font-mono font-bold text-[11px] px-3 rounded-lg hover:brightness-110"
       >
         RUN
       </button>
