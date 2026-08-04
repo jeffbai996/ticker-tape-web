@@ -223,7 +223,7 @@ export function Wire() {
       setState('demo')
       setEvents(demoBackfill())
       setToday(demoToday())
-      setWatchset(new Set(['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 'TSLA']))
+      setWatchset(new Set(['AAPL', 'MSFT', 'NVDA', 'GOOG', 'AMZN', 'TSLA']))
       let nextId = 41
       const timer = setInterval(() => {
         const ev = demoEvent(nextId++, Date.now() / 1000)

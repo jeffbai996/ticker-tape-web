@@ -3,7 +3,7 @@
 // a leak surface. Nothing here may reference a real portfolio.
 
 export const WATCHLIST = [
-  'AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 'META', 'TSLA',
+  'AAPL', 'MSFT', 'NVDA', 'GOOG', 'AMZN', 'META', 'TSLA',
   'AMD', 'INTC', 'TSM', 'PLTR', 'CRM', 'ORCL', 'NFLX', 'UBER', 'DIS',
   'JPM', 'V', 'BAC', 'GS', 'BRK-B', 'COIN',
   'LLY', 'UNH', 'JNJ', 'PG', 'KO', 'MCD', 'WMT',
@@ -12,7 +12,7 @@ export const WATCHLIST = [
 ]
 
 export const BUCKETS = [
-  { name: 'Megacaps', symbols: ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'TSLA'] },
+  { name: 'Megacaps', symbols: ['AAPL', 'MSFT', 'GOOG', 'AMZN', 'META', 'TSLA'] },
   { name: 'Semis & AI', symbols: ['NVDA', 'AMD', 'INTC', 'TSM', 'PLTR'] },
   { name: 'Software & Media', symbols: ['CRM', 'ORCL', 'NFLX', 'UBER', 'DIS'] },
   { name: 'Financials', symbols: ['JPM', 'V', 'BAC', 'GS', 'BRK-B', 'COIN'] },

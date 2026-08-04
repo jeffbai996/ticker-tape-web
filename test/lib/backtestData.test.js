@@ -7,7 +7,7 @@ describe('demoFillsCsv', () => {
     const fills = parseFillsCsv(demoFillsCsv())
     expect(fills.length).toBeGreaterThanOrEqual(6)
     expect(fills.length).toBeLessThanOrEqual(10)
-    const allowed = new Set(['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 'TSLA', 'SPY', 'QQQ'])
+    const allowed = new Set(['AAPL', 'MSFT', 'NVDA', 'GOOG', 'AMZN', 'TSLA', 'SPY', 'QQQ'])
     for (const f of fills) expect(allowed.has(f.symbol)).toBe(true)
   })
 

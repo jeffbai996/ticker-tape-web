@@ -31,7 +31,7 @@ export async function fetchEvents(base, { sinceId = 0, limit = 100 } = {}) {
 }
 
 // ── synthetic demo wire ── generic tickers only, obviously fake numbers.
-const DEMO_SYMBOLS = ['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 'TSLA']
+const DEMO_SYMBOLS = ['AAPL', 'MSFT', 'NVDA', 'GOOG', 'AMZN', 'TSLA']
 const DEMO_SHAPES = [
   { type: 'earnings_release', headline: (s) => `${s} reports results (8-K 2.02)` },
   { type: 'filing', headline: (s) => `${s} files 8-K - Current report` },
@@ -140,7 +140,7 @@ export function demoToday(now = Date.now() / 1000) {
 export function demoQuotes() {
   return {
     AAPL: { change_pct: 1.2 }, MSFT: { change_pct: -0.4 },
-    NVDA: { change_pct: 2.6 }, GOOGL: { change_pct: 0.9 },
+    NVDA: { change_pct: 2.6 }, GOOG: { change_pct: 0.9 },
     AMZN: { change_pct: -1.8 }, TSLA: { change_pct: 3.5 },
   }
 }
