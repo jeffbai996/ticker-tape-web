@@ -1,6 +1,7 @@
-import { useState } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
 import { streamChat } from '../lib/chatClient.js'
 import { wireUrl } from '../lib/wire.js'
+import { IS_PRIVATE_BUILD } from '../lib/nav.js'
 import { saveReport } from '../lib/archive.js'
 import { tl } from '../lib/i18n.js'
 
@@ -46,6 +47,17 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [copied, setCopied] = useState(false)
+  const bodyRef = useRef(null)
+
+  // While generating, the panel used to push the whole page down line by
+  // line — cap it and follow the tail inside its own scroller instead.
+  useEffect(() => {
+    if (busy) bodyRef.current?.scrollTo(0, bodyRef.current.scrollHeight)
+  }, [text, busy])
+
+  // Reports need a brain: the wire router on the private build (or a
+  // configured endpoint). The public keyless build hides the feature.
+  if (!IS_PRIVATE_BUILD && !wireUrl()) return null
 
   const generate = async () => {
     if (busy) return
@@ -130,7 +142,7 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
         </div>
       </header>
       {(text || error) && (
-        <div class="px-3 py-2 text-[13px] leading-relaxed select-text text-ink-2">
+        <div ref={bodyRef} class="px-3 py-2 text-[13px] leading-relaxed select-text text-ink-2 max-h-[45vh] overflow-y-auto">
           {error ? <span class="font-mono text-[11px] text-down">{error}</span> : <MdLite text={text} />}
           {busy && <span class="text-accent">▌</span>}
         </div>
