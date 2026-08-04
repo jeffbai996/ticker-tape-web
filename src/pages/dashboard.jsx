@@ -111,16 +111,16 @@ function TuiRow({ symbol, data, earnDays }) {
     >
       <div class="flex gap-4 min-w-0">
         <div class="flex-1 min-w-0 overflow-hidden">
-          <div class="flex items-baseline gap-5 max-sm:gap-3 font-mono text-[13px] max-sm:text-[12px] flex-nowrap min-w-0">
-            <span class="text-ink font-bold w-20 max-sm:w-14 shrink-0">{symbol}</span>
-            <span class="text-ink font-semibold w-24 max-sm:w-20 text-right shrink-0">{q ? fmtPrice(q.price) : '—'}</span>
+          <div class="flex items-baseline gap-3 max-sm:gap-2 font-mono text-[13px] max-sm:text-[12px] flex-nowrap min-w-0">
+            <span class="text-ink font-bold w-16 max-sm:w-14 shrink-0">{symbol}</span>
+            <span class="text-ink font-semibold w-[5.5rem] max-sm:w-20 text-right shrink-0">{q ? fmtPrice(q.price) : '—'}</span>
             {q && (
-              <span class={`${up ? 'text-up' : 'text-down'} whitespace-nowrap w-[9.5rem] max-sm:w-auto shrink-0`}>
+              <span class={`${up ? 'text-up' : 'text-down'} whitespace-nowrap w-[9rem] max-sm:w-auto shrink-0`}>
                 {up ? '▲' : '▼'} {fmtChange(Math.abs(q.change)).replace('+', '')} <span class="font-normal text-[11px]">({fmtPct(q.pct)})</span>
               </span>
             )}
             {q?.extLabel && q.extPrice != null && (
-              <span class="whitespace-nowrap text-[12px] hidden @min-[780px]:inline w-[8.5rem] shrink-0">
+              <span class="whitespace-nowrap text-[12px] hidden @min-[780px]:inline w-32 shrink-0">
                 <span class="text-[#c084fc]">{q.extLabel}</span>{' '}
                 <span class="text-ink-2">{fmtPrice(q.extPrice)}</span>{' '}
                 <span class={extUp ? 'text-up' : 'text-down'}>
@@ -130,7 +130,7 @@ function TuiRow({ symbol, data, earnDays }) {
             )}
           </div>
           {/* Phone width: badges scroll sideways instead of clipping mid-badge. */}
-          <div class="flex items-center gap-4 pt-[2px] pl-20 max-sm:pl-0 min-w-0 @min-[430px]:overflow-hidden max-sm:overflow-x-auto no-scrollbar">
+          <div class="flex items-center gap-4 pt-[2px] pl-[4.75rem] max-sm:pl-0 min-w-0 @min-[430px]:overflow-hidden max-sm:overflow-x-auto no-scrollbar">
             <Histo bars={data?.histo} width={150} height={24}
               class="w-[150px] @max-[900px]:w-[84px] @max-[640px]:w-[52px] @max-[430px]:w-[38px]" />
             <Badges tech={data?.tech} earnDays={earnDays} />
