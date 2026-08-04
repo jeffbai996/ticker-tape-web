@@ -51,7 +51,7 @@ export function Sidebar({ route }) {
   const quotes = useQuotes(watchlist)
 
   return (
-    <nav class="w-52 shrink-0 bg-surface-1 border-r border-line flex flex-col max-md:hidden min-h-0">
+    <nav class="w-52 shrink-0 bg-black border-r border-line flex flex-col max-md:hidden min-h-0">
       <div class="py-2">
         {NAV.map((section) => (
           <div key={section.id}>
@@ -103,15 +103,6 @@ export function Sidebar({ route }) {
         {watchlist.map((s) => (
           <WatchRow key={s} symbol={s} q={quotes[s]?.quote} />
         ))}
-      </div>
-
-      <div class="px-3 py-2 border-t border-line">
-        <a
-          href="https://github.com/jeffbai996/ticker-tape-web"
-          class="text-[10px] font-mono text-muted hover:text-ink-2"
-        >
-          source ↗
-        </a>
       </div>
     </nav>
   )
