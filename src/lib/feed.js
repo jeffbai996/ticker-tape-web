@@ -82,7 +82,10 @@ async function fetchSymbol(symbol) {
     const change = prev != null && price ? price - prev : 0
     quote = {
       symbol,
-      name: meta.shortName || meta.longName || '',
+      // longName first: Yahoo truncates shortName at 31 chars, so TSM read
+      // "Taiwan Semiconductor Manufactur" — a cut name no marquee can restore
+      // (Jeff 2026-08-04). Overflow is a display problem, solved by <Marquee>.
+      name: meta.longName || meta.shortName || '',
       price,
       change,
       pct: prev ? (change / prev) * 100 : 0,

@@ -10,7 +10,7 @@ const MODULES = 'summaryDetail,defaultKeyStatistics,financialData'
 const TTL = 60 * 60_000
 
 const FIELDS = {
-  summaryDetail: ['trailingPE', 'dividendYield', 'beta', 'marketCap', 'fiftyTwoWeekLow', 'fiftyTwoWeekHigh', 'volume', 'averageVolume', 'open', 'previousClose'],
+  summaryDetail: ['trailingPE', 'dividendYield', 'dividendRate', 'exDividendDate', 'payoutRatio', 'beta', 'marketCap', 'fiftyTwoWeekLow', 'fiftyTwoWeekHigh', 'volume', 'averageVolume', 'open', 'previousClose'],
   defaultKeyStatistics: ['forwardPE', 'pegRatio', 'enterpriseToEbitda', 'shortPercentOfFloat', 'priceToBook', 'enterpriseValue', 'sharesOutstanding', 'floatShares'],
   financialData: [
     'grossMargins', 'operatingMargins', 'profitMargins', 'returnOnEquity',
