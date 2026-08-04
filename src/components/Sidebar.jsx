@@ -1,10 +1,11 @@
-import { useState } from 'preact/hooks'
+import { useEffect, useState } from 'preact/hooks'
 import { NAV, hrefFor } from '../lib/route.js'
 import { tl } from '../lib/i18n.js'
 import { useQuotes, useWatchlist } from '../hooks.js'
 import { FlashPrice } from './Fig.jsx'
 import { watch, unwatch } from '../lib/watchlist.js'
 import { fmtPrice, fmtPct } from '../lib/format.js'
+import { lastGoodTs } from '../lib/feed.js'
 
 function WatchRow({ symbol, q }) {
   const up = (q?.pct ?? 0) >= 0
@@ -46,13 +47,40 @@ function AddSymbol() {
   )
 }
 
+/** Feed freshness, in the TUI's own words: amber italic, ET, stale warning. */
+function UpdatedLine() {
+  const [, tick] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => tick((n) => n + 1), 10_000)
+    return () => clearInterval(t)
+  }, [])
+  const good = lastGoodTs()
+  const staleMin = good ? Math.floor((Date.now() - good) / 60_000) : 0
+  const ts = good
+    ? new Date(good).toLocaleTimeString('en-US', { hour12: false, timeZone: 'America/New_York' })
+    : null
+  return (
+    <div class="px-3 pt-2 pb-1 font-mono text-[10px] leading-tight">
+      <div class="text-accent italic">
+        {ts ? `${tl('updated')} ${ts} ET` : '…'}
+      </div>
+      {staleMin >= 5 && (
+        <div class="text-down font-bold not-italic pt-0.5">
+          ⚠ {tl('STALE')} {staleMin < 60 ? `${staleMin}m` : `${Math.floor(staleMin / 60)}h`}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function Sidebar({ route }) {
   const watchlist = useWatchlist()
   const quotes = useQuotes(watchlist)
 
   return (
     <nav class="w-52 shrink-0 bg-black border-r border-line flex flex-col max-md:hidden min-h-0">
-      <div class="py-2">
+      <UpdatedLine />
+      <div class="pb-2">
         {NAV.map((section) => (
           <div key={section.id}>
             <a

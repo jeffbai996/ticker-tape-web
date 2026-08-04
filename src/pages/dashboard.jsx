@@ -6,7 +6,6 @@ import { pulseStats } from '../lib/pulse.js'
 import { fetchEarningsDate } from '../lib/fundamentals.js'
 import { ECON_EVENTS, upcomingEvents } from '../lib/markets.js'
 import { loadCatalysts, onCatalystsChange, mergedEvents } from '../lib/catalysts.js'
-import { lastGoodTs } from '../lib/feed.js'
 import { fetchHistory } from '../lib/history.js'
 import {
   getWidgets, addWidget, removeWidget, moveWidget, onWidgetsChange, WIDGET_TYPES,
@@ -111,16 +110,16 @@ function TuiRow({ symbol, data, earnDays }) {
     >
       <div class="flex gap-4 min-w-0">
         <div class="flex-1 min-w-0 overflow-hidden">
-          <div class="flex items-baseline gap-3 max-sm:gap-2 font-mono text-[13px] max-sm:text-[12px] flex-nowrap min-w-0">
-            <span class="text-ink font-bold w-16 max-sm:w-14 shrink-0">{symbol}</span>
-            <span class="text-ink font-semibold w-[5.5rem] max-sm:w-20 text-right shrink-0">{q ? fmtPrice(q.price) : '—'}</span>
+          <div class="flex items-baseline gap-2.5 max-sm:gap-2 font-mono text-[13px] max-sm:text-[12px] flex-nowrap min-w-0">
+            <span class="text-ink font-bold w-14 max-sm:w-12 shrink-0">{symbol}</span>
+            <span class="text-ink font-semibold w-20 max-sm:w-[4.5rem] text-right shrink-0">{q ? fmtPrice(q.price) : '—'}</span>
             {q && (
-              <span class={`${up ? 'text-up' : 'text-down'} whitespace-nowrap w-[9rem] max-sm:w-auto shrink-0`}>
+              <span class={`${up ? 'text-up' : 'text-down'} whitespace-nowrap w-[8.5rem] max-sm:w-auto shrink-0`}>
                 {up ? '▲' : '▼'} {fmtChange(Math.abs(q.change)).replace('+', '')} <span class="font-normal text-[11px]">({fmtPct(q.pct)})</span>
               </span>
             )}
             {q?.extLabel && q.extPrice != null && (
-              <span class="whitespace-nowrap text-[12px] hidden @min-[780px]:inline w-32 shrink-0">
+              <span class="whitespace-nowrap text-[12px] hidden @min-[780px]:inline w-28 shrink-0">
                 <span class="text-[#c084fc]">{q.extLabel}</span>{' '}
                 <span class="text-ink-2">{fmtPrice(q.extPrice)}</span>{' '}
                 <span class={extUp ? 'text-up' : 'text-down'}>
@@ -130,7 +129,7 @@ function TuiRow({ symbol, data, earnDays }) {
             )}
           </div>
           {/* Phone width: badges scroll sideways instead of clipping mid-badge. */}
-          <div class="flex items-center gap-4 pt-[2px] pl-[4.75rem] max-sm:pl-0 min-w-0 @min-[430px]:overflow-hidden max-sm:overflow-x-auto no-scrollbar">
+          <div class="flex items-center gap-4 pt-[2px] pl-[4.15rem] max-sm:pl-0 min-w-0 @min-[430px]:overflow-hidden max-sm:overflow-x-auto no-scrollbar">
             <Histo bars={data?.histo} width={150} height={24}
               class="w-[150px] @max-[900px]:w-[84px] @max-[640px]:w-[52px] @max-[430px]:w-[38px]" />
             <Badges tech={data?.tech} earnDays={earnDays} />
@@ -445,12 +444,6 @@ export function Dashboard() {
     const t = setInterval(() => tick((n) => n + 1), 10_000)
     return () => clearInterval(t)
   }, [])
-  const good = lastGoodTs()
-  const updated = good
-    ? new Date(good).toLocaleTimeString('en-US', { hour12: false, timeZone: 'America/New_York' })
-    : null
-  const staleMin = good ? Math.floor((Date.now() - good) / 60_000) : 0
-
   const all = watchlist.map((s) => quotes[s]?.quote).filter((q) => q?.pct != null)
   const bucketAvg = (symbols) => {
     const pcts = symbols.map((s) => quotes[s]?.quote?.pct).filter((p) => p != null)
@@ -472,17 +465,6 @@ export function Dashboard() {
             </span>
           )
         })}
-      </div>
-
-      <div class="flex items-baseline gap-3 px-1 pb-1 font-mono text-[10px]">
-        <span class="text-muted italic">
-          {updated ? `${tl('updated')} ${updated} ET` : '…'}
-        </span>
-        {staleMin >= 5 && (
-          <span class="text-down font-bold">
-            ⚠ {tl('STALE — last good fetch')} {staleMin < 60 ? `${staleMin}m` : `${Math.floor(staleMin / 60)}h`} {tl('ago')}
-          </span>
-        )}
       </div>
 
       {/* lg (1024px) not xl: the rail used to vanish one browser-zoom notch in.
