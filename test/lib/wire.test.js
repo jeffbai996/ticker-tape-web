@@ -26,7 +26,7 @@ describe('demo wire', () => {
     expect(evs).toHaveLength(24)
     const syms = new Set(evs.flatMap((e) => e.symbols))
     for (const s of syms) {
-      expect(['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 'TSLA']).toContain(s)
+      expect(['AAPL', 'MSFT', 'NVDA', 'GOOG', 'AMZN', 'TSLA']).toContain(s)
     }
     expect(evs.every((e) => e.demo)).toBe(true)
     // deterministic: same id + clock, same event

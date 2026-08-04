@@ -8,7 +8,7 @@ import { dailyReturns, pearson, normalize } from '../lib/stats.js'
 import { fmtPrice, fmtPct, fmtBig, fmtRatio, fmtFracPct } from '../lib/format.js'
 import { tl, t as tt } from '../lib/i18n.js'
 
-const DEFAULT_SYMBOLS = 'AAPL MSFT NVDA GOOGL AMZN SPY'
+const DEFAULT_SYMBOLS = 'AAPL MSFT NVDA GOOG AMZN SPY'
 const LINE_COLORS = ['#f59e0b', '#22d3ee', '#3fb950', '#f85149', '#a78bfa', '#ec4899', '#e7ecf3', '#79828d']
 
 function parseSymbols(raw) {
