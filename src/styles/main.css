@@ -88,6 +88,12 @@ body {
 .tape-scroll {
   animation: tape-scroll 60s linear infinite;
 }
+/* :hover never fires on a moving target — the browser only re-evaluates on
+   pointer move, so the belt must stop under the cursor for highlights (and
+   clicks) to land. */
+.tape-scroll:hover {
+  animation-play-state: paused;
+}
 @keyframes tape-scroll {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }

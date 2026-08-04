@@ -226,7 +226,7 @@ export function ChartSuite({ symbol }) {
   return (
     <div class="flex flex-col gap-1.5 select-none">
       <div class="flex flex-wrap items-center gap-1 px-1">
-        {Object.keys(RANGES).map((r) => chip(prefs.range === r, r, () => setP({ range: r })))}
+        {Object.keys(RANGES).map((r) => chip(prefs.range === r, r.toLowerCase(), () => setP({ range: r })))}
         <span class="w-2" />
         {['candles', 'line', 'area'].map((t) =>
           chip(prefs.type === t && !cmp, t.toUpperCase(), () => setP({ type: t })))}
