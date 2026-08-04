@@ -131,3 +131,22 @@ body {
   font-family: "Anthropic Sans", "Plus Jakarta Sans", system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
 }
+
+/* price tick flash — green/red box pulse on change (inset shadow: no layout
+   shift), the activity signal every trading front-end uses */
+.px-flash-up { --flash: 63, 185, 80; }
+.px-flash-down { --flash: 248, 81, 73; }
+.px-flash-up, .px-flash-down {
+  border-radius: 3px;
+  animation: px-flash 0.9s ease-out;
+}
+@keyframes px-flash {
+  0% {
+    box-shadow: inset 0 0 0 1px rgba(var(--flash), 0.9);
+    background: rgba(var(--flash), 0.16);
+  }
+  100% {
+    box-shadow: inset 0 0 0 1px rgba(var(--flash), 0);
+    background: transparent;
+  }
+}

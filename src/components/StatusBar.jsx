@@ -4,6 +4,7 @@ import { INDICES } from '../lib/symbols.js'
 import { marketState } from '../lib/marketState.js'
 import { useRef } from 'preact/hooks'
 import { paintRollingTime, CLOCK_ZONES } from '../lib/rollclock.js'
+import { usePriceFlash } from '../hooks.js'
 import { fmtPrice, fmtPct } from '../lib/format.js'
 import { tl, getLocale, setLocale } from '../lib/i18n.js'
 
@@ -79,6 +80,19 @@ function RollingClock() {
   )
 }
 
+function StripCell({ symbol, label, q }) {
+  const up = (q?.pct ?? 0) >= 0
+  const isVix = symbol === '^VIX'
+  const flash = usePriceFlash(q?.price)
+  return (
+    <span class="flex items-baseline gap-1.5 whitespace-nowrap">
+      <span class="text-muted/60">{tl(label)}</span>
+      <span class={`px-1 -mx-1 ${isVix ? vixClass(q?.price) : 'text-ink-2'} ${flash}`}>{q ? fmtPrice(q.price) : '—'}</span>
+      {q && !isVix && <span class={up ? 'text-up' : 'text-down'}>{fmtPct(q.pct)}</span>}
+    </span>
+  )
+}
+
 export function StatusBar() {
   const [now, setNow] = useState(() => new Date())
   const online = useOnline()
@@ -114,19 +128,10 @@ export function StatusBar() {
         {tl(chipLabel)}
       </span>
 
-      <div class="flex-1 flex items-center gap-4 overflow-x-auto min-w-0 no-scrollbar">
-        {strip.map(({ symbol, label }) => {
-          const q = quotes[symbol]?.quote
-          const up = (q?.pct ?? 0) >= 0
-          const isVix = symbol === '^VIX'
-          return (
-            <span key={symbol} class="flex items-baseline gap-1.5 whitespace-nowrap">
-              <span class="text-muted/60">{tl(label)}</span>
-              <span class={isVix ? vixClass(q?.price) : 'text-ink-2'}>{q ? fmtPrice(q.price) : '—'}</span>
-              {q && !isVix && <span class={up ? 'text-up' : 'text-down'}>{fmtPct(q.pct)}</span>}
-            </span>
-          )
-        })}
+      <div class="flex-1 flex items-center content-start gap-4 min-w-0 flex-wrap overflow-hidden max-h-[20px]">
+        {strip.map(({ symbol, label }) => (
+          <StripCell key={symbol} symbol={symbol} label={label} q={quotes[symbol]?.quote} />
+        ))}
       </div>
 
       <RollingClock />
