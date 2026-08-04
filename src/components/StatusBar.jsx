@@ -119,7 +119,7 @@ export function StatusBar() {
     : 'next session monday'
 
   return (
-    <header class="flex items-center gap-3 px-3 h-9 shrink-0 bg-surface-1 border-b border-line font-mono text-[11px] select-none">
+    <header class="flex items-center gap-3 px-3 h-9 shrink-0 bg-black border-b border-line font-mono text-[11px] select-none">
       <a href="#/" class="font-bold text-accent tracking-tight text-[13px] hover:no-underline hover:text-ink transition-colors">ticker-tape</a>
 
       <span

@@ -68,7 +68,7 @@ export function Tape() {
   usePointerHighlight(wrap)
 
   return (
-    <div ref={wrap} class="h-7 shrink-0 bg-surface-0 border-b border-line overflow-hidden relative">
+    <div ref={wrap} class="h-7 shrink-0 bg-black border-b border-line overflow-hidden relative">
       <div class="tape-scroll flex items-center h-full gap-6 w-max font-mono text-[11px] pr-6">
         {[...items, ...items].map(({ symbol, q }, i) => {
           const up = (q?.pct ?? 0) >= 0
