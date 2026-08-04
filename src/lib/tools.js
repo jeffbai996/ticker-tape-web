@@ -17,7 +17,8 @@ import { addAlert, conditionText } from './alerts.js'
 import { pulseStats } from './pulse.js'
 import { ECON_EVENTS } from './markets.js'
 import { loadCatalysts, addCatalyst, mergedEvents, CATALYST_TYPES } from './catalysts.js'
-import { addMemory, removeMemory } from './chatMemory.js'
+import { addMemory, editMemory, removeMemory } from './chatMemory.js'
+import { addJournalEntry, searchJournal, loadJournal } from './journal.js'
 
 const SYM_RE = /^[A-Za-z0-9.^=-]{1,12}$/
 const MAX_SYMBOLS = 15
@@ -342,12 +343,41 @@ export const TOOL_DEFS = [
     },
   },
   {
+    name: 'memory_edit',
+    description: 'Rewrite a persistent memory by id. ONLY when the user explicitly asks to update it.',
+    parameters: {
+      type: 'object',
+      properties: {
+        id: { type: 'number', description: 'Memory id' },
+        text: { type: 'string', description: 'The replacement text' },
+      },
+      required: ['id', 'text'],
+    },
+  },
+  {
     name: 'memory_delete',
     description: 'Delete a persistent memory by id. ONLY when the user explicitly asks to forget it.',
     parameters: {
       type: 'object',
       properties: { id: { type: 'number', description: 'Memory id' } },
       required: ['id'],
+    },
+  },
+  {
+    name: 'journal_add',
+    description: "Append an entry to the user's trade journal (their own decisions/rationale log). ONLY when the user asks to journal something.",
+    parameters: {
+      type: 'object',
+      properties: { text: { type: 'string', description: 'The journal entry' } },
+      required: ['text'],
+    },
+  },
+  {
+    name: 'journal_search',
+    description: 'Search the trade journal by text or ticker; empty query returns the most recent entries. Use when the user asks what they wrote or thought earlier.',
+    parameters: {
+      type: 'object',
+      properties: { query: { type: 'string', description: 'Search term or ticker; omit for recent' } },
     },
   },
   {
@@ -380,9 +410,23 @@ const EXECUTORS = {
     const m = addMemory(text)
     return m ? { ok: true, id: m.id } : { error: 'empty memory' }
   },
+  memory_edit: ({ id, text }) => (editMemory(id, text)
+    ? { ok: true, updated: id }
+    : { error: `no memory #${id} (or empty text)` }),
   memory_delete: ({ id }) => (removeMemory(id)
     ? { ok: true, deleted: id }
     : { error: `no memory #${id}` }),
+  journal_add: ({ text }) => {
+    const e = addJournalEntry(text)
+    return e ? { ok: true, id: e.id, symbols: e.symbols } : { error: 'empty entry' }
+  },
+  journal_search: ({ query }) => {
+    const hits = (query ? searchJournal(query) : loadJournal().slice(-8))
+      .slice(-8)
+      .map((e) => ({ id: e.id, date: new Date(e.ts).toISOString().slice(0, 10),
+                     symbols: e.symbols, text: e.text.slice(0, 400) }))
+    return { count: hits.length, entries: hits }
+  },
   navigate: navigateTool,
 }
 
@@ -400,7 +444,10 @@ const TOOL_VERBS = {
   get_calendar: 'calendar',
   add_catalyst: 'catalyst',
   memory_add: 'remember',
+  memory_edit: 'revise memory',
   memory_delete: 'forget',
+  journal_add: 'journal',
+  journal_search: 'journal search',
   navigate: 'open',
 }
 
