@@ -16,6 +16,7 @@ import {
 } from '../lib/catgroups.js'
 import { fmtPrice, fmtPct, fmtChange, fmtVol, rangePos } from '../lib/format.js'
 import { Histo } from '../components/Histo.jsx'
+import { FlashPrice } from '../components/Fig.jsx'
 import { tl } from '../lib/i18n.js'
 
 const DAY = 86_400_000
@@ -125,7 +126,7 @@ function TuiRow({ symbol, data, earnDays }) {
             {q?.extLabel && q.extPrice != null && (
               <span class="whitespace-nowrap text-[12px] w-28 max-sm:w-auto shrink-0">
                 <span class="text-[#c084fc]">{q.extLabel}</span>{' '}
-                <span class="text-ink-2">{fmtPrice(q.extPrice)}</span>{' '}
+                <span class="text-ink-2"><FlashPrice price={q.extPrice} fmt={fmtPrice} /></span>{' '}
                 <span class={extUp ? 'text-up' : 'text-down'}>
                   {extUp ? '▲' : '▼'}{Math.abs(q.extPct ?? 0).toFixed(1)}%
                 </span>

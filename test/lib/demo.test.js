@@ -16,7 +16,7 @@ const POS = [
 
 describe('demo book invariants', () => {
   it('uses only generic sanctioned symbols', () => {
-    const allowed = new Set(['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 'META', 'TSLA', 'AMD',
+    const allowed = new Set(['AAPL', 'MSFT', 'NVDA', 'GOOG', 'AMZN', 'META', 'TSLA', 'AMD',
       'INTC', 'TSM', 'CRM', 'ORCL', 'NFLX', 'JPM', 'V', 'LLY', 'XOM', 'WMT', 'SPY', 'QQQ',
       'IWM', 'GLD', 'TLT'])
     for (const p of DEMO_POSITIONS) expect(allowed.has(p.symbol)).toBe(true)
