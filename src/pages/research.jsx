@@ -1005,13 +1005,12 @@ function SymbolWireView({ symbol }) {
 
 // DES-style stat band under the overview chart — numbered blocks, dense
 // mono, the bloomberg register (Jeff's GSK DES reference, 2026-08-03)
+// numbers are reserved for keyboard targets (tabs); stat cells are read-only
 function DesCell({ n, label, value, tone, big }) {
   return (
-    <div class="flex flex-col gap-0.5 px-3 py-2 min-w-0">
-      <span class="text-[9px] text-muted uppercase tracking-wider whitespace-nowrap">
-        {n != null && <span class="text-accent/80">{n}) </span>}{label}
-      </span>
-      <span class={`font-mono min-w-0 truncate ${big ? 'text-[14px] font-semibold' : 'text-[12px]'} ${tone || 'text-ink'}`} title={value ?? ''}>{value ?? '—'}</span>
+    <div class="flex flex-col gap-0.5 px-2.5 py-1.5 min-w-0">
+      <span class="text-[8.5px] text-muted uppercase tracking-wider truncate">{label}</span>
+      <span class={`font-mono min-w-0 truncate ${big ? 'text-[13px] font-semibold' : 'text-[11px]'} ${tone || 'text-ink'}`} title={value ?? ''}>{value ?? '—'}</span>
     </div>
   )
 }
