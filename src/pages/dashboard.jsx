@@ -14,7 +14,7 @@ import {
   getGroupPrefs, isCollapsed, moveGroup, onGroupsChange, orderGroups,
   toggleCollapsed,
 } from '../lib/catgroups.js'
-import { fmtPrice, fmtPct, fmtChange, fmtVol, rangePos } from '../lib/format.js'
+import { fmtPrice, fmtPriceBare, fmtPct, fmtChange, fmtVol, rangePos } from '../lib/format.js'
 import { Histo } from '../components/Histo.jsx'
 import { FlashPrice } from '../components/Fig.jsx'
 import { tl } from '../lib/i18n.js'
@@ -87,14 +87,14 @@ function RangeBar({ label, lo, hi, v, cls = '' }) {
   return (
     <span class={`hidden @min-[430px]:flex items-center gap-1 font-mono text-[11px] font-normal whitespace-nowrap ${cls}`}>
       <span class="text-accent/60 font-normal text-[9px] w-6">{label}</span>
-      <span class="text-down/80 w-14 text-right hidden @min-[620px]:inline">{fmtPrice(lo)}</span>
+      <span class="text-down/80 w-14 text-right hidden @min-[620px]:inline">{fmtPriceBare(lo)}</span>
       <span class="relative w-14 h-[3px] bg-line rounded-full shrink-0 mx-0.5">
         <span
           class="absolute top-1/2 -translate-y-1/2 w-[3px] h-[7px] bg-accent-2 rounded-sm"
           style={{ left: `calc(${(pos * 100).toFixed(1)}% - 1.5px)` }}
         />
       </span>
-      <span class="text-up/80 w-14 hidden @min-[620px]:inline">{fmtPrice(hi)}</span>
+      <span class="text-up/80 w-14 hidden @min-[620px]:inline">{fmtPriceBare(hi)}</span>
     </span>
   )
 }
@@ -126,7 +126,7 @@ function TuiRow({ symbol, data, earnDays }) {
             {q?.extLabel && q.extPrice != null && (
               <span class="whitespace-nowrap text-[12px] w-28 max-sm:w-auto shrink-0">
                 <span class="text-[#c084fc]">{q.extLabel}</span>{' '}
-                <span class="text-ink-2"><FlashPrice price={q.extPrice} fmt={fmtPrice} /></span>{' '}
+                <span class="text-ink-2"><FlashPrice price={q.extPrice} fmt={fmtPriceBare} /></span>{' '}
                 <span class={extUp ? 'text-up' : 'text-down'}>
                   {extUp ? '▲' : '▼'}{Math.abs(q.extPct ?? 0).toFixed(1)}%
                 </span>

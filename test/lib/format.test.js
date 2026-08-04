@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { fmtPrice, fmtPct, fmtChange, fmtVol, rangePos } from '../../src/lib/format.js'
+import { fmtPrice, fmtPct, fmtChange, fmtVol, rangePos, fmtPriceBare } from '../../src/lib/format.js'
 
 describe('rangePos', () => {
   it('places a value proportionally between lo and hi', () => {
@@ -57,5 +57,31 @@ describe('fmtVol', () => {
   })
   it('renders a dash for missing values', () => {
     expect(fmtVol(null)).toBe('—')
+  })
+})
+
+
+describe('fmtPriceBare', () => {
+  it('drops the thousands separator', () => {
+    expect(fmtPriceBare(1033)).toBe('1033.00')
+    expect(fmtPriceBare(1027.06)).toBe('1027.06')
+  })
+
+  it('still shows two decimals under a thousand', () => {
+    expect(fmtPriceBare(91)).toBe('91.00')
+    expect(fmtPriceBare(303.42)).toBe('303.42')
+  })
+
+  it('handles millions without commas', () => {
+    expect(fmtPriceBare(1234567.5)).toBe('1234567.50')
+  })
+
+  it('matches fmtPrice except for the separator', () => {
+    expect(fmtPriceBare(1033)).toBe(fmtPrice(1033).replace(/,/g, ''))
+  })
+
+  it('passes through missing values', () => {
+    expect(fmtPriceBare(null)).toBe(fmtPrice(null))
+    expect(fmtPriceBare(NaN)).toBe(fmtPrice(NaN))
   })
 })
