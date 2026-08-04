@@ -294,7 +294,7 @@ function News({ symbol }) {
           href={n.link}
           target="_blank"
           rel="noopener noreferrer"
-          class="block px-3 py-2 border-b border-line last:border-0 hover:bg-surface-2"
+          class="block px-3 py-2 border-b border-line last:border-0 hover:bg-surface-3"
         >
           <div class="text-[12px] text-ink leading-snug">{n.title}</div>
           <div class="font-mono text-[10px] text-muted mt-0.5">
@@ -351,7 +351,7 @@ function OptionSide({ title, rows, spot, t, type }) {
               return (
                 <tr
                   key={c.strike}
-                  class={`border-t ${i === crossIdx ? 'border-accent/60' : 'border-line'} ${c.itm ? 'bg-accent-soft/40' : ''} hover:bg-surface-2`}
+                  class={`border-t ${i === crossIdx ? 'border-accent/60' : 'border-line'} ${c.itm ? 'bg-accent-soft/40' : ''} hover:bg-surface-3`}
                 >
                   <td class="px-2 py-[3px] text-right font-bold text-ink">{fmtPrice(c.strike)}</td>
                   <td class="px-2 py-[3px] text-right text-ink max-sm:hidden">{c.last != null ? fmtPrice(c.last) : '—'}</td>
@@ -538,7 +538,7 @@ function InsiderView({ symbol }) {
             const sale = /sale/i.test(t.text || '')
             const buy = /purchase|buy/i.test(t.text || '')
             return (
-              <tr key={i} class="border-t border-line hover:bg-surface-2">
+              <tr key={i} class="border-t border-line hover:bg-surface-3">
                 <td class="px-3 py-[4px] text-ink-2 whitespace-nowrap">
                   {t.date ? new Date(t.date).toISOString().slice(0, 10) : '—'}
                 </td>
@@ -631,7 +631,7 @@ function EarningsView({ symbol }) {
           </thead>
           <tbody>
             {data.events.map((e) => (
-              <tr key={e.quarter ?? e.report} class="border-t border-line hover:bg-surface-2">
+              <tr key={e.quarter ?? e.report} class="border-t border-line hover:bg-surface-3">
                 <td class="px-3 py-[3px] text-ink-2 whitespace-nowrap">
                   {e.quarter ? new Date(e.quarter).toISOString().slice(0, 10) : '—'}
                 </td>
@@ -777,7 +777,7 @@ function AnalystsView({ symbol }) {
             </thead>
             <tbody>
               {data.history.map((h, i) => (
-                <tr key={i} class="border-t border-line hover:bg-surface-2">
+                <tr key={i} class="border-t border-line hover:bg-surface-3">
                   <td class="px-3 py-[4px] text-muted whitespace-nowrap">
                     {h.date ? new Date(h.date).toISOString().slice(0, 10) : '—'}
                   </td>
@@ -909,7 +909,7 @@ function HoldersView({ symbol }) {
             </thead>
             <tbody>
               {h.top.map((o) => (
-                <tr key={o.org} class="border-t border-line hover:bg-surface-2">
+                <tr key={o.org} class="border-t border-line hover:bg-surface-3">
                   <td class="px-3 py-[4px] text-ink whitespace-nowrap max-w-56 truncate">{o.org}</td>
                   <td class="px-2 py-[4px] text-right text-ink-2">{o.pctHeld != null ? fmtFracPct(o.pctHeld) : '—'}</td>
                   <td class="px-2 py-[4px] text-right text-ink-2">{o.position != null ? fmtVol(o.position) : '—'}</td>
@@ -947,7 +947,7 @@ function FilingsView({ symbol }) {
           </thead>
           <tbody>
             {d.filings.map((f, i) => (
-              <tr key={i} class="border-t border-line hover:bg-surface-2">
+              <tr key={i} class="border-t border-line hover:bg-surface-3">
                 <td class="px-3 py-[4px] text-muted whitespace-nowrap">{f.date}</td>
                 <td class={`px-2 py-[4px] whitespace-nowrap ${FORM_TONE(f.form)}`}>{f.form}</td>
                 <td class="px-3 py-[4px]">
@@ -1004,7 +1004,7 @@ function SymbolWireView({ symbol }) {
       <SectionCard title={`${tl('On the wire')} · ${symbol}`}>
         <div class="font-mono text-[11.5px]">
           {rows.map((e) => (
-            <div key={e.id} class="grid grid-cols-[86px_36px_1fr] gap-x-2.5 items-baseline px-3 py-[3px] border-t border-line first:border-0 hover:bg-surface-2">
+            <div key={e.id} class="grid grid-cols-[86px_36px_1fr] gap-x-2.5 items-baseline px-3 py-[3px] border-t border-line first:border-0 hover:bg-surface-3">
               <span class="text-muted whitespace-nowrap">
                 {new Date(e.ts_event * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toLowerCase()}
                 {' '}
@@ -1187,7 +1187,7 @@ function SymbolPrompt() {
                 <button
                   key={n}
                   onClick={() => { const target = recents[0] || watchlist[0]; if (target) openSym(target, view) }}
-                  class="w-full text-left px-3 py-[5px] font-mono text-[11.5px] hover:bg-surface-2 flex gap-2 items-baseline"
+                  class="w-full text-left px-3 py-[5px] font-mono text-[11.5px] hover:bg-surface-3 flex gap-2 items-baseline"
                 >
                   <span class="text-accent w-5">{n})</span>
                   <span class="text-ink w-20">{name}</span>
@@ -1277,7 +1277,7 @@ function WireMini({ symbol }) {
       </div>
       <div class="font-mono text-[11px] pb-1">
         {rows.map((e, i) => (
-          <div key={e.id} class="grid grid-cols-[18px_78px_30px_1fr] gap-x-2 items-baseline px-3 py-[2px] hover:bg-surface-2">
+          <div key={e.id} class="grid grid-cols-[18px_78px_30px_1fr] gap-x-2 items-baseline px-3 py-[2px] hover:bg-surface-3">
             <span class="text-muted text-[10px] text-right">{i + 1})</span>
             <span class="text-muted text-[10.5px] whitespace-nowrap">
               {new Date(e.ts_event * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toLowerCase()}
@@ -1399,7 +1399,7 @@ export function Research({ route }) {
               class={`font-mono text-[11px] px-2 py-1 rounded-md border ${
                 rangeKey === r.key
                   ? 'border-accent-2 text-accent-2 bg-accent-2-soft'
-                  : 'border-line text-muted hover:text-ink hover:bg-surface-2'
+                  : 'border-line text-muted hover:text-ink hover:bg-surface-3'
               }`}
             >
               {r.key.toLowerCase()}
@@ -1427,7 +1427,7 @@ export function Research({ route }) {
             class={`font-mono text-[11px] px-2.5 py-1 rounded-md border hover:no-underline ${
               route.view === tab.id
                 ? 'border-accent-2 text-accent-2 bg-accent-2-soft'
-                : 'border-line text-muted hover:text-ink hover:bg-surface-2'
+                : 'border-line text-muted hover:text-ink hover:bg-surface-3'
             }`}
           >
             <span class="text-accent">{(ti + 1) % 10})</span> {tab.label}

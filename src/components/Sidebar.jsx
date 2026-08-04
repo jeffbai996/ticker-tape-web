@@ -60,7 +60,7 @@ export function Sidebar({ route }) {
               class={`flex items-center gap-2 mx-2 px-2.5 py-1 rounded-lg font-mono lowercase text-[12px] transition-colors ${
                 route.section === section.id
                   ? 'bg-accent-soft text-accent'
-                  : 'text-ink-2 hover:bg-surface-2 hover:text-ink'
+                  : 'text-ink-2 hover:bg-accent-soft hover:text-ink'
               }`}
             >
               {tl(section.label)}

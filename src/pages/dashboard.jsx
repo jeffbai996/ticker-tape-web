@@ -92,15 +92,15 @@ function RangeBar({ label, lo, hi, v, cls = '' }) {
   if (pos == null) return null
   return (
     <span class={`hidden lg:flex items-center gap-1.5 font-mono text-[11px] whitespace-nowrap ${cls}`}>
-      <span class="text-accent/70 w-8">{label}</span>
-      <span class="text-down/80 w-[4.5rem] text-right">{fmtPrice(lo)}</span>
-      <span class="relative w-16 h-[3px] bg-line rounded-full shrink-0">
+      <span class="text-accent/70 w-7">{label}</span>
+      <span class="text-down/80 w-16 text-right">{fmtPrice(lo)}</span>
+      <span class="relative w-14 h-[3px] bg-line rounded-full shrink-0">
         <span
           class="absolute top-1/2 -translate-y-1/2 w-[3px] h-[7px] bg-accent-2 rounded-sm"
           style={{ left: `calc(${(pos * 100).toFixed(1)}% - 1.5px)` }}
         />
       </span>
-      <span class="text-up/80 w-[4.5rem]">{fmtPrice(hi)}</span>
+      <span class="text-up/80 w-16">{fmtPrice(hi)}</span>
     </span>
   )
 }
@@ -113,47 +113,56 @@ function TuiRow({ symbol, data, earnDays }) {
   return (
     <a
       href={`#/research/${symbol.toLowerCase()}`}
-      class="block px-3 py-[3px] border-b border-line last:border-0 hover:bg-surface-2 hover:no-underline"
+      class="block px-3 py-[3px] border-b border-line last:border-0 hover:bg-surface-3 hover:no-underline"
     >
-      <div class="flex items-baseline gap-5 font-mono text-[13px] flex-wrap">
-        <span class="text-ink font-bold w-20">{symbol}</span>
-        <span class="text-ink font-semibold w-24 text-right">{q ? fmtPrice(q.price) : '—'}</span>
-        {q && (
-          <span class={`${up ? 'text-up' : 'text-down'} whitespace-nowrap`}>
-            {up ? '▲' : '▼'} {fmtChange(Math.abs(q.change)).replace('+', '')} <span class="font-normal text-[11px]">({fmtPct(q.pct)})</span>
-          </span>
-        )}
-        {q?.extLabel && q.extPrice != null && (
-          <span class="whitespace-nowrap text-[12px]">
-            <span class="text-[#c084fc]">{q.extLabel}</span>{' '}
-            <span class="text-ink-2">{fmtPrice(q.extPrice)}</span>{' '}
-            <span class={extUp ? 'text-up' : 'text-down'}>
-              {extUp ? '▲' : '▼'}{Math.abs(q.extPct ?? 0).toFixed(1)}%
-            </span>
-          </span>
-        )}
-        {q && (
-          <span class="ml-auto flex items-baseline gap-2.5 font-mono text-[11px]">
-            <RangeBar label="DAY" lo={q.dayLow} hi={q.dayHigh} v={q.price} />
-            {q.volume != null && (
-              <span class="hidden sm:inline whitespace-nowrap w-20 text-right">
-                <span class="text-accent/70">VOL</span>{' '}
-                <span class={heavy ? 'text-accent' : 'text-ink'}>{fmtVol(q.volume)}</span>
+      <div class="flex gap-4 min-w-0">
+        <div class="flex-1 min-w-0">
+          <div class="flex items-baseline gap-5 font-mono text-[13px] flex-wrap">
+            <span class="text-ink font-bold w-20">{symbol}</span>
+            <span class="text-ink font-semibold w-24 text-right">{q ? fmtPrice(q.price) : '—'}</span>
+            {q && (
+              <span class={`${up ? 'text-up' : 'text-down'} whitespace-nowrap`}>
+                {up ? '▲' : '▼'} {fmtChange(Math.abs(q.change)).replace('+', '')} <span class="font-normal text-[11px]">({fmtPct(q.pct)})</span>
               </span>
             )}
+            {q?.extLabel && q.extPrice != null && (
+              <span class="whitespace-nowrap text-[12px]">
+                <span class="text-[#c084fc]">{q.extLabel}</span>{' '}
+                <span class="text-ink-2">{fmtPrice(q.extPrice)}</span>{' '}
+                <span class={extUp ? 'text-up' : 'text-down'}>
+                  {extUp ? '▲' : '▼'}{Math.abs(q.extPct ?? 0).toFixed(1)}%
+                </span>
+              </span>
+            )}
+          </div>
+          {/* Phone width: badges scroll sideways instead of clipping mid-badge. */}
+          <div class="flex items-center gap-4 pt-[2px] pl-20 max-sm:pl-0 max-sm:overflow-x-auto no-scrollbar">
+            <Histo bars={data?.histo} width={150} height={24} />
+            <Badges tech={data?.tech} earnDays={earnDays} />
+          </div>
+        </div>
+        {/* Meters live in their own fixed column so DAY and 52W align by
+            construction — sharing the text rows made them wrap and overflow
+            once the row ran out of width (Jeff 2026-08-03). */}
+        <div class="hidden lg:flex shrink-0 flex-col justify-center gap-1 font-mono text-[11px]">
+          <span class="flex items-baseline gap-2.5">
+            <RangeBar label="DAY" lo={q?.dayLow} hi={q?.dayHigh} v={q?.price} />
+            <span class="w-[4.5rem] text-right">
+              {q?.volume != null && (
+                <>
+                  <span class="text-accent/70">VOL</span>{' '}
+                  <span class={heavy ? 'text-accent' : 'text-ink'}>{fmtVol(q.volume)}</span>
+                </>
+              )}
+            </span>
           </span>
-        )}
-      </div>
-      {/* Phone width: badges scroll sideways instead of clipping mid-badge. */}
-      <div class="flex items-center gap-4 pt-[2px] pl-20 max-sm:pl-0 max-sm:overflow-x-auto no-scrollbar">
-        <Histo bars={data?.histo} width={150} height={24} />
-        <Badges tech={data?.tech} earnDays={earnDays} />
-        {data?.tech && (
-          <span class="ml-auto flex items-baseline gap-2.5">
-            <RangeBar label="52W" lo={data.tech.low52} hi={data.tech.high52} v={q?.price} />
-            <span class="hidden sm:inline w-20" />
+          <span class="flex items-baseline gap-2.5">
+            {data?.tech && (
+              <RangeBar label="52W" lo={data.tech.low52} hi={data.tech.high52} v={q?.price} />
+            )}
+            <span class="w-[4.5rem]" />
           </span>
-        )}
+        </div>
       </div>
     </a>
   )
@@ -248,7 +257,7 @@ function EarningsPanel({ symbols, days }) {
       <div class="py-1">
         {upcoming.map(({ symbol, d }) => (
           <a key={symbol} href={`#/research/${symbol.toLowerCase()}/earnings`}
-            class="flex justify-between px-3 py-[2px] font-mono text-[11px] hover:bg-surface-2 hover:no-underline">
+            class="flex justify-between px-3 py-[2px] font-mono text-[11px] hover:bg-surface-3 hover:no-underline">
             <span class="text-ink font-bold">{symbol}</span>
             <span class={d <= 7 ? 'text-down' : d <= 21 ? 'text-accent' : 'text-ink-2'}>{d}d</span>
           </a>
@@ -268,7 +277,7 @@ function MoversPanel({ quotes }) {
     <div class="py-1">
       {rows.map((q) => (
         <a key={q.symbol} href={`#/research/${q.symbol.toLowerCase()}`}
-          class="flex justify-between px-3 py-[2px] font-mono text-[11px] hover:bg-surface-2 hover:no-underline">
+          class="flex justify-between px-3 py-[2px] font-mono text-[11px] hover:bg-surface-3 hover:no-underline">
           <span class="text-ink font-bold">{q.symbol}</span>
           <span class={q.pct >= 0 ? 'text-up' : 'text-down'}>{fmtPct(q.pct)}</span>
         </a>
@@ -486,17 +495,17 @@ export function Dashboard() {
           CSS viewport before genuinely running out of room. */}
       <div class="grid gap-2 lg:grid-cols-[1fr_230px] min-w-0">
         <section class="bg-surface-1 border border-line rounded-xl overflow-hidden min-w-0">
-          {ordered.map((g) => {
+          {ordered.map((g, gi) => {
             const folded = isCollapsed(g.name, groupPrefs)
             return (
               <div key={g.name}>
-                <div class="group flex items-center gap-2 px-3 pt-1.5 pb-0.5 font-mono text-[11px] text-muted tracking-wider border-b border-line select-none">
+                <div class={`group flex items-center gap-2 px-3 py-1.5 font-mono text-[11px] text-muted tracking-wider border-b border-line select-none ${gi ? 'border-t' : ''}`}>
                   <button onClick={() => toggleCollapsed(g.name)}
-                          class="flex items-baseline gap-2 hover:text-ink"
+                          class="flex items-center gap-2 hover:text-ink uppercase"
                           title={folded ? 'expand' : 'collapse'}>
-                    ── {tl(g.name)} ──
+                    {tl(g.name)}
                     {folded && (
-                      <span class="text-[9px] text-ink-2 border border-line rounded-full px-1.5 py-px leading-none tracking-normal">
+                      <span class="text-[9px] text-ink-2 border border-line rounded-full px-1.5 py-px leading-none tracking-normal normal-case">
                         {g.symbols.length}
                       </span>
                     )}

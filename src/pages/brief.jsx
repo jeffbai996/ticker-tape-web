@@ -35,7 +35,7 @@ function ArchivePanel() {
       <div>
         {reports.map((r) => (
           <div key={r.id} class="border-b border-line last:border-0">
-            <div class="flex items-center gap-2 px-3 py-1.5 font-mono text-[11px] hover:bg-surface-2 group">
+            <div class="flex items-center gap-2 px-3 py-1.5 font-mono text-[11px] hover:bg-surface-3 group">
               <button
                 onClick={() => setOpenId(openId === r.id ? null : r.id)}
                 class="flex items-center gap-2 flex-1 min-w-0 text-left"

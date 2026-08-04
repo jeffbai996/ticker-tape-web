@@ -161,7 +161,7 @@ function EventPanel({ symbol, date, epsEstimate }) {
           </div>
           <div class="font-mono text-[11px] pb-1.5">
             {wire.map((e) => (
-              <div key={e.id} class="grid grid-cols-[74px_1fr] gap-x-2 px-3 py-[2px] items-baseline hover:bg-surface-2">
+              <div key={e.id} class="grid grid-cols-[74px_1fr] gap-x-2 px-3 py-[2px] items-baseline hover:bg-surface-3">
                 <span class="text-muted text-[10px]">
                   {new Date(e.ts_event * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toLowerCase()}
                 </span>
@@ -220,7 +220,7 @@ export function EarningsDay({ symbols }) {
             return (
               <button key={e.sym} onClick={() => setPick(e.sym)}
                 class={`w-full flex items-baseline gap-2 px-3 py-[3px] font-mono text-[11px] border-b border-line last:border-0 ${
-                  on ? 'bg-accent-2-soft text-ink' : 'hover:bg-surface-2'}`}>
+                  on ? 'bg-accent-2-soft text-ink' : 'hover:bg-surface-3'}`}>
                 <span class={`font-bold ${on ? 'text-accent-2' : 'text-ink'}`}>{e.sym}</span>
                 <span class="ml-auto text-ink-2">
                   {new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toLowerCase()}

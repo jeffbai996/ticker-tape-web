@@ -14,7 +14,7 @@ function QuoteRow({ label, data, unit }) {
   const q = data?.quote
   const up = (q?.pct ?? 0) >= 0
   return (
-    <tr class="border-b border-line last:border-0 hover:bg-surface-2">
+    <tr class="border-b border-line last:border-0 hover:bg-surface-3">
       <td class="px-3 py-[3px] text-[12px] text-ink whitespace-nowrap">{label}</td>
       {unit !== undefined && <td class="px-2 py-[3px] font-mono text-[10px] text-muted">{unit}</td>}
       <td class="px-2 py-[3px] font-mono font-semibold text-[12px] text-ink text-right">{q ? fmtPrice(q.price) : '—'}</td>
@@ -159,7 +159,7 @@ function MoverTable({ title, rows, metric }) {
           {rows.map(({ symbol, q }) => {
             const up = (q?.pct ?? 0) >= 0
             return (
-              <tr key={symbol} class="border-b border-line last:border-0 hover:bg-surface-2 cursor-pointer"
+              <tr key={symbol} class="border-b border-line last:border-0 hover:bg-surface-3 cursor-pointer"
                 onClick={() => (location.hash = `#/research/${symbol.toLowerCase()}`)}>
                 <td class="px-3 py-[3px] font-bold text-accent">{symbol}</td>
                 <td class="px-2 py-[3px] text-right text-ink font-semibold">{fmtPrice(q?.price)}</td>
@@ -261,7 +261,7 @@ function Earnings() {
             return (
               <tr
                 key={e.sym}
-                class="border-b border-line last:border-0 hover:bg-surface-2 cursor-pointer"
+                class="border-b border-line last:border-0 hover:bg-surface-3 cursor-pointer"
                 onClick={() => (location.hash = `#/research/${e.sym.toLowerCase()}`)}
               >
                 <td class="px-3 py-[3px] font-bold text-accent">{e.sym}</td>
@@ -307,7 +307,7 @@ function Calendar() {
           {events.map((e) => {
             const cls = URGENCY.find((u) => e.days <= u.max).cls
             return (
-              <tr key={`${e.date}-${e.type}-${e.id ?? ''}`} class="border-b border-line last:border-0 hover:bg-surface-2 group">
+              <tr key={`${e.date}-${e.type}-${e.id ?? ''}`} class="border-b border-line last:border-0 hover:bg-surface-3 group">
                 <td class="px-3 py-[3px] font-mono text-[12px] text-ink">{e.date}</td>
                 <td class={`px-2 py-[3px] font-mono font-bold text-[11px] ${e.user ? 'text-[#00c8ff]' : cls}`}>{e.type}</td>
                 <td class="px-2 py-[3px] text-[12px] text-ink-2">
