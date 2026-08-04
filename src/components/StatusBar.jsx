@@ -86,7 +86,7 @@ function StripCell({ symbol, label, q }) {
   const isVix = symbol === '^VIX'
   return (
     <a href={hrefFor('research', symbol.toLowerCase())}
-       class="flex items-baseline gap-1.5 whitespace-nowrap hover:no-underline hover:bg-accent-soft rounded px-1 -mx-1">
+       class="flex items-baseline gap-1.5 whitespace-nowrap leading-5 px-1.5 rounded hover:no-underline hover:bg-accent-soft hover:outline hover:outline-1 hover:outline-accent/40">
       <span class="text-muted/60">{tl(label)}</span>
       <span class={isVix ? vixClass(q?.price) : 'text-ink-2'}>{q ? <FlashPrice price={q.price} fmt={fmtPrice} /> : '—'}</span>
       {q && !isVix && <span class={`text-[10px] ${up ? 'text-up' : 'text-down'}`}>{fmtPct(q.pct)}</span>}
@@ -129,10 +129,15 @@ export function StatusBar() {
         {tl(chipLabel)}
       </span>
 
-      <div class="flex-1 flex items-center content-start gap-4 min-w-0 flex-wrap overflow-hidden max-h-[20px]">
-        {strip.map(({ symbol, label }) => (
-          <StripCell key={symbol} symbol={symbol} label={label} q={quotes[symbol]?.quote} />
-        ))}
+      {/* wrap inside a one-line-tall clip box: cells that do not fit fall to an
+          invisible second row, so the strip never slices a figure in half. The
+          box is centred in the bar so it lines up with the wordmark and clock. */}
+      <div class="flex-1 min-w-0 flex items-center overflow-hidden">
+        <div class="w-full flex items-baseline gap-4 flex-wrap max-h-5">
+          {strip.map(({ symbol, label }) => (
+            <StripCell key={symbol} symbol={symbol} label={label} q={quotes[symbol]?.quote} />
+          ))}
+        </div>
       </div>
 
       <RollingClock />

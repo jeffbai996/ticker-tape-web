@@ -92,26 +92,15 @@ function RangeBar({ label, lo, hi, v, cls = '' }) {
   if (pos == null) return null
   return (
     <span class={`hidden lg:flex items-center gap-1.5 font-mono text-[11px] whitespace-nowrap ${cls}`}>
-      <span class="text-accent/70">{label}</span>
-      <span class="text-down/80">{fmtPrice(lo)}</span>
+      <span class="text-accent/70 w-8">{label}</span>
+      <span class="text-down/80 w-[4.5rem] text-right">{fmtPrice(lo)}</span>
       <span class="relative w-16 h-[3px] bg-line rounded-full shrink-0">
         <span
           class="absolute top-1/2 -translate-y-1/2 w-[3px] h-[7px] bg-accent-2 rounded-sm"
           style={{ left: `calc(${(pos * 100).toFixed(1)}% - 1.5px)` }}
         />
       </span>
-      <span class="text-up/80">{fmtPrice(hi)}</span>
-    </span>
-  )
-}
-
-// label + value, the row's unit of readable data — a bare number hanging in
-// space reads as noise (Jeff 2026-08-03)
-function Cell({ label, children }) {
-  return (
-    <span class="whitespace-nowrap">
-      <span class="text-accent/70">{label}</span>{' '}
-      <span class="text-ink">{children}</span>
+      <span class="text-up/80 w-[4.5rem]">{fmtPrice(hi)}</span>
     </span>
   )
 }
@@ -145,12 +134,9 @@ function TuiRow({ symbol, data, earnDays }) {
         )}
         {q && (
           <span class="ml-auto flex items-baseline gap-2.5 font-mono text-[11px]">
-            {q.prevClose != null && (
-              <span class="hidden lg:inline"><Cell label="PREV">{fmtPrice(q.prevClose)}</Cell></span>
-            )}
             <RangeBar label="DAY" lo={q.dayLow} hi={q.dayHigh} v={q.price} />
             {q.volume != null && (
-              <span class="hidden sm:inline whitespace-nowrap">
+              <span class="hidden sm:inline whitespace-nowrap w-20 text-right">
                 <span class="text-accent/70">VOL</span>{' '}
                 <span class={heavy ? 'text-accent' : 'text-ink'}>{fmtVol(q.volume)}</span>
               </span>
@@ -163,7 +149,10 @@ function TuiRow({ symbol, data, earnDays }) {
         <Histo bars={data?.histo} width={150} height={24} />
         <Badges tech={data?.tech} earnDays={earnDays} />
         {data?.tech && (
-          <RangeBar label="52W" lo={data.tech.low52} hi={data.tech.high52} v={q?.price} cls="ml-auto" />
+          <span class="ml-auto flex items-baseline gap-2.5">
+            <RangeBar label="52W" lo={data.tech.low52} hi={data.tech.high52} v={q?.price} />
+            <span class="hidden sm:inline w-20" />
+          </span>
         )}
       </div>
     </a>
