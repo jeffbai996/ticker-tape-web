@@ -1,6 +1,13 @@
 // Top-level information architecture. Sub-tabs switch content within a section
 // without a page reload; research intentionally uses its own routed page.
 
+// The assistant runs on the operator's own Claude/agy subscription through
+// fragwire, so it only exists in the private tailnet build — a public origin
+// must not expose a subscription-backed endpoint (Jeff 2026-08-04).
+const PRIVATE_BUILD = import.meta.env.VITE_PRIVATE === '1'
+
+const CHAT_SECTION = { id: 'chat', label: 'AI Chat', subs: [] }
+
 export const NAV = [
   { id: 'dashboard', label: 'Dashboard', subs: [] },
   { id: 'brief', label: 'Briefing', badge: 'AI', subs: [] },
@@ -41,8 +48,11 @@ export const NAV = [
   },
   { id: 'alerts', label: 'Alerts', subs: [] },
   { id: 'wire', label: 'Wire', badge: 'BYO', subs: [] },
-  { id: 'chat', label: 'AI Chat', subs: [] },
 ]
+
+if (PRIVATE_BUILD) NAV.push(CHAT_SECTION)
+
+export const IS_PRIVATE_BUILD = PRIVATE_BUILD
 
 export const DEFAULT_SECTION = 'dashboard'
 

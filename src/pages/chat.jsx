@@ -4,6 +4,7 @@ import { runAgentic, trimHistory } from '../lib/agent.js'
 import { toolLabel } from '../lib/tools.js'
 import { MdLite } from '../components/AiReport.jsx'
 import { tl, t as tt } from '../lib/i18n.js'
+import { wireChatAvailable } from '../lib/wirechat.js'
 
 // Generic on purpose: the assistant knows about markets and this app, and is
 // told it has no account or personal data (it genuinely has none).
@@ -33,6 +34,31 @@ function saveHistory(h) {
   try {
     localStorage.setItem(HISTORY_KEY, JSON.stringify(trimHistory(h, MAX_TURNS)))
   } catch { /* best-effort */ }
+}
+
+const SUGGESTIONS = [
+  "what's moving today?",
+  'how does NVDA look technically?',
+  "what's on the calendar this week?",
+  'open TSLA research',
+]
+
+/** Three-dot pulse — a spinner reads as an error state, this reads as work. */
+function Thinking() {
+  return (
+    <span class="inline-flex items-center gap-1 py-1" aria-label="thinking">
+      {[0, 1, 2].map((i) => (
+        <span key={i} class="w-1.5 h-1.5 rounded-full bg-muted animate-pulse"
+              style={`animation-delay:${i * 160}ms`} />
+      ))}
+    </span>
+  )
+}
+
+/** Composer grows with the message instead of scrolling a one-line box. */
+function autoGrow(el) {
+  el.style.height = 'auto'
+  el.style.height = `${Math.min(el.scrollHeight, 160)}px`
 }
 
 function SpendMeter({ spend }) {
@@ -82,9 +108,11 @@ export function Chat() {
     sessionStorage.removeItem('chat_prefill')
     return pre
   })
+  const onWire = wireChatAvailable()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const scrollRef = useRef(null)
+  const inputRef = useRef(null)
 
   useEffect(() => {
     fetchChatModels().then((d) => {
@@ -94,7 +122,7 @@ export function Chat() {
         localStorage.setItem('chat_model', 'flash')
       }
     }).catch(() => {})
-    fetchSpend().then(setSpend).catch(() => {})
+    if (!wireChatAvailable()) fetchSpend().then(setSpend).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -107,6 +135,7 @@ export function Chat() {
     if (!text || busy) return
     setError(null)
     setInput('')
+    if (inputRef.current) inputRef.current.style.height = 'auto'
     setBusy(true)
 
     const base = [...history, { role: 'user', content: text }]
@@ -157,8 +186,8 @@ export function Chat() {
   return (
     <div class="flex-1 flex flex-col p-3 min-h-0 min-w-0 select-text">
       <div class="flex items-center gap-3 px-1 pb-2 flex-wrap">
-        <h1 class="font-mono font-bold text-lg text-ink">{tl('AI Chat')}</h1>
-        <select
+        <h1 class="font-bold text-lg text-ink" style="font-family: 'Plus Jakarta Sans', sans-serif">{tl('AI Chat')}</h1>
+        {!onWire && <select
           value={model}
           onChange={(e) => {
             setModel(e.currentTarget.value)
@@ -169,8 +198,14 @@ export function Chat() {
           {(models.length ? models : [{ key: model, label: model }]).map((m) => (
             <option key={m.key} value={m.key}>{m.label}</option>
           ))}
-        </select>
-        <div class="flex items-center border border-line rounded-md overflow-hidden" title="thinking effort">
+        </select>}
+        {onWire && (
+          <span class="font-mono text-[10px] text-muted border border-line rounded-md px-2 py-1"
+                title="answers come from your own subscription via fragwire — no metered API, no cap">
+            via <span class="text-accent">wire</span>
+          </span>
+        )}
+        {!onWire && <div class="flex items-center border border-line rounded-md overflow-hidden" title="thinking effort">
           {['auto', 'off', 'low', 'medium', 'high'].map((lv) => (
             <button
               key={lv}
@@ -185,9 +220,8 @@ export function Chat() {
               {lv}
             </button>
           ))}
-        </div>
+        </div>}
         <div class="ml-auto flex items-center gap-3">
-          <SpendMeter spend={spend} />
           {history.length > 0 && (
             <button onClick={clear} class="font-mono text-[10px] text-muted hover:text-down">
               {tl('clear')}
@@ -198,7 +232,31 @@ export function Chat() {
 
       <div ref={scrollRef} class="flex-1 overflow-y-auto min-h-0 max-w-3xl w-full flex flex-col gap-2 px-1">
         {history.length === 0 && (
-          <div class="font-mono text-[11px] text-muted pt-6">{tt('chat.empty')}</div>
+          <div class="pt-10 flex flex-col items-start gap-4 max-w-lg">
+            <div>
+              <div class="text-ink text-[15px] font-anth">
+                {onWire
+                  ? 'Ask about a ticker, a sector, or how this app works.'
+                  : tt('chat.empty')}
+              </div>
+              <div class="text-muted text-[12px] font-anth pt-1">
+                it can pull live quotes and technicals, read the calendar, edit
+                your watchlist, arm alerts, and move you around the app.
+              </div>
+            </div>
+            <div class="flex flex-wrap gap-1.5">
+              {SUGGESTIONS.map((sug) => (
+                <button
+                  key={sug}
+                  type="button"
+                  onClick={() => { setInput(sug); inputRef.current?.focus() }}
+                  class="font-anth text-[12px] text-ink-2 border border-line rounded-full px-3 py-1 hover:border-accent/60 hover:text-ink"
+                >
+                  {sug}
+                </button>
+              ))}
+            </div>
+          </div>
         )}
         {history.map((m, i) => {
           if (m.role === 'tool') return null
@@ -216,43 +274,73 @@ export function Chat() {
           }
           if (m.role === 'assistant') {
             return (
-              <div key={i} class="self-start rounded-xl border px-3 py-2 text-[13px] leading-relaxed bg-surface-1 border-line text-ink max-w-[95%]">
-                {m.content
-                  ? <MdLite text={m.content} />
-                  : busy && i === history.length - 1
-                    ? <span class="text-muted font-mono text-[11px]">{tt('common.loading')}</span>
-                    : null}
+              <div key={i} class="group self-start max-w-[95%] relative">
+                <div class="rounded-2xl border px-3.5 py-2.5 text-[13.5px] leading-relaxed bg-surface-1 border-line text-ink font-anth">
+                  {m.content
+                    ? <MdLite text={m.content} />
+                    : busy && i === history.length - 1
+                      ? <Thinking />
+                      : null}
+                </div>
+                {m.content && (
+                  <button
+                    type="button"
+                    onClick={() => navigator.clipboard?.writeText(m.content)}
+                    title="copy"
+                    class="absolute -top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-surface-2 border border-line rounded-md px-1.5 py-0.5 font-mono text-[9px] text-muted hover:text-ink"
+                  >
+                    copy
+                  </button>
+                )}
               </div>
             )
           }
           return (
-            <div key={i} class="self-end rounded-xl border px-3 py-2 text-[13px] leading-relaxed whitespace-pre-wrap bg-accent-soft border-accent/40 text-ink max-w-[85%]">
+            <div key={i} class="self-end rounded-2xl px-3.5 py-2.5 text-[13.5px] leading-relaxed whitespace-pre-wrap bg-accent-soft border border-accent/40 text-ink max-w-[85%] font-anth">
               {m.content}
             </div>
           )
         })}
         {busy && ['user', 'tool'].includes(history[history.length - 1]?.role) && (
-          <div class="self-start font-mono text-[11px] text-muted px-1">{tt('common.loading')}</div>
+          <div class="self-start px-1"><Thinking /></div>
         )}
         {error && (
           <div class="self-start font-mono text-[11px] text-down px-1">{error}</div>
         )}
       </div>
 
-      <form onSubmit={send} class="max-w-3xl w-full flex gap-2 pt-2">
-        <input
-          value={input}
-          onInput={(e) => setInput(e.currentTarget.value)}
-          placeholder={tt('chat.placeholder')}
-          class="flex-1 bg-surface-1 border border-line rounded-xl px-3 py-2 font-mono text-[12px] text-ink outline-none focus:border-accent placeholder:text-muted"
-        />
-        <button
-          type="submit"
-          disabled={busy}
-          class="font-mono text-[12px] px-4 rounded-xl border border-accent text-accent bg-accent-soft hover:bg-accent hover:text-black disabled:opacity-40"
-        >
-          {busy ? '…' : tl('Send')}
-        </button>
+      <form onSubmit={send} class="max-w-3xl w-full pt-2">
+        <div class="flex items-end gap-2 bg-surface-1 border border-line rounded-2xl px-3 py-2 focus-within:border-accent/70 transition-colors">
+          <textarea
+            ref={inputRef}
+            value={input}
+            rows={1}
+            onInput={(e) => {
+              setInput(e.currentTarget.value)
+              autoGrow(e.currentTarget)
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(e) }
+            }}
+            placeholder={tt('chat.placeholder')}
+            class="flex-1 bg-transparent resize-none outline-none text-[13.5px] leading-relaxed text-ink placeholder:text-muted max-h-40 font-anth"
+          />
+          <button
+            type="submit"
+            disabled={busy || !input.trim()}
+            title={busy ? 'working' : 'send  ⏎'}
+            class="shrink-0 w-8 h-8 grid place-items-center rounded-full bg-accent text-black disabled:bg-surface-3 disabled:text-muted transition-colors"
+          >
+            {busy
+              ? <span class="block w-3 h-3 rounded-sm bg-black/70 animate-pulse" />
+              : <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>}
+          </button>
+        </div>
+        <div class="flex items-center gap-3 px-2 pt-1 font-mono text-[9.5px] text-muted">
+          <span><kbd class="text-ink-2">⏎</kbd> send</span>
+          <span><kbd class="text-ink-2">⇧⏎</kbd> newline</span>
+          {!onWire && <SpendMeter spend={spend} />}
+        </div>
       </form>
     </div>
   )

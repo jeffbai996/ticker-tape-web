@@ -10,8 +10,8 @@ import { lastGoodTs } from '../lib/feed.js'
 function WatchRow({ symbol, q }) {
   const up = (q?.pct ?? 0) >= 0
   return (
-    <div class="group flex items-baseline px-3 py-[3px] font-mono text-[11px] hover:bg-accent-soft">
-      <a href={`#/research/${symbol.toLowerCase()}`} class="text-ink font-bold w-14 hover:no-underline">
+    <div class="group flex items-baseline px-3 py-[3px] font-mono text-[11px] hover:bg-accent/[0.18] hover:shadow-[inset_2px_0_0_0_var(--color-accent)]">
+      <a href={`#/research/${symbol.toLowerCase()}`} class="text-ink font-bold w-14 hover:no-underline hover:bg-transparent">
         {symbol}
       </a>
       <span class="text-ink-2 font-medium ml-auto">{q ? <FlashPrice price={q.price} fmt={fmtPrice} /> : '—'}</span>
