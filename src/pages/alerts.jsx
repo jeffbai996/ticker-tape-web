@@ -111,7 +111,7 @@ export function Alerts() {
                 {alerts.map((a) => {
                   const q = live[a.symbol]?.quote
                   return (
-                    <tr key={a.id} class="border-t border-line hover:bg-surface-2">
+                    <tr key={a.id} class="border-t border-line hover:bg-surface-3">
                       <td class="px-3 py-[3px] text-ink whitespace-nowrap">
                         <a href={`#/research/${a.symbol.toLowerCase()}`} class="text-accent hover:underline">{a.symbol}</a>
                         {' '}{conditionText(a).slice(a.symbol.length + 1)}

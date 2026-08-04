@@ -106,7 +106,7 @@ function ScreenTable({ symbols, hist }) {
             return (
               <tr
                 key={sym}
-                class="border-b border-line last:border-0 hover:bg-surface-2 cursor-pointer"
+                class="border-b border-line last:border-0 hover:bg-surface-3 cursor-pointer"
                 onClick={() => (location.hash = `#/research/${sym.toLowerCase()}`)}
               >
                 <td class="px-3 py-[3px] font-bold text-accent">{sym}</td>
@@ -288,7 +288,7 @@ function Valuation({ symbols }) {
         </thead>
         <tbody>
           {VAL_ROWS.map((row) => (
-            <tr key={row.label} class="border-t border-line hover:bg-surface-2">
+            <tr key={row.label} class="border-t border-line hover:bg-surface-3">
               <td class="px-3 py-[3px] text-muted whitespace-nowrap">{row.label}</td>
               {ready.map((s) => (
                 <td key={s} class="px-3 py-[3px] text-right text-ink">{row.fmt(funds[s])}</td>
