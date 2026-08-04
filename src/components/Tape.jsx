@@ -120,7 +120,7 @@ export function Tape() {
               href={hrefFor('research', symbol.toLowerCase())}
               class="flex items-baseline gap-1.5 whitespace-nowrap hover:no-underline px-1.5 -mx-1 py-0.5"
             >
-              <span class="text-ink font-bold font-tick">{symbol}</span>
+              <span class="text-ink font-bold font-tick text-[10px]">{symbol}</span>
               <span class="text-ink-2 font-semibold">{q ? fmtPrice(q.price) : '—'}</span>
               {q && <span class={`text-[10px] ${up ? 'text-up' : 'text-down'}`}>{fmtPct(q.pct)}</span>}
             </a>
