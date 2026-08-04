@@ -5,6 +5,16 @@ export function fmtPrice(v) {
   return v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
+/**
+ * Price without the thousands separator — the dense rows and the watchlist
+ * read as columns of digits, and a comma at four figures breaks the column
+ * alignment for one row in ten (Jeff 2026-08-04). The nav bars keep commas.
+ */
+export function fmtPriceBare(v) {
+  if (v == null || Number.isNaN(v)) return DASH
+  return v.toFixed(2)
+}
+
 export function fmtPct(v) {
   if (v == null || Number.isNaN(v)) return DASH
   return `${v >= 0 ? '+' : '-'}${Math.abs(v).toFixed(2)}%`
