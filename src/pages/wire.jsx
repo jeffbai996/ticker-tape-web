@@ -4,6 +4,33 @@ import {
   demoBackfill, demoEvent, demoToday, rankEvents, collapseSessions, clusterStories, TYPE_CODE,
 } from '../lib/wire.js'
 import { getWatchlist } from '../lib/watchlist.js'
+import { IS_PRIVATE_BUILD } from '../lib/nav.js'
+
+// fragwire's relevance ramp, same colors as its pills: T1 sector (blue),
+// T2 core thesis (amber), T3 thesis on a name you hold (red).
+function tierOf(ev, watchset) {
+  const th = (ev.meta || {}).thesis || 0
+  const onBook = (ev.symbols || []).some((s) => watchset.has(s))
+    || ev.type === 'price_move'
+  return th >= 2 && onBook ? 3 : th
+}
+
+const TIER_CLS = {
+  1: 'text-[#58a6ff] border-[#58a6ff]/50',
+  2: 'bg-accent text-black border-accent',
+  3: 'bg-[#f85149] text-black border-[#f85149]',
+}
+
+function TierBadge({ tier }) {
+  if (!tier) return null
+  return (
+    <span class={`inline-block align-middle mr-1.5 border rounded-[2px] px-1 font-mono font-bold text-[8.5px] tracking-wider leading-[1.6] ${TIER_CLS[tier]}`}
+      title={tier === 3 ? 'T3 — thesis story on a name you hold'
+        : tier === 2 ? 'T2 — core thesis story' : 'T1 — touches the sector'}>
+      T{tier}
+    </span>
+  )
+}
 
 const CODE_TONE = {
   earnings_release: 'text-accent font-semibold',
@@ -38,7 +65,7 @@ const countdown = (sec) => {
   return `in ${Math.round(sec / 86400)}d`
 }
 
-function Row({ ev, hot, open, onToggle }) {
+function Row({ ev, hot, open, onToggle, tier = 0 }) {
   const lat = ev.ts_seen - ev.ts_event
   const latTxt = lat > 0.5 && lat < 600 ? `+${lat.toFixed(1)}s` : ''
   const expandable = Boolean(ev.body) || Boolean(ev.live_call)
@@ -65,6 +92,7 @@ function Row({ ev, hot, open, onToggle }) {
           class={`truncate max-sm:whitespace-normal max-sm:line-clamp-2 max-sm:col-span-full max-sm:row-start-2 ${hot ? '' : ev.type === 'earnings_release' ? 'text-ink font-semibold' : 'text-ink-2'}`}
           title={ev.headline}
         >
+          {!hot && <TierBadge tier={tier} />}
           {ev.url ? (
             <a href={ev.url} target="_blank" rel="noopener" class="hover:text-accent" onClick={(e) => e.stopPropagation()}>{ev.headline}</a>
           ) : ev.headline}
@@ -355,17 +383,21 @@ export function Wire() {
             push watchlist → wire
           </button>
         )}
-        <form class="flex gap-2 ml-auto" onSubmit={applyEndpoint}>
-          <input
-            class="bg-surface-2 border border-line rounded-md px-2 py-1 font-mono text-[11.5px] text-ink outline-none focus:border-accent w-64"
-            placeholder="your wire URL (blank = demo)"
-            value={draft}
-            onInput={(e) => setDraft(e.currentTarget.value)}
-          />
-          <button class="border border-line rounded-md px-3 py-1 text-[11.5px] font-semibold text-ink-2 hover:text-ink hover:border-ink-2">
-            connect
-          </button>
-        </form>
+        {/* Private build has exactly one wire and it's auto-configured —
+            the connect affordance only exists for public BYO viewers. */}
+        {!IS_PRIVATE_BUILD && (
+          <form class="flex gap-2 ml-auto" onSubmit={applyEndpoint}>
+            <input
+              class="bg-surface-2 border border-line rounded-md px-2 py-1 font-mono text-[11.5px] text-ink outline-none focus:border-accent w-64"
+              placeholder="your wire URL (blank = demo)"
+              value={draft}
+              onInput={(e) => setDraft(e.currentTarget.value)}
+            />
+            <button class="border border-line rounded-md px-3 py-1 text-[11.5px] font-semibold text-ink-2 hover:text-ink hover:border-ink-2">
+              connect
+            </button>
+          </form>
+        )}
       </div>
       <div class="flex gap-1.5 flex-wrap">
         {FILTERS.map((f) => (
@@ -391,19 +423,21 @@ export function Wire() {
             // a session card's identity must survive id churn as chunks land
             const key = ev.live_call ? `s${ev.live_call.sid}` : ev.id
             return (
-              <Row key={key} ev={ev} hot={hotIds.has(ev.id)}
+              <Row key={key} ev={ev} hot={hotIds.has(ev.id)} tier={tierOf(ev, watchset)}
                    open={openIds.has(key)} onToggle={() => toggleOpen(key)} />
             )
           })}
         </div>
         <Rail today={today} now={now} />
       </div>
-      <p class="font-mono text-[10.5px] text-muted max-w-[74ch]">
-        BYO wire: this page ships no endpoint and no data — point it at any
-        fragwire-compatible service (/api/events + /api/stream, optionally
-        /api/today, /api/quotes, /api/meta) and everything renders in your
-        browser only. Blank endpoint runs a synthetic demo feed.
-      </p>
+      {!IS_PRIVATE_BUILD && (
+        <p class="font-mono text-[10.5px] text-muted max-w-[74ch]">
+          BYO wire: this page ships no endpoint and no data — point it at any
+          fragwire-compatible service (/api/events + /api/stream, optionally
+          /api/today, /api/quotes, /api/meta) and everything renders in your
+          browser only. Blank endpoint runs a synthetic demo feed.
+        </p>
+      )}
     </div>
   )
 }

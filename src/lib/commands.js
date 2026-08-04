@@ -40,6 +40,9 @@ export const HELP_TEXT = [
   row2('group NAME SYM…', 'name a bucket', 'group rm NAME', 'ungroup'),
   row2('div SYM', 'dividend history', 'chart SYM 6m', 'range works now'),
   row('opt SYM DATE', 'jump straight to a 2026-09-18 expiry'),
+  section('notes'),
+  row2('mem \\[add TEXT]', 'AI memories', 'mem edit·rm N', 'update · delete'),
+  row2('journal \\[add …]', 'trade journal', 'journal search T', 'find old thinking'),
   section('console'),
   row2('clear', 'wipe the console', 'copy \\[N]', 'copy output to clipboard'),
   row2('lang \\[en|zh]', 'switch language', 'h · q', 'help · quit'),
@@ -186,6 +189,41 @@ export function parseCommand(input) {
       return { type: 'group_add', name: args[0], symbols: args.slice(1).map((a) => a.toUpperCase()) }
     }
     return { type: 'msg', text: `[bold ${INF}]usage[/] [${DIM}]group · group semis NVDA AMD TSM · group rm semis[/]` }
+  }
+
+  // memory · memory add TEXT · memory edit N TEXT · memory rm N · memory N
+  if (cmd === 'memory' || cmd === 'mem') {
+    if (!args.length) return { type: 'mem_list' }
+    const sub = low(args[0])
+    if (sub === 'add' && args.length >= 2) {
+      return { type: 'mem_add', text: args.slice(1).join(' ') }
+    }
+    if (sub === 'edit' && args.length >= 3 && /^\d+$/.test(args[1])) {
+      return { type: 'mem_edit', id: Number(args[1]), text: args.slice(2).join(' ') }
+    }
+    if (['rm', 'delete', 'del'].includes(sub) && args.length === 2 && /^\d+$/.test(args[1])) {
+      return { type: 'mem_rm', id: Number(args[1]) }
+    }
+    if (/^\d+$/.test(sub)) return { type: 'mem_show', id: Number(sub) }
+    return { type: 'msg', text: `[bold ${INF}]usage[/] [${DIM}]mem · mem add TEXT · mem edit N TEXT · mem rm N · mem N[/]` }
+  }
+
+  // journal · journal add TEXT · journal rm N|N-M · journal search TERM · journal N
+  if (cmd === 'journal' || cmd === 'jr') {
+    if (!args.length) return { type: 'journal_list' }
+    const sub = low(args[0])
+    if (sub === 'add' && args.length >= 2) {
+      return { type: 'journal_add', text: args.slice(1).join(' ') }
+    }
+    if (['rm', 'delete', 'del'].includes(sub) && args.length === 2
+        && /^\d+(-\d+)?$/.test(args[1])) {
+      return { type: 'journal_rm', range: args[1] }
+    }
+    if (sub === 'search' && args.length >= 2) {
+      return { type: 'journal_search', term: args.slice(1).join(' ') }
+    }
+    if (/^\d+$/.test(sub)) return { type: 'journal_show', id: Number(sub) }
+    return { type: 'msg', text: `[bold ${INF}]usage[/] [${DIM}]journal · journal add TEXT · journal rm N · journal search TERM · journal N[/]` }
   }
 
   // div SYM — dividend profile + payout history in the console
