@@ -72,7 +72,7 @@ function Positions({ priceMap, positions }) {
         </thead>
         <tbody>
           {rows.map((r) => (
-            <tr key={r.symbol} class="border-t border-line hover:bg-surface-2 cursor-pointer"
+            <tr key={r.symbol} class="border-t border-line hover:bg-surface-3 cursor-pointer"
               onClick={() => (location.hash = `#/research/${r.symbol.toLowerCase()}`)}>
               <td class="px-3 py-[3px] font-bold text-accent">{r.symbol}</td>
               <td class="px-2 py-[3px] text-right text-ink-2">{r.shares}</td>

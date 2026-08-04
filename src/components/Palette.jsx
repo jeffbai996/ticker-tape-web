@@ -87,7 +87,7 @@ export function Palette({ onClose }) {
               onClick={() => go(entry)}
               onMouseEnter={() => setSelected(i)}
               class={`w-full flex items-baseline gap-3 px-4 py-2 text-left font-mono text-[12px] ${
-                i === sel ? 'bg-accent-soft text-accent' : 'text-ink hover:bg-surface-2'
+                i === sel ? 'bg-accent-soft text-accent' : 'text-ink hover:bg-surface-3'
               }`}
             >
               <span class="text-[9px] uppercase tracking-wider text-muted w-12 shrink-0">
