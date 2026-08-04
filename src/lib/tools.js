@@ -234,6 +234,9 @@ const NAV_VIEWS = {
 }
 const RESEARCH_SUBS = new Set(['chart', 'intraday', 'options', 'earnings', 'insider', 'analysts', 'news'])
 
+/** Grace period between the answer rendering and the route changing. */
+export const NAV_DELAY_MS = 1600
+
 function navigateTool({ view, symbol, sub }) {
   if (!(view in NAV_VIEWS)) {
     return { error: `unknown view — one of: ${Object.keys(NAV_VIEWS).join(', ')}` }
@@ -245,7 +248,9 @@ function navigateTool({ view, symbol, sub }) {
     const s = sub && RESEARCH_SUBS.has(sub) && sub !== 'chart' && sub !== 'news' ? `/${sub}` : ''
     hash = `#/research/${syms[0].toLowerCase()}${s}`
   }
-  location.hash = hash
+  // Let the assistant's sentence land before the page changes under the
+  // reader — an instant jump reads as the app glitching (Jeff 2026-08-04).
+  setTimeout(() => { location.hash = hash }, NAV_DELAY_MS)
   return { ok: true, navigatedTo: hash }
 }
 

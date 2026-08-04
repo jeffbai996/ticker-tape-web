@@ -257,3 +257,21 @@ export function clusterStories(events, now = Date.now() / 1000) {
   }
   return rest
 }
+
+/**
+ * Headlines worth interrupting a quote belt for: recent, and either flagged
+ * thesis-critical by the wire's own triage or a price move it decided to
+ * announce. Deliberately strict — the tape is glanceable only while it stays
+ * mostly quotes.
+ */
+export function tapeworthy(events, { now = Date.now() / 1000, maxAgeH = 6, limit = 4 } = {}) {
+  return (events || [])
+    .filter((e) => {
+      if (!e.headline) return false
+      if ((now - (e.ts_event || 0)) / 3600 > maxAgeH) return false
+      if (e.type === 'price_move') return true
+      return ((e.meta || {}).thesis || 0) >= 2
+    })
+    .sort((a, b) => (b.ts_event || 0) - (a.ts_event || 0))
+    .slice(0, limit)
+}

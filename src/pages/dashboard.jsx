@@ -110,7 +110,7 @@ function TuiRow({ symbol, data, earnDays }) {
   return (
     <a
       href={`#/research/${symbol.toLowerCase()}`}
-      class="block px-3 py-[3px] border-b border-line last:border-0 hover:bg-surface-3 hover:no-underline"
+      class="block px-3 py-[3px] border-b border-line last:border-0 hover:bg-white/[0.035] hover:no-underline"
     >
       <div class="flex gap-4 min-w-0">
         <div class="flex-1 min-w-0 overflow-hidden">
@@ -123,7 +123,7 @@ function TuiRow({ symbol, data, earnDays }) {
               </span>
             )}
             {q?.extLabel && q.extPrice != null && (
-              <span class="whitespace-nowrap text-[12px] hidden @min-[780px]:inline w-28 shrink-0">
+              <span class="whitespace-nowrap text-[12px] w-28 max-sm:w-auto shrink-0">
                 <span class="text-[#c084fc]">{q.extLabel}</span>{' '}
                 <span class="text-ink-2">{fmtPrice(q.extPrice)}</span>{' '}
                 <span class={extUp ? 'text-up' : 'text-down'}>
@@ -489,7 +489,7 @@ export function Dashboard() {
               <div key={g.name}>
                 <div class={`group flex items-center gap-2 px-3 py-1.5 font-mono text-[11px] text-muted tracking-wider border-b border-line select-none ${gi ? 'border-t' : ''}`}>
                   <button onClick={() => toggleCollapsed(g.name)}
-                          class="flex items-center gap-2 hover:text-ink uppercase"
+                          class="flex-1 flex items-center gap-2 hover:text-ink uppercase text-left"
                           title={folded ? 'expand' : 'collapse'}>
                     {tl(g.name)}
                     {folded && (
@@ -498,10 +498,10 @@ export function Dashboard() {
                       </span>
                     )}
                   </button>
-                  <span class="ml-auto hidden group-hover:flex gap-0.5">
-                    <button onClick={() => moveGroup(g.name, -1, names)}
+                  <span class="hidden group-hover:flex gap-0.5">
+                    <button onClick={(e) => { e.stopPropagation(); moveGroup(g.name, -1, names) }}
                             class="text-[10px] text-muted hover:text-ink px-1" title="move up">↑</button>
-                    <button onClick={() => moveGroup(g.name, 1, names)}
+                    <button onClick={(e) => { e.stopPropagation(); moveGroup(g.name, 1, names) }}
                             class="text-[10px] text-muted hover:text-ink px-1" title="move down">↓</button>
                   </span>
                 </div>

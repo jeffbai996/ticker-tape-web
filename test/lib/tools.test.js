@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { cleanSymbols, toolLabel, executeTool, TOOL_DEFS } from '../../src/lib/tools.js'
+import { cleanSymbols, toolLabel, executeTool, TOOL_DEFS, NAV_DELAY_MS } from '../../src/lib/tools.js'
 import { loadAlerts } from '../../src/lib/alerts.js'
 import { getWatchlist } from '../../src/lib/watchlist.js'
 
@@ -81,12 +81,21 @@ describe('executeTool', () => {
   })
 
   it('navigate sets the hash for plain views and research', async () => {
+    // The hop is deferred so the assistant's sentence renders before the page
+    // changes under the reader (Jeff 2026-08-04) — the tool reports the
+    // destination immediately, the URL follows.
+    const settle = () => new Promise((r) => setTimeout(r, NAV_DELAY_MS + 40))
+
     const m = JSON.parse(await executeTool('navigate', { view: 'heatmap' }))
     expect(m.ok).toBe(true)
+    expect(m.navigatedTo).toBe('#/markets/heatmap')
+    expect(location.hash).not.toBe('#/markets/heatmap')   // not yet
+    await settle()
     expect(location.hash).toBe('#/markets/heatmap')
 
     const r = JSON.parse(await executeTool('navigate', { view: 'research', symbol: 'NVDA', sub: 'options' }))
     expect(r.navigatedTo).toBe('#/research/nvda/options')
+    await settle()
     expect(location.hash).toBe('#/research/nvda/options')
 
     const bad = JSON.parse(await executeTool('navigate', { view: 'settings' }))
