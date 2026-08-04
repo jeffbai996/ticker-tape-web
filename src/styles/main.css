@@ -39,6 +39,29 @@ body {
   user-select: none;
 }
 
+/* Every clickable gets a hover response by default. This lives in the base
+   layer, so any component's own `hover:` utility overrides it — the point is
+   that nothing can be silently dead just because someone forgot. Subtle on
+   purpose; the loud treatments (.hl-row, .tape-hot) opt in explicitly.
+   Audited 2026-08-03: ~260 clickables had no hover rule at all. */
+@layer base {
+  a,
+  button:not(:disabled),
+  [role="button"] {
+    transition: background-color 0.12s ease, color 0.12s ease;
+  }
+  a:hover,
+  button:not(:disabled):hover,
+  [role="button"]:hover {
+    background-color: rgba(245, 158, 11, 0.08);
+  }
+  /* Text links inside prose shouldn't grow a box. */
+  a:hover:not([class]) {
+    background-color: transparent;
+    text-decoration: underline;
+  }
+}
+
 /* Terminal-dark scrollbars everywhere. */
 * {
   scrollbar-width: thin;
