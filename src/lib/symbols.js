@@ -12,7 +12,7 @@ export const WATCHLIST = [
 ]
 
 export const BUCKETS = [
-  { name: 'Mega Tech', symbols: ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'TSLA'] },
+  { name: 'Megacaps', symbols: ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'TSLA'] },
   { name: 'Semis & AI', symbols: ['NVDA', 'AMD', 'INTC', 'TSM', 'PLTR'] },
   { name: 'Software & Media', symbols: ['CRM', 'ORCL', 'NFLX', 'UBER', 'DIS'] },
   { name: 'Financials', symbols: ['JPM', 'V', 'BAC', 'GS', 'BRK-B', 'COIN'] },
