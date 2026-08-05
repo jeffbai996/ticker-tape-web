@@ -19,7 +19,7 @@ vi.mock('../../src/lib/chatstore.js', () => ({
 }))
 
 import {
-  currentThreadId, openThread, saveActiveHistory, startNewThread,
+  currentThreadId, fetchThreadList, openThread, saveActiveHistory, startNewThread,
 } from '../../src/lib/threads.js'
 
 describe('chat sessions', () => {
@@ -58,5 +58,24 @@ describe('chat sessions', () => {
     })
     expect(opened).toEqual([{ role: 'user', content: 'older' }])
     expect(currentThreadId()).toBe(52)
+  })
+
+  it('keeps multiple sessions locally when no server store is configured', async () => {
+    store.available = false
+    const first = [{ role: 'user', content: 'first local session' }]
+    saveActiveHistory(first)
+    await startNewThread(first)
+
+    const second = [{ role: 'user', content: 'second local session' }]
+    saveActiveHistory(second)
+    await startNewThread(second)
+
+    const sessions = await fetchThreadList()
+    expect(sessions.map((session) => session.title)).toEqual([
+      'second local session', 'first local session',
+    ])
+
+    const opened = await openThread(sessions[1].id, [])
+    expect(opened).toEqual(first)
   })
 })
