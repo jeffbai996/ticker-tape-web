@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'preact/hooks'
 import { NAV, hrefFor } from '../lib/route.js'
+import { goChatHome } from '../lib/chatnav.js'
 import { tl } from '../lib/i18n.js'
 import { useQuotes, useWatchlist } from '../hooks.js'
 import { FlashPrice } from './Fig.jsx'
@@ -87,6 +88,7 @@ export function Sidebar({ route }) {
           <div key={section.id}>
             <a
               href={hrefFor(section.id)}
+              onClick={section.id === 'chat' ? goChatHome : undefined}
               class={`flex items-center gap-2 mx-2 px-2.5 py-1 rounded-lg font-mono lowercase text-[12px] transition-colors ${
                 route.section === section.id
                   ? 'bg-accent-soft text-accent'

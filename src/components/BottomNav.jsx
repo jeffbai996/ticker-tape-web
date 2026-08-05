@@ -1,4 +1,5 @@
 import { NAV, hrefFor } from '../lib/route.js'
+import { goChatHome } from '../lib/chatnav.js'
 import { tl } from '../lib/i18n.js'
 
 // Mobile-only bottom tab bar (the sidebar is hidden below md). Scrolls
@@ -11,6 +12,7 @@ export function BottomNav({ route }) {
         <a
           key={section.id}
           href={hrefFor(section.id)}
+          onClick={section.id === 'chat' ? goChatHome : undefined}
           class={`flex-1 min-w-fit text-center px-3 py-2.5 text-[10px] font-mono whitespace-nowrap ${
             route.section === section.id ? 'text-accent border-t-2 border-accent -mt-px' : 'text-muted'
           }`}
