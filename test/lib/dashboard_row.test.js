@@ -28,6 +28,13 @@ describe('compact dashboard company name', () => {
     expect(css).not.toContain('@keyframes tick-flash')
   })
 
+  it('paints daily change and only newly printed day extremes', () => {
+    expect(dashboard).toContain('<FlashMetric value={q.change} fmt={fmtAbsChange} kind="change" />')
+    expect(dashboard).toContain('<FlashMetric value={q.pct} fmt={fmtPct} kind="change" />')
+    expect(dashboard).toContain('<FlashMetric value={lo} fmt={fmtPriceBare} kind="low" />')
+    expect(dashboard).toContain('<FlashMetric value={hi} fmt={fmtPriceBare} kind="high" />')
+  })
+
   it('fills the high-zoom regular-hours gap with a labeled day range', () => {
     expect(dashboard).toContain('function CompactDayRange')
     expect(dashboard).toContain('hidden @min-[545px]:flex @min-[730px]:hidden')

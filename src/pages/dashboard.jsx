@@ -20,11 +20,12 @@ import { loadUserGroups, onUserGroupsChange } from '../lib/usergroups.js'
 import { fmtPrice, fmtPriceBare, fmtPct, fmtChange, fmtVol, rangePos } from '../lib/format.js'
 import { Histo } from '../components/Histo.jsx'
 import { Marquee } from '../components/Marquee.jsx'
-import { FlashPrice } from '../components/Fig.jsx'
+import { FlashMetric, FlashPrice } from '../components/Fig.jsx'
 import { tl } from '../lib/i18n.js'
 
 const DAY = 86_400_000
 const ETF_SKIP = new Set(['SPY', 'QQQ', 'IWM', 'GLD', 'TLT'])
+const fmtAbsChange = (v) => fmtChange(Math.abs(v)).replace('+', '')
 
 /** Days until each symbol's next earnings — feeds the `27d` badge + panel.
  *  Exported for the briefing page, which reuses the same fan-out. */
@@ -91,14 +92,18 @@ function RangeBar({ label, lo, hi, v, cls = '' }) {
   return (
     <span class={`hidden @min-[730px]:flex items-center gap-1 font-mono text-[11px] font-normal whitespace-nowrap ${cls}`}>
       <span class="text-accent/60 font-normal text-[9px] w-6">{label}</span>
-      <span class="text-down/80 w-14 text-right">{fmtPriceBare(lo)}</span>
+      <span class="text-down/80 w-14 text-right">
+        <FlashMetric value={lo} fmt={fmtPriceBare} kind="low" />
+      </span>
       <span class="relative w-14 h-[3px] bg-line rounded-full shrink-0 mx-0.5">
         <span
           class="absolute top-1/2 -translate-y-1/2 w-[3px] h-[7px] bg-accent-2 rounded-sm"
           style={{ left: `calc(${(pos * 100).toFixed(1)}% - 1.5px)` }}
         />
       </span>
-      <span class="text-up/80 w-14">{fmtPriceBare(hi)}</span>
+      <span class="text-up/80 w-14">
+        <FlashMetric value={hi} fmt={fmtPriceBare} kind="high" />
+      </span>
     </span>
   )
 }
@@ -114,14 +119,18 @@ function CompactDayRange({ lo, hi, v }) {
       title={`DAY ${fmtPriceBare(lo)} – ${fmtPriceBare(hi)}`}
     >
       <span class="text-accent/60 font-normal text-[9px]">DAY</span>
-      <span class="text-down/80 w-11 text-right">{fmtPriceBare(lo)}</span>
+      <span class="text-down/80 w-11 text-right">
+        <FlashMetric value={lo} fmt={fmtPriceBare} kind="low" />
+      </span>
       <span class="relative w-12 h-[3px] bg-line rounded-full shrink-0">
         <span
           class="absolute top-1/2 -translate-y-1/2 w-[3px] h-[7px] bg-accent-2 rounded-sm"
           style={{ left: `calc(${(pos * 100).toFixed(1)}% - 1.5px)` }}
         />
       </span>
-      <span class="text-up/80 w-11">{fmtPriceBare(hi)}</span>
+      <span class="text-up/80 w-11">
+        <FlashMetric value={hi} fmt={fmtPriceBare} kind="high" />
+      </span>
     </span>
   )
 }
@@ -178,7 +187,10 @@ function TuiRow({ symbol, data, earnDays }) {
             </span>
             {q && (
               <span class={`${up ? 'text-up' : 'text-down'} whitespace-nowrap w-[8rem] @max-[800px]:w-auto max-sm:w-auto shrink-0`}>
-                {up ? '▲' : '▼'} {fmtChange(Math.abs(q.change)).replace('+', '')} <span class="font-normal text-[11px] max-sm:text-[10px]">({fmtPct(q.pct)})</span>
+                {up ? '▲' : '▼'} <FlashMetric value={q.change} fmt={fmtAbsChange} kind="change" />{' '}
+                <span class="font-normal text-[11px] max-sm:text-[10px]">
+                  (<FlashMetric value={q.pct} fmt={fmtPct} kind="change" />)
+                </span>
               </span>
             )}
             {/* extended hours reads a tier below the regular quote — on a
