@@ -143,53 +143,58 @@ body {
     transition-timing-function: linear;
   }
 
-  /* Below the dashboard's permanent-name breakpoint, the company name peeks
-     out from behind the ticker without reflowing the aligned price columns.
-     The masked wipe has the same restrained, mechanical feel as the rest of
-     the terminal instead of materializing as a generic browser tooltip. */
-  .tui-company-name-peek {
-    position: absolute;
-    left: calc(100% + .38rem);
-    top: calc(100% + .22rem);
-    z-index: 20;
+  /* Below the dashboard's permanent-name breakpoint, the ticker and company
+     name share one fixed identity slot. The vertical masked swap keeps the
+     quote columns frozen and reads as a state change, not a tooltip. */
+  .tui-company-identity {
     display: inline-block;
-    min-width: 5.75rem;
-    max-width: min(15rem, calc(100cqw - 9rem));
-    padding: .12rem .48rem .16rem;
+    overflow: hidden;
+    white-space: nowrap;
+    vertical-align: baseline;
+  }
+  .tui-company-symbol {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition:
+      transform .28s cubic-bezier(.16, 1, .3, 1),
+      opacity .18s ease;
+  }
+  .tui-company-name-swap {
+    position: absolute;
+    inset: 0;
+    display: block;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
     color: var(--color-ink-2);
-    background: var(--color-surface-3);
-    border: 1px solid var(--color-line-2);
-    border-left: 2px solid color-mix(in srgb, var(--color-accent) 76%, transparent);
-    border-radius: 4px;
-    font: 450 10.5px/1.3 "Anthropic Sans", "Plus Jakarta Sans", system-ui, sans-serif;
+    font: 500 10.5px/1.45 "Anthropic Sans", "Plus Jakarta Sans", system-ui, sans-serif;
     letter-spacing: normal;
     opacity: 0;
-    visibility: hidden;
     pointer-events: none;
-    clip-path: inset(0 100% 0 0);
-    transform: translateX(-.38rem);
-    transform-origin: left center;
+    transform: translateY(110%);
     transition:
-      clip-path .3s cubic-bezier(.16, 1, .3, 1),
-      transform .3s cubic-bezier(.16, 1, .3, 1),
-      opacity .14s ease,
-      visibility 0s linear .3s;
+      transform .28s cubic-bezier(.16, 1, .3, 1),
+      opacity .18s ease;
   }
-  .tui-row:hover .tui-company-name-peek,
-  .tui-row:focus-visible .tui-company-name-peek,
-  .tui-row:focus-within .tui-company-name-peek {
-    opacity: 1;
-    visibility: visible;
-    clip-path: inset(0);
-    transform: translateX(0);
-    transition-delay: 0s;
+  @container (max-width: 819px) {
+    .tui-row:hover .tui-company-symbol,
+    .tui-row:focus-visible .tui-company-symbol,
+    .tui-row:focus-within .tui-company-symbol {
+      opacity: 0;
+      transform: translateY(-110%);
+    }
+    .tui-row:hover .tui-company-name-swap,
+    .tui-row:focus-visible .tui-company-name-swap,
+    .tui-row:focus-within .tui-company-name-swap {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
   @media (prefers-reduced-motion: reduce) {
     .mq-inner,
-    .tui-company-name-peek {
+    .tui-company-symbol,
+    .tui-company-name-swap {
       transition: none !important;
     }
     .mq-inner { transform: none !important; }
