@@ -12,6 +12,18 @@ export function wireChatAvailable() {
   return !!wireUrl()
 }
 
+/** Fetch the selectable subscription models from the live router. */
+export async function fetchWireChatModels() {
+  const base = wireUrl().replace(/\/$/, '')
+  const resp = await fetch(`${base}/api/chat/models`, {
+    signal: AbortSignal.timeout(10_000),
+  })
+  if (!resp.ok) throw new Error(`wire chat models ${resp.status}`)
+  const out = await resp.json()
+  if (!out.ok || !Array.isArray(out.models)) throw new Error('invalid wire chat models')
+  return out.models
+}
+
 /** The tool contract, spelled out for a model with no tool-calling API. */
 export function toolProtocol(defs = TOOL_DEFS) {
   const lines = defs.map((d) => {
@@ -56,12 +68,12 @@ export function parseToolCall(text, defs = TOOL_DEFS) {
 }
 
 /** One turn against fragwire's router. Returns the assistant's raw text. */
-export async function wireComplete({ system, messages, signal }) {
+export async function wireComplete({ model, system, messages, signal }) {
   const base = wireUrl().replace(/\/$/, '')
   const resp = await fetch(`${base}/api/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ system, messages }),
+    body: JSON.stringify({ model, system, messages }),
     signal: signal || AbortSignal.timeout(180_000),
   })
   const out = await resp.json().catch(() => ({}))

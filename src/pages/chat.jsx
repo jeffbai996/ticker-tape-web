@@ -4,7 +4,7 @@ import { runAgentic, trimHistory } from '../lib/agent.js'
 import { toolLabel } from '../lib/tools.js'
 import { MdLite } from '../components/AiReport.jsx'
 import { tl, t as tt } from '../lib/i18n.js'
-import { wireChatAvailable } from '../lib/wirechat.js'
+import { fetchWireChatModels, wireChatAvailable } from '../lib/wirechat.js'
 import { useQuotes, useWatchlist } from '../hooks.js'
 import { useEarningsDays } from './dashboard.jsx'
 import { ECON_EVENTS } from '../lib/markets.js'
@@ -220,8 +220,12 @@ function ToolChips({ calls, results }) {
 }
 
 export function Chat() {
+  const onWire = wireChatAvailable()
+  const modelStorageKey = onWire ? 'chat_wire_model' : 'chat_model'
   const [models, setModels] = useState([])
-  const [model, setModel] = useState(localStorage.getItem('chat_model') || 'flash')
+  const [model, setModel] = useState(
+    localStorage.getItem(modelStorageKey) || (onWire ? 'auto' : 'flash'),
+  )
   const [effort, setEffort] = useState(localStorage.getItem('chat_effort') || 'auto')
   const [spend, setSpend] = useState(null)
   const [history, setHistory] = useState(loadHistory)
@@ -230,7 +234,6 @@ export function Chat() {
     sessionStorage.removeItem('chat_prefill')
     return pre
   })
-  const onWire = wireChatAvailable()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [notice, setNotice] = useState(null)          // memory-tag confirmations
@@ -250,15 +253,18 @@ export function Chat() {
     new Date().toISOString().slice(0, 10), 30)[0] || null
 
   useEffect(() => {
-    // on the wire path the worker is never used — don't ask it anything
-    if (wireChatAvailable()) return
-    fetchChatModels().then((d) => {
-      setModels(d.models)
-      if (!d.models.some((candidate) => candidate.key === model)) {
-        setModel('flash')
-        localStorage.setItem('chat_model', 'flash')
+    const load = onWire
+      ? fetchWireChatModels()
+      : fetchChatModels().then((data) => data.models)
+    load.then((liveModels) => {
+      setModels(liveModels)
+      if (!liveModels.some((candidate) => candidate.key === model)) {
+        const fallback = liveModels[0]?.key || (onWire ? 'auto' : 'flash')
+        setModel(fallback)
+        localStorage.setItem(modelStorageKey, fallback)
       }
     }).catch(() => {})
+    if (onWire) return
     fetchSpend().then(setSpend).catch(() => {})
   }, [])
 
@@ -349,13 +355,13 @@ export function Chat() {
     <div class="flex-1 flex flex-col p-3 min-h-0 min-w-0 select-text">
       <div class="flex items-center gap-3 px-1 pb-2 flex-wrap">
         <h1 class="font-bold text-lg text-ink" style="font-family: 'Plus Jakarta Sans', sans-serif">{tl('AI Chat')}</h1>
-        {!onWire && <label class="flex items-center gap-1.5 bg-surface-2 border border-line rounded-lg pl-2.5 pr-1 py-1 focus-within:border-accent/70 hover:border-line-2 transition-colors">
+        <label class="flex items-center gap-1.5 bg-surface-2 border border-line rounded-lg pl-2.5 pr-1 py-1 focus-within:border-accent/70 hover:border-line-2 transition-colors">
           <span class="font-mono text-[9px] uppercase tracking-wider text-muted">model</span>
           <select
             value={model}
             onChange={(e) => {
               setModel(e.currentTarget.value)
-              localStorage.setItem('chat_model', e.currentTarget.value)
+              localStorage.setItem(modelStorageKey, e.currentTarget.value)
             }}
             class="bg-transparent font-mono text-[11px] text-ink outline-none pr-1 cursor-pointer"
           >
@@ -363,7 +369,7 @@ export function Chat() {
               <option key={m.key} value={m.key}>{m.label}</option>
             ))}
           </select>
-        </label>}
+        </label>
         {onWire && (
           <span class="font-mono text-[10px] text-muted border border-line rounded-md px-2 py-1"
                 title="answers come from your own subscription via fragwire — no metered API, no cap">
