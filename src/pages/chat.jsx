@@ -254,14 +254,34 @@ function ToolChips({ calls, results }) {
 }
 
 function ActivityTrace({ steps, busy, think }) {
+  // per-step elapsed clock, operator-style: first sighting of an un-done key
+  // stamps its start; a 1s tick repaints while anything is running
+  const startsRef = useRef({})
+  const [, tick] = useState(0)
+  const anyRunning = steps.some((s) => !s.done)
+  useEffect(() => {
+    if (!anyRunning) return
+    const t = setInterval(() => tick((n) => n + 1), 1000)
+    return () => clearInterval(t)
+  }, [anyRunning])
+  for (const s of steps) {
+    if (!s.done && startsRef.current[s.key] == null) startsRef.current[s.key] = Date.now()
+  }
+  const elapsed = (key) => {
+    const t0 = startsRef.current[key]
+    if (!t0) return ''
+    const sec = Math.floor((Date.now() - t0) / 1000)
+    return sec >= 1 ? (sec < 60 ? `${sec}s` : `${Math.floor(sec / 60)}m ${sec % 60}s`) : ''
+  }
   if (!steps.length) return null
   const body = (
     <div class="mt-1 ml-1 pl-2 border-l border-line flex flex-col gap-1">
       {steps.map((step) => (
         <div key={step.key} class="flex flex-col gap-0.5">
-          <div class="flex items-center gap-1.5 font-mono text-[10px]">
-            <span class={step.done ? 'text-up' : 'text-accent animate-pulse'}>{step.done ? '✓' : '◌'}</span>
-            <span class={step.done ? '' : 'text-ink-2'}>{step.label}{step.done ? '' : <Thinking />}</span>
+          <div class="flex items-baseline gap-1.5 font-mono text-[10px]">
+            <span class={step.done ? 'text-up' : 'text-accent animate-pulse'}>{step.done ? '✓' : '●'}</span>
+            <span class={step.done ? '' : 'text-ink-2'}>{step.label}</span>
+            {!step.done && <span class="text-muted tabular-nums">{elapsed(step.key)}</span>}
           </div>
           {/* the model's live reasoning feed rides INSIDE its step — the
               tail of it, operator-style, not a separate bubble above */}
@@ -515,8 +535,9 @@ export function Chat() {
   // Launchpad fuel — live quotes, earnings proximity, next calendar event.
   // useQuotes polls, so the pad's suggestions refresh on their own.
   const watchlist = useWatchlist()
-  const quotes = useQuotes(splash ? watchlist : [])
-  const earnDays = useEarningsDays(splash ? watchlist : [])
+  // the right rail is live even mid-thread, so the pad data polls always
+  const quotes = useQuotes(watchlist)
+  const earnDays = useEarningsDays(watchlist)
   const upcoming = mergedEvents(ECON_EVENTS, loadCatalysts(),
     new Date().toISOString().slice(0, 10), 60).slice(0, 4)
 
@@ -775,7 +796,18 @@ export function Chat() {
       </form>
   )
 
+  const railMovers = watchlist
+    .map((sym) => ({ sym, pct: quotes[sym]?.quote?.pct }))
+    .filter((x) => x.pct != null)
+    .sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct))
+    .slice(0, 5)
+  const railEarn = watchlist
+    .filter((sym) => earnDays[sym] != null && earnDays[sym] >= 0)
+    .sort((a, b) => earnDays[a] - earnDays[b])
+    .slice(0, 4)
+
   return (
+    <div class="flex-1 flex min-h-0 min-w-0">
     <div class="flex-1 flex flex-col p-3 min-h-0 min-w-0 select-text">
       {/* One control height across the row — the title, the wire pill, the
           model housing, the effort pills and the icon rail all centre on the
@@ -1013,6 +1045,75 @@ export function Chat() {
           {composer}
         </>
       )}
+    </div>
+
+    {/* xl right rail — the dead margin becomes the working set: memory and
+        journal live inline (same state as the drawers), plus a live glance
+        strip. Below xl the icon buttons + drawers still carry it. */}
+    <aside class="hidden xl:flex w-[270px] shrink-0 flex-col gap-2 p-3 pl-0 overflow-y-auto min-h-0">
+      <section class="bg-surface-1 border border-line rounded-xl overflow-hidden shrink-0">
+        <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
+          <h2 class="font-anth font-bold text-[10px] tracking-wider text-accent uppercase">in view</h2>
+        </header>
+        <div class="px-2.5 py-1 font-mono text-[10.5px]">
+          {railMovers.map(({ sym, pct }) => (
+            <a key={sym} href={`#/research/${sym.toLowerCase()}`} class="flex justify-between py-px hover:no-underline">
+              <span class="text-ink font-[650] font-tick">{sym}</span>
+              <span class={pct >= 0 ? 'text-up' : 'text-down'}>{fmtPct(pct)}</span>
+            </a>
+          ))}
+          {railEarn.length > 0 && <div class="border-t border-line/50 mt-1 pt-1">
+            {railEarn.map((sym) => (
+              <a key={sym} href={`#/research/${sym.toLowerCase()}/earnings`} class="flex justify-between py-px hover:no-underline">
+                <span class="text-ink-2 font-tick">{sym}</span>
+                <span class={earnDays[sym] === 0 ? 'text-imminent font-bold' : earnDays[sym] <= 7 ? 'text-down' : 'text-accent'}>
+                  {earnDays[sym] === 0 ? 'ern today' : `ern ${earnDays[sym]}d`}
+                </span>
+              </a>
+            ))}
+          </div>}
+        </div>
+      </section>
+
+      <section class="bg-surface-1 border border-line rounded-xl overflow-hidden shrink-0">
+        <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2 flex items-baseline gap-1.5">
+          <h2 class="font-anth font-bold text-[10px] tracking-wider text-accent uppercase">memories</h2>
+          <span class="font-mono text-[9px] text-muted">{memories.length}</span>
+        </header>
+        <div class="px-2.5 py-1 max-h-[26vh] overflow-y-auto">
+          {memories.length === 0 && <div class="font-anth text-[11px] text-muted py-0.5">nothing saved yet</div>}
+          {memories.slice(-12).reverse().map((m) => (
+            <NoteRow key={m.id} id={m.id} text={m.text}
+              onSave={(t) => { editMemory(m.id, t); setMemories(loadMemories()) }}
+              onDelete={() => { removeMemory(m.id); setMemories(loadMemories()) }} />
+          ))}
+          <NoteAdd placeholder="add a memory…"
+            onAdd={(t) => { addMemory(t); setMemories(loadMemories()) }} />
+        </div>
+      </section>
+
+      <section class="bg-surface-1 border border-line rounded-xl overflow-hidden shrink-0">
+        <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2 flex items-baseline gap-1.5">
+          <h2 class="font-anth font-bold text-[10px] tracking-wider text-accent uppercase">journal</h2>
+          <span class="font-mono text-[9px] text-muted">{journal.length}</span>
+          <input value={jrFilter} onInput={(e) => setJrFilter(e.currentTarget.value)}
+            placeholder="search…"
+            class="ml-auto bg-surface-2 border border-line rounded px-1.5 py-0 font-mono text-[9px] text-ink outline-none focus:border-accent/60 w-20 placeholder:text-muted" />
+        </header>
+        <div class="px-2.5 py-1 max-h-[30vh] overflow-y-auto">
+          {(jrFilter ? searchJournal(jrFilter) : journal).slice(-10).reverse().map((e) => (
+            <NoteRow key={e.id} id={e.id} text={e.text}
+              meta={e.symbols?.length ? e.symbols.join(' ') : ''}
+              onDelete={() => { removeJournalEntry(e.id); setJournal(loadJournal()) }} />
+          ))}
+          {(jrFilter ? searchJournal(jrFilter) : journal).length === 0 && (
+            <div class="font-anth text-[11px] text-muted py-0.5">{jrFilter ? 'no matches' : 'nothing logged yet'}</div>
+          )}
+          <NoteAdd placeholder="log a decision…"
+            onAdd={(t) => { addJournalEntry(t); setJournal(loadJournal()) }} />
+        </div>
+      </section>
+    </aside>
     </div>
   )
 }
