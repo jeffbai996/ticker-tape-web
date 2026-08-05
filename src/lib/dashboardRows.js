@@ -1,25 +1,19 @@
 import { BUCKETS } from './symbols.js'
 
-/** Group a watchlist in its own selected order. An explicit override wins,
- * then user groups, then the built-in broad-universe buckets, then General. */
-export function groupDashboardRows(watchlist, overrides = {}, userGroups = {}) {
+/** Group a watchlist in its own selected order. Configured groups win, then
+ * the built-in broad-universe buckets, then General. */
+export function groupDashboardRows(watchlist, userGroups = {}) {
   const names = [
     ...Object.keys(userGroups),
     ...BUCKETS.map((bucket) => bucket.name),
   ]
-  for (const category of Object.values(overrides)) {
-    if (category !== 'General' && !names.includes(category)) names.push(category)
-  }
   names.push('General')
 
   const grouped = new Map(names.map((name) => [name, []]))
   for (const symbol of watchlist) {
-    let category = overrides[symbol]
-    if (!category) {
-      category = Object.entries(userGroups).find(([, symbols]) => symbols.includes(symbol))?.[0]
-        || BUCKETS.find((bucket) => bucket.symbols.includes(symbol))?.name
-        || 'General'
-    }
+    const category = Object.entries(userGroups).find(([, symbols]) => symbols.includes(symbol))?.[0]
+      || BUCKETS.find((bucket) => bucket.symbols.includes(symbol))?.name
+      || 'General'
     if (!grouped.has(category)) grouped.set(category, [])
     grouped.get(category).push(symbol)
   }

@@ -9,7 +9,8 @@ const PRIVATE_BUILD = import.meta.env.VITE_PRIVATE === '1'
 const CHAT_SECTION = { id: 'chat', label: 'AI Chat', subs: [] }
 
 export const NAV = [
-  { id: 'dashboard', label: 'Dashboard', subs: [{ id: 'watchlists', label: 'Watchlists' }] },
+  { id: 'dashboard', label: 'Dashboard', subs: [] },
+  { id: 'watchlists', label: 'Watchlists', subs: [] },
   { id: 'brief', label: 'Briefing', badge: 'AI', subs: [] },
   {
     id: 'markets',

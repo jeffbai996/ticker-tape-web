@@ -47,10 +47,11 @@ const PAGES = {
 
 export function Page({ route }) {
   if (route.section === 'dashboard') {
-    return route.sub === 'watchlists'
-      ? <WatchlistsPage />
-      : <Dashboard listId={route.sub} />
+    return <Dashboard />
   }
+  if (route.section === 'watchlists') return route.sub
+    ? <Dashboard listId={route.sub} />
+    : <WatchlistsPage />
   if (route.section === 'brief') return <Brief />
   if (route.section === 'markets') return <Markets route={route} />
   if (route.section === 'research') return <Research route={route} />

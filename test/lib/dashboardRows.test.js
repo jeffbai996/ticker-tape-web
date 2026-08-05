@@ -1,36 +1,20 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import {
-  getCategoryOverrides, onCategoryOverridesChange, setCategoryOverride,
-} from '../../src/lib/categories.js'
 import { groupDashboardRows, selectFlatRows, quoteSpread } from '../../src/lib/dashboardRows.js'
 
 beforeEach(() => localStorage.clear())
 
 describe('dashboard categories', () => {
-  it('manually assigns a general ticker to a built-in category', () => {
-    let seen = null
-    const off = onCategoryOverridesChange((v) => { seen = v })
-    expect(setCategoryOverride('xyz', 'Semis')).toBe('Semis')
-    expect(getCategoryOverrides()).toEqual({ XYZ: 'Semis' })
-    expect(seen).toEqual({ XYZ: 'Semis' })
-    expect(groupDashboardRows(['AAPL', 'XYZ'], getCategoryOverrides()))
-      .toEqual([
-        { name: 'Megacaps', symbols: ['AAPL'] },
-        { name: 'Semis', symbols: ['XYZ'] },
-      ])
-    off()
-  })
-
-  it('clears an override back to automatic categorization', () => {
-    setCategoryOverride('XYZ', 'Semis')
-    expect(setCategoryOverride('XYZ', null)).toBeNull()
-    expect(groupDashboardRows(['XYZ'], getCategoryOverrides()))
-      .toEqual([{ name: 'General', symbols: ['XYZ'] }])
-  })
-
-  it('recognizes SNDK as a semiconductor without an override', () => {
-    expect(groupDashboardRows(['SNDK'], {}))
+  it('recognizes SNDK as a semiconductor from the built-in universe', () => {
+    expect(groupDashboardRows(['SNDK']))
       .toEqual([{ name: 'Semis', symbols: ['SNDK'] }])
+  })
+
+  it('uses configured groups before the built-in universe', () => {
+    expect(groupDashboardRows(['AAPL', 'XYZ'], { Custom: ['XYZ'] }))
+      .toEqual([
+        { name: 'Custom', symbols: ['XYZ'] },
+        { name: 'Megacaps', symbols: ['AAPL'] },
+      ])
   })
 })
 
@@ -41,7 +25,7 @@ describe('flat dashboard rows', () => {
     NVDA: { quote: { name: 'NVIDIA Corp.', price: 150, pct: 3, bid: 149.99, ask: 150 } },
   }
 
-  it('keeps manual watchlist order and filters by ticker or company name', () => {
+  it('keeps saved order and filters by ticker or company name', () => {
     expect(selectFlatRows(['MSFT', 'AAPL', 'NVDA'], quotes).map((r) => r.symbol))
       .toEqual(['MSFT', 'AAPL', 'NVDA'])
     expect(selectFlatRows(['MSFT', 'AAPL'], quotes, { filter: 'apple' }).map((r) => r.symbol))

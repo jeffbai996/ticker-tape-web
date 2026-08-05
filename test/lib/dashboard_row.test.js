@@ -55,12 +55,17 @@ describe('compact dashboard company name', () => {
     expect(dashboard).toContain('hidden @min-[730px]:flex')
   })
 
-  it('offers category assignment plus grouped and flat dashboard views', () => {
-    expect(dashboard).toContain('function CategoryPicker')
+  it('offers mapped sectors plus searchable and sortable flat views', () => {
+    expect(dashboard).not.toContain('function CategoryPicker')
+    expect(dashboard).not.toContain('setCategoryOverride')
     expect(dashboard).toContain("setViewMode('grouped')")
     expect(dashboard).toContain("setViewMode('flat')")
-    expect(dashboard).toContain('placeholder="filter tickers…"')
+    expect(dashboard).toContain('>\n            Sectors\n')
+    expect(dashboard).toContain('>\n            All\n')
+    expect(dashboard).toContain('placeholder="search…"')
+    expect(dashboard).toContain('<option value="manual">Sort</option>')
     expect(dashboard).toContain('<option value="spread">Spread</option>')
+    expect(dashboard).not.toContain('manage lists')
   })
 
   it('shows raw bid-ask spread without a basis-point suffix', () => {
