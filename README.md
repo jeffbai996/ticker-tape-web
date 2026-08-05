@@ -8,7 +8,7 @@ Personal project. See [LICENSE](LICENSE).
 
 ## Features
 
-- **TUI dashboard** — two-line quote rows with after-hours prints, volume histogram sparks, and a badge row per symbol: RSI(14), days-to-earnings, SMA50/200 flags, volume vs 20d average, % off 52-week high, 20d relative strength vs QQQ
+- **TUI dashboard** — ticker-by-ticker streaming prints with terminal tick flashes, after-hours quotes, volume histogram sparks, and a badge row per symbol: RSI(14), days-to-earnings, SMA50/200 flags, volume vs 20d average, % off 52-week high, 20d relative strength vs QQQ
 - **Customizable widget rail** — add / remove / reorder panels (pulse, earnings, macro calendar, movers, mini charts) on the home view; layout persists per browser
 - **`ticker>` command line** — the CLI grammar in the footer, with a drop-up output console and ↑/↓ history: `NVDA`, `ta AMD`, `intra TSM`, `vs AAPL MSFT`, `alert SPY > 700`, `w SHOP`, `b`, `h`
 - **Status bar** — PRE / OPEN / POST / CLOSED / HOLIDAY session chip (ET, holiday-aware), global index strip that swaps to ES/NQ futures outside regular hours, VIX threshold colors, ET clock with connectivity dot
@@ -24,8 +24,8 @@ Personal project. See [LICENSE](LICENSE).
 
 ```
 Browser (GitHub Pages, static)
-  src/lib/feed.js       one v7 batch request paints every quote instantly,
-                        then a per-symbol 1Y-daily pump fills badges + sparks
+  src/lib/feed.js       Yahoo WebSocket streams individual price ticks; v7
+                        snapshots recover gaps and v8 fills badges + sparks
   src/lib/*             all analytics computed client-side (pure functions)
         │
         ▼

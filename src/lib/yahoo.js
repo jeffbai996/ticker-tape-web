@@ -62,6 +62,70 @@ export function quoteFromV7(row) {
   }
 }
 
+/** Merge one Yahoo streamer tick into the richer snapshot quote shape. */
+export function quoteFromStream(tick, previous = {}) {
+  if (!tick?.symbol || tick.price == null) return previous
+  const marketTime = tick.time != null ? Math.floor(tick.time / 1000) : previous.marketTime
+  const base = {
+    ...previous,
+    symbol: tick.symbol,
+    name: previous.name || tick.shortName || '',
+  }
+
+  // 0 PRE, 1 REGULAR, 2 POST, 3 EXTENDED. Extended ticks are measured from
+  // the cash close, so they belong in the purple secondary quote, not in the
+  // regular price column.
+  if (tick.marketHours === 0 || tick.marketHours === 2 || tick.marketHours === 3) {
+    return {
+      ...base,
+      extLabel: tick.marketHours === 0 ? 'PRE' : 'AH',
+      extPrice: tick.price,
+      extPct: tick.changePercent ?? previous.extPct ?? null,
+      extChange: tick.change ?? previous.extChange ?? null,
+      extMarketTime: marketTime,
+    }
+  }
+
+  // A regular print makes any persisted PRE/AH adornment stale.
+  const { extLabel, extPrice, extPct, extChange, extMarketTime, ...regular } = base
+  return {
+    ...regular,
+    price: tick.price,
+    change: tick.change ?? previous.change ?? 0,
+    pct: tick.changePercent ?? previous.pct ?? 0,
+    volume: tick.dayVolume ?? previous.volume ?? null,
+    dayHigh: tick.dayHigh ?? previous.dayHigh ?? null,
+    dayLow: tick.dayLow ?? previous.dayLow ?? null,
+    marketTime,
+    bid: tick.bid ?? previous.bid,
+    ask: tick.ask ?? previous.ask,
+    lastSize: tick.lastSize ?? previous.lastSize,
+  }
+}
+
+/** A snapshot enriches range/name data but cannot rewind a fresh live print. */
+export function mergeSnapshotQuote(previous, snapshot, streamIsFresh) {
+  if (!streamIsFresh || !previous) return snapshot
+  return {
+    ...snapshot,
+    name: snapshot.name || previous.name || '',
+    price: previous.price ?? snapshot.price,
+    change: previous.change ?? snapshot.change,
+    pct: previous.pct ?? snapshot.pct,
+    volume: previous.volume ?? snapshot.volume,
+    marketTime: previous.marketTime ?? snapshot.marketTime,
+    dayHigh: snapshot.dayHigh ?? previous.dayHigh ?? null,
+    dayLow: snapshot.dayLow ?? previous.dayLow ?? null,
+    ...(previous.extLabel ? {
+      extLabel: previous.extLabel,
+      extPrice: previous.extPrice,
+      extPct: previous.extPct,
+      extChange: previous.extChange,
+      extMarketTime: previous.extMarketTime,
+    } : {}),
+  }
+}
+
 export function sparkFromChart(result) {
   const closes = result?.indicators?.quote?.[0]?.close || []
   return closes.filter((c) => c != null)

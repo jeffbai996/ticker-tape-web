@@ -19,4 +19,8 @@ describe('compact dashboard company name', () => {
     expect(css).toMatch(/\.tui-company-identity\s*\{[\s\S]*overflow: hidden;/)
     expect(css).toMatch(/prefers-reduced-motion:[\s\S]*\.tui-company-name-swap/)
   })
+
+  it('flashes the regular print as ticker-by-ticker updates land', () => {
+    expect(dashboard).toContain('<FlashPrice price={q.price} fmt={fmtPrice} />')
+  })
 })

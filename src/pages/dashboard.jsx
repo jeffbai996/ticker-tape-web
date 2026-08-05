@@ -150,7 +150,9 @@ function TuiRow({ symbol, data, earnDays }) {
               <Marquee text={q?.name || ''} title={q?.name ? `${symbol} — ${q.name}` : symbol}
                 class="inline-block w-full text-[10.5px] text-muted font-normal font-anth" />
             </span>
-            <span class="text-ink font-semibold w-[4.75rem] max-sm:w-[4.25rem] text-right shrink-0">{q ? fmtPrice(q.price) : '—'}</span>
+            <span class="text-ink font-semibold w-[4.75rem] max-sm:w-[4.25rem] text-right shrink-0">
+              {q ? <FlashPrice price={q.price} fmt={fmtPrice} /> : '—'}
+            </span>
             {q && (
               <span class={`${up ? 'text-up' : 'text-down'} whitespace-nowrap w-[8rem] @max-[800px]:w-auto max-sm:w-auto shrink-0`}>
                 {up ? '▲' : '▼'} {fmtChange(Math.abs(q.change)).replace('+', '')} <span class="font-normal text-[11px] max-sm:text-[10px]">({fmtPct(q.pct)})</span>
