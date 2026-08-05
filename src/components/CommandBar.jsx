@@ -341,9 +341,18 @@ export function CommandBar() {
           value={value}
           onInput={(e) => setValue(e.currentTarget.value)}
           onKeyDown={onKey}
-          placeholder="type command or symbol…  (/ focuses · h = help)"
+          placeholder="type command or symbol…  (h = help)"
           class="flex-1 bg-transparent outline-none text-ink placeholder:text-muted min-w-0"
         />
+        {/* keycap hint, not placeholder prose: `/` focuses from anywhere */}
+        <button
+          type="button"
+          onClick={() => inputRef.current?.focus()}
+          title="press / anywhere to focus the console"
+          class="shrink-0 w-5 h-5 grid place-items-center rounded border border-line-2 bg-surface-2 text-muted hover:text-ink text-[10px] leading-none"
+        >
+          /
+        </button>
         {log.length > 0 && !open && (
           <button
             type="button"
