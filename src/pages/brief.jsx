@@ -6,7 +6,8 @@ import { assembleBriefing, renderBriefing, briefingPrompt, BRIEFING_SYSTEM } fro
 import { useEarningsDays } from './dashboard.jsx'
 import { AiReport, MdLite } from '../components/AiReport.jsx'
 import { loadArchive, onArchiveChange, removeReport } from '../lib/archive.js'
-import { tl, t as tt } from '../lib/i18n.js'
+import { tl } from '../lib/i18n.js'
+import { fmtPct } from '../lib/format.js'
 
 const INDEX_SYMBOLS = INDICES.map((i) => i.symbol)
 
@@ -75,6 +76,91 @@ function ArchivePanel() {
   )
 }
 
+function Card({ title, children, aside }) {
+  return (
+    <section class="bg-surface-1 border border-line rounded-xl overflow-hidden min-w-0">
+      <header class="flex items-baseline gap-2 px-3 py-1.5 border-b border-line-2 bg-surface-2">
+        <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{title}</h2>
+        {aside && <span class="ml-auto font-mono text-[10px] text-muted">{aside}</span>}
+      </header>
+      {children}
+    </section>
+  )
+}
+
+const rowCls = 'flex items-baseline justify-between gap-2 px-3 py-[3px] font-mono text-[11.5px] border-b border-line/40 last:border-0'
+const upDown = (v) => (v >= 0 ? 'text-up' : 'text-down')
+
+/** The briefing data as readable cards — the ALL-CAPS text block only lives
+ *  on as the AI prompt body now. */
+function BriefData({ s }) {
+  const movers = [
+    ...s.movers.gainers.map((m) => ({ ...m, side: 'g' })),
+    ...s.movers.losers.map((m) => ({ ...m, side: 'l' })),
+  ]
+  return (
+    <div class="grid gap-3 sm:grid-cols-2">
+      <Card title={tl('Macro tape')}>
+        {s.macro.map((m) => (
+          <div key={m.label} class={rowCls}>
+            <span class="font-anth text-ink-2">{m.label}</span>
+            <span class="ml-auto text-ink">{m.price.toFixed(2)}</span>
+            <span class={`w-16 text-right ${upDown(m.pct)}`}>{fmtPct(m.pct)}</span>
+          </div>
+        ))}
+        {s.pulse && (
+          <div class="px-3 py-1.5 font-mono text-[10.5px] text-muted border-t border-line">
+            breadth <span class="text-up">{s.pulse.adv}</span>/<span class="text-down">{s.pulse.dec}</span>
+            {' · '}avg <span class={upDown(s.pulse.avg)}>{fmtPct(s.pulse.avg)}</span>
+            {' · '}&gt;2% movers <span class="text-ink-2">{s.pulse.movers}/{s.pulse.total}</span>
+          </div>
+        )}
+      </Card>
+
+      <Card title={tl('Movers')}>
+        {movers.length ? movers.map((m) => (
+          <div key={m.symbol} class={rowCls}>
+            <a href={`#/research/${m.symbol.toLowerCase()}`} class="font-[650] font-tick text-ink hover:no-underline">{m.symbol}</a>
+            <span class="ml-auto text-ink-2">{m.price.toFixed(2)}</span>
+            <span class={`w-16 text-right ${upDown(m.pct)}`}>{fmtPct(m.pct)}</span>
+          </div>
+        )) : <div class="px-3 py-2 font-mono text-[11px] text-muted">flat tape</div>}
+      </Card>
+
+      <Card title={tl('Technical flags')}>
+        {s.techNotes.length ? s.techNotes.map((n) => (
+          <div key={n.symbol} class={rowCls}>
+            <a href={`#/research/${n.symbol.toLowerCase()}`} class="font-[650] font-tick text-ink hover:no-underline">{n.symbol}</a>
+            <span class="text-ink-2 text-right min-w-0 truncate font-anth text-[11px]">{n.notes.join(' · ')}</span>
+          </div>
+        )) : <div class="px-3 py-2 font-mono text-[11px] text-muted">nothing stretched</div>}
+      </Card>
+
+      <Card title={tl('Ahead')}>
+        {s.earnings.map((e) => (
+          <div key={e.symbol} class={rowCls}>
+            <a href={`#/research/${e.symbol.toLowerCase()}/earnings`} class="font-[650] font-tick text-ink hover:no-underline">{e.symbol}</a>
+            <span class="font-anth text-[11px] text-muted">earnings</span>
+            <span class={`w-14 text-right ${e.days === 0 ? 'text-imminent font-bold' : e.days <= 7 ? 'text-down' : 'text-accent'}`}>
+              {e.days === 0 ? 'today' : `${e.days}d`}
+            </span>
+          </div>
+        ))}
+        {s.calendar.map((e) => (
+          <div key={e.type + e.days} class={rowCls}>
+            <span class="font-mono text-[10px] text-accent font-bold w-10">{e.type}</span>
+            <span class="font-anth text-[11px] text-ink-2 min-w-0 truncate">{e.label}</span>
+            <span class={`w-14 text-right ${e.days <= 7 ? 'text-down' : 'text-muted'}`}>{e.days}d</span>
+          </div>
+        ))}
+        {!s.earnings.length && !s.calendar.length && (
+          <div class="px-3 py-2 font-mono text-[11px] text-muted">clear runway</div>
+        )}
+      </Card>
+    </div>
+  )
+}
+
 export function Brief() {
   const watchlist = useWatchlist()
   const quotes = useQuotes(watchlist)
@@ -109,14 +195,7 @@ export function Brief() {
           archive={{ kind: 'briefing', title: `Briefing ${new Date().toISOString().slice(0, 10)}` }}
         />
 
-        <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
-          <header class="px-3 py-1.5 border-b border-line-2 bg-surface-2">
-            <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Data')}</h2>
-          </header>
-          <pre class="px-3 py-2 font-mono text-[11px] leading-relaxed text-ink-2 whitespace-pre-wrap overflow-x-auto">
-            {text || tt('common.loading')}
-          </pre>
-        </section>
+        <BriefData s={sections} />
 
         <ArchivePanel />
       </div>

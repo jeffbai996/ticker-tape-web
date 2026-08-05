@@ -1,14 +1,17 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { streamChat } from '../lib/chatClient.js'
+import { fetchWireChatModels, wireStream } from '../lib/wirechat.js'
 import { wireUrl } from '../lib/wire.js'
 import { IS_PRIVATE_BUILD } from '../lib/nav.js'
 import { saveReport } from '../lib/archive.js'
 import { tl } from '../lib/i18n.js'
 
 // One-click AI synthesis panel: build a prompt, stream the answer, offer
-// copy/download. Hardwired to the cheapest model — reports are volume, not
-// frontier reasoning; the chat page has the full model picker.
+// copy/download. On a wire build the writer is picked from the subscription
+// lineup (localStorage-sticky); the keyless public path keeps the cheapest
+// worker model.
 const REPORT_MODEL = 'flash'
+const WRITER_KEY = 'report_model'
 
 // Markdown-lite: headers + bold + bullets, enough to render a model's memo
 // without a parser dependency. Anything fancier falls through as plain text.
@@ -47,7 +50,23 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [copied, setCopied] = useState(false)
+  const [models, setModels] = useState([])
+  const [writer, setWriter] = useState(() => localStorage.getItem(WRITER_KEY) || 'auto')
   const bodyRef = useRef(null)
+
+  // the subscription lineup, when a wire is connected — same registry the
+  // chat picker uses, so nothing here hardcodes a lineup that can drift
+  useEffect(() => {
+    if (!wireUrl()) return
+    fetchWireChatModels()
+      .then((live) => {
+        setModels(live)
+        if (!live.some((m) => m.key === (localStorage.getItem(WRITER_KEY) || 'auto'))) {
+          setWriter('auto')
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   // While generating, the panel used to push the whole page down line by
   // line — cap it and follow the tail inside its own scroller instead.
@@ -69,19 +88,28 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
       let acc = ''
       const wire = wireUrl()
       if (wire) {
-        // tailnet: the fragwire router writes it — claude subscription →
-        // local model → metered API last. $0 marginal, telemetered.
-        const resp = await fetch(`${wire.replace(/\/$/, '')}/api/generate`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ system, prompt,
-            purpose: (archive?.kind || 'ttw-report') }),
-          signal: AbortSignal.timeout(240_000),
-        })
-        const out = await resp.json()
-        if (!out.ok) throw new Error(out.error || 'wire generation failed')
-        acc = out.text
-        setText(acc)
+        // tailnet: subscription models only — the picked writer streams over
+        // /api/chat/stream; the metered API never enters this path.
+        try {
+          await wireStream({
+            model: writer, effort: '', system,
+            messages: [{ role: 'user', content: prompt }],
+            onDelta: (d) => { acc += d; setText(acc) },
+          })
+        } catch {
+          // older fragwire / stream hiccup — the one-shot router still works
+          const resp = await fetch(`${wire.replace(/\/$/, '')}/api/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ system, prompt,
+              purpose: (archive?.kind || 'ttw-report') }),
+            signal: AbortSignal.timeout(240_000),
+          })
+          const out = await resp.json()
+          if (!out.ok) throw new Error(out.error || 'wire generation failed')
+          acc = out.text
+          setText(acc)
+        }
       } else {
         await streamChat({
           model: REPORT_MODEL,
@@ -124,6 +152,21 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
         <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase flex items-center gap-1.5"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3m0 12v3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1M3 12h3m12 0h3M5.6 18.4l2.1-2.1m8.6-8.6 2.1-2.1"/><circle cx="12" cy="12" r="3.5"/></svg>{tl(label)}</h2>
         {hint && <span class="font-mono text-[9.5px] text-muted normal-case tracking-normal">{hint}</span>}
         <div class="ml-auto flex items-center gap-2">
+          {models.length > 0 && (
+            <select
+              value={writer}
+              onChange={(e) => {
+                setWriter(e.currentTarget.value)
+                localStorage.setItem(WRITER_KEY, e.currentTarget.value)
+              }}
+              title="which subscription model writes this report"
+              class="bg-surface-3 border border-line rounded px-1 py-0.5 font-anth text-[10px] text-ink-2 outline-none cursor-pointer max-w-[130px]"
+            >
+              {models.map((m) => (
+                <option key={m.key} value={m.key}>{m.label}</option>
+              ))}
+            </select>
+          )}
           {text && !busy && (
             <>
               <button onClick={copy} class="font-mono text-[10px] text-muted hover:text-ink">
