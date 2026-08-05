@@ -14,7 +14,7 @@ import {
   getGroupPrefs, isCollapsed, moveGroup, onGroupsChange, orderGroups,
   toggleCollapsed,
 } from '../lib/catgroups.js'
-import { watch, isWatched } from '../lib/watchlist.js'
+import { watch, unwatch, isWatched } from '../lib/watchlist.js'
 import { loadUserGroups, onUserGroupsChange } from '../lib/usergroups.js'
 import { fmtPrice, fmtPriceBare, fmtPct, fmtChange, fmtVol, rangePos } from '../lib/format.js'
 import { Histo } from '../components/Histo.jsx'
@@ -114,9 +114,18 @@ function TuiRow({ symbol, data, earnDays }) {
   return (
     <a
       href={`#/research/${symbol.toLowerCase()}`}
-      class="block px-3 py-[3px] border-b border-line last:border-0 hover:bg-white/[0.035] hover:no-underline"
+      class="group/row relative block px-3 py-[3px] border-b border-line last:border-0 hover:bg-white/[0.035] hover:no-underline"
       title={q?.name ? `${symbol} — ${q.name}` : symbol}
     >
+      {/* favorites are managed where they live: hover a row, tap the star
+          (Jeff 2026-08-05). Filled = on the board; a tap lifts it off. */}
+      <button
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); unwatch(symbol) }}
+        title={`remove ${symbol} from the board`}
+        class="absolute right-1.5 top-1/2 -translate-y-1/2 z-10 w-6 h-6 grid place-items-center rounded-md text-accent opacity-0 group-hover/row:opacity-100 hover:bg-surface-2 hover:text-down transition-opacity"
+      >
+        ★
+      </button>
       <div class="flex gap-4 min-w-0">
         <div class="flex-1 min-w-0 overflow-hidden">
           <div class="flex items-baseline gap-2 max-sm:gap-1.5 font-mono text-[13px] max-sm:text-[12px] flex-nowrap max-sm:flex-wrap min-w-0">
@@ -537,6 +546,38 @@ function RailWidget({ w, all, watchlist, earnDays, quotes }) {
   )
 }
 
+/** "+ add" that blooms into an input in place — one control, no chrome.
+ *  Enter adds (uppercased) and keeps focus for the next one; Esc folds it. */
+function QuickAdd() {
+  const [open, setOpen] = useState(false)
+  const [v, setV] = useState('')
+  const submit = (e) => {
+    e.preventDefault()
+    if (watch(v)) setV('')
+  }
+  if (!open) {
+    return (
+      <button onClick={() => setOpen(true)}
+        class="whitespace-nowrap font-mono text-[10px] text-muted border border-dashed border-line-2 rounded-full px-2 py-px hover:text-accent hover:border-accent/60 transition-colors">
+        + add
+      </button>
+    )
+  }
+  return (
+    <form onSubmit={submit} class="inline-flex">
+      <input
+        autoFocus
+        value={v}
+        onInput={(e) => setV(e.currentTarget.value)}
+        onKeyDown={(e) => { if (e.key === 'Escape') { setOpen(false); setV('') } }}
+        onBlur={() => { if (!v.trim()) setOpen(false) }}
+        placeholder="SYM"
+        class="w-16 bg-surface-2 border border-accent/60 rounded-full px-2 py-px font-mono text-[10px] text-ink uppercase outline-none placeholder:text-muted placeholder:normal-case"
+      />
+    </form>
+  )
+}
+
 export function Dashboard() {
   const watchlist = useWatchlist()
   const quotes = useQuotes(watchlist)
@@ -579,6 +620,7 @@ export function Dashboard() {
             </span>
           )
         })}
+        <QuickAdd />
       </div>
 
       {/* lg (1024px) not xl: the rail used to vanish one browser-zoom notch in.
