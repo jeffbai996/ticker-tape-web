@@ -101,6 +101,26 @@ export async function buildChatContext(question) {
   return parts.join('\n')
 }
 
+// Raw JSON for UI surfaces (the chat launchpad's book cell) — same TTL idea
+// as the prompt block but kept separate so a prompt-side failure doesn't
+// blank the UI and vice versa.
+let bookJsonCache = { ts: 0, data: null }
+
+export async function fetchBookJson() {
+  const base = wireUrl()
+  if (!base) return null
+  if (Date.now() - bookJsonCache.ts < BOOK_TTL) return bookJsonCache.data
+  try {
+    const resp = await fetch(`${base.replace(/\/$/, '')}/api/portfolio`,
+      { signal: AbortSignal.timeout(6_000) })
+    const out = await resp.json()
+    bookJsonCache = { ts: Date.now(), data: out.ok ? out : null }
+  } catch {
+    bookJsonCache = { ts: Date.now(), data: null }
+  }
+  return bookJsonCache.data
+}
+
 /** Does this browser have a live book wired in (affects the base prompt)? */
 export function hasLiveBook() {
   return !!wireUrl()

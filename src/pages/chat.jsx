@@ -10,7 +10,8 @@ import { useEarningsDays } from './dashboard.jsx'
 import { ECON_EVENTS } from '../lib/markets.js'
 import { loadCatalysts, mergedEvents } from '../lib/catalysts.js'
 import { fmtPct } from '../lib/format.js'
-import { buildChatContext, hasLiveBook } from '../lib/chatContext.js'
+import { buildChatContext, hasLiveBook, fetchBookJson } from '../lib/chatContext.js'
+import { pulseStats } from '../lib/pulse.js'
 import { loadMemories, addMemory, editMemory, removeMemory, applyMemoryTags } from '../lib/chatMemory.js'
 import { loadJournal, addJournalEntry, removeJournalEntry, searchJournal } from '../lib/journal.js'
 import { CHAT_HOME_EVENT, takeChatHomePending } from '../lib/chatnav.js'
@@ -72,41 +73,66 @@ function exportChat(history) {
 }
 
 const SUGGESTIONS = [
-  "what's moving today?",
-  'how does NVDA look technically?',
-  "what's on the calendar this week?",
-  'open TSLA research',
+  { t: "what's moving today?", k: 'mkt' },
+  { t: 'how does NVDA look technically?', k: 'mkt' },
+  { t: "what's on the calendar this week?", k: 'mkt' },
+  { t: 'open TSLA research', k: 'app' },
 ]
 
 /**
  * Launchpad quick actions, computed from live data so the pad stays current:
  * an earnings print today suggests its own summary, a big mover suggests its
- * own "why", the next macro event suggests its own read.
+ * own "why", the next macro event suggests its own read, the journal suggests
+ * its own recall. Typed (mkt / book / app) so the chips can wear their lane.
  */
-function dynamicActions({ watchlist, quotes, earnDays, nextEvent, book }) {
+function dynamicActions({ watchlist, quotes, earnDays, nextEvent, book, journal }) {
   const acts = []
+  const push = (t, k) => { if (!acts.some((a) => a.t === t)) acts.push({ t, k }) }
+
   const reporting = watchlist.filter((s) => earnDays[s] === 0).slice(0, 2)
-  for (const s of reporting) acts.push(`summarize ${s}'s earnings report`)
+  for (const s of reporting) push(`summarize ${s}'s earnings report`, 'mkt')
   const soon = watchlist.filter((s) => earnDays[s] > 0 && earnDays[s] <= 3)
     .sort((a, b) => earnDays[a] - earnDays[b])[0]
-  if (soon) acts.push(`what should I watch in ${soon}'s earnings (${earnDays[soon]}d out)?`)
+  if (soon) push(`what should I watch in ${soon}'s earnings (${earnDays[soon]}d out)?`, 'mkt')
+
   const movers = watchlist
-    .map((s) => ({ s, pct: quotes[s]?.quote?.pct }))
+    .map((s) => ({ s, pct: quotes[s]?.quote?.pct, price: quotes[s]?.quote?.price }))
     .filter((x) => x.pct != null && Math.abs(x.pct) >= 3)
     .sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct))
-    .slice(0, 2)
-  for (const m of movers) {
-    acts.push(`what's driving ${m.s} ${m.pct > 0 ? 'up' : 'down'} ${Math.abs(m.pct).toFixed(1)}% today?`)
+  for (const m of movers.slice(0, 2)) {
+    push(`what's driving ${m.s} ${m.pct > 0 ? 'up' : 'down'} ${Math.abs(m.pct).toFixed(1)}% today?`, 'mkt')
   }
-  if (nextEvent && nextEvent.days <= 5) {
-    acts.push(`what does ${nextEvent.rawLabel || nextEvent.label} (${nextEvent.days === 0 ? 'today' : `${nextEvent.days}d`}) mean for ${book ? 'my book' : 'the market'}?`)
+
+  if (nextEvent && nextEvent.days <= 7) {
+    push(`what does ${nextEvent.rawLabel || nextEvent.label} (${nextEvent.days === 0 ? 'today' : `${nextEvent.days}d`}) mean for ${book ? 'my book' : 'the market'}?`, book ? 'book' : 'mkt')
   }
-  if (book) acts.push('how is my book positioned this week?')
+
+  if (book) {
+    push('how is my book positioned this week?', 'book')
+    push("what's the biggest risk to the book right now?", 'book')
+  }
+
+  // a live alert suggestion off the top mover — the arm tool is real
+  const top = movers[0]
+  if (top?.price) {
+    const lvl = top.pct > 0
+      ? Math.ceil((top.price * 1.03) / 5) * 5
+      : Math.floor((top.price * 0.97) / 5) * 5
+    push(`arm an alert on ${top.s} at ${lvl}`, 'app')
+  }
+
+  push('which watchlist name looks strongest technically?', 'mkt')
+
+  // journal recall — only when there is a journal to recall from
+  const lastTagged = [...(journal || [])].reverse().find((e) => e.symbols?.length)
+  if (lastTagged) push(`what did my journal say about ${lastTagged.symbols[0]}?`, 'app')
+
+  push('open the heatmap', 'app')
   for (const s of SUGGESTIONS) {
-    if (acts.length >= 7) break
-    acts.push(s)
+    if (acts.length >= 12) break
+    push(s.t, s.k)
   }
-  return acts.slice(0, 7)
+  return acts.slice(0, 12)
 }
 
 /** Inline-editable row shared by the memory and journal drawers. */
@@ -247,37 +273,47 @@ function ActivityTrace({ steps, busy }) {
  * frames everywhere else, and the composer sits inside the pad so the empty
  * page has a centre of gravity instead of a void under it.
  */
-function Launchpad({ onWire, watchlist, quotes, earnDays, nextEvent, onPick,
-                     threadLen, onResume, composer }) {
+function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
+                     threadLen, onResume, composer, memN, journalN, journal,
+                     onOpenMem, onOpenJournal }) {
   const book = hasLiveBook()
-  const acts = dynamicActions({ watchlist, quotes, earnDays, nextEvent, book })
+  const nextEvent = events[0] || null
+  const acts = dynamicActions({ watchlist, quotes, earnDays, nextEvent, book, journal })
   const movers = watchlist
     .map((s) => ({ s, pct: quotes[s]?.quote?.pct }))
     .filter((x) => x.pct != null)
     .sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct))
-    .slice(0, 3)
+    .slice(0, 4)
   const nextEarn = watchlist
     .filter((s) => earnDays[s] != null && earnDays[s] >= 0)
     .sort((a, b) => earnDays[a] - earnDays[b])
+    .slice(0, 4)
+  const pulse = pulseStats(watchlist.map((s) => quotes[s]?.quote).filter(Boolean))
+
+  // the real book, when a wire is connected — TTL-cached in chatContext
+  const [bk, setBk] = useState(null)
+  useEffect(() => {
+    if (book) fetchBookJson().then(setBk).catch(() => {})
+  }, [book])
+  const topPos = (bk?.positions || [])
+    .filter((p) => p.weight_pct != null)
+    .sort((a, b) => b.weight_pct - a.weight_pct)
     .slice(0, 3)
 
-  const cell = "px-3.5 py-2.5"
-  const eyebrow = "font-mono text-[9px] tracking-[0.16em] text-muted uppercase pb-1.5"
+  const cell = "px-3 py-2 min-w-0"
+  const eyebrow = "font-mono text-[9px] tracking-[0.16em] text-muted uppercase pb-1"
+  const DOT = { mkt: 'bg-accent', book: 'bg-up', app: 'bg-accent-2' }
 
   return (
-    <div class="w-full max-w-3xl px-1 py-4 flex flex-col gap-4">
+    <div class="w-full max-w-3xl px-1 py-3 flex flex-col gap-3">
       <div class="flex items-start gap-3">
         <div class="min-w-0">
-          <div class="font-mono text-[9px] tracking-[0.18em] text-muted uppercase flex items-center gap-1.5 pb-2">
-            <span class={`w-1.5 h-1.5 rounded-full ${onWire ? 'bg-up' : 'bg-muted'}`} />
-            {onWire ? 'wired · your subscription, your book' : 'proxied · no key in your browser'}
-          </div>
-          <h2 class="font-anth text-[21px] leading-[1.25] font-semibold text-ink">
+          <h2 class="font-anth text-[20px] leading-[1.25] font-semibold text-ink">
             {onWire
               ? 'Ask about a ticker, a sector, or the book.'
               : tt('chat.empty')}
           </h2>
-          <div class="text-muted text-[11.5px] font-anth pt-1.5">
+          <div class="text-muted text-[11px] font-anth pt-1">
             live quotes · technicals · calendar · watchlist · alerts · memory · journal · navigation
           </div>
         </div>
@@ -293,56 +329,117 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, nextEvent, onPick,
         )}
       </div>
 
-      {/* right now — one readout, rebuilt from live data on every quote poll */}
-      <div class="grid grid-cols-1 sm:grid-cols-3 bg-surface-1 border border-line rounded-xl divide-y divide-line sm:divide-y-0 sm:divide-x">
-        <div class={cell}>
-          <div class={eyebrow}>moving now</div>
-          {movers.length ? movers.map(({ s, pct }) => (
-            <a key={s} href={`#/research/${s.toLowerCase()}`} class="flex items-baseline justify-between font-mono text-[12px] py-0.5 hover:no-underline">
-              <span class="text-ink font-bold font-tick">{s}</span>
-              <span class={pct >= 0 ? 'text-up' : 'text-down'}>{fmtPct(pct)}</span>
-            </a>
-          )) : <div class="font-mono text-[11px] text-muted py-1">loading…</div>}
+      {/* right now — one instrument, rebuilt from live data on every poll */}
+      <div class="bg-surface-1 border border-line rounded-xl divide-y divide-line">
+        <div class="grid grid-cols-1 sm:grid-cols-3 divide-y divide-line sm:divide-y-0 sm:divide-x">
+          <div class={cell}>
+            <div class={eyebrow}>moving now</div>
+            {movers.length ? movers.map(({ s, pct }) => (
+              <a key={s} href={`#/research/${s.toLowerCase()}`} class="flex items-baseline justify-between font-mono text-[11.5px] py-px hover:no-underline">
+                <span class="text-ink font-[650] font-tick">{s}</span>
+                <span class={pct >= 0 ? 'text-up' : 'text-down'}>{fmtPct(pct)}</span>
+              </a>
+            )) : <div class="font-mono text-[11px] text-muted py-1">loading…</div>}
+          </div>
+          <div class={cell}>
+            <div class={eyebrow}>next earnings</div>
+            {nextEarn.length ? nextEarn.map((s) => (
+              <a key={s} href={`#/research/${s.toLowerCase()}/earnings`} class="flex items-baseline justify-between font-mono text-[11.5px] py-px hover:no-underline">
+                <span class="text-ink font-[650] font-tick">{s}</span>
+                <span class={earnDays[s] === 0 ? 'text-imminent font-bold' : earnDays[s] <= 7 ? 'text-down' : 'text-accent'}>
+                  {earnDays[s] === 0 ? 'today' : `${earnDays[s]}d`}
+                </span>
+              </a>
+            )) : <div class="font-mono text-[11px] text-muted py-1">loading…</div>}
+          </div>
+          <div class={cell}>
+            <div class={eyebrow}>on the calendar</div>
+            {events.length ? events.slice(0, 4).map((ev) => (
+              <a key={ev.label + ev.days} href="#/markets/calendar" class="flex items-baseline justify-between gap-2 font-mono text-[11.5px] py-px hover:no-underline">
+                <span class="text-ink truncate">{ev.rawLabel || ev.label}</span>
+                <span class={ev.days <= 1 ? 'text-imminent font-bold' : ev.days <= 7 ? 'text-down' : 'text-accent'}>
+                  {ev.days === 0 ? 'today' : `${ev.days}d`}
+                </span>
+              </a>
+            )) : <div class="font-mono text-[11px] text-muted py-1">clear runway</div>}
+          </div>
         </div>
-        <div class={cell}>
-          <div class={eyebrow}>next earnings</div>
-          {nextEarn.length ? nextEarn.map((s) => (
-            <a key={s} href={`#/research/${s.toLowerCase()}/earnings`} class="flex items-baseline justify-between font-mono text-[12px] py-0.5 hover:no-underline">
-              <span class="text-ink font-bold font-tick">{s}</span>
-              <span class={earnDays[s] === 0 ? 'text-imminent font-bold' : earnDays[s] <= 7 ? 'text-down' : 'text-accent'}>
-                {earnDays[s] === 0 ? 'today' : `${earnDays[s]}d`}
-              </span>
-            </a>
-          )) : <div class="font-mono text-[11px] text-muted py-1">loading…</div>}
-        </div>
-        <div class={cell}>
-          <div class={eyebrow}>on the calendar</div>
-          {nextEvent ? (
-            <a href="#/markets/calendar" class="flex items-baseline justify-between gap-2 font-mono text-[12px] py-0.5 hover:no-underline">
-              <span class="text-ink truncate">{nextEvent.label}</span>
-              <span class={nextEvent.days <= 1 ? 'text-imminent font-bold' : nextEvent.days <= 7 ? 'text-down' : 'text-accent'}>
-                {nextEvent.days === 0 ? 'today' : `${nextEvent.days}d`}
-              </span>
-            </a>
-          ) : <div class="font-mono text-[11px] text-muted py-1">clear runway</div>}
+        <div class={`grid grid-cols-1 divide-y divide-line sm:divide-y-0 sm:divide-x ${book ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
+          <div class={cell}>
+            <div class={eyebrow}>pulse</div>
+            {pulse ? (
+              <div class="font-mono text-[11.5px] leading-[1.55]">
+                <div class="flex justify-between"><span class="text-muted">A/D</span>
+                  <span><span class="text-up">{pulse.adv}</span><span class="text-muted"> / </span><span class="text-down">{pulse.dec}</span></span></div>
+                <div class="flex justify-between"><span class="text-muted">avg</span>
+                  <span class={pulse.avg >= 0 ? 'text-up' : 'text-down'}>{fmtPct(pulse.avg)}</span></div>
+                <div class="flex justify-between"><span class="text-muted">ext A/D</span>
+                  <span><span class="text-up">{pulse.extAdv}</span><span class="text-muted"> / </span><span class="text-down">{pulse.extDec}</span></span></div>
+                <div class="flex justify-between"><span class="text-muted">down &gt;3%</span>
+                  <span class={pulse.stress ? 'text-down font-bold' : 'text-ink-2'}>{pulse.stress}</span></div>
+              </div>
+            ) : <div class="font-mono text-[11px] text-muted py-1">loading…</div>}
+          </div>
+          {book && (
+            <div class={cell}>
+              <div class={eyebrow}>the book</div>
+              {topPos.length ? (
+                <div class="font-mono text-[11.5px] leading-[1.55]">
+                  {topPos.map((p) => (
+                    <div key={p.symbol} class="flex justify-between">
+                      <span class="text-ink font-[650] font-tick">{p.symbol}</span>
+                      <span><span class="text-ink-2">{Math.round(p.weight_pct)}%</span>{' '}
+                        <span class={p.unrealized_pnl >= 0 ? 'text-up' : 'text-down'}>{p.unrealized_pnl >= 0 ? '▲' : '▼'}</span></span>
+                    </div>
+                  ))}
+                  {bk?.margin?.cushion_pct != null && (
+                    <div class="flex justify-between pt-px border-t border-line-2/60 mt-px">
+                      <span class="text-muted">cushion</span>
+                      <span class={bk.margin.cushion_pct < 8 ? 'text-down' : 'text-ink-2'}>{bk.margin.cushion_pct.toFixed(1)}%</span>
+                    </div>
+                  )}
+                </div>
+              ) : <div class="font-mono text-[11px] text-muted py-1">reading the wire…</div>}
+            </div>
+          )}
+          <div class={cell}>
+            <div class={eyebrow}>context it carries</div>
+            <div class="font-mono text-[11.5px] leading-[1.55]">
+              <button type="button" onClick={onOpenMem} class="flex justify-between w-full hover:text-ink">
+                <span class="text-muted">memories</span><span class="text-ink-2">{memN}</span>
+              </button>
+              <button type="button" onClick={onOpenJournal} class="flex justify-between w-full hover:text-ink">
+                <span class="text-muted">journal</span><span class="text-ink-2">{journalN}</span>
+              </button>
+              <div class="flex justify-between"><span class="text-muted">watching</span><span class="text-ink-2">{watchlist.length}</span></div>
+              <div class="flex justify-between"><span class="text-muted">book</span>
+                <span class={book ? 'text-up' : 'text-muted'}>{book ? 'live' : 'demo'}</span></div>
+            </div>
+          </div>
         </div>
       </div>
 
       {composer}
 
       <div>
-        <div class="font-mono text-[9px] tracking-[0.16em] text-muted uppercase pb-2">
-          start here
+        <div class="flex items-baseline gap-3 pb-1.5">
+          <span class="font-mono text-[9px] tracking-[0.16em] text-muted uppercase">start here</span>
+          <span class="font-mono text-[9px] text-muted flex items-center gap-2.5">
+            <span class="flex items-center gap-1"><span class="w-1 h-1 rounded-full bg-accent" />markets</span>
+            {book && <span class="flex items-center gap-1"><span class="w-1 h-1 rounded-full bg-up" />book</span>}
+            <span class="flex items-center gap-1"><span class="w-1 h-1 rounded-full bg-accent-2" />app</span>
+          </span>
         </div>
         <div class="flex flex-wrap gap-1.5">
           {acts.map((sug) => (
             <button
-              key={sug}
+              key={sug.t}
               type="button"
-              onClick={() => onPick(sug)}
-              class="font-anth text-[12px] text-ink-2 border border-line rounded-full px-3 py-1 hover:border-accent/60 hover:text-ink hover:bg-accent-soft transition-colors"
+              onClick={() => onPick(sug.t)}
+              class="flex items-center gap-1.5 font-anth text-[12px] text-ink-2 border border-line rounded-full pl-2.5 pr-3 py-1 hover:border-accent/60 hover:text-ink hover:bg-accent-soft transition-colors"
             >
-              {sug}
+              <span class={`w-1 h-1 rounded-full shrink-0 ${DOT[sug.k] || 'bg-muted'}`} />
+              {sug.t}
             </button>
           ))}
         </div>
@@ -392,8 +489,8 @@ export function Chat() {
   const watchlist = useWatchlist()
   const quotes = useQuotes(splash ? watchlist : [])
   const earnDays = useEarningsDays(splash ? watchlist : [])
-  const nextEvent = mergedEvents(ECON_EVENTS, loadCatalysts(),
-    new Date().toISOString().slice(0, 10), 30)[0] || null
+  const upcoming = mergedEvents(ECON_EVENTS, loadCatalysts(),
+    new Date().toISOString().slice(0, 10), 60).slice(0, 4)
 
   // Warm case: already on the chat page when AI Chat is pressed again.
   useEffect(() => {
@@ -608,7 +705,9 @@ export function Chat() {
         {/* items-center keeps a one-line placeholder vertically centered
             against the 32px send button; the textarea grows downward from
             there (Jeff 2026-08-04: "placeholder isn't centered"). */}
-        <div class="flex items-center gap-2 bg-surface-1 border border-line rounded-2xl px-3 py-1.5 focus-within:border-accent/70 focus-within:shadow-[0_0_0_1px_rgba(245,158,11,0.15)] transition-all">
+        {/* surface-2 + line-2, one tier brighter than the launchpad panel —
+            the composer was sinking into the page (Jeff 2026-08-04) */}
+        <div class="flex items-center gap-2 bg-surface-2 border border-line-2 rounded-xl px-3 py-1.5 focus-within:border-accent/70 focus-within:shadow-[0_0_0_1px_rgba(245,158,11,0.18)] transition-all">
           <textarea
             ref={inputRef}
             value={input}
@@ -627,7 +726,7 @@ export function Chat() {
             type="submit"
             disabled={!input.trim()}
             title={busy ? 'queue follow-up  ⏎' : 'send  ⏎'}
-            class="shrink-0 w-8 h-8 grid place-items-center rounded-full bg-accent text-black disabled:bg-surface-3 disabled:text-muted transition-colors"
+            class="shrink-0 w-8 h-8 grid place-items-center rounded-md bg-white text-black disabled:bg-surface-3 disabled:text-muted transition-colors"
           >
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
           </button>
@@ -635,6 +734,8 @@ export function Chat() {
         <div class="flex items-center gap-3 px-2 pt-1 font-mono text-[9.5px] text-muted">
           <span><kbd class="text-ink-2">⏎</kbd> send</span>
           <span><kbd class="text-ink-2">⇧⏎</kbd> newline</span>
+          <span class="hidden sm:inline">⏎ while busy queues a follow-up</span>
+          <span class="hidden md:inline">ask it to remember — memories persist</span>
           {queued.length > 0 && <span class="text-accent">{queued.length} queued</span>}
           {!onWire && <SpendMeter spend={spend} />}
         </div>
@@ -647,20 +748,15 @@ export function Chat() {
           model housing, the effort pills and the icon rail all centre on the
           same axis (Jeff 2026-08-04: "aren't vertically aligned"). */}
       <div class="flex items-center gap-2 px-1 pb-2 mb-1 border-b border-line flex-wrap">
-        <h1 class="font-bold text-lg leading-none text-ink pr-1" style="font-family: 'Plus Jakarta Sans', sans-serif">{tl('AI Chat')}</h1>
-        {onWire && (
-          <span class="h-7 inline-flex items-center gap-1.5 font-mono text-[10px] text-muted border border-line rounded-lg px-2"
-                title="answers come from your own subscription via fragwire — no metered API, no cap">
-            <span class="w-1.5 h-1.5 rounded-full bg-up" />
-            via <span class="text-accent">wire</span>
-          </span>
-        )}
+        <h1 class="font-bold text-lg leading-none text-ink" style="font-family: 'Plus Jakarta Sans', sans-serif">{tl('AI Chat')}</h1>
+        <span class={`w-1.5 h-1.5 rounded-full mr-1 ${onWire ? 'bg-up' : 'bg-accent'}`}
+              title={onWire ? 'online — private wire' : 'online — public proxy'} />
         <label class="h-7 flex items-center gap-1.5 bg-surface-2 border border-line rounded-lg pl-2.5 pr-1 focus-within:border-accent/70 hover:border-line-2 transition-colors">
           <span class="font-mono text-[9px] uppercase tracking-wider text-muted">model</span>
           <select
             value={model}
             onChange={(e) => chooseModel(e.currentTarget.value)}
-            class="bg-transparent font-mono text-[11px] text-ink outline-none pr-1 cursor-pointer"
+            class="bg-transparent font-anth text-[12px] text-ink outline-none pr-1 cursor-pointer"
           >
             {(models.length ? models : [{ key: model, label: model }]).map((m) => (
               <option key={m.key} value={m.key}>{m.label}</option>
@@ -676,7 +772,7 @@ export function Chat() {
                   setEffort(lv)
                   localStorage.setItem('chat_effort', lv)
                 }}
-                class={`px-2 h-[22px] font-mono text-[10px] rounded-md transition-colors ${
+                class={`px-2 h-[22px] font-anth text-[11px] rounded-md transition-colors ${
                   effort === lv
                     ? 'bg-accent text-black font-bold'
                     : 'text-muted hover:text-ink hover:bg-surface-3'
@@ -696,19 +792,28 @@ export function Chat() {
         <div class="ml-auto h-7 flex items-center gap-0.5 border border-line rounded-lg px-0.5">
           <button
             onClick={() => { setMemories(loadMemories()); setDrawer(drawer === 'mem' ? null : 'mem') }}
-            class={`w-6 h-6 grid place-items-center rounded-md ${drawer === 'mem' ? 'text-accent bg-accent-soft' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
+            class={`relative w-6 h-6 grid place-items-center rounded-md ${drawer === 'mem' ? 'text-accent bg-accent-soft' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
             title="persistent memories — the assistant carries these into every conversation"
             aria-label="memories"
           >
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 4.5a3 3 0 0 0-5 2.2v1.1A3.2 3.2 0 0 0 4.5 14v1a3 3 0 0 0 4.5 2.6M15 4.5a3 3 0 0 1 5 2.2v1.1a3.2 3.2 0 0 1-.5 6.2v1a3 3 0 0 1-4.5 2.6M9 4v16M15 4v16M9 8h2M13 12h2M9 16h2"/></svg>
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 21V8.5M12 8.5a3.4 3.4 0 0 1 3.2-4.5 3.4 3.4 0 0 1 3.3 2.6A3.3 3.3 0 0 1 21 9.9a3.3 3.3 0 0 1-1.4 5.6A3.4 3.4 0 0 1 15 19.4c-1.3 0-2.4-.7-3-1.7-.6 1-1.7 1.7-3 1.7a3.4 3.4 0 0 1-3.6-3.9A3.3 3.3 0 0 1 4 9.9a3.3 3.3 0 0 1 2.5-3.3A3.4 3.4 0 0 1 9.8 4 3.4 3.4 0 0 1 12 8.5z"/>
+              <path d="M8.5 9.5c.8.4 1.6.4 2.3 0M13.2 12.5c.8.4 1.6.4 2.3 0M8 14.5c.7.4 1.4.4 2 0"/>
+            </svg>
+            {memories.length > 0 && <span class="absolute -top-1 -right-1 min-w-[13px] h-[13px] px-0.5 grid place-items-center rounded-full bg-surface-3 border border-line-2 font-mono text-[7.5px] text-ink-2 leading-none">{memories.length}</span>}
           </button>
           <button
             onClick={() => { setJournal(loadJournal()); setDrawer(drawer === 'journal' ? null : 'journal') }}
-            class={`w-6 h-6 grid place-items-center rounded-md ${drawer === 'journal' ? 'text-accent bg-accent-soft' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
+            class={`relative w-6 h-6 grid place-items-center rounded-md ${drawer === 'journal' ? 'text-accent bg-accent-soft' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
             title="trade journal — your own decisions and rationale, searchable"
             aria-label="trade journal"
           >
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H20v17H7.5A2.5 2.5 0 0 0 5 21.5zM5 4.5v17M9 7h7M9 11h7M9 15h4"/></svg>
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 2h12a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/>
+              <path d="M7 2v20"/>
+              <path d="M14 2v7l2-1.6L18 9V2"/>
+            </svg>
+            {journal.length > 0 && <span class="absolute -top-1 -right-1 min-w-[13px] h-[13px] px-0.5 grid place-items-center rounded-full bg-surface-3 border border-line-2 font-mono text-[7.5px] text-ink-2 leading-none">{journal.length}</span>}
           </button>
           {history.length > 0 && (
             <button onClick={() => exportChat(history)} class="w-6 h-6 grid place-items-center rounded-md text-muted hover:text-ink hover:bg-surface-2"
@@ -784,11 +889,16 @@ export function Chat() {
             watchlist={watchlist}
             quotes={quotes}
             earnDays={earnDays}
-            nextEvent={nextEvent}
+            events={upcoming}
             threadLen={history.length}
             onResume={() => setAtHome(false)}
             onPick={(text) => { setInput(text); inputRef.current?.focus() }}
             composer={composer}
+            memN={memories.length}
+            journalN={journal.length}
+            journal={journal}
+            onOpenMem={() => { setMemories(loadMemories()); setDrawer('mem') }}
+            onOpenJournal={() => { setJournal(loadJournal()); setDrawer('journal') }}
           />
         </div>
       ) : (
