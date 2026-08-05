@@ -91,7 +91,8 @@ const STRINGS = {
     en: 'Ask about a ticker, a sector, or how this app works. Proxied server-side — no API key in your browser, $10/day shared cap.',
     zh: '问我任意股票、板块，或这个应用怎么用。服务端代理 — 浏览器无需 API key，全站共享每日 $10 上限。',
   },
-  'chat.placeholder': { en: 'ask anything…', zh: '随便问…' },
+  'chat.placeholder': { en: 'ask a question…', zh: '问个问题…' },
+  'chat.follow_up': { en: 'Follow up…', zh: '继续补充…' },
   'chat.cap_note': {
     en: 'shared daily spend across all visitors, worst-case charged',
     zh: '全站访客共享的每日用量，按最坏情况计费',

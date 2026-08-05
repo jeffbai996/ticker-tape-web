@@ -1,10 +1,26 @@
-import { describe, it, expect } from 'vitest'
-import { trimHistory } from '../../src/lib/agent.js'
+import { beforeEach, describe, it, expect, vi } from 'vitest'
+
+vi.mock('../../src/lib/chatClient.js', () => ({
+  streamChat: vi.fn(),
+}))
+
+vi.mock('../../src/lib/tools.js', () => ({
+  TOOL_DEFS: [{ name: 'get_watchlist', description: 'watchlist', parameters: {} }],
+  executeTool: vi.fn().mockResolvedValue('{"symbols":["AAPL"]}'),
+}))
+
+import { streamChat } from '../../src/lib/chatClient.js'
+import { runAgentic, trimHistory } from '../../src/lib/agent.js'
 
 const u = (i) => ({ role: 'user', content: `u${i}` })
 const a = (i) => ({ role: 'assistant', content: `a${i}` })
 const call = { role: 'assistant', content: '', toolCalls: [{ id: 't1', name: 'get_watchlist', args: {} }] }
 const result = { role: 'tool', id: 't1', name: 'get_watchlist', content: '{}' }
+
+beforeEach(() => {
+  localStorage.clear()
+  streamChat.mockReset()
+})
 
 describe('trimHistory', () => {
   it('returns short histories untouched', () => {
@@ -33,5 +49,50 @@ describe('trimHistory', () => {
     const h = [u(1), call, result, result, result, result, a(1)]
     const out = trimHistory(h, 3)
     expect(out[0]).toEqual(u(1))
+  })
+})
+
+describe('queued follow-ups', () => {
+  it('slides a queued message in before the next tool round', async () => {
+    streamChat
+      .mockResolvedValueOnce({ text: '', toolCalls: [{ id: 't1', name: 'get_watchlist', args: {} }] })
+      .mockResolvedValueOnce({ text: 'done', toolCalls: [] })
+    const takeFollowUps = vi.fn()
+      .mockReturnValueOnce([])
+      .mockReturnValueOnce([{ role: 'user', content: 'also compare margins' }])
+
+    await runAgentic({
+      model: 'flash', effort: 'high', system: 'system',
+      messages: [{ role: 'user', content: 'analyze AAPL' }],
+      takeFollowUps,
+    })
+
+    expect(streamChat).toHaveBeenCalledTimes(2)
+    expect(streamChat.mock.calls[1][0].messages.at(-1)).toEqual({
+      role: 'user', content: 'also compare margins',
+    })
+  })
+
+  it('preserves the order of multiple follow-ups and consumes them once', async () => {
+    streamChat
+      .mockResolvedValueOnce({ text: '', toolCalls: [{ id: 't1', name: 'get_watchlist', args: {} }] })
+      .mockResolvedValueOnce({ text: 'done', toolCalls: [] })
+    const takeFollowUps = vi.fn()
+      .mockReturnValueOnce([])
+      .mockReturnValueOnce([
+        { role: 'user', content: 'first follow-up' },
+        { role: 'user', content: 'second follow-up' },
+      ])
+
+    const added = await runAgentic({
+      model: 'flash', effort: 'high', system: 'system',
+      messages: [{ role: 'user', content: 'start' }],
+      takeFollowUps,
+    })
+
+    expect(added.filter((m) => m.role === 'user').map((m) => m.content)).toEqual([
+      'first follow-up', 'second follow-up',
+    ])
+    expect(takeFollowUps).toHaveBeenCalledTimes(2)
   })
 })

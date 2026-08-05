@@ -219,12 +219,31 @@ function ToolChips({ calls, results }) {
   )
 }
 
+function ActivityTrace({ steps, busy }) {
+  if (!steps.length) return null
+  return (
+    <details open={busy} class="self-start max-w-[95%] text-muted">
+      <summary class="cursor-pointer select-none font-mono text-[10px] hover:text-ink">
+        {busy ? 'Working' : 'Activity'} · {steps.length} {steps.length === 1 ? 'step' : 'steps'}
+      </summary>
+      <div class="mt-1 ml-1 pl-2 border-l border-line flex flex-col gap-1">
+        {steps.map((step) => (
+          <div key={step.key} class="flex items-center gap-1.5 font-mono text-[10px]">
+            <span class={step.done ? 'text-up' : 'text-accent animate-pulse'}>{step.done ? '✓' : '◌'}</span>
+            <span>{step.label}</span>
+          </div>
+        ))}
+      </div>
+    </details>
+  )
+}
+
 export function Chat() {
   const onWire = wireChatAvailable()
   const modelStorageKey = onWire ? 'chat_wire_model' : 'chat_model'
   const [models, setModels] = useState([])
   const [model, setModel] = useState(
-    localStorage.getItem(modelStorageKey) || (onWire ? 'auto' : 'flash'),
+    localStorage.getItem(modelStorageKey) || (onWire ? 'agy-flash' : 'flash'),
   )
   const [effort, setEffort] = useState(localStorage.getItem('chat_effort') || 'auto')
   const [spend, setSpend] = useState(null)
@@ -235,6 +254,8 @@ export function Chat() {
     return pre
   })
   const [busy, setBusy] = useState(false)
+  const [queued, setQueued] = useState([])
+  const [activity, setActivity] = useState([])
   const [error, setError] = useState(null)
   const [notice, setNotice] = useState(null)          // memory-tag confirmations
   const [drawer, setDrawer] = useState(null)          // 'mem' | 'journal' | null
@@ -243,6 +264,9 @@ export function Chat() {
   const [jrFilter, setJrFilter] = useState('')
   const scrollRef = useRef(null)
   const inputRef = useRef(null)
+  const historyRef = useRef(history)
+  const queuedRef = useRef([])
+  const busyRef = useRef(false)
 
   // Launchpad fuel — live quotes, earnings proximity, next calendar event.
   // useQuotes polls, so the pad's suggestions refresh on their own.
@@ -258,10 +282,24 @@ export function Chat() {
       : fetchChatModels().then((data) => data.models)
     load.then((liveModels) => {
       setModels(liveModels)
-      if (!liveModels.some((candidate) => candidate.key === model)) {
-        const fallback = liveModels[0]?.key || (onWire ? 'auto' : 'flash')
+      const current = liveModels.find((candidate) => candidate.key === model)
+      if (!current) {
+        const fallback = liveModels[0]?.key || (onWire ? 'agy-flash' : 'flash')
         setModel(fallback)
         localStorage.setItem(modelStorageKey, fallback)
+        const info = liveModels[0]
+        if (onWire) {
+          const nextEffort = info?.default_effort || info?.efforts?.[0] || ''
+          setEffort(nextEffort)
+          localStorage.setItem('chat_effort', nextEffort)
+        }
+      } else if (onWire) {
+        const choices = current.efforts || []
+        const nextEffort = choices.includes(effort)
+          ? effort
+          : (current.default_effort || choices[0] || '')
+        setEffort(nextEffort)
+        localStorage.setItem('chat_effort', nextEffort)
       }
     }).catch(() => {})
     if (onWire) return
@@ -272,17 +310,35 @@ export function Chat() {
     scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight)
   }, [history])
 
-  const send = async (e) => {
-    e.preventDefault()
-    const text = input.trim()
-    if (!text || busy) return
-    setError(null)
-    setNotice(null)
+  const clearComposer = () => {
     setInput('')
     if (inputRef.current) inputRef.current.style.height = 'auto'
-    setBusy(true)
+  }
 
-    const base = [...history, { role: 'user', content: text, ts: Date.now(), model }]
+  const replaceHistory = (next, persist = false) => {
+    historyRef.current = next
+    setHistory(next)
+    if (persist) saveHistory(next)
+  }
+
+  const drainFollowUps = () => {
+    const batch = queuedRef.current
+    if (!batch.length) return []
+    queuedRef.current = []
+    setQueued([])
+    return batch.map(({ text, model: queuedModel, ts }) => ({
+      role: 'user', content: text, ts, model: queuedModel,
+    }))
+  }
+
+  const runTurn = async ({ text, model: runModel, effort: runEffort, ts }) => {
+    setError(null)
+    setNotice(null)
+    setActivity([{ key: 'context', label: 'Reading live market context', done: false }])
+
+    const base = [...historyRef.current, {
+      role: 'user', content: text, ts: ts || Date.now(), model: runModel,
+    }]
     let added = []
     let live = ''
     const paint = () =>
@@ -295,6 +351,23 @@ export function Chat() {
     try {
       system += '\n\n' + await buildChatContext(text)
     } catch { /* context is best-effort — a bare prompt still answers */ }
+    const runLabel = models.find((candidate) => candidate.key === runModel)?.label || runModel
+    setActivity([
+      { key: 'context', label: 'Read live market context', done: true },
+      { key: 'model', label: `Thinking with ${runLabel}`, done: false },
+    ])
+
+    const traceEntries = (entries, modelDone = false) => {
+      const toolResults = new Set(entries.filter((m) => m.role === 'tool').map((m) => m.id))
+      const toolSteps = entries.flatMap((m) => (m.toolCalls || []).map((tc) => ({
+        key: `tool-${tc.id}`, label: toolLabel(tc), done: toolResults.has(tc.id),
+      })))
+      setActivity([
+        { key: 'context', label: 'Read live market context', done: true },
+        { key: 'model', label: `${modelDone ? 'Answered with' : 'Thinking with'} ${runLabel}`, done: modelDone },
+        ...toolSteps,
+      ])
+    }
 
     const finish = () => {
       // Apply + strip [MEMORY…] tags from whatever the model said, stamp
@@ -304,25 +377,25 @@ export function Chat() {
         if (m.role === 'assistant' && m.content) {
           const r = applyMemoryTags(m.content)
           notes.push(...r.notes)
-          return { ...m, content: r.text, ts: Date.now(), model }
+          return { ...m, content: r.text, ts: Date.now(), model: runModel }
         }
-        return m.role === 'assistant' ? { ...m, ts: Date.now(), model } : m
+        return m.role === 'assistant' ? { ...m, ts: Date.now(), model: runModel } : m
       })
       if (notes.length) {
         setNotice(notes.join(' · '))
         setMemories(loadMemories())
       }
       const done = [...base, ...stamped]
-      setHistory(done)
-      saveHistory(done)
+      replaceHistory(done, true)
     }
 
     try {
       await runAgentic({
-        model,
-        effort,
+        model: runModel,
+        effort: runEffort,
         system,
         messages: trimHistory(base, MODEL_WINDOW),
+        takeFollowUps: drainFollowUps,
         onDelta: (d) => {
           live += d
           paint()
@@ -330,26 +403,78 @@ export function Chat() {
         onRound: (entries) => {
           added = entries
           live = ''
+          const last = entries[entries.length - 1]
+          traceEntries(entries, last?.role === 'assistant' && !last.toolCalls?.length)
           paint()
         },
       })
+      traceEntries(added, true)
       finish()
     } catch (err) {
       setError(String(err.message || err))
+      setActivity((steps) => steps.map((step) => ({ ...step, done: true })))
       finish()
+    }
+  }
+
+  const runTurns = async (first) => {
+    busyRef.current = true
+    setBusy(true)
+    let next = first
+    try {
+      while (next) {
+        await runTurn(next)
+        // If the current request ended without a tool boundary, its polite
+        // queue has not been consumed yet. Continue it as the next turn.
+        next = queuedRef.current.shift() || null
+        if (next) setQueued([...queuedRef.current])
+      }
     } finally {
+      busyRef.current = false
       setBusy(false)
       if (!onWire) fetchSpend().then(setSpend).catch(() => {})
     }
   }
 
+  const send = (e) => {
+    e.preventDefault()
+    const text = input.trim()
+    if (!text) return
+    const item = { text, model, effort, ts: Date.now() }
+    clearComposer()
+    if (busyRef.current) {
+      queuedRef.current = [...queuedRef.current, item]
+      setQueued([...queuedRef.current])
+      return
+    }
+    runTurns(item)
+  }
+
   const clear = () => {
-    setHistory([])
-    saveHistory([])
+    replaceHistory([], true)
   }
 
   // Tool results by call id, for chip status/tooltips.
   const results = new Map(history.filter((m) => m.role === 'tool').map((m) => [m.id, m.content]))
+  const selectedModel = models.find((candidate) => candidate.key === model)
+  const effortLevels = onWire
+    ? (selectedModel?.efforts || [])
+    : ['auto', 'off', 'low', 'medium', 'high']
+
+  const chooseModel = (key) => {
+    setModel(key)
+    localStorage.setItem(modelStorageKey, key)
+    const info = models.find((candidate) => candidate.key === key)
+    const choices = info?.efforts || []
+    if (onWire && choices.length && !choices.includes(effort)) {
+      const nextEffort = info.default_effort || choices[0]
+      setEffort(nextEffort)
+      localStorage.setItem('chat_effort', nextEffort)
+    } else if (onWire && !choices.length) {
+      setEffort('')
+      localStorage.setItem('chat_effort', '')
+    }
+  }
 
   return (
     <div class="flex-1 flex flex-col p-3 min-h-0 min-w-0 select-text">
@@ -359,10 +484,7 @@ export function Chat() {
           <span class="font-mono text-[9px] uppercase tracking-wider text-muted">model</span>
           <select
             value={model}
-            onChange={(e) => {
-              setModel(e.currentTarget.value)
-              localStorage.setItem(modelStorageKey, e.currentTarget.value)
-            }}
+            onChange={(e) => chooseModel(e.currentTarget.value)}
             class="bg-transparent font-mono text-[11px] text-ink outline-none pr-1 cursor-pointer"
           >
             {(models.length ? models : [{ key: model, label: model }]).map((m) => (
@@ -376,8 +498,8 @@ export function Chat() {
             via <span class="text-accent">wire</span>
           </span>
         )}
-        {!onWire && <div class="flex items-center gap-0.5 bg-surface-2 border border-line rounded-lg p-0.5" title="thinking effort">
-          {['auto', 'off', 'low', 'medium', 'high'].map((lv) => (
+        {effortLevels.length > 0 && <div class="flex items-center gap-0.5 bg-surface-2 border border-line rounded-lg p-0.5" title="thinking effort">
+          {effortLevels.map((lv) => (
             <button
               key={lv}
               onClick={() => {
@@ -394,39 +516,50 @@ export function Chat() {
             </button>
           ))}
         </div>}
+        {onWire && selectedModel?.fixed_effort && (
+          <span class="font-mono text-[10px] text-muted border border-line rounded-md px-2 py-1"
+                title="this subscription model has a fixed thinking tier">
+            {selectedModel.fixed_effort}
+          </span>
+        )}
         <div class="ml-auto flex items-center gap-3">
           <button
             onClick={() => { setMemories(loadMemories()); setDrawer(drawer === 'mem' ? null : 'mem') }}
-            class={`font-mono text-[10px] ${drawer === 'mem' ? 'text-accent' : 'text-muted hover:text-ink'}`}
+            class={`w-7 h-7 grid place-items-center rounded-md ${drawer === 'mem' ? 'text-accent bg-accent-soft' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
             title="persistent memories — the assistant carries these into every conversation"
+            aria-label="memories"
           >
-            mem {memories.length}
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 4.5a3 3 0 0 0-5 2.2v1.1A3.2 3.2 0 0 0 4.5 14v1a3 3 0 0 0 4.5 2.6M15 4.5a3 3 0 0 1 5 2.2v1.1a3.2 3.2 0 0 1-.5 6.2v1a3 3 0 0 1-4.5 2.6M9 4v16M15 4v16M9 8h2M13 12h2M9 16h2"/></svg>
           </button>
           <button
             onClick={() => { setJournal(loadJournal()); setDrawer(drawer === 'journal' ? null : 'journal') }}
-            class={`font-mono text-[10px] ${drawer === 'journal' ? 'text-accent' : 'text-muted hover:text-ink'}`}
+            class={`w-7 h-7 grid place-items-center rounded-md ${drawer === 'journal' ? 'text-accent bg-accent-soft' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
             title="trade journal — your own decisions and rationale, searchable"
+            aria-label="trade journal"
           >
-            journal {journal.length}
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H20v17H7.5A2.5 2.5 0 0 0 5 21.5zM5 4.5v17M9 7h7M9 11h7M9 15h4"/></svg>
           </button>
           {history.length > 0 && (
-            <button onClick={() => exportChat(history)} class="font-mono text-[10px] text-muted hover:text-ink"
+            <button onClick={() => exportChat(history)} class="w-7 h-7 grid place-items-center rounded-md text-muted hover:text-ink hover:bg-surface-2"
               title="download the transcript as markdown">
-              {tl('export')}
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12M7 10l5 5 5-5M5 20h14"/></svg>
             </button>
           )}
           {history.length > 0 && (
-            <button onClick={clear} class="font-mono text-[10px] text-muted hover:text-down">
-              {tl('clear')}
+            <button onClick={clear} class="w-7 h-7 grid place-items-center rounded-md text-muted hover:text-down hover:bg-surface-2" title={tl('clear')}>
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M9 3h6l1 4H8zM7 7l1 14h8l1-14M10 11v6M14 11v6"/></svg>
             </button>
           )}
         </div>
       </div>
 
       {drawer === 'mem' && (
-        <div class="max-w-3xl w-full mb-2 bg-surface-1 border border-line rounded-xl px-3 py-2 max-h-[38vh] overflow-y-auto">
-          <div class="font-mono text-[9px] tracking-wider text-muted uppercase pb-1">
-            memories — injected into every turn · “remember …” / “forget #N” in chat also works
+        <div class="fixed inset-0 z-50 bg-black/55 grid place-items-center p-4" onClick={() => setDrawer(null)}>
+        <div class="max-w-xl w-full bg-surface-1 border border-line rounded-2xl px-4 py-3 max-h-[72vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div class="flex items-start gap-3 pb-3 border-b border-line">
+            <div><div class="font-anth text-[15px] font-semibold text-ink">Memories</div>
+              <div class="font-anth text-[11px] text-muted">Details the assistant should remember in future chats.</div></div>
+            <button class="ml-auto text-muted hover:text-ink" onClick={() => setDrawer(null)} aria-label="close">✕</button>
           </div>
           {memories.length === 0 && (
             <div class="font-anth text-[12px] text-muted py-1">nothing saved yet</div>
@@ -440,17 +573,19 @@ export function Chat() {
           <NoteAdd placeholder="add a memory…"
             onAdd={(t) => { addMemory(t); setMemories(loadMemories()) }} />
         </div>
+        </div>
       )}
 
       {drawer === 'journal' && (
-        <div class="max-w-3xl w-full mb-2 bg-surface-1 border border-line rounded-xl px-3 py-2 max-h-[38vh] overflow-y-auto">
-          <div class="flex items-center gap-2 pb-1">
-            <span class="font-mono text-[9px] tracking-wider text-muted uppercase">
-              trade journal — “journal: …” in chat also works
-            </span>
+        <div class="fixed inset-0 z-50 bg-black/55 grid place-items-center p-4" onClick={() => setDrawer(null)}>
+        <div class="max-w-xl w-full bg-surface-1 border border-line rounded-2xl px-4 py-3 max-h-[72vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div class="flex items-center gap-2 pb-3 border-b border-line">
+            <div><div class="font-anth text-[15px] font-semibold text-ink">Trade journal</div>
+              <div class="font-anth text-[11px] text-muted">Your decisions, rationale, and notes—not AI settings.</div></div>
             <input value={jrFilter} onInput={(e) => setJrFilter(e.currentTarget.value)}
               placeholder="search…"
               class="ml-auto bg-surface-2 border border-line rounded-md px-2 py-0.5 font-mono text-[10px] text-ink outline-none focus:border-accent/60 w-32 placeholder:text-muted" />
+            <button class="text-muted hover:text-ink" onClick={() => setDrawer(null)} aria-label="close">✕</button>
           </div>
           {(jrFilter ? searchJournal(jrFilter) : journal).slice(-30).reverse().map((e) => (
             <NoteRow key={e.id} id={e.id} text={e.text}
@@ -464,6 +599,7 @@ export function Chat() {
           )}
           <NoteAdd placeholder="log a decision, a read, a why…"
             onAdd={(t) => { addJournalEntry(t); setJournal(loadJournal()) }} />
+        </div>
         </div>
       )}
 
@@ -541,13 +677,6 @@ export function Chat() {
                 ))}
               </div>
 
-              {(memories.length > 0 || journal.length > 0) && (
-                <div class="font-mono text-[10px] text-muted">
-                  {memories.length > 0 && <span>{memories.length} memories</span>}
-                  {memories.length > 0 && journal.length > 0 && ' · '}
-                  {journal.length > 0 && <span>{journal.length} journal entries</span>}
-                </div>
-              )}
             </div>
           )
         })()}
@@ -614,6 +743,15 @@ export function Chat() {
         {busy && ['user', 'tool'].includes(history[history.length - 1]?.role) && (
           <div class="self-start px-1"><Thinking /></div>
         )}
+        <ActivityTrace steps={activity} busy={busy} />
+        {queued.map((item, i) => (
+          <div key={`${item.ts}-${i}`} class="self-end max-w-[85%] flex flex-col items-end gap-0.5">
+            <div class="rounded-2xl px-3.5 py-2.5 text-[13.5px] leading-relaxed whitespace-pre-wrap bg-accent-soft/60 border border-accent/25 text-ink font-anth">
+              {item.text}
+            </div>
+            <span class="font-mono text-[9px] text-muted pr-1">queued follow-up</span>
+          </div>
+        ))}
         {notice && (
           <div class="self-start font-mono text-[10px] text-up px-1">{notice}</div>
         )}
@@ -638,23 +776,22 @@ export function Chat() {
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(e) }
             }}
-            placeholder={tt('chat.placeholder')}
+            placeholder={busy ? tt('chat.follow_up') : tt('chat.placeholder')}
             class="flex-1 bg-transparent resize-none outline-none text-[13.5px] leading-[21px] py-[5.5px] text-ink placeholder:text-muted max-h-40 font-anth"
           />
           <button
             type="submit"
-            disabled={busy || !input.trim()}
-            title={busy ? 'working' : 'send  ⏎'}
+            disabled={!input.trim()}
+            title={busy ? 'queue follow-up  ⏎' : 'send  ⏎'}
             class="shrink-0 w-8 h-8 grid place-items-center rounded-full bg-accent text-black disabled:bg-surface-3 disabled:text-muted transition-colors"
           >
-            {busy
-              ? <span class="block w-3 h-3 rounded-sm bg-black/70 animate-pulse" />
-              : <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>}
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
           </button>
         </div>
         <div class="flex items-center gap-3 px-2 pt-1 font-mono text-[9.5px] text-muted">
           <span><kbd class="text-ink-2">⏎</kbd> send</span>
           <span><kbd class="text-ink-2">⇧⏎</kbd> newline</span>
+          {queued.length > 0 && <span class="text-accent">{queued.length} queued</span>}
           {!onWire && <SpendMeter spend={spend} />}
         </div>
       </form>

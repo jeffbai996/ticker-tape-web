@@ -42,10 +42,22 @@ export function trimHistory(history, max) {
  * on that path, so tools ride the JSON protocol in wirechat.js — the model
  * answers with one JSON object to call a tool and prose to answer.
  */
-async function runAgenticOverWire({ model, system, messages, onRound }) {
+function receiveFollowUps(takeFollowUps, added, onRound) {
+  const followUps = takeFollowUps?.() || []
+  if (!followUps.length) return
+  added.push(...followUps)
+  onRound?.([...added])
+}
+
+async function runAgenticOverWire({
+  model, effort, system, messages, onRound, takeFollowUps,
+}) {
   const added = []
   const sys = `${system}\n\n${toolProtocol()}`
   for (let round = 0; round < MAX_ROUNDS; round++) {
+    // A follow-up is a polite queue, not a barge-in: only splice it into the
+    // transcript between provider rounds, when no request is in flight.
+    receiveFollowUps(takeFollowUps, added, onRound)
     const convo = [...messages, ...added]
       .filter((m) => m.role !== 'tool' || m.content)
       .map((m) => (m.role === 'tool'
@@ -54,6 +66,7 @@ async function runAgenticOverWire({ model, system, messages, onRound }) {
     const last = round === MAX_ROUNDS - 1
     const { text } = await wireComplete({
       model,
+      effort,
       system: last ? `${system}\n\nAnswer now with what you have.` : sys,
       messages: convo,
     })
@@ -73,16 +86,21 @@ async function runAgenticOverWire({ model, system, messages, onRound }) {
   return added
 }
 
-export async function runAgentic({ model, effort, system, messages, onDelta, onRound }) {
+export async function runAgentic({
+  model, effort, system, messages, onDelta, onRound, takeFollowUps,
+}) {
   // Private build talks to the user's own router; the metered API is the
   // fallback for anyone without one.
   if (wireChatAvailable()) {
-    return runAgenticOverWire({ model, system, messages, onRound })
+    return runAgenticOverWire({
+      model, effort, system, messages, onRound, takeFollowUps,
+    })
   }
   const added = []
   const convo = () => [...messages, ...added]
 
   for (let round = 0; round < MAX_ROUNDS; round++) {
+    receiveFollowUps(takeFollowUps, added, onRound)
     // Last chance: drop the tools so the model must answer with what it has.
     const finalRound = round === MAX_ROUNDS - 1
     let text = ''
