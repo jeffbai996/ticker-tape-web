@@ -1599,7 +1599,7 @@ export function Research({ route }) {
   return (
     <div class="flex-1 p-3 select-text min-w-0">
       <div class="flex items-baseline gap-3 px-1 pb-2 flex-wrap">
-        <h1 class="font-mono font-bold text-lg text-ink">{symbol}</h1>
+        <h1 class="font-tick font-bold text-lg text-ink">{symbol}</h1>
         <WatchStar symbol={symbol} />
         {q && (
           <>

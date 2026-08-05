@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { TICK_FLASH_MS, tickFlashDirection } from '../lib/tickFlash.js'
+import { metricFlashDirection, TICK_FLASH_MS } from '../lib/tickFlash.js'
 
 export { TICK_FLASH_MS } from '../lib/tickFlash.js'
 
@@ -25,15 +25,15 @@ export function Fig({ v, class: cls = '' }) {
 // Inverse-video tick flash on just the digits that changed. A hidden tab is
 // allowed to absorb as many prints as it wants, but those prices become the
 // new baseline instead of queueing a wall of paint for the user's return.
-export function FlashPrice({ price, fmt }) {
-  const text = price != null ? fmt(price) : '—'
-  const prevRef = useRef({ text, price })
-  const latestRef = useRef({ text, price })
+export function FlashMetric({ value, fmt, kind = 'change' }) {
+  const text = value != null ? fmt(value) : '—'
+  const prevRef = useRef({ text, value })
+  const latestRef = useRef({ text, value })
   const baselinePendingRef = useRef(false)
   const baselineTimerRef = useRef(null)
   const timerRef = useRef(null)
   const [st, setSt] = useState(null)
-  latestRef.current = { text, price }
+  latestRef.current = { text, value }
 
   useEffect(() => {
     if (typeof document === 'undefined') return undefined
@@ -61,13 +61,14 @@ export function FlashPrice({ price, fmt }) {
 
   useEffect(() => {
     const prev = prevRef.current
-    prevRef.current = { text, price }
-    const dir = tickFlashDirection(prev.price, price, {
+    prevRef.current = { text, value }
+    const dir = metricFlashDirection(prev.value, value, {
+      kind,
       baselinePending: baselinePendingRef.current,
       hidden: typeof document !== 'undefined' && document.hidden,
     })
     // Consume the resume baseline on the one coalesced catch-up render.
-    if (prev.price != null && price != null && prev.price !== price
+    if (prev.value != null && value != null && prev.value !== value
         && !(typeof document !== 'undefined' && document.hidden)) {
       baselinePendingRef.current = false
     }
@@ -86,7 +87,7 @@ export function FlashPrice({ price, fmt }) {
       setSt(null)
     }, TICK_FLASH_MS)
     return () => clearTimeout(timerRef.current)
-  }, [price, text])
+  }, [kind, text, value])
   if (!st) return <>{text}</>
   return (
     <>
@@ -94,4 +95,8 @@ export function FlashPrice({ price, fmt }) {
       <span class={`px-flash-${st.dir}`}>{text.slice(st.from)}</span>
     </>
   )
+}
+
+export function FlashPrice({ price, fmt }) {
+  return <FlashMetric value={price} fmt={fmt} />
 }
