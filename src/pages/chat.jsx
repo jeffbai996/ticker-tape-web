@@ -513,7 +513,7 @@ export function Chat() {
   const [liveAnswer, setLiveAnswer] = useState('')
   const [error, setError] = useState(null)
   const [notice, setNotice] = useState(null)          // memory-tag confirmations
-  const [drawer, setDrawer] = useState(null)          // 'mem' | 'journal' | null
+  const [drawer, setDrawer] = useState(null)          // 'sessions' | 'mem' | 'journal' | null
   const [memories, setMemories] = useState(loadMemories)
   const [journal, setJournal] = useState(loadJournal)
   const [jrFilter, setJrFilter] = useState('')
@@ -544,9 +544,7 @@ export function Chat() {
 
   // Boot: pull the shared brain from the wire (server wins), adopt a legacy
   // local conversation as thread #1, and list the threads for the rail.
-  const refreshThreads = () => {
-    fetchThreadList().then(setThreads).catch(() => {})
-  }
+  const refreshThreads = () => fetchThreadList().then(setThreads).catch(() => {})
   useEffect(() => {
     if (!chatstoreAvailable()) return
     const onSync = () => { setMemories(loadMemories()); setJournal(loadJournal()) }
@@ -556,28 +554,50 @@ export function Chat() {
     return () => window.removeEventListener(CHATSTORE_SYNC_EVENT, onSync)
   }, [])
 
-  const newThread = () => {
-    startNewThread()
+  const newThread = async () => {
+    if (busyRef.current) return
+    await startNewThread(historyRef.current)
     historyRef.current = []
     activityRef.current = []
     setHistory([])
     setActivity([])
     setLiveAnswer('')
     setAtHome(true)
-    refreshThreads()
+    await refreshThreads()
   }
 
   const switchThread = async (id) => {
+    if (busyRef.current || id === currentThreadId()) {
+      setDrawer(null)
+      setAtHome(false)
+      return
+    }
     try {
-      const messages = await openThread(id)
+      const messages = await openThread(id, historyRef.current)
       historyRef.current = messages
       setHistory(messages)
       activityRef.current = []
       setActivity([])
       setLiveAnswer('')
       setAtHome(false)
-      refreshThreads()
+      setDrawer(null)
+      await refreshThreads()
     } catch { /* thread gone — list will refresh */ }
+  }
+
+  const deleteSession = async (id) => {
+    if (busyRef.current) return
+    const wasActive = id === currentThreadId()
+    await removeThread(id)
+    if (wasActive) {
+      historyRef.current = []
+      activityRef.current = []
+      setHistory([])
+      setActivity([])
+      setLiveAnswer('')
+      setAtHome(true)
+    }
+    await refreshThreads()
   }
 
   // Warm case: already on the chat page when AI Chat is pressed again.
@@ -1041,6 +1061,19 @@ export function Chat() {
           </span>
         )}
         <div class="ml-auto h-7 flex items-center gap-0.5 border border-line rounded-lg px-0.5">
+          {chatstoreAvailable() && (
+            <button
+              onClick={() => setDrawer(drawer === 'sessions' ? null : 'sessions')}
+              class={`relative w-6 h-6 grid place-items-center rounded-md ${drawer === 'sessions' ? 'text-accent bg-accent-soft' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
+              title="saved chat sessions"
+              aria-label="chat sessions"
+            >
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 5h14v11H9l-4 3V5z"/><path d="M8 9h8M8 12h5"/>
+              </svg>
+              {threads.length > 0 && <span class="absolute -top-1 -right-1 min-w-[13px] h-[13px] px-0.5 grid place-items-center rounded-full bg-surface-3 border border-line-2 font-mono text-[7.5px] text-ink-2 leading-none">{threads.length}</span>}
+            </button>
+          )}
           <button
             onClick={() => { setMemories(loadMemories()); setDrawer(drawer === 'mem' ? null : 'mem') }}
             class={`relative w-6 h-6 grid place-items-center rounded-md ${drawer === 'mem' ? 'text-accent bg-accent-soft' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
@@ -1079,6 +1112,37 @@ export function Chat() {
           )}
         </div>
       </div>
+
+      {drawer === 'sessions' && (
+        <div class="fixed inset-0 z-50 bg-black/55 grid place-items-center p-4" onClick={() => setDrawer(null)}>
+        <div class="max-w-xl w-full bg-surface-1 border border-line rounded-2xl px-4 py-3 max-h-[72vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div class="flex items-center gap-3 pb-3 border-b border-line">
+            <div>
+              <div class="font-anth text-[15px] font-semibold text-ink">Chat sessions</div>
+              <div class="font-anth text-[11px] text-muted">Saved automatically. Open any session without replacing this one.</div>
+            </div>
+            <button type="button" disabled={busy} onClick={newThread}
+              class="ml-auto font-anth text-[11px] text-accent border border-accent/40 rounded-md px-2 py-1 hover:bg-accent-soft disabled:opacity-40">
+              + new session
+            </button>
+            <button class="text-muted hover:text-ink" onClick={() => setDrawer(null)} aria-label="close">✕</button>
+          </div>
+          <div class="py-2 flex flex-col gap-1">
+            {threads.length === 0 && <div class="font-anth text-[12px] text-muted py-1">no saved sessions yet</div>}
+            {threads.map((thread) => (
+              <div key={thread.id} class={`group flex items-center gap-2 rounded-lg px-2 py-1.5 ${thread.id === currentThreadId() ? 'bg-accent-soft' : 'hover:bg-surface-2'}`}>
+                <button type="button" disabled={busy} onClick={() => switchThread(thread.id)} class="flex-1 min-w-0 text-left disabled:opacity-50">
+                  <span class={`block truncate font-anth text-[12px] ${thread.id === currentThreadId() ? 'text-accent' : 'text-ink-2'}`}>{thread.title || 'untitled'}</span>
+                  <span class="block font-mono text-[9px] text-muted">{thread.n} messages</span>
+                </button>
+                <button type="button" disabled={busy} onClick={() => deleteSession(thread.id)} title="delete session"
+                  class="opacity-0 group-hover:opacity-100 max-md:opacity-100 text-muted hover:text-down disabled:opacity-30 shrink-0 font-mono text-[11px]">✕</button>
+              </div>
+            ))}
+          </div>
+        </div>
+        </div>
+      )}
 
       {drawer === 'mem' && (
         <div class="fixed inset-0 z-50 bg-black/55 grid place-items-center p-4" onClick={() => setDrawer(null)}>
@@ -1281,9 +1345,9 @@ export function Chat() {
       {chatstoreAvailable() && (
         <section class="chat-rail-section bg-surface-1 border border-line rounded-xl overflow-hidden shrink-0">
           <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2 flex items-baseline gap-1.5">
-            <h2 class="font-anth font-bold text-[10px] tracking-wider text-accent uppercase">threads</h2>
+            <h2 class="font-anth font-bold text-[10px] tracking-wider text-accent uppercase">sessions</h2>
             <span class="font-mono text-[9px] text-muted">{threads.length}</span>
-            <button onClick={newThread} title="new thread"
+            <button onClick={newThread} disabled={busy} title="new session"
               class="ml-auto font-mono text-[10px] text-muted hover:text-accent">+ new</button>
           </header>
           <div class="px-1 py-1 max-h-[34vh] overflow-y-auto">
@@ -1294,8 +1358,8 @@ export function Chat() {
                   <span class={`block truncate font-anth text-[11px] ${t.id === currentThreadId() ? 'text-accent' : 'text-ink-2'}`}>{t.title || 'untitled'}</span>
                 </button>
                 <span class="font-mono text-[8.5px] text-muted shrink-0">{t.n}</span>
-                <button onClick={() => removeThread(t.id).then(() => { if (t.id === currentThreadId()) newThread(); refreshThreads() })}
-                  title="delete thread"
+                <button onClick={() => deleteSession(t.id)} disabled={busy}
+                  title="delete session"
                   class="opacity-0 group-hover:opacity-100 text-muted hover:text-down shrink-0 font-mono text-[10px]">✕</button>
               </div>
             ))}
