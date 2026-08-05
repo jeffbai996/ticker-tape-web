@@ -51,7 +51,7 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
   const [error, setError] = useState(null)
   const [copied, setCopied] = useState(false)
   const [models, setModels] = useState([])
-  const [writer, setWriter] = useState(() => localStorage.getItem(WRITER_KEY) || 'auto')
+  const [writer, setWriter] = useState(() => localStorage.getItem(WRITER_KEY) || 'agy-flash')
   const bodyRef = useRef(null)
 
   // the subscription lineup, when a wire is connected — same registry the
@@ -61,9 +61,8 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
     fetchWireChatModels()
       .then((live) => {
         setModels(live)
-        if (!live.some((m) => m.key === (localStorage.getItem(WRITER_KEY) || 'auto'))) {
-          setWriter('auto')
-        }
+        const cur = localStorage.getItem(WRITER_KEY)
+        if (!live.some((m) => m.key === cur)) setWriter(live[0]?.key || 'agy-flash')
       })
       .catch(() => {})
   }, [])
