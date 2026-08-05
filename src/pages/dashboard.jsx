@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { createChart, AreaSeries } from 'lightweight-charts'
+import { boundedTimeScale } from '../lib/chartview.js'
 import { useQuotes, useWatchlist } from '../hooks.js'
 import { BUCKETS } from '../lib/symbols.js'
 import { pulseStats } from '../lib/pulse.js'
@@ -350,7 +351,7 @@ function MiniChart({ symbol }) {
       layout: { background: { color: 'transparent' }, textColor: '#79828d', fontSize: 9, fontFamily: "'IBM Plex Mono', monospace" },
       grid: { vertLines: { visible: false }, horzLines: { color: 'rgba(255,255,255,0.04)' } },
       rightPriceScale: { borderVisible: false },
-      timeScale: { borderVisible: false, visible: false },
+      timeScale: { ...boundedTimeScale(false), borderVisible: false, visible: false },
       crosshair: { mode: 0 },
       handleScroll: false,
       handleScale: false,

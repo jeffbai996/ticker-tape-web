@@ -27,6 +27,8 @@ import { memoPrompt, BRIEFING_SYSTEM } from '../lib/briefing.js'
 import { AiReport, MdLite } from '../components/AiReport.jsx'
 import { Fig } from '../components/Fig.jsx'
 import { ChartSuite } from '../components/ChartSuite.jsx'
+import { emaSeries, macdSeries } from '../lib/chartmath.js'
+import { boundedTimeScale } from '../lib/chartview.js'
 
 /** Read-and-clear a command-bar ride-along (chart range, options expiry). */
 function consumePrefill(key) {
@@ -135,7 +137,7 @@ function Candles({ bars, intraday }) {
         horzLines: { color: 'rgba(255,255,255,0.05)' },
       },
       rightPriceScale: { borderColor: 'rgba(255,255,255,0.10)' },
-      timeScale: { borderColor: 'rgba(255,255,255,0.10)', timeVisible: intraday },
+      timeScale: boundedTimeScale(intraday),
       crosshair: { mode: 0 },
     })
     const series = chart.addSeries(CandlestickSeries, {
@@ -170,6 +172,7 @@ function Candles({ bars, intraday }) {
     const c = chartRef.current
     if (!c || !bars) return
     c.series.setData(bars)
+    c.chart.priceScale('right').applyOptions({ mode: ov.log ? 1 : 0 })
     c.extra.forEach((sr) => { try { c.chart.removeSeries(sr) } catch { /* gone */ } })
     c.extra = []
     for (const n of [20, 50, 200]) {
@@ -179,6 +182,14 @@ function Candles({ bars, intraday }) {
         priceLineVisible: false, lastValueVisible: false,
       })
       line.setData(rollingSma(bars, n))
+      c.extra.push(line)
+    }
+    if (ov.ema21 && bars.length >= 21) {
+      const line = c.chart.addSeries(LineSeries, {
+        color: '#e7ecf3', lineWidth: 1, lineStyle: 2,
+        priceLineVisible: false, lastValueVisible: false,
+      })
+      line.setData(emaSeries(bars, 21))
       c.extra.push(line)
     }
     if (ov.bb && bars.length >= 20) {
@@ -193,7 +204,15 @@ function Candles({ bars, intraday }) {
         c.extra.push(line)
       }
     }
-    // sub-panes share the bottom: RSI rides above VOL when both are on
+    if (ov.vwap && intraday && bars.some((b) => b.volume)) {
+      const line = c.chart.addSeries(LineSeries, {
+        color: '#f59e0b', lineWidth: 1, lineStyle: 2,
+        priceLineVisible: false, lastValueVisible: false,
+      })
+      line.setData(vwapSeries(bars))
+      c.extra.push(line)
+    }
+    // Volume hugs price; oscillators get native time-synced panes below it.
     if (ov.vol && bars.some((b) => b.volume)) {
       const vol = c.chart.addSeries(HistogramSeries, {
         priceScaleId: 'vol', priceFormat: { type: 'volume' },
@@ -208,24 +227,44 @@ function Candles({ bars, intraday }) {
       })))
       c.extra.push(vol)
     }
+    let paneIdx = 1
     if (ov.rsi && bars.length >= 15) {
       const rsiLine = c.chart.addSeries(LineSeries, {
-        priceScaleId: 'rsi', color: '#3ecbe8', lineWidth: 1,
+        color: '#3ecbe8', lineWidth: 1,
         priceLineVisible: false, lastValueVisible: true,
-      })
-      c.chart.priceScale('rsi').applyOptions({
-        scaleMargins: ov.vol ? { top: 0.72, bottom: 0.14 } : { top: 0.8, bottom: 0 },
-      })
+      }, paneIdx)
       rsiLine.setData(rollingRsi(bars, 14))
+      rsiLine.createPriceLine({ price: 70, color: 'rgba(248,81,73,.4)', lineWidth: 1, lineStyle: 3, axisLabelVisible: false })
+      rsiLine.createPriceLine({ price: 30, color: 'rgba(63,185,80,.4)', lineWidth: 1, lineStyle: 3, axisLabelVisible: false })
       c.extra.push(rsiLine)
+      paneIdx++
     }
+    if (ov.macd && bars.length >= 40) {
+      const m = macdSeries(bars)
+      const hist = c.chart.addSeries(HistogramSeries, {
+        priceLineVisible: false, lastValueVisible: false,
+      }, paneIdx)
+      const macdLine = c.chart.addSeries(LineSeries, {
+        color: '#22d3ee', lineWidth: 1, priceLineVisible: false,
+      }, paneIdx)
+      const signal = c.chart.addSeries(LineSeries, {
+        color: '#f59e0b', lineWidth: 1, priceLineVisible: false,
+      }, paneIdx)
+      hist.setData(m.hist); macdLine.setData(m.macd); signal.setData(m.signal)
+      c.extra.push(hist, macdLine, signal)
+      paneIdx++
+    }
+    try {
+      const panes = c.chart.panes()
+      for (let i = 1; i < panes.length; i++) panes[i].setHeight(84)
+    } catch { /* pane sizing is garnish */ }
     c.chart.timeScale().fitContent()
   }, [bars, ov])
 
   return (
     <div>
-      <div class="flex gap-1 px-1 pb-1.5 select-none">
-        {[['sma20', 'SMA 20'], ['sma50', 'SMA 50'], ['sma200', 'SMA 200'], ['bb', 'BB'], ['rsi', 'RSI'], ['vol', 'VOL']].map(([k, label]) => (
+      <div class="flex gap-1 px-1 pb-1.5 select-none flex-nowrap overflow-x-auto no-scrollbar">
+        {[['sma20', 'SMA 20'], ['sma50', 'SMA 50'], ['sma200', 'SMA 200'], ['ema21', 'EMA 21'], ['bb', 'BB'], ...(intraday ? [['vwap', 'VWAP']] : []), ['rsi', 'RSI'], ['macd', 'MACD'], ['vol', 'VOL'], ['log', 'LOG']].map(([k, label]) => (
           <button
             key={k}
             onClick={() => toggle(k)}
@@ -237,6 +276,13 @@ function Candles({ bars, intraday }) {
             {label}
           </button>
         ))}
+        <button
+          onClick={() => chartRef.current?.chart.timeScale().fitContent()}
+          title="reset zoom to the full loaded history"
+          class="font-mono text-[9.5px] px-1.5 py-0.5 rounded border tracking-wider border-line text-muted hover:text-ink"
+        >
+          FIT
+        </button>
       </div>
       <div class="relative">
         <div ref={legendRef} class="absolute left-2 top-1 z-10 font-mono text-[10.5px] text-ink pointer-events-none" style="display:none" />
@@ -555,7 +601,7 @@ function IntradayView({ symbol }) {
             horzLines: { color: 'rgba(255,255,255,0.05)' },
           },
           rightPriceScale: { borderColor: 'rgba(255,255,255,0.10)' },
-          timeScale: { borderColor: 'rgba(255,255,255,0.10)', timeVisible: true },
+          timeScale: boundedTimeScale(true),
         })
         const candles = chart.addSeries(CandlestickSeries, {
           upColor: '#3fb950', downColor: '#f85149',

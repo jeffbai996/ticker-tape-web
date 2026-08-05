@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { createChart, LineSeries } from 'lightweight-charts'
+import { boundedTimeScale } from '../lib/chartview.js'
 import { useQuotes } from '../hooks.js'
 import { fetchHistory } from '../lib/history.js'
 import { fetchFundamentals } from '../lib/fundamentals.js'
@@ -153,7 +154,7 @@ function Compare({ symbols, hist }) {
         horzLines: { color: 'rgba(255,255,255,0.05)' },
       },
       rightPriceScale: { borderColor: 'rgba(255,255,255,0.10)' },
-      timeScale: { borderColor: 'rgba(255,255,255,0.10)' },
+      timeScale: boundedTimeScale(false),
     })
     symbols.forEach((sym, i) => {
       const h = hist[sym]

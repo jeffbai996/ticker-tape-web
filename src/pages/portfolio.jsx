@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { createChart, AreaSeries } from 'lightweight-charts'
+import { boundedTimeScale } from '../lib/chartview.js'
 import { useQuotes } from '../hooks.js'
 import {
   DEMO_POSITIONS, DEMO_CASH, DEMO_BETAS, DEMO_ACCOUNT_ID, DEMO_MARGIN_RATE,
@@ -342,7 +343,7 @@ function Timeline({ priceMap, positions }) {
         horzLines: { color: 'rgba(255,255,255,0.05)' },
       },
       rightPriceScale: { borderColor: 'rgba(255,255,255,0.10)' },
-      timeScale: { borderColor: 'rgba(255,255,255,0.10)' },
+      timeScale: boundedTimeScale(false),
     })
     const series = chart.addSeries(AreaSeries, {
       lineColor: '#f59e0b',

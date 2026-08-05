@@ -10,6 +10,7 @@ import { fetchHistory, RANGES } from '../lib/history.js'
 import { smaSeries, emaSeries, rsiSeries, macdSeries, bollingerSeries,
          normalizedSeries } from '../lib/chartmath.js'
 import { vwapSeries } from '../lib/vwap.js'
+import { boundedTimeScale } from '../lib/chartview.js'
 import { fmtPrice } from '../lib/format.js'
 import { tl } from '../lib/i18n.js'
 
@@ -43,13 +44,14 @@ const CHART_OPTS = {
     horzLines: { color: 'rgba(255,255,255,0.05)' },
   },
   rightPriceScale: { borderColor: 'rgba(255,255,255,0.10)' },
-  timeScale: { borderColor: 'rgba(255,255,255,0.10)' },
+  timeScale: boundedTimeScale(false),
   crosshair: { mode: 0 },
 }
 
 export function ChartSuite({ symbol }) {
   const el = useRef(null)
   const legendRef = useRef(null)
+  const chartRef = useRef(null)
   const [prefs, setPrefs] = useState(loadPrefs)
   const [cmp, setCmp] = useState('')
   const [cmpDraft, setCmpDraft] = useState('')
@@ -95,12 +97,13 @@ export function ChartSuite({ symbol }) {
     if (!el.current || !bars || !bars.length) return
     const chart = createChart(el.current, {
       ...CHART_OPTS,
-      timeScale: { ...CHART_OPTS.timeScale, timeVisible: intraday },
+      timeScale: boundedTimeScale(intraday),
       rightPriceScale: {
         ...CHART_OPTS.rightPriceScale,
         mode: prefs.log && !cmp ? 1 : 0,
       },
     })
+    chartRef.current = chart
     const comparing = !!(cmp && cmpBars && cmpBars.length)
     let priceSeries
     if (comparing) {
@@ -209,7 +212,10 @@ export function ChartSuite({ symbol }) {
       paint(b || bars[bars.length - 1])
     })
     chart.timeScale().fitContent()
-    return () => chart.remove()
+    return () => {
+      if (chartRef.current === chart) chartRef.current = null
+      chart.remove()
+    }
   }, [bars, cmpBars, cmp, prefs, intraday])
 
   const chip = (on, label, cb, color, tip) => (
@@ -244,6 +250,7 @@ export function ChartSuite({ symbol }) {
         <span class="w-2" />
         {chip(prefs.panes.rsi, 'RSI', () => togglePane('rsi'), null, 'relative strength index in its own pane — 70 overbought, 30 oversold')}
         {chip(prefs.panes.macd, 'MACD', () => togglePane('macd'), null, 'MACD 12/26/9 in its own pane')}
+        {chip(false, 'FIT', () => chartRef.current?.timeScale().fitContent(), null, 'reset zoom to the full loaded history')}
         <span class="w-2" />
         <form
           class="flex items-center gap-1"
