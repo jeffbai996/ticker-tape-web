@@ -150,19 +150,24 @@ function Sectors() {
           const up = pct >= 0
           const w = (Math.abs(pct) / maxAbs) * 100
           return (
-            <div key={symbol} class="flex items-center gap-2 px-1 py-[3px] font-mono text-[11px]">
-              <span class="w-9 font-bold text-ink">{symbol}</span>
-              <span class="w-36 text-muted truncate max-sm:hidden">{tl(label)}</span>
+            <a key={symbol} href={`#/research/${symbol.toLowerCase()}`}
+              class="flex items-center gap-2 px-1 py-[3px] font-mono text-[11px] hover:bg-white/[0.03] hover:no-underline rounded">
+              <span class="w-9 font-[650] font-tick text-ink">{symbol}</span>
+              <span class="w-36 text-muted truncate max-sm:hidden font-anth">{tl(label)}</span>
+              <span class="w-16 text-right text-ink-2 max-sm:hidden">{q ? fmtPrice(q.price) : ''}</span>
+              <span class={`w-14 text-right text-[10px] max-md:hidden ${q ? (up ? 'text-up' : 'text-down') : 'text-muted'}`}>
+                {q ? fmtChange(q.change) : ''}
+              </span>
               <div class="flex-1 h-3.5 relative">
                 <div
                   class={`absolute inset-y-0 left-0 rounded-sm ${up ? 'bg-up/30' : 'bg-down/30'}`}
                   style={{ width: `${w}%` }}
                 />
               </div>
-              <span class={`w-16 text-right ${q ? (up ? 'text-up' : 'text-down') : 'text-muted'}`}>
+              <span class={`w-16 text-right font-semibold ${q ? (up ? 'text-up' : 'text-down') : 'text-muted'}`}>
                 {q ? fmtPct(pct) : '—'}
               </span>
-            </div>
+            </a>
           )
         })}
       </div>
@@ -205,33 +210,59 @@ function Heatmap() {
           class="rounded-lg border border-line p-2 hover:border-line-2 hover:no-underline"
           style={heatStyle(q?.pct)}
         >
-          <div class="font-mono font-bold text-[12px] text-ink">{symbol}</div>
-          <div class="font-mono text-[11px] text-ink">{q ? fmtPct(q.pct) : '—'}</div>
-          <div class="font-mono text-[10px] text-ink-2">{q ? fmtPrice(q.price) : ''}</div>
+          <div class="flex items-baseline justify-between">
+            <span class="font-tick font-[650] text-[12px] text-ink">{symbol}</span>
+            <span class="font-mono text-[11px] font-semibold text-ink">{q ? fmtPct(q.pct) : '—'}</span>
+          </div>
+          <div class="flex items-baseline justify-between font-mono text-[10px] text-ink-2">
+            <span>{q ? fmtPrice(q.price) : ''}</span>
+            <span>{q?.volume != null ? fmtVol(q.volume) : ''}</span>
+          </div>
+          {q?.extLabel && q.extPct != null && (
+            <div class="font-mono text-[9.5px] text-ink-2">
+              <span class="text-[#c084fc]">{q.extLabel}</span> {fmtPct(q.extPct)}
+            </div>
+          )}
         </a>
       ))}
     </div>
   )
 }
 
-function MoverTable({ title, rows, metric }) {
+function MoverTable({ title, rows }) {
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
       <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
         <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{title}</h2>
       </header>
       <table class="w-full border-collapse font-mono text-[11px]">
+        <thead>
+          <tr class="text-[8.5px] text-muted uppercase tracking-wider">
+            <th class="px-3 py-1 text-left">sym</th>
+            <th class="px-2 py-1 text-right">px</th>
+            <th class="px-2 py-1 text-right">chg</th>
+            <th class="px-2 py-1 text-right">%</th>
+            <th class="px-2 py-1 text-right max-xl:hidden">vol</th>
+            <th class="px-2 py-1 text-right max-2xl:hidden">ext</th>
+            <th class="px-2 py-1 max-xl:hidden">day</th>
+          </tr>
+        </thead>
         <tbody>
           {rows.map(({ symbol, q }) => {
             const up = (q?.pct ?? 0) >= 0
+            const extUp = (q?.extPct ?? 0) >= 0
             return (
-              <tr key={symbol} class="border-b border-line last:border-0 hover:bg-surface-3 cursor-pointer"
+              <tr key={symbol} class="border-t border-line hover:bg-surface-3 cursor-pointer"
                 onClick={() => (location.hash = `#/research/${symbol.toLowerCase()}`)}>
-                <td class="px-3 py-[3px] font-bold text-accent">{symbol}</td>
+                <td class="px-3 py-[3px] font-[650] font-tick text-ink">{symbol}</td>
                 <td class="px-2 py-[3px] text-right text-ink font-semibold">{fmtPrice(q?.price)}</td>
-                <td class={`px-3 py-[3px] text-right ${up ? 'text-up' : 'text-down'}`}>
-                  {metric === 'volume' ? fmtVol(q?.volume) : fmtPct(q?.pct)}
+                <td class={`px-2 py-[3px] text-right text-[10.5px] ${up ? 'text-up' : 'text-down'}`}>{fmtChange(q?.change)}</td>
+                <td class={`px-2 py-[3px] text-right font-semibold ${up ? 'text-up' : 'text-down'}`}>{fmtPct(q?.pct)}</td>
+                <td class="px-2 py-[3px] text-right text-muted text-[10.5px] max-xl:hidden">{q?.volume != null ? fmtVol(q.volume) : ''}</td>
+                <td class={`px-2 py-[3px] text-right text-[10.5px] max-2xl:hidden ${q?.extPct != null ? (extUp ? 'text-up' : 'text-down') : 'text-muted'}`}>
+                  {q?.extPct != null ? fmtPct(q.extPct) : ''}
                 </td>
+                <td class="px-2 py-[3px] max-xl:hidden"><DayMeter q={q} /></td>
               </tr>
             )
           })}
@@ -249,6 +280,10 @@ function Movers() {
     .filter((r) => r.q?.pct != null)
   const byPct = [...priced].sort((a, b) => b.q.pct - a.q.pct)
   const byVol = [...priced].sort((a, b) => (b.q.volume ?? 0) - (a.q.volume ?? 0))
+  const adv = priced.filter((r) => r.q.pct >= 0).length
+  const avg = priced.length ? priced.reduce((s2, r) => s2 + r.q.pct, 0) / priced.length : null
+  const stress = priced.filter((r) => r.q.pct <= -3).length
+  const big = priced.filter((r) => Math.abs(r.q.pct) >= 2).length
 
   const buildMoversPrompt = async () => {
     const line = (r) => `${r.symbol} ${r.q.price?.toFixed(2)} ${r.q.pct > 0 ? '+' : ''}${r.q.pct.toFixed(2)}%`
@@ -262,7 +297,19 @@ function Movers() {
     }
   }
   return (
-    <div class="flex flex-col gap-2 max-w-5xl">
+    <div class="flex flex-col gap-2">
+      <div class="flex flex-wrap gap-2 font-mono text-[11px]">
+        {[
+          ['breadth', <span><span class="text-up">{adv}</span><span class="text-muted">/</span><span class="text-down">{priced.length - adv}</span></span>],
+          ['avg move', <span class={avg != null && avg >= 0 ? 'text-up' : 'text-down'}>{avg != null ? fmtPct(avg) : '—'}</span>],
+          ['±2% movers', <span class="text-ink">{big}<span class="text-muted">/{priced.length}</span></span>],
+          ['down >3%', <span class={stress ? 'text-down font-bold' : 'text-ink-2'}>{stress}</span>],
+        ].map(([label, val]) => (
+          <span key={label} class="bg-surface-1 border border-line rounded-lg px-2.5 py-1 flex items-baseline gap-1.5">
+            <span class="text-[9px] uppercase tracking-wider text-muted">{label}</span>{val}
+          </span>
+        ))}
+      </div>
       <AiReport
         label="AI market read"
         filename="market-read.md"
@@ -270,9 +317,9 @@ function Movers() {
         archive={{ kind: 'market-read', title: 'market read' }}
       />
       <div class="grid gap-2 lg:grid-cols-3">
-        <MoverTable title={tl('Gainers')} rows={byPct.slice(0, 10)} />
-        <MoverTable title={tl('Losers')} rows={byPct.slice(-10).reverse()} />
-        <MoverTable title={tl('Most active')} rows={byVol.slice(0, 10)} metric="volume" />
+        <MoverTable title={tl('Gainers')} rows={byPct.filter((r) => r.q.pct > 0).slice(0, 14)} />
+        <MoverTable title={tl('Losers')} rows={byPct.filter((r) => r.q.pct < 0).slice(-14).reverse()} />
+        <MoverTable title={tl('Most active')} rows={byVol.slice(0, 14)} />
       </div>
     </div>
   )
