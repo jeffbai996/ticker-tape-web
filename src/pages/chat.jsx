@@ -108,7 +108,7 @@ function dynamicActions({ watchlist, quotes, earnDays, nextEvent, book, journal 
   if (nextEvent && nextEvent.days <= 7) {
     push(tt('chat.action_event', {
       event: tl(nextEvent.rawLabel || nextEvent.label),
-      when: nextEvent.days === 0 ? tl('today') : `${nextEvent.days}d`,
+      when: nextEvent.days === 0 ? tl('today') : tt('common.days', { days: nextEvent.days }),
       target: tl(book ? 'my book' : 'the market'),
     }), book ? 'book' : 'mkt')
   }
@@ -396,7 +396,7 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
               <a key={s} href={`#/research/${s.toLowerCase()}/earnings`} class="flex items-baseline justify-between font-mono text-[11.5px] py-px hover:no-underline">
                 <span class="text-ink font-[650] font-tick">{s}</span>
                 <span class={earnDays[s] === 0 ? 'text-imminent font-bold' : earnDays[s] <= 7 ? 'text-down' : 'text-accent'}>
-                  {earnDays[s] === 0 ? tl('today') : `${earnDays[s]}d`}
+                  {earnDays[s] === 0 ? tl('today') : tt('common.days', { days: earnDays[s] })}
                 </span>
               </a>
             )) : <div class="font-mono text-[11px] text-muted py-1">{tl('loading…')}</div>}
@@ -407,7 +407,7 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
               <a key={ev.label + ev.days} href="#/markets/calendar" class="flex items-baseline justify-between gap-2 font-mono text-[11.5px] py-px hover:no-underline">
                 <span class="text-ink truncate">{tl(ev.rawLabel || ev.label)}</span>
                 <span class={ev.days <= 1 ? 'text-imminent font-bold' : ev.days <= 7 ? 'text-down' : 'text-accent'}>
-                  {ev.days === 0 ? tl('today') : `${ev.days}d`}
+                  {ev.days === 0 ? tl('today') : tt('common.days', { days: ev.days })}
                 </span>
               </a>
             )) : <div class="font-mono text-[11px] text-muted py-1">{tl('clear runway')}</div>}
@@ -1339,7 +1339,9 @@ export function Chat() {
               <a key={sym} href={`#/research/${sym.toLowerCase()}/earnings`} class="flex justify-between py-px hover:no-underline">
                 <span class="text-ink-2 font-tick">{sym}</span>
                 <span class={earnDays[sym] === 0 ? 'text-imminent font-bold' : earnDays[sym] <= 7 ? 'text-down' : 'text-accent'}>
-                  {earnDays[sym] === 0 ? 'ern today' : `ern ${earnDays[sym]}d`}
+                  {tt('chat.earnings_due', {
+                    when: earnDays[sym] === 0 ? tl('today') : tt('common.days', { days: earnDays[sym] }),
+                  })}
                 </span>
               </a>
             ))}
