@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { quoteFromChart, sparkFromChart } from '../../src/lib/yahoo.js'
+import {
+  mergeSnapshotQuote, quoteFromChart, quoteFromStream, sparkFromChart,
+} from '../../src/lib/yahoo.js'
 
 // Shape mirrors Yahoo v8 /finance/chart responses (result[0]).
 function chartResult(overrides = {}) {
@@ -140,5 +142,56 @@ describe('quoteFromV7', () => {
     const q = quoteFromV7(null)
     expect(q.price).toBe(0)
     expect(q.dayHigh).toBeNull()
+  })
+})
+
+describe('quoteFromStream', () => {
+  const previous = {
+    symbol: 'AAPL', name: 'Apple Inc.', price: 100, change: 1, pct: 1,
+    prevClose: 99, dayHigh: 102, dayLow: 98, volume: 1_000,
+    marketTime: 100,
+  }
+
+  it('updates a regular-session quote while preserving snapshot metadata', () => {
+    const q = quoteFromStream({
+      symbol: 'AAPL', price: 101.5, change: 2.5, changePercent: 2.525,
+      dayVolume: 1_250, time: 101_000, marketHours: 1,
+    }, previous)
+    expect(q).toMatchObject({
+      symbol: 'AAPL', name: 'Apple Inc.', price: 101.5, change: 2.5,
+      pct: 2.525, volume: 1_250, dayHigh: 102, dayLow: 98,
+      marketTime: 101,
+    })
+    expect(q.extLabel).toBeUndefined()
+  })
+
+  it('routes pre/post ticks into the extended-hours quote', () => {
+    const pre = quoteFromStream({
+      symbol: 'AAPL', price: 101, changePercent: 2, time: 101_000, marketHours: 0,
+    }, previous)
+    expect(pre).toMatchObject({ price: 100, extLabel: 'PRE', extPrice: 101, extPct: 2 })
+
+    const post = quoteFromStream({
+      symbol: 'AAPL', price: 98, changePercent: -1, time: 102_000, marketHours: 2,
+    }, previous)
+    expect(post).toMatchObject({ price: 100, extLabel: 'AH', extPrice: 98, extPct: -1 })
+  })
+})
+
+describe('mergeSnapshotQuote', () => {
+  it('does not let a fallback snapshot overwrite a fresher streamed print', () => {
+    const streamed = {
+      symbol: 'AAPL', name: 'Apple Inc.', price: 101.5, change: 2.5,
+      pct: 2.525, volume: 1_250, marketTime: 101,
+    }
+    const snapshot = {
+      symbol: 'AAPL', name: 'Apple Inc.', price: 100, change: 1, pct: 1,
+      volume: 1_000, dayHigh: 103, dayLow: 98, marketTime: 100,
+    }
+    expect(mergeSnapshotQuote(streamed, snapshot, true)).toMatchObject({
+      price: 101.5, change: 2.5, pct: 2.525, volume: 1_250,
+      marketTime: 101, dayHigh: 103,
+    })
+    expect(mergeSnapshotQuote(streamed, snapshot, false)).toEqual(snapshot)
   })
 })

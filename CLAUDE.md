@@ -28,7 +28,7 @@ Corollaries:
 
 ## Current Product Surface
 
-- Dashboard with batched quotes, badge analytics, volume sparks, command bar,
+- Dashboard with ticker-by-ticker streaming quotes, badge analytics, volume sparks, command bar,
   customizable widget rail, and market-session status.
 - Markets, per-symbol research, screening, browser alerts, and bilingual UI.
 - Synthetic portfolio views for account, sizing, carry, cockpit, timeline, and
@@ -98,11 +98,12 @@ screening, alerts, wire, and AI chat.
 ## Data and AI Paths
 
 The browser fetches live public market data; there is no cron or committed
-market-data snapshot. A v7 batch request paints the quote list, then per-symbol
-chart requests fill longer-history analytics. Requests that need Yahoo's
-cookie/crumb flow go through the Worker. Persistent stale-while-revalidate
-caches live in localStorage via `src/lib/pcache.js`. Persist epoch milliseconds,
-not `Date` objects. Derive day change from the 1D feed, not a multi-range chart.
+market-data snapshot. Yahoo's WebSocket streams individual price ticks, a v7
+batch request provides first paint and reconnect fallback, then per-symbol chart
+requests fill longer-history analytics. Requests that need Yahoo's cookie/crumb
+flow go through the Worker. Persistent stale-while-revalidate caches live in
+localStorage via `src/lib/pcache.js`. Persist epoch milliseconds, not `Date`
+objects. Derive day change from the live quote, not a multi-range chart.
 
 The Worker exposes Yahoo proxy routes plus `/chat`, `/chat/models`, and
 `/chat/spend`. It normalizes Anthropic, Gemini, and OpenAI streams, holds provider

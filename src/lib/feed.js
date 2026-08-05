@@ -1,8 +1,11 @@
-// Live quote feed: polls Yahoo v8 chart per symbol through the proxy, spaced
-// to stay friendly with rate limits, and fans results out to subscribers.
+// Live quote feed: Yahoo's WebSocket updates one symbol at a time; batched v7
+// snapshots provide first paint/recovery, and spaced v8 charts fill analytics.
 // No secrets, no cron, no build-time data — the browser is the pipeline.
 
-import { barsFromChart, quoteFromV7 } from './yahoo.js'
+import {
+  barsFromChart, mergeSnapshotQuote, quoteFromStream, quoteFromV7,
+} from './yahoo.js'
+import { createYahooStream } from './yahooStream.js'
 import { techBadges, histoBars } from './badges.js'
 import { createPCache } from './pcache.js'
 
@@ -24,6 +27,7 @@ function crumbBase() {
 const REQUEST_SPACING_MS = 350   // min gap between proxy requests
 const REFRESH_MS = 60_000        // full sweep cadence (charts + technicals)
 const QUOTE_SWEEP_MS = 30_000    // price-only v7 batch — extended hours ticks
+const STREAM_FRESH_MS = 90_000   // snapshots stay fallback while ticks flow
 
 // Proxy resolution order: explicit build-time override, per-browser setting,
 // then the dev server's built-in proxy or the deployed default.
@@ -42,6 +46,7 @@ const listeners = new Set()
 let queue = []
 let pumping = false
 let sweepTimer = null
+let liveStream = null
 
 export function getCached(symbol) {
   return cache.get(symbol) || null
@@ -54,6 +59,29 @@ export function subscribe(fn) {
 
 function emit(symbol) {
   for (const fn of listeners) fn(symbol, cache.get(symbol))
+}
+
+function streamSymbols(symbols) {
+  if (!globalThis.WebSocket) return
+  if (!liveStream) {
+    liveStream = createYahooStream({
+      onTick(tick) {
+        if (!tracked.has(tick.symbol)) return
+        const previous = cache.get(tick.symbol) || {}
+        cache.set(tick.symbol, {
+          ...previous,
+          quote: quoteFromStream(tick, previous.quote),
+          // Chart freshness is a different clock: a price tick must not make
+          // the histogram/badge pump think its 1Y data was refreshed.
+          ts: previous.ts ?? 0,
+          streamTs: Date.now(),
+        })
+        goodTs = Date.now()
+        emit(tick.symbol)
+      },
+    })
+  }
+  liveStream.setSymbols(symbols)
 }
 
 async function fetchSymbol(symbol) {
@@ -103,6 +131,7 @@ async function fetchSymbol(symbol) {
     histo: histoBars(bars),
     tech: techBadges({ closes, volumes }, symbol === RS_BENCH ? null : benchCloses),
     ts: Date.now(),
+    streamTs: cache.get(symbol)?.streamTs ?? 0,
   })
   goodTs = Date.now()
   emit(symbol)
@@ -157,13 +186,16 @@ async function runBatch() {
       if (rows.length) goodTs = Date.now()
       for (const row of rows) {
         const prev = cache.get(row.symbol)
+        const snapshot = quoteFromV7(row)
+        const streamIsFresh = prev?.streamTs && Date.now() - prev.streamTs < STREAM_FRESH_MS
         // Keep the old ts: this fills the quote, but the chart fetch (histo
         // + badges) is still owed — a fresh ts would make track() skip it.
         cache.set(row.symbol, {
-          quote: quoteFromV7(row),
+          quote: mergeSnapshotQuote(prev?.quote, snapshot, streamIsFresh),
           histo: prev?.histo || [],
           tech: prev?.tech || null,
           ts: prev?.ts ?? 0,
+          streamTs: prev?.streamTs ?? 0,
         })
         emit(row.symbol)
       }
@@ -190,6 +222,7 @@ export function track(symbols) {
     queue = [...priority, ...queue.filter((s) => !priority.includes(s))]
     scheduleBatch(priority) // instant first paint; the pump follows with charts
   }
+  streamSymbols([...tracked])
   // RS benchmark first, so badge rows can diff against it from the start.
   if (!benchCloses && queue.length && queue[0] !== RS_BENCH) {
     queue = [RS_BENCH, ...queue.filter((s) => s !== RS_BENCH)]
