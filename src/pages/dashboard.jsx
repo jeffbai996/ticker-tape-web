@@ -165,7 +165,7 @@ function TuiRow({ symbol, data, earnDays, onRemove }) {
       <div class="flex gap-4 min-w-0">
         <div class="flex-1 min-w-0 overflow-hidden">
           <div class="flex items-baseline gap-2 max-sm:gap-1.5 font-mono text-[13px] max-sm:text-[12px] flex-nowrap max-sm:flex-wrap min-w-0">
-            <span class="tui-company-identity relative flex-1 min-w-[92px] max-sm:min-w-[76px] @min-[820px]:flex-none @min-[820px]:w-14 text-ink font-[650] font-tick text-[12px]">
+            <span class="tui-company-identity relative flex-1 basis-[92px] min-w-0 max-sm:basis-[76px] @min-[820px]:flex-none @min-[820px]:w-14 text-ink font-[650] font-tick text-[12px]">
               <span class="tui-company-symbol">{symbol}</span>
               {/* Compact/high-zoom rows use one identity slot: hover swaps the
                   ticker out and the company name into its exact footprint.
@@ -186,32 +186,33 @@ function TuiRow({ symbol, data, earnDays, onRemove }) {
               <Marquee text={q?.name || ''} title={q?.name ? `${symbol} — ${q.name}` : symbol}
                 class="inline-block w-full text-[10.5px] text-muted font-normal font-anth" />
             </span>
-            <span class="text-ink font-semibold w-[4.75rem] max-sm:w-[4.25rem] text-right shrink-0">
-              {q ? <FlashPrice price={q.price} fmt={fmtPrice} /> : '—'}
+            {/* The quote cluster is indivisible. The identity slot gets the
+                row's spare width, but must yield before PRE/AH is clipped. */}
+            <span class="tui-quote-cluster flex items-baseline gap-2 max-sm:gap-1.5 shrink-0">
+              <span class="text-ink font-semibold w-[4.75rem] max-sm:w-[4.25rem] text-right shrink-0">
+                {q ? <FlashPrice price={q.price} fmt={fmtPrice} /> : '—'}
+              </span>
+              {q && (
+                <span class={`${up ? 'text-up' : 'text-down'} whitespace-nowrap w-[8rem] @max-[800px]:w-auto max-sm:w-auto shrink-0`}>
+                  {up ? '▲' : '▼'} <FlashMetric value={q.change} fmt={fmtAbsChange} kind="change" />{' '}
+                  <span class="font-normal text-[11px] max-sm:text-[10px]">
+                    (<FlashMetric value={q.pct} fmt={fmtPct} kind="change" />)
+                  </span>
+                </span>
+              )}
+              {/* extended hours reads a tier below the regular quote — on a
+                  phone it was the same size as the print and clipped off the
+                  right edge (Jeff 2026-08-04) */}
+              {q?.extLabel && q.extPrice != null && (
+                <span class="whitespace-nowrap text-[12px] max-sm:text-[10px] w-auto shrink-0 max-sm:ml-auto">
+                  <span class="text-[#c084fc]">{q.extLabel}</span>{' '}
+                  <span class="text-ink-2"><FlashPrice price={q.extPrice} fmt={fmtPriceBare} /></span>{' '}
+                  <span class={extUp ? 'text-up' : 'text-down'}>
+                    {extUp ? '▲' : '▼'}{Math.abs(q.extPct ?? 0).toFixed(1)}%
+                  </span>
+                </span>
+              )}
             </span>
-            {q && (
-              <span class={`${up ? 'text-up' : 'text-down'} whitespace-nowrap w-[8rem] @max-[800px]:w-auto max-sm:w-auto shrink-0`}>
-                {up ? '▲' : '▼'} <FlashMetric value={q.change} fmt={fmtAbsChange} kind="change" />{' '}
-                <span class="font-normal text-[11px] max-sm:text-[10px]">
-                  (<FlashMetric value={q.pct} fmt={fmtPct} kind="change" />)
-                </span>
-              </span>
-            )}
-            {/* extended hours reads a tier below the regular quote — on a
-                phone it was the same size as the print and clipped off the
-                right edge (Jeff 2026-08-04) */}
-            {/* w-auto, not a fixed w-28: the change column before it is fixed
-                so AH starts aligned anyway, and a fixed width clipped the pct
-                mid-glyph at in-between widths (Jeff 2026-08-04, screenshot) */}
-            {q?.extLabel && q.extPrice != null && (
-              <span class="whitespace-nowrap text-[12px] max-sm:text-[10px] w-auto shrink-0 max-sm:ml-auto">
-                <span class="text-[#c084fc]">{q.extLabel}</span>{' '}
-                <span class="text-ink-2"><FlashPrice price={q.extPrice} fmt={fmtPriceBare} /></span>{' '}
-                <span class={extUp ? 'text-up' : 'text-down'}>
-                  {extUp ? '▲' : '▼'}{Math.abs(q.extPct ?? 0).toFixed(1)}%
-                </span>
-              </span>
-            )}
           </div>
           {/* Phone width: badges scroll sideways instead of clipping mid-badge. */}
           <div class="flex items-center gap-2.5 pt-[2px] pl-0 min-w-0 @min-[430px]:overflow-hidden max-sm:overflow-x-auto no-scrollbar">

@@ -8,7 +8,7 @@ const css = readFileSync(resolve(process.cwd(), 'src/styles/main.css'), 'utf8')
 describe('compact dashboard company name', () => {
   it('swaps the ticker for the company name in the same fixed slot', () => {
     expect(dashboard).toContain('class="tui-row group/row')
-    expect(dashboard).toContain('class="tui-company-identity relative flex-1 min-w-[92px] max-sm:min-w-[76px] @min-[820px]:flex-none @min-[820px]:w-14')
+    expect(dashboard).toContain('class="tui-company-identity relative flex-1 basis-[92px] min-w-0 max-sm:basis-[76px] @min-[820px]:flex-none @min-[820px]:w-14')
     expect(dashboard).toContain('class="tui-company-symbol"')
     expect(dashboard).toContain('class="tui-company-name-swap @min-[820px]:hidden"')
     expect(dashboard).toContain('aria-hidden="true"')
@@ -18,6 +18,8 @@ describe('compact dashboard company name', () => {
     expect(css).toMatch(/\.tui-company-name-swap\s*\{[\s\S]*position: absolute;[\s\S]*inset: 0;/)
     expect(css).toMatch(/\.tui-company-identity\s*\{[\s\S]*overflow: hidden;/)
     expect(css).toMatch(/\.tui-company-name-swap\s*\{[\s\S]*padding-right: 4px;/)
+    expect(dashboard).toContain('class="tui-quote-cluster flex items-baseline gap-2 max-sm:gap-1.5 shrink-0"')
+    expect(dashboard).toMatch(/tui-quote-cluster[\s\S]*q\.extLabel[\s\S]*q\.extPrice/)
     expect(css).toMatch(/prefers-reduced-motion:[\s\S]*\.tui-company-name-swap/)
   })
 
