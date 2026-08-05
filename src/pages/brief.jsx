@@ -65,7 +65,7 @@ function ArchivePanel() {
               </button>
             </div>
             {openId === r.id && (
-              <div class="px-3 py-2 text-[13px] leading-relaxed text-ink-2 border-t border-line bg-surface-0/40">
+              <div class="px-3 py-2 font-anth text-[13px] leading-relaxed text-ink-2 border-t border-line bg-surface-0/40">
                 <MdLite text={r.text} />
               </div>
             )}

@@ -943,7 +943,7 @@ export function Chat() {
             return (
               <div key={i} class="self-start flex flex-col gap-1 max-w-[95%]">
                 {m.content && (
-                  <div class="rounded-xl border px-3 py-2 text-[13px] leading-relaxed bg-surface-1 border-line text-ink">
+                  <div class="rounded-xl border px-3 py-2 font-anth text-[13px] leading-relaxed bg-surface-1 border-line text-ink">
                     <MdLite text={m.content} />
                   </div>
                 )}

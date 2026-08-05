@@ -23,7 +23,7 @@ export function MdLite({ text }) {
         seg.startsWith('**') && seg.endsWith('**')
           ? <b key={j} class="text-ink font-semibold">{seg.slice(2, -2)}</b>
           : seg)
-    if (h) return <div key={i} class="font-mono font-bold text-accent text-[12px] pt-2 pb-0.5">{parts(h[1])}</div>
+    if (h) return <div key={i} class="font-anth font-bold text-accent text-[12.5px] pt-2 pb-0.5">{parts(h[1])}</div>
     if (/^\s*[-*]\s+/.test(line)) {
       return <div key={i} class="pl-4 relative"><span class="absolute left-1 text-muted">·</span>{parts(line.replace(/^\s*[-*]\s+/, ''))}</div>
     }
@@ -185,7 +185,7 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
         </div>
       </header>
       {(text || error) && (
-        <div ref={bodyRef} class="px-3 py-2 text-[13px] leading-relaxed select-text text-ink-2 max-h-[45vh] overflow-y-auto">
+        <div ref={bodyRef} class="px-3 py-2 font-anth text-[13px] leading-relaxed select-text text-ink-2 max-h-[45vh] overflow-y-auto">
           {error ? <span class="font-mono text-[11px] text-down">{error}</span> : <MdLite text={text} />}
           {busy && <span class="text-accent">▌</span>}
         </div>
