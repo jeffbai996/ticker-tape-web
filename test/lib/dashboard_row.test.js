@@ -8,7 +8,7 @@ const css = readFileSync(resolve(process.cwd(), 'src/styles/main.css'), 'utf8')
 describe('compact dashboard company name', () => {
   it('swaps the ticker for the company name in the same fixed slot', () => {
     expect(dashboard).toContain('class="tui-row group/row')
-    expect(dashboard).toContain('class="tui-company-identity relative w-[92px] max-sm:w-[76px] @min-[820px]:w-14 shrink-0')
+    expect(dashboard).toContain('class="tui-company-identity relative flex-1 min-w-[92px] max-sm:min-w-[76px] @min-[820px]:flex-none @min-[820px]:w-14')
     expect(dashboard).toContain('class="tui-company-symbol"')
     expect(dashboard).toContain('class="tui-company-name-swap @min-[820px]:hidden"')
     expect(dashboard).toContain('aria-hidden="true"')
@@ -17,6 +17,7 @@ describe('compact dashboard company name', () => {
     expect(css).toContain('.tui-row:focus-visible .tui-company-name-swap')
     expect(css).toMatch(/\.tui-company-name-swap\s*\{[\s\S]*position: absolute;[\s\S]*inset: 0;/)
     expect(css).toMatch(/\.tui-company-identity\s*\{[\s\S]*overflow: hidden;/)
+    expect(css).toMatch(/\.tui-company-name-swap\s*\{[\s\S]*padding-right: 4px;/)
     expect(css).toMatch(/prefers-reduced-motion:[\s\S]*\.tui-company-name-swap/)
   })
 
