@@ -61,6 +61,39 @@ async function buildMemoPrompt(symbol) {
 
 const OV_KEY = 'tape-chart-ov'
 const SMA_COLORS = { 20: '#f59e0b', 50: '#22d3ee', 200: '#c084fc' }
+const BB_COLOR = 'rgba(192, 132, 252, 0.55)'   // quiet violet — bands are context, not signal
+
+function rollingBB(bars, n = 20, mult = 2) {
+  const up = []; const mid = []; const lo = []
+  for (let i = n - 1; i < bars.length; i++) {
+    const win = bars.slice(i - n + 1, i + 1)
+    const m = win.reduce((a, b) => a + b.close, 0) / n
+    const sd = Math.sqrt(win.reduce((a, b) => a + (b.close - m) ** 2, 0) / n)
+    up.push({ time: bars[i].time, value: m + mult * sd })
+    mid.push({ time: bars[i].time, value: m })
+    lo.push({ time: bars[i].time, value: m - mult * sd })
+  }
+  return { up, mid, lo }
+}
+
+function rollingRsi(bars, n = 14) {
+  if (bars.length < n + 1) return []
+  const out = []
+  let avgGain = 0; let avgLoss = 0
+  for (let i = 1; i <= n; i++) {
+    const d = bars[i].close - bars[i - 1].close
+    if (d >= 0) avgGain += d; else avgLoss -= d
+  }
+  avgGain /= n; avgLoss /= n
+  out.push({ time: bars[n].time, value: avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss) })
+  for (let i = n + 1; i < bars.length; i++) {
+    const d = bars[i].close - bars[i - 1].close
+    avgGain = (avgGain * (n - 1) + Math.max(d, 0)) / n
+    avgLoss = (avgLoss * (n - 1) + Math.max(-d, 0)) / n
+    out.push({ time: bars[i].time, value: avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss) })
+  }
+  return out
+}
 
 function rollingSma(bars, n) {
   const out = []
@@ -148,13 +181,26 @@ function Candles({ bars, intraday }) {
       line.setData(rollingSma(bars, n))
       c.extra.push(line)
     }
+    if (ov.bb && bars.length >= 20) {
+      const { up, mid, lo } = rollingBB(bars, 20, 2)
+      for (const [data, style] of [[up, 0], [mid, 2], [lo, 0]]) {
+        const line = c.chart.addSeries(LineSeries, {
+          color: BB_COLOR, lineWidth: 1, lineStyle: style,
+          priceLineVisible: false, lastValueVisible: false,
+          crosshairMarkerVisible: false,
+        })
+        line.setData(data)
+        c.extra.push(line)
+      }
+    }
+    // sub-panes share the bottom: RSI rides above VOL when both are on
     if (ov.vol && bars.some((b) => b.volume)) {
       const vol = c.chart.addSeries(HistogramSeries, {
         priceScaleId: 'vol', priceFormat: { type: 'volume' },
         priceLineVisible: false, lastValueVisible: false,
       })
       c.chart.priceScale('vol').applyOptions({
-        scaleMargins: { top: 0.82, bottom: 0 },
+        scaleMargins: { top: ov.rsi ? 0.88 : 0.82, bottom: 0 },
       })
       vol.setData(bars.map((b) => ({
         time: b.time, value: b.volume || 0,
@@ -162,13 +208,24 @@ function Candles({ bars, intraday }) {
       })))
       c.extra.push(vol)
     }
+    if (ov.rsi && bars.length >= 15) {
+      const rsiLine = c.chart.addSeries(LineSeries, {
+        priceScaleId: 'rsi', color: '#3ecbe8', lineWidth: 1,
+        priceLineVisible: false, lastValueVisible: true,
+      })
+      c.chart.priceScale('rsi').applyOptions({
+        scaleMargins: ov.vol ? { top: 0.72, bottom: 0.14 } : { top: 0.8, bottom: 0 },
+      })
+      rsiLine.setData(rollingRsi(bars, 14))
+      c.extra.push(rsiLine)
+    }
     c.chart.timeScale().fitContent()
   }, [bars, ov])
 
   return (
     <div>
       <div class="flex gap-1 px-1 pb-1.5 select-none">
-        {[['sma20', 'SMA 20'], ['sma50', 'SMA 50'], ['sma200', 'SMA 200'], ['vol', 'VOL']].map(([k, label]) => (
+        {[['sma20', 'SMA 20'], ['sma50', 'SMA 50'], ['sma200', 'SMA 200'], ['bb', 'BB'], ['rsi', 'RSI'], ['vol', 'VOL']].map(([k, label]) => (
           <button
             key={k}
             onClick={() => toggle(k)}
@@ -192,7 +249,7 @@ function Candles({ bars, intraday }) {
 function Stat({ label, value, cls = 'text-ink' }) {
   return (
     <div class="flex justify-between gap-3 px-3 py-[4px] border-b border-line last:border-0">
-      <span class="text-muted text-[11px]">{label}</span>
+      <span class="font-anth text-muted text-[11px]">{label}</span>
       <span class={`font-mono text-[11px] ${cls}`}>{value ?? '—'}</span>
     </div>
   )
@@ -1164,6 +1221,21 @@ function DesBand({ symbol, bars }) {
         value={prof?.employees != null ? prof.employees.toLocaleString('en-US') : null} />
       <DesCell n={24} label="Avg $ vol"
         value={f?.averageVolume != null && price != null ? fmtBig(f.averageVolume * price) : null} />
+      <DesCell n={25} label="Gross / op mgn"
+        value={f?.grossMargins != null ? `${fmtFracPct(f.grossMargins)} / ${fmtFracPct(f.operatingMargins)}` : null} />
+      <DesCell n={26} label="Net mgn / ROE"
+        value={f?.profitMargins != null ? `${fmtFracPct(f.profitMargins)}${f.returnOnEquity != null ? ` / ${fmtFracPct(f.returnOnEquity)}` : ''}` : null} />
+      <DesCell n={27} label="Rev / EPS gr"
+        value={f?.revenueGrowth != null ? `${fmtFracPct(f.revenueGrowth)}${f.earningsGrowth != null ? ` / ${fmtFracPct(f.earningsGrowth)}` : ''}` : null}
+        tone={f?.revenueGrowth != null ? (f.revenueGrowth >= 0 ? 'text-up' : 'text-down') : null} />
+      <DesCell n={28} label="P/S / P/B"
+        value={f?.priceToSalesTrailing12Months != null || f?.priceToBook != null
+          ? `${fmtRatio(f?.priceToSalesTrailing12Months)} / ${fmtRatio(f?.priceToBook)}` : null} />
+      <DesCell n={29} label="PEG / payout"
+        value={f?.pegRatio != null || f?.payoutRatio != null
+          ? `${fmtRatio(f?.pegRatio)} / ${fmtFracPct(f?.payoutRatio)}` : null} />
+      <DesCell n={30} label="Div rate"
+        value={f?.dividendRate != null ? fmtPrice(f.dividendRate) : '—'} />
     </div>
   )
 }
@@ -1515,7 +1587,7 @@ export function Research({ route }) {
         <AnalystsView symbol={symbol} />
       ) : (
         <div class="grid gap-2 lg:grid-cols-[1fr_320px]">
-          <section class="bg-surface-1 border border-line rounded-xl min-w-0 overflow-hidden">
+          <section class="bg-surface-1 border border-line rounded-xl min-w-0 overflow-hidden flex flex-col self-stretch">
             <div class="p-2 pb-0">
             {hist ? (
               <Candles bars={hist.bars} intraday={hist.intraday} />
@@ -1527,6 +1599,9 @@ export function Research({ route }) {
             </div>
             <DesBand symbol={symbol} bars={hist?.bars} />
             <WireMini symbol={symbol} />
+            {/* when the right rail runs longer, the column keeps its ruling
+                instead of ending mid-air (Jeff 2026-08-04) */}
+            <div class="flex-1 min-h-0 border-t border-line bg-[repeating-linear-gradient(180deg,transparent,transparent_27px,var(--color-line)_27px,var(--color-line)_28px)]" />
           </section>
           <div class="max-lg:hidden flex flex-col gap-3 min-w-0">{rail}</div>
           {/* below lg the rail lives behind a right-edge grip: a slide-over
