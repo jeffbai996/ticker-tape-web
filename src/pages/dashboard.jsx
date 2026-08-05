@@ -165,7 +165,7 @@ function TuiRow({ symbol, data, earnDays, onRemove }) {
       <div class="flex gap-4 min-w-0">
         <div class="flex-1 min-w-0 overflow-hidden">
           <div class="flex items-baseline gap-2 max-sm:gap-1.5 font-mono text-[13px] max-sm:text-[12px] flex-nowrap max-sm:flex-wrap min-w-0">
-            <span class="tui-company-identity relative w-14 max-sm:w-12 shrink-0 text-ink font-[650] font-tick text-[12px]">
+            <span class="tui-company-identity relative w-[92px] max-sm:w-[76px] @min-[820px]:w-14 shrink-0 text-ink font-[650] font-tick text-[12px]">
               <span class="tui-company-symbol">{symbol}</span>
               {/* Compact/high-zoom rows use one identity slot: hover swaps the
                   ticker out and the company name into its exact footprint.
@@ -430,7 +430,7 @@ function MiniChart({ symbol }) {
     return () => { dead = true; chart.remove() }
   }, [symbol])
   return err
-    ? <div class="h-[110px] flex items-center justify-center font-mono text-[10px] text-muted">no chart</div>
+    ? <div class="h-[110px] flex items-center justify-center font-mono text-[10px] text-muted">{tl('no chart')}</div>
     : <div ref={el} class="h-[110px]" />
 }
 
@@ -598,7 +598,7 @@ function QuickAdd({ onAdd }) {
     return (
       <button onClick={() => setOpen(true)}
         class="whitespace-nowrap font-mono text-[10px] text-muted border border-dashed border-line-2 rounded-full px-2 py-px hover:text-accent hover:border-accent/60 transition-colors">
-        + add
+        + {tl('add')}
       </button>
     )
   }
@@ -675,31 +675,31 @@ export function Dashboard({ listId = null }) {
         <div class="dashboard-controls flex items-center gap-2 px-1 pb-2 md:px-0 md:pb-0 min-w-0 shrink-0">
           {activeList && (
             <div class="min-w-0 mr-1">
-              <div class="font-mono text-[8px] uppercase tracking-wider text-muted">Watchlist</div>
+              <div class="font-mono text-[8px] uppercase tracking-wider text-muted">{tl('Watchlist')}</div>
               <div class="font-anth font-bold text-[13px] text-ink truncate">{activeList.name}</div>
             </div>
           )}
           <div class={`${activeList ? 'ml-auto' : ''} inline-flex rounded-lg border border-line bg-surface-1 p-0.5 shrink-0`}>
             <button onClick={() => setViewMode('grouped')}
               class={`px-2 py-1 rounded-md font-anth text-[10px] transition-colors ${viewMode === 'grouped' ? 'bg-accent-soft text-accent' : 'text-muted hover:text-ink'}`}>
-              Sectors
+              {tl('Sectors')}
             </button>
             <button onClick={() => setViewMode('flat')}
               class={`px-2 py-1 rounded-md font-anth text-[10px] transition-colors ${viewMode === 'flat' ? 'bg-accent-soft text-accent' : 'text-muted hover:text-ink'}`}>
-              All
+              {tl('All')}
             </button>
           </div>
           <input value={filter} onInput={(e) => setFilter(e.currentTarget.value)}
-            placeholder="search…"
+            placeholder={`${tl('Search')}…`}
             class="min-w-0 w-32 sm:w-40 bg-surface-1 border border-line rounded-lg px-2 py-1 font-anth text-[10px] text-ink outline-none focus:border-accent placeholder:text-muted" />
           {viewMode === 'flat' && (
             <select value={sort} onChange={(e) => setSort(e.currentTarget.value)}
               class="bg-surface-1 border border-line rounded-lg px-2 py-1 font-anth text-[10px] text-ink-2 outline-none focus:border-accent">
-              <option value="manual">Sort</option>
-              <option value="symbol">Ticker</option>
-              <option value="change">% change</option>
-              <option value="price">Price</option>
-              <option value="spread">Spread</option>
+              <option value="manual">{tl('Sort')}</option>
+              <option value="symbol">{tl('Ticker')}</option>
+              <option value="change">% {tl('Reaction')}</option>
+              <option value="price">{tl('Price')}</option>
+              <option value="spread">{tl('Spread')}</option>
             </select>
           )}
         </div>
@@ -761,7 +761,7 @@ export function Dashboard({ listId = null }) {
               onRemove={removeSymbol} />
           ))}
           {!watchlist.length && (
-            <div class="px-3 py-8 text-center font-anth text-[11px] text-muted">empty watchlist — add the first ticker below</div>
+            <div class="px-3 py-8 text-center font-anth text-[11px] text-muted">{tl('empty watchlist — add the first ticker below')}</div>
           )}
           <AddSymbolRow onAdd={addSymbol} isPresent={isPresent} />
         </section>

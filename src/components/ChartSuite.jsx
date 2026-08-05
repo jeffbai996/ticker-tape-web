@@ -269,10 +269,10 @@ export function ChartSuite({ symbol }) {
         <span ref={legendRef} class="ml-auto font-mono text-[10px] whitespace-nowrap" />
       </div>
       {state === 'loading' && (
-        <div class="h-[430px] flex items-center justify-center font-mono text-[11px] text-muted">loading…</div>
+        <div class="h-[430px] flex items-center justify-center font-mono text-[11px] text-muted">{tl('loading…')}</div>
       )}
       {state === 'error' && (
-        <div class="h-[430px] flex items-center justify-center font-mono text-[11px] text-down">chart unavailable</div>
+        <div class="h-[430px] flex items-center justify-center font-mono text-[11px] text-down">{tl('chart unavailable')}</div>
       )}
       <div ref={el} class={`w-full ${state === 'ok' ? 'h-[430px]' : 'h-0'}`} />
     </div>
