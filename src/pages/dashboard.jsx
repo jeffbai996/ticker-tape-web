@@ -90,14 +90,14 @@ function RangeBar({ label, lo, hi, v, cls = '' }) {
   return (
     <span class={`hidden @min-[430px]:flex items-center gap-1 font-mono text-[11px] font-normal whitespace-nowrap ${cls}`}>
       <span class="text-accent/60 font-normal text-[9px] w-6">{label}</span>
-      <span class="text-down/80 w-14 text-right hidden @min-[620px]:inline">{fmtPriceBare(lo)}</span>
+      <span class="text-down/80 w-14 text-right hidden @min-[730px]:inline">{fmtPriceBare(lo)}</span>
       <span class="relative w-14 h-[3px] bg-line rounded-full shrink-0 mx-0.5">
         <span
           class="absolute top-1/2 -translate-y-1/2 w-[3px] h-[7px] bg-accent-2 rounded-sm"
           style={{ left: `calc(${(pos * 100).toFixed(1)}% - 1.5px)` }}
         />
       </span>
-      <span class="text-up/80 w-14 hidden @min-[620px]:inline">{fmtPriceBare(hi)}</span>
+      <span class="text-up/80 w-14 hidden @min-[730px]:inline">{fmtPriceBare(hi)}</span>
     </span>
   )
 }
@@ -119,17 +119,20 @@ function TuiRow({ symbol, data, earnDays }) {
     >
       <div class="flex gap-4 min-w-0">
         <div class="flex-1 min-w-0 overflow-hidden">
-          <div class="flex items-baseline gap-2.5 max-sm:gap-2 font-mono text-[13px] max-sm:text-[12px] flex-nowrap min-w-0">
-            <span class="text-ink font-bold font-tick text-[12px] w-14 max-sm:w-12 shrink-0">{symbol}</span>
-            {/* CLI parity: `[bold]{sym}[/][dim]{name}[/]` — fixed width so the
-                price column stays aligned, and it only appears once the row is
-                wide enough to spend 120px on it. Hover title carries it at any
-                width (Jeff 2026-08-04). */}
-            <Marquee text={q?.name || ''} title={q?.name ? `${symbol} — ${q.name}` : symbol}
-              class="hidden @min-[820px]:inline-block w-[120px] shrink-0 text-[10.5px] text-muted font-normal font-anth" />
-            <span class="text-ink font-semibold w-20 max-sm:w-[4.5rem] text-right shrink-0">{q ? fmtPrice(q.price) : '—'}</span>
+          <div class="flex items-baseline gap-2 max-sm:gap-1.5 font-mono text-[13px] max-sm:text-[12px] flex-nowrap max-sm:flex-wrap min-w-0">
+            <span class="text-ink font-[650] font-tick text-[12px] w-14 max-sm:w-12 shrink-0">{symbol}</span>
+            {/* CLI parity: `[bold]{sym}[/][dim]{name}[/]`. The name rides in a
+                flexible gutter — it is the only thing on the row allowed to
+                give up width, so the fixed price/change/AH columns stay aligned
+                across rows AND never get pushed past the clip edge. Below
+                820px the text hides but the gutter stays, collapsing to 0. */}
+            <span class="flex-1 min-w-0 max-w-[120px]">
+              <Marquee text={q?.name || ''} title={q?.name ? `${symbol} — ${q.name}` : symbol}
+                class="hidden @min-[820px]:inline-block w-full text-[10.5px] text-muted font-normal font-anth" />
+            </span>
+            <span class="text-ink font-semibold w-[4.75rem] max-sm:w-[4.25rem] text-right shrink-0">{q ? fmtPrice(q.price) : '—'}</span>
             {q && (
-              <span class={`${up ? 'text-up' : 'text-down'} whitespace-nowrap w-[8.5rem] max-sm:w-auto shrink-0`}>
+              <span class={`${up ? 'text-up' : 'text-down'} whitespace-nowrap w-[8rem] @max-[800px]:w-auto max-sm:w-auto shrink-0`}>
                 {up ? '▲' : '▼'} {fmtChange(Math.abs(q.change)).replace('+', '')} <span class="font-normal text-[11px] max-sm:text-[10px]">({fmtPct(q.pct)})</span>
               </span>
             )}
@@ -159,7 +162,7 @@ function TuiRow({ symbol, data, earnDays }) {
         {/* Meters live in their own fixed column so DAY and 52W align by
             construction — sharing the text rows made them wrap and overflow
             once the row ran out of width (Jeff 2026-08-03). */}
-        <div class="hidden @min-[430px]:flex shrink-0 flex-col justify-center gap-1 font-mono text-[11px]">
+        <div class="hidden @min-[545px]:flex shrink-0 flex-col justify-center gap-1 font-mono text-[11px]">
           <span class="flex items-baseline gap-1.5">
             <RangeBar label="DAY" lo={q?.dayLow} hi={q?.dayHigh} v={q?.price} />
             <span class="w-[4.5rem] text-right hidden @min-[655px]:inline">
@@ -289,9 +292,9 @@ function EarningsPanel({ symbols, days, quotes = {} }) {
           const name = quotes[symbol]?.quote?.name || ''
           return (
             <a key={symbol} href={`#/research/${symbol.toLowerCase()}/earnings`}
-              class="grid grid-cols-[3.5rem_minmax(0,1fr)_2rem] items-baseline gap-2 px-3 py-[2px] font-mono text-[11px] hover:bg-surface-3 hover:no-underline"
+              class="grid grid-cols-[2.85rem_minmax(0,1fr)_2rem] items-baseline gap-1.5 px-3 py-[2px] font-mono text-[11px] hover:bg-surface-3 hover:no-underline"
               title={name || symbol}>
-              <span class="text-ink font-bold font-anth truncate">{symbol}</span>
+              <span class="text-ink font-[650] font-anth truncate">{symbol}</span>
               {/* company name, quiet — the CLI's `[dim]{name}[/]`, sliding into
                   view on hover when the rail is too narrow to hold it */}
               <Marquee text={name} class="min-w-0 text-left text-[9px] text-muted font-anth font-light" />

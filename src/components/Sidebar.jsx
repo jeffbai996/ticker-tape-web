@@ -12,7 +12,7 @@ function WatchRow({ symbol, q }) {
   const up = (q?.pct ?? 0) >= 0
   return (
     <div class="wl-row group flex items-baseline px-3 py-[3px] font-mono text-[11px]">
-      <a href={`#/research/${symbol.toLowerCase()}`} class="text-ink font-bold font-tick text-[10px] w-14 hover:no-underline hover:bg-transparent">
+      <a href={`#/research/${symbol.toLowerCase()}`} class="text-ink font-[650] font-tick text-[10px] w-14 hover:no-underline hover:bg-transparent">
         {symbol}
       </a>
       <span class="text-ink-2 font-medium ml-auto">{q ? <FlashPrice price={q.price} fmt={fmtPriceBare} /> : '—'}</span>
@@ -44,7 +44,7 @@ function AddSymbol() {
         value={value}
         onInput={(e) => setValue(e.currentTarget.value)}
         placeholder="+ add"
-        class="w-14 bg-transparent border border-dashed border-line-2 rounded px-1 text-[10px] font-mono text-ink uppercase outline-none hover:border-accent/60 focus:border-solid focus:border-accent placeholder:text-ink-2 placeholder:normal-case"
+        class="w-14 bg-transparent border border-dashed border-line-2 rounded px-1 text-[10px] font-mono text-ink uppercase outline-none text-center hover:border-accent/60 focus:border-solid focus:border-accent placeholder:text-ink-2 placeholder:normal-case"
       />
     </form>
   )
