@@ -11,12 +11,28 @@ describe('private portfolio account switching', () => {
     expect(page).toContain("localStorage.getItem('portfolio_account_v1')")
     expect(page).toContain("params.set('account', account)")
     expect(page).toContain('onAccountChange')
+    expect(page).toContain("const BOTH_ACCOUNTS = 'all'")
+    expect(page).toContain("{ id: BOTH_ACCOUNTS, label: tl('Both') }")
+  })
+
+  it('uses a segmented slider and a neutral portfolio heading', () => {
+    expect(page).toContain('function AccountSwitcher')
+    expect(page).toContain('portfolio-account-slider')
+    expect(page).toContain('function PortfolioHeader')
+    expect(page).not.toContain('border border-up/50 rounded-lg')
   })
 
   it('uses the live margin summary in the account view', () => {
     expect(page).toContain('function Account({ priceMap, positions, margin, account })')
     expect(page).toContain("margin?.equity")
     expect(page).toContain("margin?.above_maintenance")
+  })
+
+  it('adds a live overview strip and book pulse to the positions surface', () => {
+    expect(page).toContain('function BookSummary')
+    expect(page).toContain('function BookPulse')
+    expect(page).toContain('margin?.equity')
+    expect(page).toContain('margin?.above_maintenance')
   })
 })
 

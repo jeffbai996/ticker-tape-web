@@ -2,14 +2,16 @@
 // Persisted per-browser; the dashboard renders whatever this list says.
 
 const KEY = 'dash_widgets_v1'
+const MARKET_MIGRATION_KEY = 'dash_widgets_market_v1'
 const SYMBOL_RE = /^[A-Za-z0-9.^=-]{1,12}$/
 
-export const WIDGET_TYPES = ['pulse', 'earnings', 'calendar', 'movers', 'chart']
+export const WIDGET_TYPES = ['pulse', 'markets', 'earnings', 'calendar', 'movers', 'chart']
 
 export const DEFAULT_WIDGETS = [
   { id: 1, type: 'pulse' },
-  { id: 2, type: 'earnings' },
-  { id: 3, type: 'calendar' },
+  { id: 2, type: 'markets' },
+  { id: 3, type: 'earnings' },
+  { id: 4, type: 'calendar' },
 ]
 
 const listeners = new Set()
@@ -22,9 +24,18 @@ function load() {
   try {
     const raw = JSON.parse(localStorage.getItem(KEY))
     if (Array.isArray(raw) && raw.every((w) => WIDGET_TYPES.includes(w.type) && w.id != null)) {
+      if (!localStorage.getItem(MARKET_MIGRATION_KEY)) {
+        localStorage.setItem(MARKET_MIGRATION_KEY, '1')
+        if (!raw.some((w) => w.type === 'markets')) {
+          const migrated = [...raw, { id: Date.now(), type: 'markets' }]
+          localStorage.setItem(KEY, JSON.stringify(migrated))
+          return migrated
+        }
+      }
       return raw
     }
   } catch { /* fall through to defaults */ }
+  try { localStorage.setItem(MARKET_MIGRATION_KEY, '1') } catch { /* best-effort */ }
   return DEFAULT_WIDGETS.map((w) => ({ ...w }))
 }
 

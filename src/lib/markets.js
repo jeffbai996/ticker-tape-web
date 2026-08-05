@@ -11,6 +11,9 @@ export const MARKET_GROUPS = [
       { symbol: '^RUT', label: 'Russell 2000' },
       { symbol: '^NDX', label: 'Nasdaq 100' },
       { symbol: '^SOX', label: 'Semis (SOX)' },
+      { symbol: '^MID', label: 'S&P MidCap 400' },
+      { symbol: '^OEX', label: 'S&P 100' },
+      { symbol: '^SP500EW', label: 'S&P 500 Equal Weight' },
     ],
   },
   {
@@ -25,12 +28,36 @@ export const MARKET_GROUPS = [
     ],
   },
   {
+    name: 'Global ETFs',
+    items: [
+      { symbol: 'ACWI', label: 'Global equities' },
+      { symbol: 'EFA', label: 'Developed ex-US' },
+      { symbol: 'EEM', label: 'Emerging markets' },
+      { symbol: 'VGK', label: 'Europe ETF' },
+      { symbol: 'EWJ', label: 'Japan ETF' },
+      { symbol: 'MCHI', label: 'China ETF' },
+      { symbol: 'RSP', label: 'S&P 500 Equal Weight ETF' },
+      { symbol: 'SPY', label: 'S&P 500 ETF' },
+    ],
+  },
+  {
+    name: 'Canada',
+    items: [
+      { symbol: '^GSPTSE', label: 'S&P/TSX Composite' },
+      { symbol: 'XIU.TO', label: 'TSX 60 ETF' },
+    ],
+  },
+  {
     name: 'Europe',
     items: [
       { symbol: '^FTSE', label: 'FTSE 100' },
       { symbol: '^GDAXI', label: 'DAX' },
       { symbol: '^FCHI', label: 'CAC 40' },
       { symbol: '^STOXX50E', label: 'Euro Stoxx 50' },
+      { symbol: '^IBEX', label: 'IBEX 35' },
+      { symbol: 'FTSEMIB.MI', label: 'FTSE MIB' },
+      { symbol: '^AEX', label: 'AEX' },
+      { symbol: '^SSMI', label: 'Swiss Market' },
     ],
   },
   {
@@ -41,6 +68,23 @@ export const MARKET_GROUPS = [
       { symbol: '000001.SS', label: 'Shanghai Comp' },
       { symbol: '^KS11', label: 'KOSPI' },
       { symbol: '^AXJO', label: 'ASX 200' },
+      { symbol: '^TWII', label: 'Taiwan Weighted' },
+      { symbol: '^STI', label: 'Straits Times' },
+      { symbol: '^BSESN', label: 'BSE Sensex' },
+      { symbol: '^JKSE', label: 'Jakarta Composite' },
+      { symbol: '^NZ50', label: 'NZX 50' },
+    ],
+  },
+  {
+    name: 'Credit',
+    items: [
+      { symbol: 'HYG', label: 'US high yield' },
+      { symbol: 'LQD', label: 'US investment grade' },
+      { symbol: 'EMB', label: 'Emerging sovereign debt' },
+      { symbol: 'BND', label: 'US aggregate bonds' },
+      { symbol: 'TLT', label: 'Long Treasuries' },
+      { symbol: 'SHY', label: 'Short Treasuries' },
+      { symbol: 'TIP', label: 'Inflation-linked bonds' },
     ],
   },
   {
@@ -81,6 +125,10 @@ export const MARKET_GROUPS = [
       { symbol: 'USDCAD=X', label: 'USD/CAD' },
       { symbol: 'AUDUSD=X', label: 'AUD/USD' },
       { symbol: 'USDCHF=X', label: 'USD/CHF' },
+      { symbol: 'USDKRW=X', label: 'USD/KRW' },
+      { symbol: 'USDINR=X', label: 'USD/INR' },
+      { symbol: 'USDMXN=X', label: 'USD/MXN' },
+      { symbol: 'NZDUSD=X', label: 'NZD/USD' },
     ],
   },
   {
@@ -91,6 +139,14 @@ export const MARKET_GROUPS = [
       { symbol: 'SOL-USD', label: 'Solana' },
       { symbol: 'XRP-USD', label: 'XRP' },
       { symbol: 'DOGE-USD', label: 'Dogecoin' },
+      { symbol: 'BNB-USD', label: 'BNB' },
+      { symbol: 'ADA-USD', label: 'Cardano' },
+      { symbol: 'AVAX-USD', label: 'Avalanche' },
+      { symbol: 'LINK-USD', label: 'Chainlink' },
+      { symbol: 'DOT-USD', label: 'Polkadot' },
+      { symbol: 'LTC-USD', label: 'Litecoin' },
+      { symbol: 'BCH-USD', label: 'Bitcoin Cash' },
+      { symbol: 'SUI20947-USD', label: 'Sui' },
     ],
   },
 ]
@@ -108,6 +164,27 @@ export const SECTORS = [
   { symbol: 'XLRE', label: 'Real Estate' },
   { symbol: 'XLB', label: 'Materials' },
   { symbol: 'XLC', label: 'Comm. Services' },
+]
+
+/** The highest-signal cross-asset prints, reused by the dashboard market deck. */
+export const MARKET_DECK = [
+  { symbol: '^GSPC', label: 'S&P 500' },
+  { symbol: '^NDX', label: 'Nasdaq 100' },
+  { symbol: '^VIX', label: 'VIX' },
+  { symbol: '^TNX', label: '10Y Yield' },
+  { symbol: 'DX-Y.NYB', label: 'DXY' },
+  { symbol: 'GC=F', label: 'Gold' },
+  { symbol: 'CL=F', label: 'WTI Crude Oil' },
+  { symbol: 'BTC-USD', label: 'Bitcoin' },
+]
+
+/** Relative-value ratios turn the symbol wall into actual market structure. */
+export const RELATIVE_SIGNALS = [
+  { label: 'Equal weight / S&P', a: 'RSP', b: 'SPY' },
+  { label: 'Semis / Nasdaq', a: 'SMH', b: 'QQQ' },
+  { label: 'High yield / IG', a: 'HYG', b: 'LQD' },
+  { label: 'Gold / Silver', a: 'GC=F', b: 'SI=F' },
+  { label: 'Bitcoin / Gold', a: 'BTC-USD', b: 'GC=F' },
 ]
 
 export const COMMODITY_GROUPS = [
@@ -137,6 +214,10 @@ export const COMMODITY_GROUPS = [
       { symbol: 'ZW=F', label: 'Wheat', unit: '¢/bu' },
       { symbol: 'ZC=F', label: 'Corn', unit: '¢/bu' },
       { symbol: 'ZS=F', label: 'Soybeans', unit: '¢/bu' },
+      { symbol: 'ZO=F', label: 'Oats', unit: '¢/bu' },
+      { symbol: 'ZR=F', label: 'Rough Rice', unit: '$/cwt' },
+      { symbol: 'ZM=F', label: 'Soybean Meal', unit: '$/ton' },
+      { symbol: 'ZL=F', label: 'Soybean Oil', unit: '¢/lb' },
     ],
   },
   {
@@ -146,6 +227,16 @@ export const COMMODITY_GROUPS = [
       { symbol: 'KC=F', label: 'Coffee', unit: '¢/lb' },
       { symbol: 'CT=F', label: 'Cotton', unit: '¢/lb' },
       { symbol: 'SB=F', label: 'Sugar #11', unit: '¢/lb' },
+      { symbol: 'OJ=F', label: 'Orange Juice', unit: '¢/lb' },
+      { symbol: 'LBR=F', label: 'Lumber', unit: '$/mbf' },
+    ],
+  },
+  {
+    name: 'Livestock',
+    items: [
+      { symbol: 'LE=F', label: 'Live Cattle', unit: '¢/lb' },
+      { symbol: 'GF=F', label: 'Feeder Cattle', unit: '¢/lb' },
+      { symbol: 'HE=F', label: 'Lean Hogs', unit: '¢/lb' },
     ],
   },
   {
@@ -153,6 +244,10 @@ export const COMMODITY_GROUPS = [
     items: [
       { symbol: 'BTC-USD', label: 'Bitcoin', unit: 'USD' },
       { symbol: 'ETH-USD', label: 'Ethereum', unit: 'USD' },
+      { symbol: 'SOL-USD', label: 'Solana', unit: 'USD' },
+      { symbol: 'BNB-USD', label: 'BNB', unit: 'USD' },
+      { symbol: 'XRP-USD', label: 'XRP', unit: 'USD' },
+      { symbol: 'ADA-USD', label: 'Cardano', unit: 'USD' },
     ],
   },
 ]

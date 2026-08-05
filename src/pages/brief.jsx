@@ -59,7 +59,7 @@ function ArchivePanel() {
               <button
                 onClick={() => removeReport(r.id)}
                 class="text-muted hover:text-down opacity-0 group-hover:opacity-100 max-md:opacity-100 shrink-0"
-                title="delete"
+                title={tl('delete')}
               >
                 ✕
               </button>
@@ -124,23 +124,27 @@ function BriefData({ s }) {
             <span class="ml-auto text-ink-2">{m.price.toFixed(2)}</span>
             <span class={`w-16 text-right ${upDown(m.pct)}`}>{fmtPct(m.pct)}</span>
           </div>
-        )) : <div class="px-3 py-2 font-mono text-[11px] text-muted">flat tape</div>}
+        )) : <div class="px-3 py-2 font-mono text-[11px] text-muted">{tl('flat tape')}</div>}
       </Card>
 
       <Card title={tl('Technical flags')}>
         {s.techNotes.length ? s.techNotes.map((n) => (
-          <div key={n.symbol} class={rowCls}>
+          <div key={n.symbol} class="flex items-center gap-2 px-3 py-1.5 border-b border-line/40 last:border-0">
             <a href={`#/research/${n.symbol.toLowerCase()}`} class="font-[650] font-tick text-ink hover:no-underline">{n.symbol}</a>
-            <span class="text-ink-2 text-right min-w-0 truncate font-anth text-[11px]">{n.notes.join(' · ')}</span>
+            <span class="ml-auto flex flex-wrap justify-end gap-1">
+              {n.notes.map((note) => (
+                <span key={note} class="rounded border border-line px-1.5 py-px font-mono text-[9.5px] text-ink-2">{note}</span>
+              ))}
+            </span>
           </div>
-        )) : <div class="px-3 py-2 font-mono text-[11px] text-muted">nothing stretched</div>}
+        )) : <div class="px-3 py-2 font-mono text-[11px] text-muted">{tl('nothing stretched')}</div>}
       </Card>
 
       <Card title={tl('Ahead')}>
         {s.earnings.map((e) => (
           <div key={e.symbol} class={rowCls}>
             <a href={`#/research/${e.symbol.toLowerCase()}/earnings`} class="font-[650] font-tick text-ink hover:no-underline">{e.symbol}</a>
-            <span class="font-anth text-[11px] text-muted">earnings</span>
+            <span class="font-anth text-[11px] text-muted">{tl('earnings')}</span>
             <span class={`w-14 text-right ${e.days === 0 ? 'text-imminent font-bold' : e.days <= 7 ? 'text-down' : 'text-accent'}`}>
               {e.days === 0 ? 'today' : `${e.days}d`}
             </span>
@@ -154,7 +158,7 @@ function BriefData({ s }) {
           </div>
         ))}
         {!s.earnings.length && !s.calendar.length && (
-          <div class="px-3 py-2 font-mono text-[11px] text-muted">clear runway</div>
+          <div class="px-3 py-2 font-mono text-[11px] text-muted">{tl('clear runway')}</div>
         )}
       </Card>
     </div>

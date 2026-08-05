@@ -13,7 +13,7 @@ import { fetchDividends } from '../lib/history.js'
 import { fetchFundamentals } from '../lib/fundamentals.js'
 import { fmtPrice, fmtPct } from '../lib/format.js'
 import { parseRich, TUI } from '../lib/rich.js'
-import { getLocale, setLocale } from '../lib/i18n.js'
+import { getLocale, setLocale, tl } from '../lib/i18n.js'
 
 // The TUI's bottom command line, with a real output console: every command
 // echoes into a drop-up log (like the CLI's main pane) instead of a blink-
@@ -305,11 +305,11 @@ export function CommandBar() {
         <div class="absolute bottom-full left-0 right-0 z-40 bg-surface-1/95 backdrop-blur border-t border-line shadow-[0_-8px_24px_rgba(0,0,0,0.5)]">
           <div onPointerDown={startDrag}
             class="h-2.5 cursor-ns-resize touch-none flex items-center justify-center group/grip"
-            title="drag to resize">
+            title={tl('drag to resize')}>
             <div class="w-10 h-[3px] rounded bg-line group-hover/grip:bg-accent group-active/grip:bg-accent" />
           </div>
           <div class="flex items-center px-3 py-1 border-b border-line-2">
-            <span class="font-mono text-[9px] tracking-wider text-muted uppercase">console</span>
+            <span class="font-mono text-[9px] tracking-wider text-muted uppercase">{tl('console')}</span>
             <button
               onClick={() => setOpen(false)}
               class="ml-auto font-mono text-[11px] text-muted hover:text-ink px-1"
@@ -341,14 +341,14 @@ export function CommandBar() {
           value={value}
           onInput={(e) => setValue(e.currentTarget.value)}
           onKeyDown={onKey}
-          placeholder="type command or symbol…  (h = help)"
+          placeholder={tl('type command or symbol…  (h = help)')}
           class="flex-1 bg-transparent outline-none text-ink placeholder:text-muted min-w-0"
         />
         {/* keycap hint, not placeholder prose: `/` focuses from anywhere */}
         <button
           type="button"
           onClick={() => inputRef.current?.focus()}
-          title="press / anywhere to focus the console"
+          title={tl('focus console')}
           class="shrink-0 w-5 h-5 grid place-items-center rounded border border-line-2 bg-surface-2 text-muted hover:text-ink text-[10px] leading-none"
         >
           /

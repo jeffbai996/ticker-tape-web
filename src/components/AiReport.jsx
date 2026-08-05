@@ -205,7 +205,7 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
                 setWriter(e.currentTarget.value)
                 localStorage.setItem(WRITER_KEY, e.currentTarget.value)
               }}
-              title="which subscription model writes this report"
+              title={tl('report model')}
               class="bg-surface-3 border border-line rounded px-1 py-0.5 font-anth text-[10px] text-ink-2 outline-none cursor-pointer max-w-[130px]"
             >
               {models.map((m) => (

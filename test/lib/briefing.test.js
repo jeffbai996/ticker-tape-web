@@ -56,6 +56,18 @@ describe('assembleBriefing', () => {
     expect(note.notes.join(' ')).toMatch(/2.3x/)
   })
 
+  it('keeps technical flags actionable instead of listing 52-week drawdowns', () => {
+    const sections = assembleBriefing({
+      watchlist: ['DRAW', 'ACTIVE'],
+      quotes: {
+        DRAW: { quote: { symbol: 'DRAW', price: 10, pct: -1 }, tech: { offHigh: -67 } },
+        ACTIVE: { quote: { symbol: 'ACTIVE', price: 10, pct: 1 }, tech: { rsi: 75, offHigh: -44 } },
+      },
+    })
+    expect(sections.techNotes.map((n) => n.symbol)).toEqual(['ACTIVE'])
+    expect(sections.techNotes.flatMap((n) => n.notes).join(' ')).not.toMatch(/52w|off high/i)
+  })
+
   it('computes breadth pulse', () => {
     expect(sections.pulse.adv).toBe(3)
     expect(sections.pulse.dec).toBe(2)

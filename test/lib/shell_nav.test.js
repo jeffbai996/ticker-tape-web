@@ -35,6 +35,13 @@ describe('watchlists surface', () => {
     expect(page).toContain('Rename')
     expect(page).toContain('Delete')
   })
+
+  it('routes destructive and validation copy through i18n', () => {
+    expect(page).toContain("tt('watchlists.unique_name')")
+    expect(page).toContain("tt('watchlists.delete_confirm'")
+    expect(page).not.toContain('Use a unique watchlist name.')
+    expect(page).not.toContain('Delete watchlist “')
+  })
 })
 
 describe('compact mobile status bar', () => {

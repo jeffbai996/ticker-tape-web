@@ -257,7 +257,7 @@ export function ChartSuite({ symbol }) {
           onSubmit={(e) => { e.preventDefault(); setCmp(cmpDraft.trim().toUpperCase()) }}
         >
           <span class="font-mono text-[9.5px] text-muted uppercase tracking-wider"
-                title="overlay another symbol, both normalised to % change from the left edge">{tl('vs')}</span>
+                title={tl('overlay comparison')}>{tl('vs')}</span>
           <input
             value={cmpDraft}
             onInput={(e) => setCmpDraft(e.currentTarget.value)}

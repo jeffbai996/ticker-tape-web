@@ -39,7 +39,7 @@ function ListSummary({ symbols, quotes }) {
 function SymbolPreview({ symbols, quotes }) {
   const shown = symbols.slice(0, 8)
   return (
-    <div aria-label="symbol chips" class="min-h-14 flex flex-wrap content-start gap-1.5">
+    <div aria-label={tl('symbol chips')} class="min-h-14 flex flex-wrap content-start gap-1.5">
       {shown.map((symbol) => {
         const pct = quotes[symbol]?.quote?.pct
         return (
@@ -105,7 +105,7 @@ function WatchlistCard({ item, quotes, primary = false }) {
           <>
             <button onClick={() => { setName(item.name); setEditing((value) => !value) }} class="ml-auto text-muted hover:text-ink">{tl('Rename')}</button>
             <button onClick={() => {
-              if (confirm(`Delete watchlist “${item.name}”?`)) removeWatchlist(item.id)
+              if (confirm(tt('watchlists.delete_confirm', { name: item.name }))) removeWatchlist(item.id)
             }} class="text-muted hover:text-down">{tl('Delete')}</button>
           </>
         )}
@@ -124,7 +124,7 @@ export function WatchlistsPage() {
   const submit = (event) => {
     event.preventDefault()
     const created = createWatchlist(name)
-    if (!created) return setError('Use a unique watchlist name.')
+    if (!created) return setError(tt('watchlists.unique_name'))
     setName('')
     setError('')
     location.hash = `#/watchlists/${created.id}`

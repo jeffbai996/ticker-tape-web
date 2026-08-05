@@ -162,10 +162,10 @@ function NoteRow({ id, text, meta, onSave, onDelete }) {
       <span class="text-ink-2 flex-1 min-w-0 font-anth text-[12px] leading-snug">{text}</span>
       {meta && <span class="text-muted text-[9px] shrink-0">{meta}</span>}
       {onSave && (
-        <button onClick={() => setEditing(true)} title="edit"
+        <button onClick={() => setEditing(true)} title={tl('edit')}
           class="opacity-0 group-hover:opacity-100 text-muted hover:text-accent shrink-0">✎</button>
       )}
-      <button onClick={onDelete} title="delete"
+      <button onClick={onDelete} title={tl('delete')}
         class="opacity-0 group-hover:opacity-100 text-muted hover:text-down shrink-0">✕</button>
     </div>
   )
@@ -353,7 +353,7 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
         <div class="min-w-0">
           <h2 class="font-anth text-[20px] leading-[1.25] font-semibold text-ink">
             {onWire
-              ? 'Ask about a ticker, a sector, or the book.'
+              ? tt('chat.wire_empty')
               : tt('chat.empty')}
           </h2>
           <div class="text-muted text-[11px] font-anth pt-1">
@@ -365,7 +365,7 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
             type="button"
             onClick={onResume}
             class="ml-auto shrink-0 flex items-center gap-1.5 font-mono text-[10px] text-muted border border-line rounded-lg px-2.5 py-1.5 hover:border-accent/60 hover:text-ink transition-colors"
-            title="the thread is still here — this only parks it"
+            title={tl('park thread')}
           >
             {tl('resume thread')} <span class="text-accent">{threadLen}</span>
           </button>
@@ -382,7 +382,7 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
                 <span class="text-ink font-[650] font-tick">{s}</span>
                 <span class={pct >= 0 ? 'text-up' : 'text-down'}>{fmtPct(pct)}</span>
               </a>
-            )) : <div class="font-mono text-[11px] text-muted py-1">loading…</div>}
+            )) : <div class="font-mono text-[11px] text-muted py-1">{tl('loading…')}</div>}
           </div>
           <div class={cell}>
             <div class={eyebrow}>{tl('next earnings')}</div>
@@ -393,7 +393,7 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
                   {earnDays[s] === 0 ? tl('today') : `${earnDays[s]}d`}
                 </span>
               </a>
-            )) : <div class="font-mono text-[11px] text-muted py-1">loading…</div>}
+            )) : <div class="font-mono text-[11px] text-muted py-1">{tl('loading…')}</div>}
           </div>
           <div class={cell}>
             <div class={eyebrow}>{tl('on the calendar')}</div>
@@ -404,7 +404,7 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
                   {ev.days === 0 ? tl('today') : `${ev.days}d`}
                 </span>
               </a>
-            )) : <div class="font-mono text-[11px] text-muted py-1">clear runway</div>}
+            )) : <div class="font-mono text-[11px] text-muted py-1">{tl('clear runway')}</div>}
           </div>
         </div>
         <div class={`grid grid-cols-1 divide-y divide-line sm:divide-y-0 sm:divide-x ${book ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
@@ -412,16 +412,16 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
             <div class={eyebrow}>{tl('Pulse')}</div>
             {pulse ? (
               <div class="font-mono text-[11.5px] leading-[1.55]">
-                <div class="flex justify-between"><span class="text-muted">A/D</span>
+                <div class="flex justify-between"><span class="text-muted">{tl('A/D')}</span>
                   <span><span class="text-up">{pulse.adv}</span><span class="text-muted"> / </span><span class="text-down">{pulse.dec}</span></span></div>
-                <div class="flex justify-between"><span class="text-muted">avg</span>
+                <div class="flex justify-between"><span class="text-muted">{tl('avg')}</span>
                   <span class={pulse.avg >= 0 ? 'text-up' : 'text-down'}>{fmtPct(pulse.avg)}</span></div>
-                <div class="flex justify-between"><span class="text-muted">ext A/D</span>
+                <div class="flex justify-between"><span class="text-muted">{tl('ext A/D')}</span>
                   <span><span class="text-up">{pulse.extAdv}</span><span class="text-muted"> / </span><span class="text-down">{pulse.extDec}</span></span></div>
-                <div class="flex justify-between"><span class="text-muted">down &gt;3%</span>
+                <div class="flex justify-between"><span class="text-muted">{tl('down >3%')}</span>
                   <span class={pulse.stress ? 'text-down font-bold' : 'text-ink-2'}>{pulse.stress}</span></div>
               </div>
-            ) : <div class="font-mono text-[11px] text-muted py-1">loading…</div>}
+            ) : <div class="font-mono text-[11px] text-muted py-1">{tl('loading…')}</div>}
           </div>
           {book && (
             <div class={cell}>
@@ -442,7 +442,7 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
                     </div>
                   )}
                 </div>
-              ) : <div class="font-mono text-[11px] text-muted py-1">reading the wire…</div>}
+              ) : <div class="font-mono text-[11px] text-muted py-1">{tl('reading the wire…')}</div>}
             </div>
           )}
           <div class={cell}>
@@ -1057,7 +1057,7 @@ export function Chat() {
         )}
         {onWire && selectedModel?.fixed_effort && (
           <span class="h-7 inline-flex items-center font-mono text-[10px] text-muted border border-line rounded-lg px-2"
-                title="this subscription model has a fixed thinking tier">
+                title={tl('fixed thinking tier')}>
             {selectedModel.fixed_effort}
           </span>
         )}
@@ -1076,8 +1076,8 @@ export function Chat() {
           <button
             onClick={() => { setMemories(loadMemories()); setDrawer(drawer === 'mem' ? null : 'mem') }}
             class={`relative w-6 h-6 grid place-items-center rounded-md ${drawer === 'mem' ? 'text-accent bg-accent-soft' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
-            title="persistent memories — the assistant carries these into every conversation"
-            aria-label="memories"
+            title={tl('persistent memories')}
+            aria-label={tl('memories')}
           >
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 21V8.5M12 8.5a3.4 3.4 0 0 1 3.2-4.5 3.4 3.4 0 0 1 3.3 2.6A3.3 3.3 0 0 1 21 9.9a3.3 3.3 0 0 1-1.4 5.6A3.4 3.4 0 0 1 15 19.4c-1.3 0-2.4-.7-3-1.7-.6 1-1.7 1.7-3 1.7a3.4 3.4 0 0 1-3.6-3.9A3.3 3.3 0 0 1 4 9.9a3.3 3.3 0 0 1 2.5-3.3A3.4 3.4 0 0 1 9.8 4 3.4 3.4 0 0 1 12 8.5z"/>
@@ -1088,8 +1088,8 @@ export function Chat() {
           <button
             onClick={() => { setJournal(loadJournal()); setDrawer(drawer === 'journal' ? null : 'journal') }}
             class={`relative w-6 h-6 grid place-items-center rounded-md ${drawer === 'journal' ? 'text-accent bg-accent-soft' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
-            title="trade journal — your own decisions and rationale, searchable"
-            aria-label="trade journal"
+            title={tl('trade journal hint')}
+            aria-label={tl('trade journal')}
           >
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
               <path d="M6 2h12a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/>
@@ -1100,7 +1100,7 @@ export function Chat() {
           </button>
           {history.length > 0 && (
             <button onClick={() => exportChat(history)} class="w-6 h-6 grid place-items-center rounded-md text-muted hover:text-ink hover:bg-surface-2"
-              title="download the transcript as markdown">
+              title={tl('download transcript')}>
               <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12M7 10l5 5 5-5M5 20h14"/></svg>
             </button>
           )}
@@ -1122,19 +1122,19 @@ export function Chat() {
             </div>
             <button type="button" disabled={busy} onClick={newThread}
               class="ml-auto font-anth text-[11px] text-accent border border-accent/40 rounded-md px-2 py-1 hover:bg-accent-soft disabled:opacity-40">
-              + new session
+              {tl('+ new session')}
             </button>
-            <button class="text-muted hover:text-ink" onClick={() => setDrawer(null)} aria-label="close">✕</button>
+            <button class="text-muted hover:text-ink" onClick={() => setDrawer(null)} aria-label={tl('close')}>✕</button>
           </div>
           <div class="py-2 flex flex-col gap-1">
             {threads.length === 0 && <div class="font-anth text-[12px] text-muted py-1">{tl('no saved sessions yet')}</div>}
             {threads.map((thread) => (
               <div key={thread.id} class={`group flex items-center gap-2 rounded-lg px-2 py-1.5 ${thread.id === currentThreadId() ? 'bg-accent-soft' : 'hover:bg-surface-2'}`}>
                 <button type="button" disabled={busy} onClick={() => switchThread(thread.id)} class="flex-1 min-w-0 text-left disabled:opacity-50">
-                  <span class={`block truncate font-anth text-[12px] ${thread.id === currentThreadId() ? 'text-accent' : 'text-ink-2'}`}>{thread.title || 'untitled'}</span>
-                  <span class="block font-mono text-[9px] text-muted">{thread.n} messages</span>
+                  <span class={`block truncate font-anth text-[12px] ${thread.id === currentThreadId() ? 'text-accent' : 'text-ink-2'}`}>{thread.title || tl('untitled')}</span>
+                  <span class="block font-mono text-[9px] text-muted">{tt('chat.session_messages', { n: thread.n })}</span>
                 </button>
-                <button type="button" disabled={busy} onClick={() => deleteSession(thread.id)} title="delete session"
+                <button type="button" disabled={busy} onClick={() => deleteSession(thread.id)} title={tl('delete session')}
                   class="opacity-0 group-hover:opacity-100 max-md:opacity-100 text-muted hover:text-down disabled:opacity-30 shrink-0 font-mono text-[11px]">✕</button>
               </div>
             ))}
@@ -1149,7 +1149,7 @@ export function Chat() {
           <div class="flex items-start gap-3 pb-3 border-b border-line">
             <div><div class="font-anth text-[15px] font-semibold text-ink">{tl('Memories')}</div>
               <div class="font-anth text-[11px] text-muted">{tl('Details the assistant should remember in future chats.')}</div></div>
-            <button class="ml-auto text-muted hover:text-ink" onClick={() => setDrawer(null)} aria-label="close">✕</button>
+            <button class="ml-auto text-muted hover:text-ink" onClick={() => setDrawer(null)} aria-label={tl('close')}>✕</button>
           </div>
           {memories.length === 0 && (
             <div class="font-anth text-[12px] text-muted py-1">{tl('nothing saved yet')}</div>
@@ -1175,7 +1175,7 @@ export function Chat() {
             <input value={jrFilter} onInput={(e) => setJrFilter(e.currentTarget.value)}
               placeholder={`${tl('Search')}…`}
               class="ml-auto bg-surface-2 border border-line rounded-md px-2 py-0.5 font-mono text-[10px] text-ink outline-none focus:border-accent/60 w-32 placeholder:text-muted" />
-            <button class="text-muted hover:text-ink" onClick={() => setDrawer(null)} aria-label="close">✕</button>
+            <button class="text-muted hover:text-ink" onClick={() => setDrawer(null)} aria-label={tl('close')}>✕</button>
           </div>
           {(jrFilter ? searchJournal(jrFilter) : journal).slice(-30).reverse().map((e) => (
             <NoteRow key={e.id} id={e.id} text={e.text}
@@ -1184,7 +1184,7 @@ export function Chat() {
           ))}
           {(jrFilter ? searchJournal(jrFilter) : journal).length === 0 && (
             <div class="font-anth text-[12px] text-muted py-1">
-              {jrFilter ? 'no matches' : 'nothing logged yet'}
+              {tl(jrFilter ? 'no matches' : 'nothing logged yet')}
             </div>
           )}
           <NoteAdd placeholder={`${tl('log a decision, a read, a why')}…`}
@@ -1256,10 +1256,10 @@ export function Chat() {
                       <button
                         type="button"
                         onClick={() => navigator.clipboard?.writeText(m.content)}
-                        title="copy"
+                        title={tl('copy')}
                         class="bg-surface-2 border border-line rounded-md px-1.5 py-0.5 font-mono text-[9px] text-muted hover:text-ink"
                       >
-                        copy
+                        {tl('copy')}
                       </button>
                       <button
                         type="button"
@@ -1268,12 +1268,12 @@ export function Chat() {
                           const q = history[i - 1]?.role === 'user' ? history[i - 1].content : ''
                           const e = addJournalEntry(`${q ? `Q: ${q}\n\n` : ''}A: ${m.content}`)
                           setJournal(loadJournal())
-                          setNotice(e ? `✓ exchange saved to journal #${e.id}` : null)
+                          setNotice(e ? tt('chat.exchange_saved', { id: e.id }) : null)
                         }}
-                        title="save this exchange to the trade journal"
+                        title={tl('save exchange to journal')}
                         class="bg-surface-2 border border-line rounded-md px-1.5 py-0.5 font-mono text-[9px] text-muted hover:text-accent"
                       >
-                        → journal
+                        → {tl('journal')}
                       </button>
                     </div>
                 </div>
@@ -1345,19 +1345,19 @@ export function Chat() {
           <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2 flex items-baseline gap-1.5">
             <h2 class="font-anth font-bold text-[10px] tracking-wider text-accent uppercase">{tl('sessions')}</h2>
             <span class="font-mono text-[9px] text-muted">{threads.length}</span>
-            <button onClick={newThread} disabled={busy} title="new session"
-              class="ml-auto font-mono text-[10px] text-muted hover:text-accent">+ new</button>
+            <button onClick={newThread} disabled={busy} title={tl('new session')}
+              class="ml-auto font-mono text-[10px] text-muted hover:text-accent">{tl('+ new')}</button>
           </header>
           <div class="px-1 py-1 max-h-[34vh] overflow-y-auto">
             {threads.length === 0 && <div class="px-1.5 font-anth text-[11px] text-muted py-0.5">{tl('no saved threads')}</div>}
             {threads.map((t) => (
               <div key={t.id} class={`group flex items-baseline gap-1.5 px-1.5 py-0.5 rounded-md ${t.id === currentThreadId() ? 'bg-accent-soft' : 'hover:bg-surface-2'}`}>
                 <button onClick={() => switchThread(t.id)} class="flex-1 min-w-0 text-left">
-                  <span class={`block truncate font-anth text-[11px] ${t.id === currentThreadId() ? 'text-accent' : 'text-ink-2'}`}>{t.title || 'untitled'}</span>
+                  <span class={`block truncate font-anth text-[11px] ${t.id === currentThreadId() ? 'text-accent' : 'text-ink-2'}`}>{t.title || tl('untitled')}</span>
                 </button>
                 <span class="font-mono text-[8.5px] text-muted shrink-0">{t.n}</span>
                 <button onClick={() => deleteSession(t.id)} disabled={busy}
-                  title="delete session"
+                  title={tl('delete session')}
                   class="opacity-0 group-hover:opacity-100 text-muted hover:text-down shrink-0 font-mono text-[10px]">✕</button>
               </div>
             ))}

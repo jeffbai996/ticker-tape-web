@@ -10,6 +10,14 @@ describe('dashboard widgets store', () => {
     expect(getWidgets().map((w) => w.type)).toEqual(DEFAULT_WIDGETS.map((w) => w.type))
   })
 
+  it('puts the market deck on the dashboard and migrates existing layouts once', () => {
+    expect(DEFAULT_WIDGETS.map((w) => w.type)).toContain('markets')
+    localStorage.setItem('dash_widgets_v1', JSON.stringify([{ id: 9, type: 'pulse' }]))
+    expect(getWidgets().map((w) => w.type)).toEqual(['pulse', 'markets'])
+    removeWidget(getWidgets().find((w) => w.type === 'markets').id)
+    expect(getWidgets().map((w) => w.type)).toEqual(['pulse'])
+  })
+
   it('adds a widget and persists it', () => {
     const w = addWidget('movers')
     expect(w.type).toBe('movers')
