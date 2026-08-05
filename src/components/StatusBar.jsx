@@ -160,7 +160,7 @@ export function StatusBar() {
     : 'next session monday'
 
   return (
-    <header class="flex items-center gap-3 max-md:gap-1.5 px-3 max-md:px-2 h-9 shrink-0 bg-black border-b border-line font-mono text-[11px] select-none">
+    <header class="flex items-center gap-3 max-md:gap-1.5 px-3 max-md:px-2 h-8 shrink-0 bg-black border-b border-line font-mono text-[11px] select-none">
       {/* the wordmark is a link home and never looked like one — it now lights
           up (amber wash + rule) under the pointer (Jeff 2026-08-04) */}
       <a
@@ -169,7 +169,7 @@ export function StatusBar() {
         class="font-bold text-accent tracking-tight text-[13px] -mx-1 px-1 py-0.5 rounded border border-transparent
                hover:no-underline hover:bg-accent-soft hover:border-accent/40 hover:text-accent transition-colors"
       >
-        <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" class="md:hidden w-5 h-5" />
+        <img src={`${import.meta.env.BASE_URL}ticker-tape-mark.svg`} alt="" class="md:hidden w-5 h-5" />
         <span class="max-md:hidden">ticker-tape</span>
       </a>
 
