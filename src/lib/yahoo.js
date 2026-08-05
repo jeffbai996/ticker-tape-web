@@ -38,7 +38,12 @@ export function quoteFromV7(row) {
   let ext = {}
   if (row?.preMarketPrice != null && (row?.marketState === 'PRE' || row?.marketState === 'PREPRE')) {
     ext = { extLabel: 'PRE', extPrice: row.preMarketPrice, extPct: row.preMarketChangePercent ?? null }
-  } else if (row?.postMarketPrice != null && (row?.marketState === 'POST' || row?.marketState === 'POSTPOST' || row?.marketState === 'CLOSED')) {
+  // PREPRE is the dead zone between the 8pm ET after-hours close and the 4am
+  // pre-market open: Yahoo has already flipped the state but preMarketPrice is
+  // still null, so without PREPRE here every AH print vanished overnight
+  // (Jeff 2026-08-04, 00:07 ET). The last after-hours trade is still the right
+  // number to show; the PRE branch above takes over the moment 4am fills it in.
+  } else if (row?.postMarketPrice != null && (row?.marketState === 'POST' || row?.marketState === 'POSTPOST' || row?.marketState === 'CLOSED' || row?.marketState === 'PREPRE')) {
     ext = { extLabel: 'AH', extPrice: row.postMarketPrice, extPct: row.postMarketChangePercent ?? null }
   }
 
