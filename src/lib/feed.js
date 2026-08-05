@@ -22,7 +22,8 @@ function crumbBase() {
 }
 
 const REQUEST_SPACING_MS = 350   // min gap between proxy requests
-const REFRESH_MS = 60_000        // full sweep cadence
+const REFRESH_MS = 60_000        // full sweep cadence (charts + technicals)
+const QUOTE_SWEEP_MS = 30_000    // price-only v7 batch — extended hours ticks
 
 // Proxy resolution order: explicit build-time override, per-browser setting,
 // then the dev server's built-in proxy or the deployed default.
@@ -195,10 +196,16 @@ export function track(symbols) {
   }
   pump()
   if (!sweepTimer) {
+    // prices twice as often as charts: the v7 batch is one cheap request,
+    // and pre/after-hours reads freeze visibly at a 60s cadence
+    let beat = 0
     sweepTimer = setInterval(() => {
-      scheduleBatch([...tracked]) // refresh all prices in one request
-      queue.push(...tracked)
-      pump()
-    }, REFRESH_MS)
+      scheduleBatch([...tracked])
+      beat += 1
+      if (beat % 2 === 0) {
+        queue.push(...tracked)
+        pump()
+      }
+    }, QUOTE_SWEEP_MS)
   }
 }

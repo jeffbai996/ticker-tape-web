@@ -1495,29 +1495,35 @@ export function Research({ route }) {
         <WatchStar symbol={symbol} />
         {q && (
           <>
-            {/* long names used to run off the right edge mid-word on a phone */}
-            <Marquee text={q.name} class="text-[12px] text-muted font-anth max-w-[46vw]" />
-            <span class="font-mono text-lg text-ink">{fmtPrice(q.price)}</span>
-            <span class={`font-mono font-semibold text-[15px] ${up ? 'text-up' : 'text-down'}`}>
-              {fmtChange(q.change)} {fmtPct(q.pct)}
+            {/* the name owns the middle slack; the quote cluster is one
+                right-aligned unit so it can't sit on top of the name
+                (Jeff 2026-08-05: "even Walmart gets occluded") */}
+            <span class="flex-1 min-w-0">
+              <Marquee text={q.name} class="w-full text-[12px] text-muted font-anth" />
             </span>
-            {q.volume != null && (
-              <span class="font-mono text-[11px] text-muted">vol {fmtVol(q.volume)}</span>
-            )}
-            {q.extLabel && q.extPrice != null && (
-              <span class="font-mono text-[12px] whitespace-nowrap">
-                <span class="text-[#c084fc]">{q.extLabel}</span>{' '}
-                <span class="text-ink-2">{fmtPrice(q.extPrice)}</span>
-                {q.extPct != null && (
-                  <span class={`ml-1.5 ${extUp ? 'text-up' : 'text-down'}`}>
-                    {extUp ? '▲' : '▼'}{Math.abs(q.extPct).toFixed(2)}%
-                  </span>
-                )}
+            <span class="ml-auto flex items-baseline gap-3 shrink-0 whitespace-nowrap">
+              <span class="font-mono text-lg text-ink">{fmtPrice(q.price)}</span>
+              <span class={`font-mono font-semibold text-[15px] ${up ? 'text-up' : 'text-down'}`}>
+                {fmtChange(q.change)} {fmtPct(q.pct)}
               </span>
-            )}
+              {q.volume != null && (
+                <span class="font-mono text-[11px] text-muted">vol {fmtVol(q.volume)}</span>
+              )}
+              {q.extLabel && q.extPrice != null && (
+                <span class="font-mono text-[12px] whitespace-nowrap">
+                  <span class="text-[#c084fc]">{q.extLabel}</span>{' '}
+                  <span class="text-ink-2">{fmtPrice(q.extPrice)}</span>
+                  {q.extPct != null && (
+                    <span class={`ml-1.5 ${extUp ? 'text-up' : 'text-down'}`}>
+                      {extUp ? '▲' : '▼'}{Math.abs(q.extPct).toFixed(2)}%
+                    </span>
+                  )}
+                </span>
+              )}
+            </span>
           </>
         )}
-        <div class="ml-auto flex gap-1 flex-nowrap overflow-x-auto no-scrollbar">
+        <div class="flex gap-1 flex-nowrap overflow-x-auto no-scrollbar shrink-0 max-w-full">
           {RANGES.map((r) => (
             <button
               key={r.key}
