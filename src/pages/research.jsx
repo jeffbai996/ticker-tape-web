@@ -278,7 +278,7 @@ function Candles({ bars, intraday }) {
         ))}
         <button
           onClick={() => chartRef.current?.chart.timeScale().fitContent()}
-          title="reset zoom to the full loaded history"
+          title={tl('reset full history')}
           class="font-mono text-[9.5px] px-1.5 py-0.5 rounded border tracking-wider border-line text-muted hover:text-ink"
         >
           FIT
@@ -295,7 +295,7 @@ function Candles({ bars, intraday }) {
 function Stat({ label, value, cls = 'text-ink' }) {
   return (
     <div class="flex justify-between gap-3 px-3 py-[4px] border-b border-line last:border-0">
-      <span class="font-anth text-muted text-[11px]">{label}</span>
+      <span class="font-anth text-muted text-[11px]">{tl(label)}</span>
       <span class={`font-mono text-[11px] ${cls}`}>{value ?? '—'}</span>
     </div>
   )
@@ -438,15 +438,15 @@ function OptionSide({ title, rows, spot, t, type }) {
         <table class="w-full border-collapse font-mono text-[11px]">
           <thead>
             <tr class="text-[9px] text-muted uppercase tracking-wider bg-surface-2/60">
-              <th class="px-2 py-1.5 text-right">Strike</th>
+              <th class="px-2 py-1.5 text-right">{tl('Strike')}</th>
               {/* Last goes first on phones: bid/ask carry the live market. */}
-              <th class="px-2 py-1.5 text-right max-sm:hidden">Last</th>
-              <th class="px-2 py-1.5 text-right">Bid</th>
-              <th class="px-2 py-1.5 text-right">Ask</th>
-              <th class="px-2 py-1.5 text-right">IV</th>
+              <th class="px-2 py-1.5 text-right max-sm:hidden">{tl('Last')}</th>
+              <th class="px-2 py-1.5 text-right">{tl('Bid')}</th>
+              <th class="px-2 py-1.5 text-right">{tl('Ask')}</th>
+              <th class="px-2 py-1.5 text-right">{tl('IV')}</th>
               <th class="px-2 py-1.5 text-right">Δ</th>
-              <th class="px-2 py-1.5 text-right">Vol</th>
-              <th class="px-2 py-1.5 text-right">OI</th>
+              <th class="px-2 py-1.5 text-right">{tl('Vol')}</th>
+              <th class="px-2 py-1.5 text-right">{tl('OI')}</th>
             </tr>
           </thead>
           <tbody>
@@ -532,11 +532,11 @@ function OptionsView({ symbol }) {
   if (err) {
     return (
       <div class="mx-1 px-3 py-2 bg-surface-1 border border-down/40 rounded-lg font-mono text-[11px] text-down">
-        no options chain — {err}
+        {tt('research.no_options_chain', { error: err })}
       </div>
     )
   }
-  if (!chain) return <div class="px-2 font-mono text-[11px] text-muted">loading chain…</div>
+  if (!chain) return <div class="px-2 font-mono text-[11px] text-muted">{tl('loading chain…')}</div>
 
   const t = Math.max((chain.expiration * 1000 - Date.now()) / (365 * 86_400_000), 1 / 365)
   // Show ±12 strikes around spot so the table stays scannable.
@@ -550,7 +550,7 @@ function OptionsView({ symbol }) {
   return (
     <div class="min-w-0">
       <div class="flex items-center gap-2 px-1 pb-2 flex-wrap">
-        <span class="font-mono text-[11px] text-muted">EXPIRY</span>
+        <span class="font-mono text-[11px] text-muted">{tl('EXPIRY')}</span>
         <select
           value={chain.expiration ?? ''}
           onChange={(e) => setExpiration(Number(e.target.value))}
@@ -564,7 +564,7 @@ function OptionsView({ symbol }) {
         </select>
         {chain.spot != null && (
           <span class="font-mono text-[11px] text-muted">
-            spot <span class="text-ink">{fmtPrice(chain.spot)}</span> · amber rule = spot · shaded = ITM · Δ via Black-Scholes from IV · <span class="text-accent">vol</span> = vol&gt;OI
+            {tt('research.options_note', { spot: fmtPrice(chain.spot) })}
           </span>
         )}
       </div>
@@ -623,9 +623,9 @@ function IntradayView({ symbol }) {
   return (
     <section class="bg-surface-1 border border-line rounded-xl p-2 min-w-0">
       <div class="flex gap-3 px-2 pb-1 font-mono text-[11px]">
-        <span class="text-muted">5-min bars · session</span>
+        <span class="text-muted">{tl('5-min bars · session')}</span>
         <span style={{ color: '#f59e0b' }}>— VWAP</span>
-        {state === 'error' && <span class="text-down">no intraday data</span>}
+        {state === 'error' && <span class="text-down">{tl('no intraday data')}</span>}
       </div>
       <div ref={el} class="h-[420px] w-full" />
     </section>
@@ -992,7 +992,7 @@ function ProfileView({ symbol }) {
           <span><span class="text-muted">{tl('Sector')}</span> <span class="text-ink">{p.sector || '—'}</span></span>
           <span><span class="text-muted">{tl('Industry')}</span> <span class="text-ink-2">{p.industry || '—'}</span></span>
           <span><span class="text-muted">{tl('Employees')}</span> <span class="text-ink-2">{p.employees ? p.employees.toLocaleString() : '—'}</span></span>
-          <span><span class="text-muted">HQ</span> <span class="text-ink-2">{[p.city, p.state, p.country].filter(Boolean).join(', ') || '—'}</span></span>
+          <span><span class="text-muted">{tl('HQ')}</span> <span class="text-ink-2">{[p.city, p.state, p.country].filter(Boolean).join(', ') || '—'}</span></span>
           {p.website && <a class="text-accent" href={p.website} target="_blank" rel="noopener">{p.website.replace(/^https?:\/\//, '')}</a>}
         </div>
       </SectionCard>
@@ -1126,15 +1126,13 @@ function SymbolWireView({ symbol }) {
   if (!base) {
     return (
       <div class="px-1 font-mono text-[11px] text-muted max-w-xl leading-relaxed">
-        no wire backend configured — this tab shows everything your fragwire
-        service has captured on {symbol} (releases, filings, price moves,
-        live-call digests). set the endpoint on the <a class="text-accent" href="#/wire">wire tab</a> first.
+        {tt('research.no_wire_config', { symbol })}
       </div>
     )
   }
-  if (err) return <div class="px-1 font-mono text-[11px] text-down">wire unreachable: {err}</div>
+  if (err) return <div class="px-1 font-mono text-[11px] text-down">{tt('research.wire_unreachable', { error: err })}</div>
   if (rows === null) return <div class="px-1 font-mono text-[11px] text-muted">{tt('common.loading')}</div>
-  if (!rows.length) return <div class="px-1 font-mono text-[11px] text-muted">nothing on the wire for {symbol} yet</div>
+  if (!rows.length) return <div class="px-1 font-mono text-[11px] text-muted">{tt('research.nothing_on_wire', { symbol })}</div>
   const CODE = { earnings_release: 'ERN', filing: 'FIL', headline: 'NWS',
     macro_print: 'ECO', price_move: 'PX', digest: 'DIG',
     transcript_chunk: 'LIV', brief: 'BRF' }
@@ -1316,9 +1314,9 @@ function SymbolPrompt() {
     <div class="flex-1 p-6 select-none">
       <div class="max-w-4xl mx-auto flex flex-col gap-4">
         <form onSubmit={go} class="bg-surface-1 border border-line rounded-2xl p-5">
-          <h1 class="font-mono font-bold text-[13px] tracking-wider text-accent uppercase mb-1">Research</h1>
+          <h1 class="font-mono font-bold text-[13px] tracking-wider text-accent uppercase mb-1">{tl('Research')}</h1>
           <p class="font-mono text-[11px] text-muted mb-3">
-            type a symbol — or hit a number once a name is open. every function below works on any listed security.
+            {tt('research.landing_hint')}
           </p>
           <div class="flex gap-2 max-w-sm">
             <input
@@ -1327,14 +1325,14 @@ function SymbolPrompt() {
               placeholder="NVDA, SPY, BTC-USD…"
               class="flex-1 bg-surface-0 border border-line-2 rounded-lg px-3 py-2 font-mono text-[13px] text-ink outline-none focus:border-accent"
             />
-            <button type="submit" class="bg-accent text-surface-0 font-mono font-bold text-[12px] px-4 rounded-lg hover:opacity-90">GO</button>
+            <button type="submit" class="bg-accent text-surface-0 font-mono font-bold text-[12px] px-4 rounded-lg hover:opacity-90">{tl('GO')}</button>
           </div>
         </form>
 
         <div class="grid gap-4 md:grid-cols-2">
           <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
             <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-              <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">Functions</h2>
+              <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Functions')}</h2>
             </header>
             <div class="py-1">
               {FUNCS.map(([n, name, desc, view]) => (
@@ -1344,8 +1342,8 @@ function SymbolPrompt() {
                   class="w-full text-left px-3 py-[5px] font-mono text-[11.5px] hover:bg-surface-3 flex gap-2 items-baseline"
                 >
                   <span class="text-accent w-5">{n})</span>
-                  <span class="text-ink w-20">{name}</span>
-                  <span class="text-muted truncate">{desc}</span>
+                  <span class="text-ink w-20">{tl(name)}</span>
+                  <span class="text-muted truncate">{tl(desc)}</span>
                 </button>
               ))}
             </div>
@@ -1354,7 +1352,7 @@ function SymbolPrompt() {
           <div class="flex flex-col gap-4">
             <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
               <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-                <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">Watchlist</h2>
+                <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Watchlist')}</h2>
               </header>
               <div class="p-2.5 flex flex-wrap gap-1.5">
                 {watchlist.slice(0, 16).map((sym) => (
@@ -1371,7 +1369,7 @@ function SymbolPrompt() {
             {recents.length > 0 && (
               <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
                 <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-                  <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">Recent</h2>
+                  <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Recent')}</h2>
                 </header>
                 <div class="p-2.5 flex flex-wrap gap-1.5">
                   {recents.slice(0, 10).map((sym) => (
@@ -1388,12 +1386,10 @@ function SymbolPrompt() {
             )}
             <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
               <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-                <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">From the terminal</h2>
+                <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{tl('From the terminal')}</h2>
               </header>
               <div class="p-3 font-mono text-[11px] text-muted leading-relaxed">
-                <span class="text-ink-2">MU</span> open research · <span class="text-ink-2">ta MU</span> chart ·{' '}
-                <span class="text-ink-2">an MU</span> analysts · <span class="text-ink-2">vs MU NVDA</span> compare ·{' '}
-                <span class="text-ink-2">w MU</span> watch — full list: <span class="text-ink-2">h</span>
+                {tt('research.terminal_hint')}
               </div>
             </section>
           </div>
@@ -1479,7 +1475,7 @@ function DividendsView({ symbol }) {
           <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Dividends')} — {symbol}</h2>
         </header>
         {f == null ? (
-          <div class="px-3 py-2 font-mono text-[11px] text-muted animate-pulse">loading…</div>
+          <div class="px-3 py-2 font-mono text-[11px] text-muted animate-pulse">{tl('loading…')}</div>
         ) : (
           <>
             {cellRow('Yield', f.dividendYield != null ? fmtFracPct(f.dividendYield) : '—')}

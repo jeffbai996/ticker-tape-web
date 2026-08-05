@@ -34,24 +34,35 @@ export function assembleBriefing({ watchlist = [], quotes = {}, indices = [], in
     .map(([symbol, days]) => ({ symbol, days }))
     .sort((a, b) => a.days - b.days)
 
-  // Technical extremes — the setups worth a sentence in a morning note.
+  // Technical flags are for active conditions, not a second inventory of
+  // every name below its 52-week high. Cap and rank the list so the briefing
+  // stays a briefing.
   const techNotes = []
   for (const s of watchlist) {
     const t = quotes[s]?.tech
     if (!t) continue
     const notes = []
+    let severity = 0
     if (t.rsi != null && (t.rsi >= 70 || t.rsi <= 30)) notes.push(`RSI ${Math.round(t.rsi)}`)
-    if (t.volRatio != null && t.volRatio >= 2) notes.push(`${t.volRatio.toFixed(1)}x avg volume`)
-    if (t.offHigh != null && t.offHigh <= -15) notes.push(`${Math.round(t.offHigh)}% off 52w high`)
-    if (notes.length) techNotes.push({ symbol: s, notes })
+    if (t.rsi != null && (t.rsi >= 70 || t.rsi <= 30)) severity += Math.abs(t.rsi - 50)
+    if (t.volRatio != null && t.volRatio >= 2) {
+      notes.push(`${t.volRatio.toFixed(1)}x avg volume`)
+      severity += t.volRatio * 8
+    }
+    if (t.above200 === false && t.rs != null && t.rs <= -10) {
+      notes.push(`below 200d · RS ${Math.round(t.rs)}pp`)
+      severity += Math.abs(t.rs)
+    }
+    if (notes.length) techNotes.push({ symbol: s, notes, severity })
   }
+  techNotes.sort((a, b) => b.severity - a.severity)
 
   return {
     macro,
     movers,
     pulse: pulseStats(valid),
     earnings,
-    techNotes,
+    techNotes: techNotes.slice(0, 8).map(({ symbol, notes }) => ({ symbol, notes })),
     calendar: econEvents.slice(0, 5),
   }
 }

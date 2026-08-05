@@ -5,7 +5,7 @@ import { useNamedWatchlists, useQuotes, useWatchlist } from '../hooks.js'
 import { BUCKETS } from '../lib/symbols.js'
 import { pulseStats } from '../lib/pulse.js'
 import { fetchEarningsDate } from '../lib/fundamentals.js'
-import { ECON_EVENTS, upcomingEvents } from '../lib/markets.js'
+import { ECON_EVENTS, MARKET_DECK, upcomingEvents } from '../lib/markets.js'
 import { loadCatalysts, onCatalystsChange, mergedEvents } from '../lib/catalysts.js'
 import { fetchHistory } from '../lib/history.js'
 import {
@@ -162,10 +162,10 @@ function TuiRow({ symbol, data, earnDays, onRemove }) {
       >
         ★
       </button>
-      <div class="flex gap-4 min-w-0">
+      <div class="flex gap-1 min-w-0">
         <div class="flex-1 min-w-0 overflow-hidden">
-          <div class="flex items-baseline gap-2 max-sm:gap-1.5 font-mono text-[13px] max-sm:text-[12px] flex-nowrap max-sm:flex-wrap min-w-0">
-            <span class="tui-company-identity relative flex-1 basis-[92px] min-w-0 max-sm:basis-[76px] @min-[820px]:flex-none @min-[820px]:w-14 text-ink font-[650] font-tick text-[12px]">
+          <div class="flex items-baseline gap-1.5 max-sm:gap-1 font-mono text-[13px] max-sm:text-[12px] flex-nowrap max-sm:flex-wrap min-w-0">
+            <span class="tui-company-identity relative flex-1 min-w-0 @min-[820px]:flex-none @min-[820px]:w-14 text-ink font-[650] font-tick text-[12px]">
               <span class="tui-company-symbol">{symbol}</span>
               {/* Compact/high-zoom rows use one identity slot: hover swaps the
                   ticker out and the company name into its exact footprint.
@@ -188,12 +188,12 @@ function TuiRow({ symbol, data, earnDays, onRemove }) {
             </span>
             {/* The quote cluster is indivisible. The identity slot gets the
                 row's spare width, but must yield before PRE/AH is clipped. */}
-            <span class="tui-quote-cluster flex items-baseline gap-2 max-sm:gap-1.5 shrink-0">
-              <span class="text-ink font-semibold w-[4.75rem] max-sm:w-[4.25rem] text-right shrink-0">
+            <span class="tui-quote-cluster flex items-baseline gap-1.5 max-sm:gap-1 shrink-0">
+              <span class="text-ink font-semibold w-[4.4rem] max-sm:w-[4.1rem] text-right shrink-0">
                 {q ? <FlashPrice price={q.price} fmt={fmtPrice} /> : '—'}
               </span>
               {q && (
-                <span class={`${up ? 'text-up' : 'text-down'} whitespace-nowrap w-[8rem] @max-[800px]:w-auto max-sm:w-auto shrink-0`}>
+                <span class={`${up ? 'text-up' : 'text-down'} whitespace-nowrap w-[7.25rem] @max-[800px]:w-auto max-sm:w-auto shrink-0`}>
                   {up ? '▲' : '▼'} <FlashMetric value={q.change} fmt={fmtAbsChange} kind="change" />{' '}
                   <span class="font-normal text-[11px] max-sm:text-[10px]">
                     (<FlashMetric value={q.pct} fmt={fmtPct} kind="change" />)
@@ -232,7 +232,7 @@ function TuiRow({ symbol, data, earnDays, onRemove }) {
               <CompactDayRange lo={q?.dayLow} hi={q?.dayHigh} v={q?.price} />
             )}
             <RangeBar label="DAY" lo={q?.dayLow} hi={q?.dayHigh} v={q?.price} />
-            <span class="w-[4.5rem] @min-[820px]:w-[9.5rem] text-right whitespace-nowrap">
+            <span class="w-16 @min-[820px]:w-[9.5rem] text-right whitespace-nowrap">
               {q && quoteSpread(q) != null && (
                 <span class="hidden @min-[820px]:inline mr-2">
                   <span class="text-accent/60 text-[9px]">SPR</span>{' '}
@@ -251,7 +251,7 @@ function TuiRow({ symbol, data, earnDays, onRemove }) {
             {data?.tech && (
               <RangeBar label="52W" lo={data.tech.low52} hi={data.tech.high52} v={q?.price} />
             )}
-            <span class="w-[4.5rem] @min-[820px]:w-[9.5rem] text-right">
+            <span class="w-16 @min-[820px]:w-[9.5rem] text-right">
               {avgVol != null && (
                 <>
                   <span class="text-accent/60 text-[9px]">AVG</span>{' '}
@@ -342,6 +342,34 @@ function MacroCalPanel() {
         ))}
       </div>
     </div>
+    </section>
+  )
+}
+
+function MarketDeckPanel() {
+  const quotes = useQuotes(MARKET_DECK.map((item) => item.symbol))
+  return (
+    <section class="bg-surface-1 border border-line rounded-xl overflow-hidden flex flex-col">
+      <header class="flex items-center px-3 py-1.5 border-b border-line-2 bg-surface-2">
+        <a href="#/markets" class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase hover:no-underline">
+          {tl('Global markets')}
+        </a>
+        <a href="#/markets" aria-label={tl('Open markets')} class="ml-auto text-muted hover:text-accent hover:no-underline">→</a>
+      </header>
+      <div class="grid grid-cols-2 py-1">
+        {MARKET_DECK.map((item) => {
+          const q = quotes[item.symbol]?.quote
+          return (
+            <a key={item.symbol} href={`#/research/${item.symbol.toLowerCase()}`}
+              class="min-w-0 flex items-baseline gap-1.5 px-2.5 py-[2px] font-mono text-[10.5px] hover:bg-surface-3 hover:no-underline odd:border-r odd:border-line">
+              <span class="font-anth text-muted truncate">{tl(item.label)}</span>
+              <span class={`ml-auto shrink-0 font-semibold ${!q ? 'text-muted' : q.pct >= 0 ? 'text-up' : 'text-down'}`}>
+                {q ? fmtPct(q.pct) : '—'}
+              </span>
+            </a>
+          )
+        })}
+      </div>
     </section>
   )
 }
@@ -505,7 +533,7 @@ function AddWidget() {
         <input
           value={sym}
           onInput={(e) => setSym(e.currentTarget.value)}
-          placeholder="chart: SYM"
+          placeholder={tl('chart: SYM')}
           class="flex-1 min-w-0 bg-transparent border border-line rounded px-1.5 py-0.5 font-mono text-[10px] text-ink uppercase outline-none focus:border-accent placeholder:text-muted"
         />
         <button type="submit" class="font-mono text-[10px] px-2 rounded border border-line text-ink-2 hover:border-accent hover:text-accent">+</button>
@@ -571,6 +599,7 @@ function AddSymbolRow({ onAdd, isPresent }) {
  *  their symbols away from the built-in buckets. */
 function RailWidget({ w, all, watchlist, earnDays, quotes }) {
   if (w.type === 'pulse') return <PulsePanel quotes={all} />
+  if (w.type === 'markets') return <MarketDeckPanel />
   if (w.type === 'earnings') return <EarningsPanel symbols={watchlist} days={earnDays} quotes={quotes} />
   if (w.type === 'calendar') return <MacroCalPanel />
   const title = w.type === 'movers' ? tl('Movers') : null
@@ -584,6 +613,53 @@ function RailWidget({ w, all, watchlist, earnDays, quotes }) {
       {w.type === 'movers' && <MoversPanel quotes={all} />}
       {w.type === 'chart' && <ChartWidget symbol={w.symbol} />}
     </section>
+  )
+}
+
+function SectorScroller({ watchlist, quotes, onAdd }) {
+  const scroller = useRef(null)
+  const [canRight, setCanRight] = useState(false)
+  useEffect(() => {
+    const el = scroller.current
+    if (!el) return
+    const measure = () => setCanRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 2)
+    measure()
+    el.addEventListener('scroll', measure, { passive: true })
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => { el.removeEventListener('scroll', measure); observer.disconnect() }
+  }, [watchlist.join(',')])
+  const bucketAvg = (symbols) => {
+    const pcts = symbols.map((s) => quotes[s]?.quote?.pct).filter((p) => p != null)
+    return pcts.length ? pcts.reduce((a, b) => a + b, 0) / pcts.length : null
+  }
+  return (
+    <div class="relative md:ml-auto md:flex-1 min-w-0">
+      <div ref={scroller}
+        class={`dashboard-sectors flex items-baseline gap-x-4 px-1 pb-2 md:px-0 md:pb-0 min-w-0 font-mono text-[10px] flex-nowrap overflow-x-auto no-scrollbar ${canRight ? 'pr-9' : ''}`}>
+        {BUCKETS.map((b) => {
+          const inList = b.symbols.filter((s) => watchlist.includes(s))
+          const avg = bucketAvg(inList)
+          if (avg == null) return null
+          return (
+            <a key={b.name} href="#/markets/sectors" class="whitespace-nowrap hover:no-underline hover:text-ink">
+              <span class="text-muted uppercase tracking-wider">{tl(b.name)}</span>{' '}
+              <span class={avg >= 0 ? 'text-up' : 'text-down'}>{fmtPct(avg)}</span>
+            </a>
+          )
+        })}
+        <QuickAdd onAdd={onAdd} />
+      </div>
+      {canRight && (
+        <span class="sector-scroll-fade absolute right-0 inset-y-0 flex items-center pl-1">
+          <button type="button" aria-label={tl('Scroll sectors right')}
+            onClick={() => scroller.current?.scrollBy({ left: 180, behavior: 'smooth' })}
+            class="grid h-6 w-6 place-items-center rounded-full border border-line-2 bg-surface-2 text-muted hover:text-accent hover:border-accent/50">
+            <svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m6 3.5 4.5 4.5L6 12.5" /></svg>
+          </button>
+        </span>
+      )}
+    </div>
   )
 }
 
@@ -666,11 +742,6 @@ export function Dashboard({ listId = null }) {
     return () => clearInterval(t)
   }, [])
   const all = watchlist.map((s) => quotes[s]?.quote).filter((q) => q?.pct != null)
-  const bucketAvg = (symbols) => {
-    const pcts = symbols.map((s) => quotes[s]?.quote?.pct).filter((p) => p != null)
-    return pcts.length ? pcts.reduce((a, b) => a + b, 0) / pcts.length : null
-  }
-
   return (
     <div class="flex-1 p-3 select-text min-w-0">
       <div class="dashboard-toolbar md:flex md:items-center md:gap-4 md:px-1 md:pb-2 min-w-0">
@@ -709,20 +780,7 @@ export function Dashboard({ listId = null }) {
         {/* Thesis strip: bucket averages at a glance. One swipeable line at
             every width — it wrapped to four lines of prime real estate
             (Jeff 2026-08-04: "keep it all on one line somehow"). */}
-        <div class="dashboard-sectors flex items-baseline gap-x-4 px-1 pb-2 md:px-0 md:pb-0 md:ml-auto md:flex-1 min-w-0 font-mono text-[10px] flex-nowrap overflow-x-auto no-scrollbar">
-          {BUCKETS.map((b) => {
-            const inList = b.symbols.filter((s) => watchlist.includes(s))
-            const avg = bucketAvg(inList)
-            if (avg == null) return null
-            return (
-              <span key={b.name} class="whitespace-nowrap">
-                <span class="text-muted uppercase tracking-wider">{tl(b.name)}</span>{' '}
-                <span class={avg >= 0 ? 'text-up' : 'text-down'}>{fmtPct(avg)}</span>
-              </span>
-            )
-          })}
-          <QuickAdd onAdd={addSymbol} />
-        </div>
+        <SectorScroller watchlist={watchlist} quotes={quotes} onAdd={addSymbol} />
       </div>
 
       {/* lg (1024px) not xl: the rail used to vanish one browser-zoom notch in.
@@ -747,9 +805,9 @@ export function Dashboard({ listId = null }) {
                   </button>
                   <span class="hidden group-hover:flex gap-0.5">
                     <button onClick={(e) => { e.stopPropagation(); moveGroup(g.name, -1, names) }}
-                            class="text-[10px] text-muted hover:text-ink px-1" title="move up">↑</button>
+                            class="text-[10px] text-muted hover:text-ink px-1" title={tl('move up')}>↑</button>
                     <button onClick={(e) => { e.stopPropagation(); moveGroup(g.name, 1, names) }}
-                            class="text-[10px] text-muted hover:text-ink px-1" title="move down">↓</button>
+                            class="text-[10px] text-muted hover:text-ink px-1" title={tl('move down')}>↓</button>
                   </span>
                 </div>
                 {!folded && g.symbols.map((s) => (

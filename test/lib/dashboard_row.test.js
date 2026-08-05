@@ -8,7 +8,7 @@ const css = readFileSync(resolve(process.cwd(), 'src/styles/main.css'), 'utf8')
 describe('compact dashboard company name', () => {
   it('swaps the ticker for the company name in the same fixed slot', () => {
     expect(dashboard).toContain('class="tui-row group/row')
-    expect(dashboard).toContain('class="tui-company-identity relative flex-1 basis-[92px] min-w-0 max-sm:basis-[76px] @min-[820px]:flex-none @min-[820px]:w-14')
+    expect(dashboard).toContain('class="tui-company-identity relative flex-1 min-w-0')
     expect(dashboard).toContain('class="tui-company-symbol"')
     expect(dashboard).toContain('class="tui-company-name-swap @min-[820px]:hidden"')
     expect(dashboard).toContain('aria-hidden="true"')
@@ -17,8 +17,8 @@ describe('compact dashboard company name', () => {
     expect(css).toContain('.tui-row:focus-visible .tui-company-name-swap')
     expect(css).toMatch(/\.tui-company-name-swap\s*\{[\s\S]*position: absolute;[\s\S]*inset: 0;/)
     expect(css).toMatch(/\.tui-company-identity\s*\{[\s\S]*overflow: hidden;/)
-    expect(css).toMatch(/\.tui-company-name-swap\s*\{[\s\S]*padding-right: 4px;/)
-    expect(dashboard).toContain('class="tui-quote-cluster flex items-baseline gap-2 max-sm:gap-1.5 shrink-0"')
+    expect(css).toMatch(/\.tui-company-name-swap\s*\{[\s\S]*padding-right: 2px;/)
+    expect(dashboard).toContain('class="tui-quote-cluster flex items-baseline gap-1.5 max-sm:gap-1 shrink-0"')
     expect(dashboard).toMatch(/tui-quote-cluster[\s\S]*q\.extLabel[\s\S]*q\.extPrice/)
     expect(css).toMatch(/prefers-reduced-motion:[\s\S]*\.tui-company-name-swap/)
   })
@@ -74,8 +74,11 @@ describe('compact dashboard company name', () => {
   it('merges desktop controls and the scrollable sector tape into one row', () => {
     expect(dashboard).toContain('class="dashboard-toolbar md:flex md:items-center md:gap-4 md:px-1 md:pb-2 min-w-0"')
     expect(dashboard).toContain('class="dashboard-controls flex items-center gap-2 px-1 pb-2 md:px-0 md:pb-0 min-w-0 shrink-0"')
-    expect(dashboard).toContain('class="dashboard-sectors flex items-baseline gap-x-4 px-1 pb-2 md:px-0 md:pb-0 md:ml-auto md:flex-1 min-w-0')
+    expect(dashboard).toContain('class={`dashboard-sectors flex items-baseline gap-x-4 px-1 pb-2 md:px-0 md:pb-0 min-w-0')
     expect(dashboard).toContain('overflow-x-auto no-scrollbar')
+    expect(dashboard).toContain('function SectorScroller')
+    expect(dashboard).toContain('aria-label={tl(\'Scroll sectors right\')}')
+    expect(css).toContain('.sector-scroll-fade')
   })
 
   it('shows raw bid-ask spread without a basis-point suffix', () => {

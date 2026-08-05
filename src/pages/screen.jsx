@@ -77,8 +77,8 @@ function ScreenTable({ symbols, hist }) {
             <th class="px-3 py-2 text-left">{tl('Sym')}</th>
             <th class="px-2 py-2 text-right">{tl('Price')}</th>
             <th class="px-2 py-2 text-right">{tl('Day %')}</th>
-            <th class="px-2 py-2 text-right">RSI 14</th>
-            <th class="px-2 py-2 text-right">vs SMA200</th>
+            <th class="px-2 py-2 text-right">{tl('RSI 14')}</th>
+            <th class="px-2 py-2 text-right">{tl('vs SMA200')}</th>
             <th class="px-2 py-2 text-right">52w range</th>
             <th class="px-3 py-2 text-right">1Y %</th>
           </tr>
@@ -90,7 +90,7 @@ function ScreenTable({ symbols, hist }) {
               return (
                 <tr key={sym} class="border-b border-line last:border-0">
                   <td class="px-3 py-[3px] font-bold text-accent">{sym}</td>
-                  <td colSpan={6} class="px-2 py-[3px] text-down text-[11px]">no data</td>
+                  <td colSpan={6} class="px-2 py-[3px] text-down text-[11px]">{tl('no data')}</td>
                 </tr>
               )
             }
@@ -357,12 +357,12 @@ function TechScreen({ symbols, hist }) {
       <table class="w-full border-collapse font-mono text-[11px]">
         <thead>
           <tr class="bg-surface-2 text-[9px] text-muted uppercase tracking-wider">
-            <th class="px-3 py-1.5 text-left">sym</th>
-            <th class="px-2 py-1.5 text-right">px</th>
+            <th class="px-3 py-1.5 text-left">{tl('sym')}</th>
+            <th class="px-2 py-1.5 text-right">{tl('px')}</th>
             {th('rsi', 'rsi14')}
-            <th class="px-2 py-1.5 text-right">vs 50d</th>
-            <th class="px-2 py-1.5 text-right">vs 200d</th>
-            <th class="px-2 py-1.5 text-center">cross</th>
+            <th class="px-2 py-1.5 text-right">{tl('vs 50d')}</th>
+            <th class="px-2 py-1.5 text-right">{tl('vs 200d')}</th>
+            <th class="px-2 py-1.5 text-center">{tl('cross')}</th>
             {th('volX', 'vol x20d')}
             {th('offHigh', 'off high')}
             {th('macdHist', 'macd')}
@@ -383,8 +383,8 @@ function TechScreen({ symbols, hist }) {
                   {d == null ? '—' : `${d >= 0 ? '+' : ''}${d.toFixed(1)}%`}</td>
               })}
               <td class="px-2 py-[3px] text-center">
-                {r.cross === 'golden' && <span class="text-up font-bold text-[10px]">GOLDEN</span>}
-                {r.cross === 'death' && <span class="text-down font-bold text-[10px]">DEATH</span>}
+                {r.cross === 'golden' && <span class="text-up font-bold text-[10px]">{tl('GOLDEN')}</span>}
+                {r.cross === 'death' && <span class="text-down font-bold text-[10px]">{tl('DEATH')}</span>}
               </td>
               <td class={`px-2 py-[3px] text-right ${r.volX != null && r.volX >= 2 ? 'text-accent font-semibold' : 'text-ink-2'}`}>
                 {r.volX != null ? `${r.volX.toFixed(1)}x` : '—'}

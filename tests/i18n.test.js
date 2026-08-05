@@ -6,10 +6,10 @@ afterEach(() => setLocale('en'))
 describe('recent interface translations', () => {
   it('translates dashboard and watchlist controls added in recent passes', () => {
     setLocale('zh')
-    expect(tl('Watchlists')).toBe('自选列表')
+    expect(tl('Watchlists')).toBe('自选股')
     expect(tl('All')).toBe('全部')
     expect(tl('Sort')).toBe('排序')
-    expect(t('watchlists.empty')).toBe('还没有股票。打开这个列表开始添加。')
+    expect(t('watchlists.empty')).toBe('暂无股票。打开这组自选股即可添加。')
   })
 
   it('translates the new chat workspace chrome', () => {
