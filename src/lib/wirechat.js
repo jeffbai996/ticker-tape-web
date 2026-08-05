@@ -73,12 +73,13 @@ export function parseToolCall(text, defs = TOOL_DEFS) {
  * any output if the endpoint is missing so callers can fall back to
  * wireComplete.
  */
-export async function wireStream({ model, effort, system, messages, onDelta, onThinking }) {
+export async function wireStream({ model, effort, system, messages, onDelta, onThinking, signal }) {
   const base = wireUrl().replace(/\/$/, '')
   const resp = await fetch(`${base}/api/chat/stream`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ model, effort, system, messages }),
+    signal,
   })
   if (!resp.ok || !resp.body) throw new Error(`wire stream ${resp.status}`)
   const reader = resp.body.getReader()

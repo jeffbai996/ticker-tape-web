@@ -525,6 +525,8 @@ export function Chat() {
   // pressing AI Chat in the nav returns here with the thread still parked.
   const [atHome, setAtHome] = useState(takeChatHomePending)
   const scrollRef = useRef(null)
+  const stickRef = useRef(true)      // autoscroll only while parked at the tail
+  const abortRef = useRef(null)
   const inputRef = useRef(null)
   const historyRef = useRef(history)
   const queuedRef = useRef([])
@@ -578,8 +580,10 @@ export function Chat() {
     fetchSpend().then(setSpend).catch(() => {})
   }, [])
 
+  // follow the stream only when the user is already at the tail — scrolling
+  // up to reread mustn't get yanked back down on every delta
   useEffect(() => {
-    scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight)
+    if (stickRef.current) scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight)
   }, [history])
 
   const clearComposer = () => {
@@ -667,7 +671,9 @@ export function Chat() {
     }
 
     try {
+      abortRef.current = new AbortController()
       await runAgentic({
+        signal: abortRef.current.signal,
         model: runModel,
         effort: runEffort,
         system,
@@ -690,9 +696,12 @@ export function Chat() {
       traceEntries(added, true)
       finish()
     } catch (err) {
-      setError(String(err.message || err))
+      if (err?.name !== 'AbortError') setError(String(err.message || err))
       setActivity((steps) => steps.map((step) => ({ ...step, done: true })))
+      if (live) added = [...added, { role: 'assistant', content: live }]
       finish()
+    } finally {
+      abortRef.current = null
     }
   }
 
@@ -728,6 +737,12 @@ export function Chat() {
       return
     }
     runTurns(item)
+  }
+
+  const stop = () => {
+    queuedRef.current = []
+    setQueued([])
+    abortRef.current?.abort()
   }
 
   const clear = () => {
@@ -773,11 +788,25 @@ export function Chat() {
               autoGrow(e.currentTarget)
             }}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(e) }
+              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(e); return }
+              if (e.key === 'ArrowUp' && !input) {
+                const lastQ = [...historyRef.current].reverse().find((m) => m.role === 'user')
+                if (lastQ) { e.preventDefault(); setInput(lastQ.content); autoGrow(e.currentTarget) }
+              }
             }}
             placeholder={busy ? tt('chat.follow_up') : tt('chat.placeholder')}
             class="flex-1 bg-transparent resize-none outline-none text-[13.5px] leading-[21px] py-[5.5px] text-ink placeholder:text-muted max-h-40 font-anth"
           />
+          {busy && (
+            <button
+              type="button"
+              onClick={stop}
+              title="stop generating"
+              class="shrink-0 w-8 h-8 grid place-items-center rounded-md border border-line-2 text-ink-2 hover:text-down hover:border-down/60 transition-colors"
+            >
+              <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>
+            </button>
+          )}
           <button
             type="submit"
             disabled={!input.trim()}
@@ -968,7 +997,14 @@ export function Chat() {
         </div>
       ) : (
         <>
-          <div ref={scrollRef} class="flex-1 overflow-y-auto min-h-0 max-w-3xl w-full flex flex-col gap-2 px-1">
+          <div
+            ref={scrollRef}
+            onScroll={(e) => {
+              const el = e.currentTarget
+              stickRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120
+            }}
+            class="flex-1 overflow-y-auto min-h-0 max-w-3xl w-full flex flex-col gap-2 px-1"
+          >
         {history.map((m, i) => {
           if (m.role === 'tool') return null
           if (m.role === 'assistant' && m.toolCalls?.length) {

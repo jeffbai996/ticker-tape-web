@@ -16,13 +16,60 @@ const WRITER_KEY = 'report_model'
 // Markdown-lite: headers + bold + bullets, enough to render a model's memo
 // without a parser dependency. Anything fancier falls through as plain text.
 export function MdLite({ text }) {
-  return text.split('\n').map((line, i) => {
+  // inline pass: **bold**, `code`, [label](url) — split order matters, bold
+  // first so a bold segment can still carry code inside it is NOT supported
+  // (flat, single-level — models rarely nest these in chat answers)
+  const parts = (s) =>
+    s.split(/(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\(https?:\/\/[^)\s]+\))/).map((seg, j) => {
+      if (seg.startsWith('**') && seg.endsWith('**')) {
+        return <b key={j} class="text-ink font-semibold">{seg.slice(2, -2)}</b>
+      }
+      if (seg.startsWith('`') && seg.endsWith('`')) {
+        return <code key={j} class="font-mono text-[0.92em] text-accent-2 bg-surface-2 rounded px-1">{seg.slice(1, -1)}</code>
+      }
+      const link = seg.match(/^\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)$/)
+      if (link) {
+        return <a key={j} href={link[2]} target="_blank" rel="noopener" class="text-accent hover:underline">{link[1]}</a>
+      }
+      return seg
+    })
+
+  // block pass with table grouping: consecutive |-rows render as a real table
+  const lines = text.split('\n')
+  const out = []
+  for (let i = 0; i < lines.length; i++) {
+    const isRow = (l) => /^\s*\|.*\|\s*$/.test(l)
+    if (isRow(lines[i])) {
+      const rows = []
+      while (i < lines.length && isRow(lines[i])) rows.push(lines[i++])
+      i--
+      const cells = (l) => l.trim().replace(/^\||\|$/g, '').split('|').map((c) => c.trim())
+      const body = rows.filter((r) => !/^[\s|:-]+$/.test(r))
+      const [head, ...rest] = body
+      out.push(
+        <div key={`t${i}`} class="overflow-x-auto my-1.5">
+          <table class="font-mono text-[11px] border-collapse">
+            {head && <thead><tr>
+              {cells(head).map((c, j) => <th key={j} class="text-left text-muted font-semibold uppercase text-[9.5px] tracking-wider border-b border-line px-2 py-0.5">{parts(c)}</th>)}
+            </tr></thead>}
+            <tbody>
+              {rest.map((r, ri) => <tr key={ri} class="border-b border-line/40 last:border-0">
+                {cells(r).map((c, j) => <td key={j} class="px-2 py-0.5 text-ink-2 whitespace-nowrap">{parts(c)}</td>)}
+              </tr>)}
+            </tbody>
+          </table>
+        </div>,
+      )
+      continue
+    }
+    out.push(renderLine(lines[i], i, parts))
+  }
+  return out
+}
+
+function renderLine(line, i, parts) {
+  {
     const h = line.match(/^#{1,4}\s+(.*)/)
-    const parts = (s) =>
-      s.split(/(\*\*[^*]+\*\*)/).map((seg, j) =>
-        seg.startsWith('**') && seg.endsWith('**')
-          ? <b key={j} class="text-ink font-semibold">{seg.slice(2, -2)}</b>
-          : seg)
     if (h) return <div key={i} class="font-anth font-bold text-accent text-[12.5px] pt-2 pb-0.5">{parts(h[1])}</div>
     if (/^\s*[-*]\s+/.test(line)) {
       return <div key={i} class="pl-4 relative"><span class="absolute left-1 text-muted">·</span>{parts(line.replace(/^\s*[-*]\s+/, ''))}</div>
@@ -33,7 +80,7 @@ export function MdLite({ text }) {
     }
     if (/^\s*---+\s*$/.test(line)) return <hr key={i} class="border-line my-1.5" />
     return <div key={i} class="min-h-[0.6em]">{parts(line)}</div>
-  })
+  }
 }
 
 /**

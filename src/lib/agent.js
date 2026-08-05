@@ -50,7 +50,7 @@ function receiveFollowUps(takeFollowUps, added, onRound) {
 }
 
 async function runAgenticOverWire({
-  model, effort, system, messages, onDelta, onThinking, onRound, takeFollowUps,
+  model, effort, system, messages, onDelta, onThinking, onRound, takeFollowUps, signal,
 }) {
   const added = []
   const sys = `${system}\n\n${toolProtocol()}`
@@ -72,13 +72,15 @@ async function runAgenticOverWire({
     try {
       ;({ text } = await wireStream({
         model, effort, system: roundSystem, messages: convo,
-        onDelta, onThinking,
+        onDelta, onThinking, signal,
       }))
-    } catch {
+    } catch (err) {
+      if (signal?.aborted) throw err        // a user stop is not a fallback case
       ;({ text } = await wireComplete({
         model, effort, system: roundSystem, messages: convo,
       }))
     }
+    if (signal?.aborted) throw new DOMException('stopped', 'AbortError')
     const call = last ? null : parseToolCall(text)
     if (!call) {
       added.push({ role: 'assistant', content: text })
@@ -96,13 +98,13 @@ async function runAgenticOverWire({
 }
 
 export async function runAgentic({
-  model, effort, system, messages, onDelta, onThinking, onRound, takeFollowUps,
+  model, effort, system, messages, onDelta, onThinking, onRound, takeFollowUps, signal,
 }) {
   // Private build talks to the user's own router; the metered API is the
   // fallback for anyone without one.
   if (wireChatAvailable()) {
     return runAgenticOverWire({
-      model, effort, system, messages, onDelta, onThinking, onRound, takeFollowUps,
+      model, effort, system, messages, onDelta, onThinking, onRound, takeFollowUps, signal,
     })
   }
   const added = []
