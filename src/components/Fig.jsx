@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
-import {
-  RESUME_FLASH_QUIET_MS, TICK_FLASH_MS, tickFlashDirection,
-} from '../lib/tickFlash.js'
+import { TICK_FLASH_MS, tickFlashDirection } from '../lib/tickFlash.js'
 
-export { RESUME_FLASH_QUIET_MS, TICK_FLASH_MS } from '../lib/tickFlash.js'
+export { TICK_FLASH_MS } from '../lib/tickFlash.js'
 
 // Figures with quiet units: magnitude letters (T/M/B/d) drop to gray and
 // ~82% size, signs and % just drop size — the digits carry the weight.
@@ -31,10 +29,8 @@ export function FlashPrice({ price, fmt }) {
   const text = price != null ? fmt(price) : '—'
   const prevRef = useRef({ text, price })
   const latestRef = useRef({ text, price })
-  const baselinePendingRef = useRef(true)
-  // A route revisit remounts the dashboard without firing visibilitychange.
-  // Give its streamer snapshot the same quiet landing as a restored tab.
-  const quietUntilRef = useRef(Date.now() + RESUME_FLASH_QUIET_MS)
+  const baselinePendingRef = useRef(false)
+  const baselineTimerRef = useRef(null)
   const timerRef = useRef(null)
   const [st, setSt] = useState(null)
   latestRef.current = { text, price }
@@ -44,15 +40,23 @@ export function FlashPrice({ price, fmt }) {
     const rebaseline = () => {
       prevRef.current = latestRef.current
       baselinePendingRef.current = true
-      quietUntilRef.current = document.hidden
-        ? Number.POSITIVE_INFINITY
-        : Date.now() + RESUME_FLASH_QUIET_MS
+      clearTimeout(baselineTimerRef.current)
+      // The feed hook lands hidden-tab catch-up on the next animation frame.
+      // Drop this flag shortly after that frame so the next real tick paints.
+      if (!document.hidden) {
+        baselineTimerRef.current = setTimeout(() => {
+          baselinePendingRef.current = false
+        }, 80)
+      }
       clearTimeout(timerRef.current)
       timerRef.current = null
       setSt(null)
     }
     document.addEventListener('visibilitychange', rebaseline)
-    return () => document.removeEventListener('visibilitychange', rebaseline)
+    return () => {
+      document.removeEventListener('visibilitychange', rebaseline)
+      clearTimeout(baselineTimerRef.current)
+    }
   }, [])
 
   useEffect(() => {
@@ -61,10 +65,8 @@ export function FlashPrice({ price, fmt }) {
     const dir = tickFlashDirection(prev.price, price, {
       baselinePending: baselinePendingRef.current,
       hidden: typeof document !== 'undefined' && document.hidden,
-      quietUntil: quietUntilRef.current,
     })
-    // Consume the mount/resume baseline only on a changed visible print. Each
-    // symbol therefore absorbs its own delayed streamer catch-up independently.
+    // Consume the resume baseline on the one coalesced catch-up render.
     if (prev.price != null && price != null && prev.price !== price
         && !(typeof document !== 'undefined' && document.hidden)) {
       baselinePendingRef.current = false
