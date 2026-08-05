@@ -192,18 +192,6 @@ function NoteAdd({ placeholder, onAdd }) {
   )
 }
 
-/** Three-dot pulse — a spinner reads as an error state, this reads as work. */
-function Thinking() {
-  return (
-    <span class="inline-flex items-center gap-1 py-1" aria-label="thinking">
-      {[0, 1, 2].map((i) => (
-        <span key={i} class="w-1.5 h-1.5 rounded-full bg-muted animate-pulse"
-              style={`animation-delay:${i * 160}ms`} />
-      ))}
-    </span>
-  )
-}
-
 /** Composer grows with the message instead of scrolling a one-line box. */
 function autoGrow(el) {
   el.style.height = 'auto'
@@ -246,62 +234,77 @@ function ToolChips({ calls, results }) {
   )
 }
 
-function ActivityTrace({ steps, busy, think }) {
-  // per-step elapsed clock, operator-style: first sighting of an un-done key
-  // stamps its start; a 1s tick repaints while anything is running
-  const startsRef = useRef({})
+function durationLabel(ms) {
+  const sec = Math.max(0, Math.floor(ms / 1000))
+  if (sec < 60) return `${sec}s`
+  return `${Math.floor(sec / 60)}m ${sec % 60}s`
+}
+
+function traceArgs(args) {
+  if (!args || typeof args !== 'object' || !Object.keys(args).length) return ''
+  const raw = Object.entries(args)
+    .map(([key, value]) => `${key}: ${typeof value === 'string' ? value : JSON.stringify(value)}`)
+    .join(' · ')
+  return raw.length > 320 ? `${raw.slice(0, 319)}…` : raw
+}
+
+/** One complete provider/tool timeline. Live traces stay open; completed traces
+ * fold into an Operator-style "Worked for" row without discarding the steps. */
+function ActivityTrace({ steps, busy = false, startedAt }) {
+  const [open, setOpen] = useState(busy)
   const [, tick] = useState(0)
-  const anyRunning = steps.some((s) => !s.done)
+  useEffect(() => { if (busy) setOpen(true) }, [busy])
   useEffect(() => {
-    if (!anyRunning) return
-    const t = setInterval(() => tick((n) => n + 1), 1000)
-    return () => clearInterval(t)
-  }, [anyRunning])
-  for (const s of steps) {
-    if (!s.done && startsRef.current[s.key] == null) startsRef.current[s.key] = Date.now()
-  }
-  const elapsed = (key) => {
-    const t0 = startsRef.current[key]
-    if (!t0) return ''
-    const sec = Math.floor((Date.now() - t0) / 1000)
-    return sec >= 1 ? (sec < 60 ? `${sec}s` : `${Math.floor(sec / 60)}m ${sec % 60}s`) : ''
-  }
-  if (!steps.length) return null
-  const body = (
-    <div class="mt-1 ml-1 pl-2 border-l border-line flex flex-col gap-1">
-      {steps.map((step) => (
-        <div key={step.key} class="flex flex-col gap-0.5">
-          <div class="flex items-baseline gap-1.5 font-mono text-[10px]">
-            <span class={step.done ? 'text-up' : 'text-accent animate-pulse'}>{step.done ? '✓' : '●'}</span>
-            <span class={step.done ? '' : 'text-ink-2'}>{step.label}</span>
-            {!step.done && <span class="text-muted tabular-nums">{elapsed(step.key)}</span>}
-          </div>
-          {/* the model's live reasoning feed rides INSIDE its step — the
-              tail of it, operator-style, not a separate bubble above */}
-          {step.key === 'model' && !step.done && think && (
-            <div class="ml-4 max-w-[68ch] font-anth text-[10.5px] italic leading-snug text-muted/80 whitespace-pre-wrap [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:4] overflow-hidden">
-              {think.slice(-600)}
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
-  )
-  if (busy) {
-    return (
-      <div class="self-start max-w-[95%] text-muted">
-        <div class="font-mono text-[10px]">Working · {steps.length} {steps.length === 1 ? 'step' : 'steps'}</div>
-        {body}
-      </div>
-    )
-  }
+    if (!busy) return
+    const timer = setInterval(() => tick((n) => n + 1), 1000)
+    return () => clearInterval(timer)
+  }, [busy])
+  if (!steps?.length) return null
+
+  const now = Date.now()
+  const first = startedAt || steps[0]?.startedAt || now
+  const last = busy ? now : Math.max(...steps.map((step) => step.endedAt || step.startedAt || first))
+  const running = [...steps].reverse().find((step) => step.status === 'running')
+  const failed = steps.some((step) => step.status === 'error')
+  const title = busy ? (running?.verb || running?.label || 'Working') : failed ? 'Stopped after' : 'Worked for'
+  const elapsed = durationLabel(last - first)
+
   return (
-    <details class="self-start max-w-[95%] text-muted">
-      <summary class="cursor-pointer select-none font-mono text-[10px] hover:text-ink">
-        Activity · {steps.length} {steps.length === 1 ? 'step' : 'steps'}
-      </summary>
-      {body}
-    </details>
+    <div class={`chat-trace w-full max-w-[92%] self-start text-muted ${busy ? 'is-live' : ''}`}>
+      <button type="button" class="chat-trace-head" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
+        <span class={`chat-trace-mark ${busy ? 'is-running' : failed ? 'is-error' : 'is-done'}`} aria-hidden="true">
+          {busy ? (
+            <svg viewBox="0 0 20 20"><path d="M4 10a6 6 0 0 1 10.2-4.2M16 10a6 6 0 0 1-10.2 4.2" /></svg>
+          ) : null}
+        </span>
+        <span class="chat-trace-title">{title}{busy ? '' : ` ${elapsed}`}</span>
+        {busy && <span class="font-mono text-[9px] tabular-nums text-muted">{elapsed}</span>}
+        <span class="chat-trace-count">{steps.length} {steps.length === 1 ? 'step' : 'steps'}</span>
+        <span class={`chat-trace-caret ${open ? 'is-open' : ''}`} />
+      </button>
+      <div class={`chat-trace-reveal ${open ? 'is-open' : ''}`}>
+        <div>
+          <div class="chat-trace-body">
+            {steps.map((step) => {
+              const end = step.endedAt || now
+              const stepElapsed = step.startedAt ? durationLabel(end - step.startedAt) : ''
+              return (
+                <div key={step.key} class={`chat-trace-step is-${step.status || 'done'}`}>
+                  <span class="chat-trace-node" />
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-baseline gap-2">
+                      <span class="chat-trace-label">{step.label}</span>
+                      {stepElapsed && <span class="chat-trace-time">{stepElapsed}</span>}
+                    </div>
+                    {step.detail && <div class={`chat-trace-detail ${step.kind === 'tool' ? 'is-tool' : ''}`}>{step.detail}</div>}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -507,7 +510,7 @@ export function Chat() {
   const [busy, setBusy] = useState(false)
   const [queued, setQueued] = useState([])
   const [activity, setActivity] = useState([])
-  const [think, setThink] = useState('')
+  const [liveAnswer, setLiveAnswer] = useState('')
   const [error, setError] = useState(null)
   const [notice, setNotice] = useState(null)          // memory-tag confirmations
   const [drawer, setDrawer] = useState(null)          // 'mem' | 'journal' | null
@@ -523,6 +526,8 @@ export function Chat() {
   const abortRef = useRef(null)
   const inputRef = useRef(null)
   const historyRef = useRef(history)
+  const activityRef = useRef([])
+  const turnStartedRef = useRef(0)
   const queuedRef = useRef([])
   const busyRef = useRef(false)
 
@@ -554,7 +559,10 @@ export function Chat() {
   const newThread = () => {
     startNewThread()
     historyRef.current = []
+    activityRef.current = []
     setHistory([])
+    setActivity([])
+    setLiveAnswer('')
     setAtHome(true)
     refreshThreads()
   }
@@ -564,6 +572,9 @@ export function Chat() {
       const messages = await openThread(id)
       historyRef.current = messages
       setHistory(messages)
+      activityRef.current = []
+      setActivity([])
+      setLiveAnswer('')
       setAtHome(false)
       refreshThreads()
     } catch { /* thread gone — list will refresh */ }
@@ -636,11 +647,22 @@ export function Chat() {
     }))
   }
 
+  const replaceActivity = (next) => {
+    activityRef.current = next
+    setActivity(next)
+  }
+
+  const updateActivity = (fn) => replaceActivity(fn(activityRef.current))
+
   const runTurn = async ({ text, model: runModel, effort: runEffort, ts }) => {
     setError(null)
     setNotice(null)
-    setThink('')
-    setActivity([{ key: 'context', label: 'Reading live market context', done: false }])
+    setLiveAnswer('')
+    turnStartedRef.current = Date.now()
+    replaceActivity([{
+      key: 'context', kind: 'context', label: 'Reading live market context',
+      verb: 'Reading context', status: 'running', startedAt: turnStartedRef.current,
+    }])
 
     const base = [...historyRef.current, {
       role: 'user', content: text, ts: ts || Date.now(), model: runModel,
@@ -649,9 +671,15 @@ export function Chat() {
     let live = ''
     const paint = () => {
       // a tool-call round streams raw {"tool": …} JSON — that renders as a
-      // chip once parsed, so don't flash the JSON as prose meanwhile
-      const showLive = live && !live.trimStart().startsWith('{')
-      setHistory([...base, ...added, ...(showLive ? [{ role: 'assistant', content: live }] : [])])
+      // trace step once parsed, so don't flash the JSON as prose meanwhile.
+      // Keep the live answer outside history so the trace always leads into it.
+      const final = added.at(-1)
+      const hasFinal = final?.role === 'assistant' && final.content && !final.toolCalls?.length
+      const stable = hasFinal ? added.slice(0, -1) : added
+      const candidate = live || (hasFinal ? final.content : '')
+      const showLive = candidate && !candidate.trimStart().startsWith('{')
+      setHistory([...base, ...stable])
+      setLiveAnswer(showLive ? candidate : '')
     }
     paint()
 
@@ -662,41 +690,92 @@ export function Chat() {
       system += '\n\n' + await buildChatContext(text)
     } catch { /* context is best-effort — a bare prompt still answers */ }
     const runLabel = models.find((candidate) => candidate.key === runModel)?.label || runModel
-    setActivity([
-      { key: 'context', label: 'Read live market context', done: true },
-      { key: 'model', label: `Thinking with ${runLabel}`, done: false },
-    ])
+    updateActivity((steps) => steps.map((step) => step.key === 'context'
+      ? { ...step, label: 'Read live market context', status: 'done', endedAt: Date.now() }
+      : step))
 
-    const traceEntries = (entries, modelDone = false) => {
-      const toolResults = new Set(entries.filter((m) => m.role === 'tool').map((m) => m.id))
-      const toolSteps = entries.flatMap((m) => (m.toolCalls || []).map((tc) => ({
-        key: `tool-${tc.id}`, label: toolLabel(tc), done: toolResults.has(tc.id),
-      })))
-      setActivity([
-        { key: 'context', label: 'Read live market context', done: true },
-        { key: 'model', label: `${modelDone ? 'Answered with' : 'Thinking with'} ${runLabel}`, done: modelDone },
-        ...toolSteps,
-      ])
+    const traceEvent = (event) => {
+      const now = Date.now()
+      if (event.type === 'model_start') {
+        updateActivity((steps) => [...steps, {
+          key: `model-${event.round}`, kind: 'model',
+          label: `Thinking with ${runLabel}`, verb: `Thinking with ${runLabel}`,
+          status: 'running', startedAt: now, detail: '',
+        }])
+        return
+      }
+      if (event.type === 'thinking') {
+        updateActivity((steps) => steps.map((step) => step.key === `model-${event.round}`
+          ? { ...step, detail: `${step.detail || ''}${event.delta}`.slice(-5000) }
+          : step))
+        return
+      }
+      if (event.type === 'model_done') {
+        updateActivity((steps) => steps.map((step) => step.key === `model-${event.round}`
+          ? {
+              ...step,
+              label: event.outcome === 'answer' ? `Composed with ${runLabel}` : `Reasoned with ${runLabel}`,
+              status: 'done', endedAt: now,
+            }
+          : step))
+        return
+      }
+      if (event.type === 'tool_start') {
+        const call = { name: event.name, args: event.args }
+        updateActivity((steps) => [...steps, {
+          key: `tool-${event.id}`, kind: 'tool', label: toolLabel(call),
+          verb: toolLabel(call), detail: traceArgs(event.args),
+          status: 'running', startedAt: now,
+        }])
+        return
+      }
+      if (event.type === 'tool_done' || event.type === 'tool_error') {
+        updateActivity((steps) => steps.map((step) => step.key === `tool-${event.id}`
+          ? {
+              ...step,
+              status: event.type === 'tool_error' ? 'error' : 'done',
+              detail: event.type === 'tool_error' ? event.error : step.detail,
+              endedAt: now,
+            }
+          : step))
+      }
     }
 
     const finish = () => {
       // Apply + strip [MEMORY…] tags from whatever the model said, stamp
       // the new entries, then persist.
       const notes = []
+      const completedAt = Date.now()
+      const trace = activityRef.current.map((step) => step.status === 'running'
+        ? { ...step, status: 'done', endedAt: completedAt }
+        : step)
       const stamped = added.map((m) => {
         if (m.role === 'assistant' && m.content) {
           const r = applyMemoryTags(m.content)
           notes.push(...r.notes)
           return { ...m, content: r.text, ts: Date.now(), model: runModel }
         }
-        return m.role === 'assistant' ? { ...m, ts: Date.now(), model: runModel } : m
+        return m.role === 'assistant'
+          ? { ...m, ts: Date.now(), model: runModel, traceHidden: !!m.toolCalls?.length }
+          : m
       })
+      let finalIndex = -1
+      for (let i = stamped.length - 1; i >= 0; i--) {
+        if (stamped[i].role === 'assistant' && stamped[i].content) { finalIndex = i; break }
+      }
+      if (finalIndex >= 0) {
+        stamped[finalIndex] = {
+          ...stamped[finalIndex], trace, traceStartedAt: turnStartedRef.current,
+        }
+      }
       if (notes.length) {
         setNotice(notes.join(' · '))
         setMemories(loadMemories())
       }
       const done = [...base, ...stamped]
       replaceHistory(done, true)
+      setLiveAnswer('')
+      if (finalIndex >= 0) replaceActivity([])
     }
 
     try {
@@ -712,21 +791,23 @@ export function Chat() {
           live += d
           paint()
         },
-        onThinking: (d) => setThink((cur) => cur + d),
+        onTrace: traceEvent,
         onRound: (entries) => {
           added = entries
           live = ''
-          setThink('')
-          const last = entries[entries.length - 1]
-          traceEntries(entries, last?.role === 'assistant' && !last.toolCalls?.length)
           paint()
         },
       })
-      traceEntries(added, true)
       finish()
     } catch (err) {
       if (err?.name !== 'AbortError') setError(String(err.message || err))
-      setActivity((steps) => steps.map((step) => ({ ...step, done: true })))
+      const stopped = err?.name === 'AbortError'
+      updateActivity((steps) => steps.map((step) => step.status === 'running'
+        ? {
+            ...step, status: stopped ? 'done' : 'error', endedAt: Date.now(),
+            label: stopped ? `Stopped ${step.label.toLowerCase()}` : step.label,
+          }
+        : step))
       if (live) added = [...added, { role: 'assistant', content: live }]
       finish()
     } finally {
@@ -810,6 +891,8 @@ export function Chat() {
 
   const clear = () => {
     replaceHistory([], true)
+    replaceActivity([])
+    setLiveAnswer('')
   }
 
   // Tool results by call id, for chip status/tooltips.
@@ -835,7 +918,7 @@ export function Chat() {
   }
 
   const composer = (
-      <form onSubmit={send} class="max-w-3xl w-full pt-2">
+      <form onSubmit={send} class="max-w-[46rem] w-full mx-auto pt-2">
         {/* items-center keeps a one-line placeholder vertically centered
             against the 32px send button; the textarea grows downward from
             there (Jeff 2026-08-04: "placeholder isn't centered"). */}
@@ -903,11 +986,11 @@ export function Chat() {
     .map((sym) => ({ sym, pct: quotes[sym]?.quote?.pct }))
     .filter((x) => x.pct != null)
     .sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct))
-    .slice(0, 5)
+    .slice(0, 4)
   const railEarn = watchlist
     .filter((sym) => earnDays[sym] != null && earnDays[sym] >= 0)
     .sort((a, b) => earnDays[a] - earnDays[b])
-    .slice(0, 4)
+    .slice(0, 3)
 
   return (
     <div class="flex-1 flex min-h-0 min-w-0">
@@ -915,7 +998,7 @@ export function Chat() {
       {/* One control height across the row — the title, the wire pill, the
           model housing, the effort pills and the icon rail all centre on the
           same axis (Jeff 2026-08-04: "aren't vertically aligned"). */}
-      <div class="flex items-center gap-2 px-1 pb-2 mb-1 border-b border-line flex-wrap">
+      <div class="max-w-[56rem] w-full mx-auto flex items-center gap-2 px-1 pb-2 mb-1 border-b border-line flex-wrap">
         <h1 class="font-bold text-lg leading-none text-ink" style="font-family: 'Plus Jakarta Sans', sans-serif">{tl('AI Chat')}</h1>
         <span class={`w-1.5 h-1.5 rounded-full mr-1 ${onWire ? 'bg-up' : 'bg-accent'}`}
               title={onWire ? 'online — private wire' : 'online — public proxy'} />
@@ -1077,13 +1160,14 @@ export function Chat() {
               const el = e.currentTarget
               stickRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120
             }}
-            class="flex-1 overflow-y-auto min-h-0 max-w-3xl w-full flex flex-col gap-2 px-1"
+            class="flex-1 overflow-y-auto min-h-0 max-w-[46rem] w-full mx-auto flex flex-col gap-3 px-2"
           >
         {history.map((m, i) => {
           if (m.role === 'tool') return null
           if (m.role === 'assistant' && m.toolCalls?.length) {
+            if (m.traceHidden) return null
             return (
-              <div key={i} class="self-start flex flex-col gap-1 max-w-[95%]">
+              <div key={i} class="chat-message-enter self-start flex flex-col gap-1 max-w-[92%]">
                 {m.content && (
                   <div class="rounded-xl border px-3 py-2 font-anth text-[13px] leading-relaxed bg-surface-1 border-line text-ink">
                     <MdLite text={m.content} />
@@ -1096,47 +1180,57 @@ export function Chat() {
           if (m.role === 'assistant') {
             if (!m.content) return null   // trace narrates the wait — no empty bubble
             return (
-              <div key={i} class="group self-start max-w-[95%] relative"
-                title={m.ts ? `${m.model ? `${m.model} · ` : ''}${new Date(m.ts).toLocaleString()}` : undefined}>
-                <div class="rounded-2xl border px-3.5 py-2.5 text-[13.5px] leading-relaxed bg-surface-1 border-line text-ink font-anth">
-                  {m.content ? <MdLite text={m.content} /> : null}
-                </div>
-                {m.content && (
-                  <div class="absolute -top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                    <button
-                      type="button"
-                      onClick={() => navigator.clipboard?.writeText(m.content)}
-                      title="copy"
-                      class="bg-surface-2 border border-line rounded-md px-1.5 py-0.5 font-mono text-[9px] text-muted hover:text-ink"
-                    >
-                      copy
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        // CLI `journal save` parity: the exchange, not just the answer
-                        const q = history[i - 1]?.role === 'user' ? history[i - 1].content : ''
-                        const e = addJournalEntry(`${q ? `Q: ${q}\n\n` : ''}A: ${m.content}`)
-                        setJournal(loadJournal())
-                        setNotice(e ? `✓ exchange saved to journal #${e.id}` : null)
-                      }}
-                      title="save this exchange to the trade journal"
-                      class="bg-surface-2 border border-line rounded-md px-1.5 py-0.5 font-mono text-[9px] text-muted hover:text-accent"
-                    >
-                      → journal
-                    </button>
-                  </div>
+              <div key={i} class="w-full flex flex-col gap-1.5 chat-turn-enter">
+                {m.trace?.length > 0 && (
+                  <ActivityTrace steps={m.trace} startedAt={m.traceStartedAt} />
                 )}
+                <div class="group self-start max-w-[92%] relative"
+                  title={m.ts ? `${m.model ? `${m.model} · ` : ''}${new Date(m.ts).toLocaleString()}` : undefined}>
+                  <div class="chat-assistant-bubble rounded-2xl border px-3.5 py-2.5 text-[13.5px] leading-relaxed bg-surface-1 border-line text-ink font-anth">
+                    <MdLite text={m.content} />
+                  </div>
+                  <div class="absolute -top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                      <button
+                        type="button"
+                        onClick={() => navigator.clipboard?.writeText(m.content)}
+                        title="copy"
+                        class="bg-surface-2 border border-line rounded-md px-1.5 py-0.5 font-mono text-[9px] text-muted hover:text-ink"
+                      >
+                        copy
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          // CLI `journal save` parity: the exchange, not just the answer
+                          const q = history[i - 1]?.role === 'user' ? history[i - 1].content : ''
+                          const e = addJournalEntry(`${q ? `Q: ${q}\n\n` : ''}A: ${m.content}`)
+                          setJournal(loadJournal())
+                          setNotice(e ? `✓ exchange saved to journal #${e.id}` : null)
+                        }}
+                        title="save this exchange to the trade journal"
+                        class="bg-surface-2 border border-line rounded-md px-1.5 py-0.5 font-mono text-[9px] text-muted hover:text-accent"
+                      >
+                        → journal
+                      </button>
+                    </div>
+                </div>
               </div>
             )
           }
           return (
-            <div key={i} class="self-end rounded-2xl px-3.5 py-2.5 text-[13.5px] leading-relaxed whitespace-pre-wrap bg-accent-soft border border-accent/40 text-ink max-w-[85%] font-anth">
+            <div key={i} class="chat-message-enter self-end rounded-2xl px-3.5 py-2.5 text-[13.5px] leading-relaxed whitespace-pre-wrap bg-accent-soft border border-accent/40 text-ink max-w-[85%] font-anth">
               {m.content}
             </div>
           )
         })}
-        <ActivityTrace steps={activity} busy={busy} think={think} />
+        {activity.length > 0 && (
+          <ActivityTrace steps={activity} busy={busy} startedAt={turnStartedRef.current} />
+        )}
+        {liveAnswer && (
+          <div class="chat-assistant-bubble chat-message-live self-start max-w-[92%] rounded-2xl border px-3.5 py-2.5 text-[13.5px] leading-relaxed bg-surface-1 border-line text-ink font-anth">
+            <MdLite text={liveAnswer} />
+          </div>
+        )}
         {queued.map((item, i) => (
           <div key={`${item.ts}-${i}`} class="self-end max-w-[85%] flex flex-col items-end gap-0.5">
             <div class="rounded-2xl px-3.5 py-2.5 text-[13.5px] leading-relaxed whitespace-pre-wrap bg-accent-soft/60 border border-accent/25 text-ink font-anth">
@@ -1157,11 +1251,10 @@ export function Chat() {
       )}
     </div>
 
-    {/* xl right rail — the dead margin becomes the working set: memory and
-        journal live inline (same state as the drawers), plus a live glance
-        strip. Below xl the icon buttons + drawers still carry it. */}
-    <aside class="hidden xl:flex w-[270px] shrink-0 flex-col gap-2 p-3 pl-0 overflow-y-auto min-h-0">
-      <section class="bg-surface-1 border border-line rounded-xl overflow-hidden shrink-0">
+    {/* Keep useful context on the right without turning the chat into a CRUD
+        dashboard. Memory and journal live behind the compact Library row. */}
+    <aside class="hidden xl:flex w-[228px] shrink-0 flex-col gap-2 p-3 pl-0 overflow-y-auto min-h-0">
+      <section class="chat-rail-section bg-surface-1 border border-line rounded-xl overflow-hidden shrink-0">
         <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
           <h2 class="font-anth font-bold text-[10px] tracking-wider text-accent uppercase">in view</h2>
         </header>
@@ -1186,14 +1279,14 @@ export function Chat() {
       </section>
 
       {chatstoreAvailable() && (
-        <section class="bg-surface-1 border border-line rounded-xl overflow-hidden shrink-0">
+        <section class="chat-rail-section bg-surface-1 border border-line rounded-xl overflow-hidden shrink-0">
           <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2 flex items-baseline gap-1.5">
             <h2 class="font-anth font-bold text-[10px] tracking-wider text-accent uppercase">threads</h2>
             <span class="font-mono text-[9px] text-muted">{threads.length}</span>
             <button onClick={newThread} title="new thread"
               class="ml-auto font-mono text-[10px] text-muted hover:text-accent">+ new</button>
           </header>
-          <div class="px-1 py-1 max-h-[22vh] overflow-y-auto">
+          <div class="px-1 py-1 max-h-[34vh] overflow-y-auto">
             {threads.length === 0 && <div class="px-1.5 font-anth text-[11px] text-muted py-0.5">no saved threads</div>}
             {threads.map((t) => (
               <div key={t.id} class={`group flex items-baseline gap-1.5 px-1.5 py-0.5 rounded-md ${t.id === currentThreadId() ? 'bg-accent-soft' : 'hover:bg-surface-2'}`}>
@@ -1210,42 +1303,21 @@ export function Chat() {
         </section>
       )}
 
-      <section class="bg-surface-1 border border-line rounded-xl overflow-hidden shrink-0">
-        <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2 flex items-baseline gap-1.5">
-          <h2 class="font-anth font-bold text-[10px] tracking-wider text-accent uppercase">memories</h2>
-          <span class="font-mono text-[9px] text-muted">{memories.length}</span>
+      <section class="chat-rail-section bg-surface-1 border border-line rounded-xl overflow-hidden shrink-0">
+        <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
+          <h2 class="font-anth font-bold text-[10px] tracking-wider text-accent uppercase">library</h2>
         </header>
-        <div class="px-2.5 py-1 max-h-[26vh] overflow-y-auto">
-          {memories.length === 0 && <div class="font-anth text-[11px] text-muted py-0.5">nothing saved yet</div>}
-          {memories.slice(-12).reverse().map((m) => (
-            <NoteRow key={m.id} id={m.id} text={m.text}
-              onSave={(t) => { editMemory(m.id, t); setMemories(loadMemories()) }}
-              onDelete={() => { removeMemory(m.id); setMemories(loadMemories()) }} />
-          ))}
-          <NoteAdd placeholder="add a memory…"
-            onAdd={(t) => { addMemory(t); setMemories(loadMemories()) }} />
-        </div>
-      </section>
-
-      <section class="bg-surface-1 border border-line rounded-xl overflow-hidden shrink-0">
-        <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2 flex items-baseline gap-1.5">
-          <h2 class="font-anth font-bold text-[10px] tracking-wider text-accent uppercase">journal</h2>
-          <span class="font-mono text-[9px] text-muted">{journal.length}</span>
-          <input value={jrFilter} onInput={(e) => setJrFilter(e.currentTarget.value)}
-            placeholder="search…"
-            class="ml-auto bg-surface-2 border border-line rounded px-1.5 py-0 font-mono text-[9px] text-ink outline-none focus:border-accent/60 w-20 placeholder:text-muted" />
-        </header>
-        <div class="px-2.5 py-1 max-h-[30vh] overflow-y-auto">
-          {(jrFilter ? searchJournal(jrFilter) : journal).slice(-10).reverse().map((e) => (
-            <NoteRow key={e.id} id={e.id} text={e.text}
-              meta={e.symbols?.length ? e.symbols.join(' ') : ''}
-              onDelete={() => { removeJournalEntry(e.id); setJournal(loadJournal()) }} />
-          ))}
-          {(jrFilter ? searchJournal(jrFilter) : journal).length === 0 && (
-            <div class="font-anth text-[11px] text-muted py-0.5">{jrFilter ? 'no matches' : 'nothing logged yet'}</div>
-          )}
-          <NoteAdd placeholder="log a decision…"
-            onAdd={(t) => { addJournalEntry(t); setJournal(loadJournal()) }} />
+        <div class="grid grid-cols-2 divide-x divide-line">
+          <button type="button" onClick={() => { setMemories(loadMemories()); setDrawer('mem') }}
+            class="group flex flex-col items-start gap-0.5 px-2.5 py-2 text-left hover:bg-surface-2">
+            <span class="font-anth text-[11px] text-ink-2 group-hover:text-ink">memories</span>
+            <span class="font-mono text-[15px] text-ink">{memories.length}</span>
+          </button>
+          <button type="button" onClick={() => { setJournal(loadJournal()); setDrawer('journal') }}
+            class="group flex flex-col items-start gap-0.5 px-2.5 py-2 text-left hover:bg-surface-2">
+            <span class="font-anth text-[11px] text-ink-2 group-hover:text-ink">journal</span>
+            <span class="font-mono text-[15px] text-ink">{journal.length}</span>
+          </button>
         </div>
       </section>
     </aside>
