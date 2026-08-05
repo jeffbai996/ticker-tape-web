@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { TICK_FLASH_MS, tickFlashDirection } from '../../src/lib/tickFlash.js'
+import {
+  TICK_FLASH_MS,
+  metricFlashDirection,
+  tickFlashDirection,
+} from '../../src/lib/tickFlash.js'
 
 describe('tickFlashDirection', () => {
   it('classifies later visible live prints', () => {
@@ -16,5 +20,22 @@ describe('tickFlashDirection', () => {
 
   it('holds the solid paint longer than the old one-second block', () => {
     expect(TICK_FLASH_MS).toBe(1350)
+  })
+
+  it('paints daily-change metrics in the direction of the live tick', () => {
+    expect(metricFlashDirection(1.2, 1.3, { kind: 'change' })).toBe('up')
+    expect(metricFlashDirection(-1.2, -1.3, { kind: 'change' })).toBe('down')
+  })
+
+  it('paints only genuine new session extremes', () => {
+    expect(metricFlashDirection(101, 102, { kind: 'high' })).toBe('up')
+    expect(metricFlashDirection(102, 101, { kind: 'high' })).toBeNull()
+    expect(metricFlashDirection(99, 98, { kind: 'low' })).toBe('down')
+    expect(metricFlashDirection(98, 99, { kind: 'low' })).toBeNull()
+  })
+
+  it('keeps every metric quiet during hidden and resume-baseline updates', () => {
+    expect(metricFlashDirection(1, 2, { kind: 'change', hidden: true })).toBeNull()
+    expect(metricFlashDirection(100, 101, { kind: 'high', baselinePending: true })).toBeNull()
   })
 })
