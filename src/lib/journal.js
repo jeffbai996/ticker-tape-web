@@ -3,6 +3,8 @@
 // transcript). Entries auto-tag likely ticker symbols so "what was I thinking
 // on MU" is searchable later.
 
+import { pushAdd, pushDelete } from './chatstore.js'
+
 const KEY = 'trade_journal_v1'
 const MAX_ENTRIES = 500
 
@@ -55,6 +57,12 @@ export function addJournalEntry(text) {
   const id = list.reduce((m, x) => Math.max(m, x.id), 0) + 1
   const entry = { id, text: t, symbols: extractSymbols(t), ts: Date.now() }
   persist([...list, entry])
+  pushAdd('journal', entry, (serverId) => {
+    const cur = loadJournal()
+    const hit = cur.find((e) => e.id === entry.id)
+    if (hit && serverId !== entry.id) { hit.id = serverId; persist(cur) }
+    entry.id = serverId
+  })
   return entry
 }
 
@@ -63,6 +71,7 @@ export function removeJournalEntry(id) {
   const next = list.filter((e) => e.id !== Number(id))
   if (next.length === list.length) return false
   persist(next)
+  pushDelete('journal', Number(id))
   return true
 }
 

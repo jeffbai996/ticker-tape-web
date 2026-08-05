@@ -4,6 +4,8 @@
 // tools (native tool-calling path) or by [MEMORY: …] tags parsed out of the
 // response text (the wire path has no tool API, tags work everywhere).
 
+import { pushAdd, pushEdit, pushDelete } from './chatstore.js'
+
 const KEY = 'chat_memories_v1'
 const MAX_MEMORIES = 100
 
@@ -28,6 +30,13 @@ export function addMemory(text) {
   const id = list.reduce((m, x) => Math.max(m, x.id), 0) + 1
   const mem = { id, text: t, ts: Date.now() }
   persist([...list, mem])
+  // server ack rewrites the provisional id so later edits target the row
+  pushAdd('memories', mem, (serverId) => {
+    const cur = loadMemories()
+    const hit = cur.find((m) => m.id === mem.id)
+    if (hit && serverId !== mem.id) { hit.id = serverId; persist(cur) }
+    mem.id = serverId
+  })
   return mem
 }
 
@@ -38,6 +47,7 @@ export function editMemory(id, text) {
   if (!hit || !t) return false
   hit.text = t
   persist(list)
+  pushEdit('memories', Number(id), t)
   return true
 }
 
@@ -46,6 +56,7 @@ export function removeMemory(id) {
   const next = list.filter((m) => m.id !== Number(id))
   if (next.length === list.length) return false
   persist(next)
+  pushDelete('memories', Number(id))
   return true
 }
 
