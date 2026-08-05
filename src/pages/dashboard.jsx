@@ -130,13 +130,13 @@ function TuiRow({ symbol, data, earnDays }) {
       <div class="flex gap-4 min-w-0">
         <div class="flex-1 min-w-0 overflow-hidden">
           <div class="flex items-baseline gap-2 max-sm:gap-1.5 font-mono text-[13px] max-sm:text-[12px] flex-nowrap max-sm:flex-wrap min-w-0">
-            <span class="relative text-ink font-[650] font-tick text-[12px] w-14 max-sm:w-12 shrink-0">
-              {symbol}
-              {/* Compact/high-zoom rows cannot afford a permanent name gutter.
-                  Keep the data columns frozen and reveal the name from the
-                  ticker edge instead; aria-hidden avoids reading it twice. */}
+            <span class="tui-company-identity relative w-14 max-sm:w-12 shrink-0 text-ink font-[650] font-tick text-[12px]">
+              <span class="tui-company-symbol">{symbol}</span>
+              {/* Compact/high-zoom rows use one identity slot: hover swaps the
+                  ticker out and the company name into its exact footprint.
+                  The fixed slot keeps every quote column frozen. */}
               {q?.name && (
-                <span class="tui-company-name-peek @min-[820px]:hidden" aria-hidden="true">
+                <span class="tui-company-name-swap @min-[820px]:hidden" aria-hidden="true">
                   {q.name}
                 </span>
               )}
