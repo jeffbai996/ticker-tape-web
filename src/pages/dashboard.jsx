@@ -103,6 +103,28 @@ function RangeBar({ label, lo, hi, v, cls = '' }) {
   )
 }
 
+/** At higher browser zoom the numeric endpoints no longer fit. Keep the useful
+ *  part — current position inside today's tape — and let AH reclaim the slot
+ *  after the close. Exact low/high remain available on hover. */
+function CompactDayRange({ lo, hi, v }) {
+  const pos = rangePos(lo, hi, v)
+  if (pos == null) return null
+  return (
+    <span
+      class="hidden @min-[545px]:flex @min-[730px]:hidden items-center gap-1.5 whitespace-nowrap"
+      title={`DAY ${fmtPriceBare(lo)} – ${fmtPriceBare(hi)}`}
+    >
+      <span class="text-accent/60 font-normal text-[9px]">DAY</span>
+      <span class="relative w-20 h-[3px] bg-line rounded-full shrink-0">
+        <span
+          class="absolute top-1/2 -translate-y-1/2 w-[3px] h-[7px] bg-accent-2 rounded-sm"
+          style={{ left: `calc(${(pos * 100).toFixed(1)}% - 1.5px)` }}
+        />
+      </span>
+    </span>
+  )
+}
+
 function TuiRow({ symbol, data, earnDays }) {
   const q = data?.quote
   const up = (q?.pct ?? 0) >= 0
@@ -189,6 +211,9 @@ function TuiRow({ symbol, data, earnDays }) {
             once the row ran out of width (Jeff 2026-08-03). */}
         <div class="hidden @min-[545px]:flex shrink-0 flex-col justify-center gap-1 font-mono text-[11px]">
           <span class="flex items-baseline gap-1.5">
+            {!q?.extLabel && (
+              <CompactDayRange lo={q?.dayLow} hi={q?.dayHigh} v={q?.price} />
+            )}
             <RangeBar label="DAY" lo={q?.dayLow} hi={q?.dayHigh} v={q?.price} />
             <span class="w-[4.5rem] text-right">
               {q?.volume != null && (
