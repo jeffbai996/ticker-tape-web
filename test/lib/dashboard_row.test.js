@@ -60,12 +60,19 @@ describe('compact dashboard company name', () => {
     expect(dashboard).not.toContain('setCategoryOverride')
     expect(dashboard).toContain("setViewMode('grouped')")
     expect(dashboard).toContain("setViewMode('flat')")
-    expect(dashboard).toContain('>\n            Sectors\n')
-    expect(dashboard).toContain('>\n            All\n')
+    expect(dashboard).toMatch(/>\s+Sectors\s+<\/button>/)
+    expect(dashboard).toMatch(/>\s+All\s+<\/button>/)
     expect(dashboard).toContain('placeholder="search…"')
     expect(dashboard).toContain('<option value="manual">Sort</option>')
     expect(dashboard).toContain('<option value="spread">Spread</option>')
     expect(dashboard).not.toContain('manage lists')
+  })
+
+  it('merges desktop controls and the scrollable sector tape into one row', () => {
+    expect(dashboard).toContain('class="dashboard-toolbar md:flex md:items-center md:gap-4 md:px-1 md:pb-2 min-w-0"')
+    expect(dashboard).toContain('class="dashboard-controls flex items-center gap-2 px-1 pb-2 md:px-0 md:pb-0 min-w-0 shrink-0"')
+    expect(dashboard).toContain('class="dashboard-sectors flex items-baseline gap-x-4 px-1 pb-2 md:px-0 md:pb-0 md:ml-auto md:flex-1 min-w-0')
+    expect(dashboard).toContain('overflow-x-auto no-scrollbar')
   })
 
   it('shows raw bid-ask spread without a basis-point suffix', () => {
