@@ -10,6 +10,7 @@ vi.mock('../../src/lib/tools.js', () => ({
 }))
 
 import { streamChat } from '../../src/lib/chatClient.js'
+import { executeTool } from '../../src/lib/tools.js'
 import { runAgentic, trimHistory } from '../../src/lib/agent.js'
 
 const u = (i) => ({ role: 'user', content: `u${i}` })
@@ -94,5 +95,47 @@ describe('queued follow-ups', () => {
       'first follow-up', 'second follow-up',
     ])
     expect(takeFollowUps).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('agent trace lifecycle', () => {
+  it('reports each model round and tool boundary in execution order', async () => {
+    streamChat
+      .mockResolvedValueOnce({ text: '', toolCalls: [{ id: 't1', name: 'get_watchlist', args: {} }] })
+      .mockResolvedValueOnce({ text: 'done', toolCalls: [] })
+    const events = []
+
+    await runAgentic({
+      model: 'flash', effort: 'high', system: 'system',
+      messages: [{ role: 'user', content: 'analyze AAPL' }],
+      onTrace: (event) => events.push(event),
+    })
+
+    expect(events.map((event) => event.type)).toEqual([
+      'model_start', 'model_done', 'tool_start', 'tool_done',
+      'model_start', 'model_done',
+    ])
+    expect(events[2]).toMatchObject({
+      type: 'tool_start', round: 0, id: 't1', name: 'get_watchlist', args: {},
+    })
+    expect(events[4]).toMatchObject({ type: 'model_start', round: 1 })
+  })
+
+  it('reports tool failures before propagating them', async () => {
+    streamChat.mockResolvedValueOnce({
+      text: '', toolCalls: [{ id: 't1', name: 'get_watchlist', args: {} }],
+    })
+    executeTool.mockRejectedValueOnce(new Error('quote feed down'))
+    const events = []
+
+    await expect(runAgentic({
+      model: 'flash', effort: 'high', system: 'system',
+      messages: [{ role: 'user', content: 'analyze AAPL' }],
+      onTrace: (event) => events.push(event),
+    })).rejects.toThrow('quote feed down')
+
+    expect(events.at(-1)).toMatchObject({
+      type: 'tool_error', id: 't1', name: 'get_watchlist', error: 'quote feed down',
+    })
   })
 })

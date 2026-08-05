@@ -50,7 +50,8 @@ function receiveFollowUps(takeFollowUps, added, onRound) {
 }
 
 async function runAgenticOverWire({
-  model, effort, system, messages, onDelta, onThinking, onRound, takeFollowUps, signal,
+  model, effort, system, messages, onDelta, onThinking, onRound, onTrace,
+  takeFollowUps, signal,
 }) {
   const added = []
   const sys = `${system}\n\n${toolProtocol()}`
@@ -65,6 +66,7 @@ async function runAgenticOverWire({
         : { role: m.role, content: m.content }))
     const last = round === MAX_ROUNDS - 1
     const roundSystem = last ? `${system}\n\nAnswer now with what you have.` : sys
+    onTrace?.({ type: 'model_start', round })
     // Stream when the wire supports it — a tool-call round streams JSON, so
     // the UI-side paint filters that out (chat.jsx showLive). Fall back to
     // the one-shot endpoint on any pre-output failure (older fragwire).
@@ -72,7 +74,12 @@ async function runAgenticOverWire({
     try {
       ;({ text } = await wireStream({
         model, effort, system: roundSystem, messages: convo,
-        onDelta, onThinking, signal,
+        onDelta,
+        onThinking: (delta) => {
+          onThinking?.(delta)
+          onTrace?.({ type: 'thinking', round, delta })
+        },
+        signal,
       }))
     } catch (err) {
       if (signal?.aborted) throw err        // a user stop is not a fallback case
@@ -83,14 +90,27 @@ async function runAgenticOverWire({
     if (signal?.aborted) throw new DOMException('stopped', 'AbortError')
     const call = last ? null : parseToolCall(text)
     if (!call) {
+      onTrace?.({ type: 'model_done', round, outcome: 'answer' })
       added.push({ role: 'assistant', content: text })
       onRound?.([...added])
       return added
     }
     const id = `w${round}`
+    onTrace?.({ type: 'model_done', round, outcome: 'tool' })
     added.push({ role: 'assistant', content: '', toolCalls: [{ id, name: call.name, args: call.args }] })
     onRound?.([...added])
-    const result = await executeTool(call.name, call.args)
+    onTrace?.({ type: 'tool_start', round, id, name: call.name, args: call.args })
+    let result
+    try {
+      result = await executeTool(call.name, call.args)
+    } catch (err) {
+      onTrace?.({
+        type: 'tool_error', round, id, name: call.name,
+        error: err instanceof Error ? err.message : String(err),
+      })
+      throw err
+    }
+    onTrace?.({ type: 'tool_done', round, id, name: call.name })
     added.push({ role: 'tool', id, name: call.name, content: result })
     onRound?.([...added])
   }
@@ -98,13 +118,15 @@ async function runAgenticOverWire({
 }
 
 export async function runAgentic({
-  model, effort, system, messages, onDelta, onThinking, onRound, takeFollowUps, signal,
+  model, effort, system, messages, onDelta, onThinking, onRound, onTrace,
+  takeFollowUps, signal,
 }) {
   // Private build talks to the user's own router; the metered API is the
   // fallback for anyone without one.
   if (wireChatAvailable()) {
     return runAgenticOverWire({
-      model, effort, system, messages, onDelta, onThinking, onRound, takeFollowUps, signal,
+      model, effort, system, messages, onDelta, onThinking, onRound, onTrace,
+      takeFollowUps, signal,
     })
   }
   const added = []
@@ -115,6 +137,7 @@ export async function runAgentic({
     // Last chance: drop the tools so the model must answer with what it has.
     const finalRound = round === MAX_ROUNDS - 1
     let text = ''
+    onTrace?.({ type: 'model_start', round })
     const { toolCalls } = await streamChat({
       effort,
       model,
@@ -128,15 +151,28 @@ export async function runAgentic({
     })
 
     if (!toolCalls.length) {
+      onTrace?.({ type: 'model_done', round, outcome: 'answer' })
       added.push({ role: 'assistant', content: text })
       onRound?.([...added])
       return added
     }
 
+    onTrace?.({ type: 'model_done', round, outcome: 'tool' })
     added.push({ role: 'assistant', content: text, toolCalls })
     onRound?.([...added])
     for (const tc of toolCalls) {
-      const result = await executeTool(tc.name, tc.args)
+      onTrace?.({ type: 'tool_start', round, id: tc.id, name: tc.name, args: tc.args })
+      let result
+      try {
+        result = await executeTool(tc.name, tc.args)
+      } catch (err) {
+        onTrace?.({
+          type: 'tool_error', round, id: tc.id, name: tc.name,
+          error: err instanceof Error ? err.message : String(err),
+        })
+        throw err
+      }
+      onTrace?.({ type: 'tool_done', round, id: tc.id, name: tc.name })
       added.push({ role: 'tool', id: tc.id, name: tc.name, content: result })
       onRound?.([...added])
     }
