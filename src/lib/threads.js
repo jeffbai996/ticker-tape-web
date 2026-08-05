@@ -11,6 +11,8 @@ import { trimHistory } from './agent.js'
 
 const LEGACY_KEY = 'chat_history_v1'     // public-build store + migration source
 const CUR_KEY = 'chat_thread_id'
+const LOCAL_CUR_KEY = 'chat_local_thread_id'
+const LOCAL_THREADS_KEY = 'chat_threads_v1'
 const STORE_MAX = 400
 
 const titleOf = (messages) => {
@@ -19,13 +21,37 @@ const titleOf = (messages) => {
 }
 
 export function currentThreadId() {
-  const raw = localStorage.getItem(CUR_KEY)
+  const raw = localStorage.getItem(chatstoreAvailable() ? CUR_KEY : LOCAL_CUR_KEY)
   return raw ? Number(raw) : null
 }
 
 function setCurrent(id) {
-  if (id == null) localStorage.removeItem(CUR_KEY)
-  else localStorage.setItem(CUR_KEY, String(id))
+  const key = chatstoreAvailable() ? CUR_KEY : LOCAL_CUR_KEY
+  if (id == null) localStorage.removeItem(key)
+  else localStorage.setItem(key, String(id))
+}
+
+function loadLocalThreads() {
+  try {
+    const items = JSON.parse(localStorage.getItem(LOCAL_THREADS_KEY))
+    return Array.isArray(items) ? items : []
+  } catch { return [] }
+}
+
+function saveLocalThreads(items) {
+  try { localStorage.setItem(LOCAL_THREADS_KEY, JSON.stringify(items)) }
+  catch { /* active-session cache still survives */ }
+}
+
+function persistLocalThread(messages) {
+  const items = loadLocalThreads()
+  let id = currentThreadId()
+  if (id == null) {
+    id = items.reduce((max, item) => Math.max(max, Number(item.id) || 0), 0) + 1
+    setCurrent(id)
+  }
+  const thread = { id, title: titleOf(messages), messages, updatedAt: Date.now() }
+  saveLocalThreads([thread, ...items.filter((item) => item.id !== id)])
 }
 
 /** Sync read of the active conversation (cache / public store). */
@@ -62,7 +88,11 @@ export async function flushActiveHistory(messages = pendingMessages) {
   const trimmed = trimHistory(messages || loadActiveHistory(), STORE_MAX)
   pendingMessages = null
   cacheHistory(trimmed)
-  if (!chatstoreAvailable() || (!trimmed.length && currentThreadId() == null)) return
+  if (!trimmed.length && currentThreadId() == null) return
+  if (!chatstoreAvailable()) {
+    persistLocalThread(trimmed)
+    return
+  }
 
   saveChain = saveChain.catch(() => {}).then(async () => {
     const id = currentThreadId()
@@ -80,7 +110,6 @@ export async function flushActiveHistory(messages = pendingMessages) {
 export function saveActiveHistory(messages) {
   const trimmed = trimHistory(messages, STORE_MAX)
   cacheHistory(trimmed)
-  if (!chatstoreAvailable()) return
   pendingMessages = trimmed
   clearTimeout(saveTimer)
   saveTimer = setTimeout(() => flushActiveHistory().catch(() => {}), 800)
@@ -88,13 +117,24 @@ export function saveActiveHistory(messages) {
 
 /** Thread list for the rail (server builds only). */
 export async function fetchThreadList() {
-  if (!chatstoreAvailable()) return []
+  if (!chatstoreAvailable()) {
+    return loadLocalThreads().map(({ id, title, messages }) => ({
+      id, title, n: messages.length,
+    }))
+  }
   return listThreads()
 }
 
 /** Switch to a thread; resolves its messages. */
 export async function openThread(id, currentMessages) {
   await flushActiveHistory(currentMessages)
+  if (!chatstoreAvailable()) {
+    const thread = loadLocalThreads().find((item) => item.id === id)
+    if (!thread) throw new Error('session not found')
+    setCurrent(thread.id)
+    cacheHistory(thread.messages)
+    return thread.messages
+  }
   const t = await getThread(id)
   setCurrent(t.id)
   cacheHistory(t.messages)
@@ -108,6 +148,11 @@ export async function startNewThread(currentMessages) {
 }
 
 export async function removeThread(id) {
+  if (!chatstoreAvailable()) {
+    saveLocalThreads(loadLocalThreads().filter((item) => item.id !== id))
+    if (currentThreadId() === id) resetActiveThread()
+    return
+  }
   await deleteThread(id)
   if (currentThreadId() === id) resetActiveThread()
 }
@@ -115,9 +160,13 @@ export async function removeThread(id) {
 /** One-time migration: a legacy local conversation with no server threads
  *  becomes thread #1 so nothing evaporates on upgrade. */
 export async function migrateLegacy() {
-  if (!chatstoreAvailable() || currentThreadId() != null) return
+  if (currentThreadId() != null) return
   const local = loadActiveHistory()
   if (!local.length) return
+  if (!chatstoreAvailable()) {
+    await flushActiveHistory(local)
+    return
+  }
   const existing = await listThreads()
   if (existing.length) return
   const t = await createThread(titleOf(local), local)
