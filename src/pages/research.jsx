@@ -1526,9 +1526,18 @@ export function Research({ route }) {
       localStorage.setItem('tape-recent-syms', JSON.stringify(cur.slice(0, 12)))
     } catch { /* storage unavailable */ }
   }, [symbol])
-  const [rangeKey, setRangeKey] = useState(() => consumePrefill('chart_range') || '6M')
+  const [rangeKey, setRangeKey] = useState(() => {
+    const prefill = consumePrefill('chart_range')
+    const saved = localStorage.getItem('research_overview_range_v1')
+    const candidate = prefill || saved || '6M'
+    return RANGES.some((range) => range.key === candidate) ? candidate : '6M'
+  })
+  const selectRange = (nextRange) => {
+    setRangeKey(nextRange)
+    localStorage.setItem('research_overview_range_v1', nextRange)
+  }
   useEffect(() => {
-    const onRange = (e) => { setRangeKey(e.detail); sessionStorage.removeItem('chart_range') }
+    const onRange = (e) => { selectRange(e.detail); sessionStorage.removeItem('chart_range') }
     window.addEventListener('tape:chart-range', onRange)
     return () => window.removeEventListener('tape:chart-range', onRange)
   }, [])
@@ -1626,8 +1635,8 @@ export function Research({ route }) {
           {RANGES.map((r) => (
             <button
               key={r.key}
-              onClick={() => setRangeKey(r.key)}
-              class={`font-mono text-[11px] px-2 py-1 rounded-md border whitespace-nowrap shrink-0 ${
+              onClick={() => selectRange(r.key)}
+              class={`font-anth text-[11px] px-2 py-1 rounded-md border whitespace-nowrap shrink-0 ${
                 rangeKey === r.key
                   ? 'border-accent-2 text-accent-2 bg-accent-2-soft'
                   : 'border-line text-muted hover:text-ink hover:bg-surface-3'
@@ -1655,7 +1664,7 @@ export function Research({ route }) {
           <a
             key={tab.label}
             href={tab.href}
-            class={`font-mono text-[11px] px-2.5 py-1 rounded-md border hover:no-underline whitespace-nowrap shrink-0 ${
+            class={`font-anth text-[11px] px-2.5 py-1 rounded-md border hover:no-underline whitespace-nowrap shrink-0 ${
               route.view === tab.id
                 ? 'border-accent-2 text-accent-2 bg-accent-2-soft'
                 : 'border-line text-muted hover:text-ink hover:bg-surface-3'
