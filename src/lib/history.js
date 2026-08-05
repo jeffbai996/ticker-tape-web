@@ -15,6 +15,7 @@ export const RANGES = [
   { key: '1Y', range: '1y', interval: '1d', ttl: 10 * 60_000 },
   { key: '2Y', range: '2y', interval: '1d', ttl: 30 * 60_000 },
   { key: '5Y', range: '5y', interval: '1wk', ttl: 30 * 60_000 },
+  { key: 'MAX', range: 'max', interval: '1wk', ttl: 60 * 60_000 },
 ]
 
 const NEWS_TTL = 10 * 60_000
