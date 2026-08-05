@@ -65,18 +65,21 @@ const countdown = (sec) => {
   return `in ${Math.round(sec / 86400)}d`
 }
 
+// tier → left edge: the ramp reads at a glance without reading the badge
+const TIER_EDGE = {
+  1: 'border-l-[#58a6ff]/70', 2: 'border-l-accent', 3: 'border-l-[#f85149]',
+}
+
 function Row({ ev, hot, open, onToggle, tier = 0 }) {
   const lat = ev.ts_seen - ev.ts_event
   const latTxt = lat > 0.5 && lat < 600 ? `+${lat.toFixed(1)}s` : ''
-  const expandable = Boolean(ev.body) || Boolean(ev.live_call)
-    || Boolean(ev.story_cluster)
-    || Object.keys(ev.numbers || {}).length > 0
   return (
     <div
-      class={`border-b border-line/30 font-mono transition-colors duration-1000 ${
-        hot ? 'bg-accent text-black' : open ? 'bg-surface-1' : ''
-      } ${expandable ? 'cursor-pointer' : ''}`}
-      onClick={expandable ? onToggle : undefined}
+      class={`border-b border-line/30 border-l-2 font-mono transition-colors duration-1000 cursor-pointer ${
+        hot ? 'bg-accent text-black border-l-transparent'
+          : `${TIER_EDGE[tier] || 'border-l-transparent'} ${open ? 'bg-surface-1' : 'hover:bg-white/[0.035]'}`
+      }`}
+      onClick={onToggle}
     >
       {/* Phone width: meta on line 1, headline unclipped on line 2 — a 10-char
           truncated headline defeats the point of a wire. */}
@@ -93,10 +96,15 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
           title={ev.headline}
         >
           {!hot && <TierBadge tier={tier} />}
-          {ev.url ? (
-            <a href={ev.url} target="_blank" rel="noopener" class="hover:text-accent" onClick={(e) => e.stopPropagation()}>{ev.headline}</a>
-          ) : ev.headline}
+          <span class={tier === 3 && !hot ? 'text-ink font-semibold' : ''}>{ev.headline}</span>
           {ev.story_cluster && <span class="text-accent font-bold"> ×{ev.story_cluster.count}</span>}
+          {ev.url && (
+            <a href={ev.url} target="_blank" rel="noopener"
+              onClick={(e) => e.stopPropagation()}
+              title={(() => { try { return new URL(ev.url).hostname.replace('www.', '') } catch { return 'open source' } })()}
+              class={`inline-grid place-items-center align-middle ml-1.5 w-[15px] h-[15px] rounded-[3px] border text-[9px] leading-none hover:no-underline ${
+                hot ? 'border-black/40 text-black' : 'border-line-2 text-muted hover:text-accent hover:border-accent/60'}`}>↗</a>
+          )}
         </span>
         <span class={`text-[10.5px] max-sm:row-start-1 max-sm:col-start-4 max-sm:justify-self-end ${hot ? '' : lat < 60 ? 'text-up' : 'text-muted'}`}>{latTxt}</span>
       </div>
@@ -132,6 +140,13 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
       {open && !ev.live_call && (
         <div class="px-2.5 pb-2 pl-[168px] max-sm:pl-2.5">
           {ev.body && <p class="text-[11.5px] leading-relaxed text-ink-2 max-w-[72ch]">{ev.body}</p>}
+          <p class="text-[9.5px] font-mono text-muted pt-1 flex flex-wrap gap-x-3">
+            <span>{new Date(ev.ts_event * 1000).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</span>
+            {latTxt && <span>tape latency {latTxt}</span>}
+            <span class="uppercase">{String(ev.type).replace(/_/g, ' ')}</span>
+            {ev.url && (() => { try { return <span>{new URL(ev.url).hostname.replace('www.', '')}</span> } catch { return null } })()}
+            {ev.url && <a href={ev.url} target="_blank" rel="noopener" class="text-ink-2 hover:text-accent" onClick={(e) => e.stopPropagation()}>open ↗</a>}
+          </p>
           {Object.keys(ev.numbers || {}).length > 0 && (
             <div class="flex flex-wrap gap-1.5 mt-1.5">
               {Object.entries(ev.numbers).map(([k, v]) => (
@@ -157,11 +172,53 @@ function Panel({ title, children }) {
   )
 }
 
-function Rail({ today, now }) {
+function Rail({ today, now, events, watchset }) {
   const sessions = (today?.sessions || []).filter((s) => s.status !== 'failed')
   const live = sessions.filter((s) => ['armed', 'capturing'].includes(s.status))
+
+  // last-hour tape reads, computed off the buffer the page already holds
+  const hourAgo = now - 3600
+  const lastHour = events.filter((e) => e.ts_event >= hourAgo)
+  const symCount = new Map()
+  for (const e of events) {
+    for (const sym of e.symbols || []) symCount.set(sym, (symCount.get(sym) || 0) + 1)
+  }
+  const hotSyms = [...symCount.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8)
+  const srcCount = new Map()
+  for (const e of events) {
+    if (!e.url) continue
+    try {
+      const h = new URL(e.url).hostname.replace('www.', '')
+      srcCount.set(h, (srcCount.get(h) || 0) + 1)
+    } catch { /* bad url */ }
+  }
+  const topSrc = [...srcCount.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5)
+
   return (
     <aside class="flex flex-col gap-2 w-[290px] shrink-0 max-lg:w-full">
+      <Panel title="tape">
+        <div class="grid grid-cols-3 gap-1 py-0.5 font-mono text-center">
+          <div><div class="text-[15px] font-semibold text-ink">{events.length}</div>
+            <div class="text-[8.5px] uppercase tracking-wider text-muted">buffered</div></div>
+          <div><div class="text-[15px] font-semibold text-accent">{lastHour.length}</div>
+            <div class="text-[8.5px] uppercase tracking-wider text-muted">last hour</div></div>
+          <div><div class="text-[15px] font-semibold text-ink">{symCount.size}</div>
+            <div class="text-[8.5px] uppercase tracking-wider text-muted">symbols</div></div>
+        </div>
+      </Panel>
+      {hotSyms.length > 0 && (
+        <Panel title="most mentioned">
+          <div class="flex flex-wrap gap-1 py-0.5">
+            {hotSyms.map(([sym, n]) => (
+              <a key={sym} href={`#/research/${sym.toLowerCase()}`}
+                class={`border rounded px-1.5 py-0.5 font-mono text-[10.5px] hover:no-underline hover:border-accent/60 ${
+                  watchset.has(sym) ? 'border-accent/40 text-accent' : 'border-line text-ink-2'}`}>
+                {sym} <b class="text-ink">{n}</b>
+              </a>
+            ))}
+          </div>
+        </Panel>
+      )}
       <Panel title="today">
         {(today?.calendar || []).length === 0 && (
           <p class="font-mono text-[11px] text-muted py-0.5">nothing on the sheet</p>
@@ -212,6 +269,16 @@ function Rail({ today, now }) {
           ))}
         </div>
       </Panel>
+      {topSrc.length > 0 && (
+        <Panel title="loudest sources">
+          {topSrc.map(([h, n]) => (
+            <div key={h} class="flex justify-between gap-2 py-[2px] font-mono text-[10.5px]">
+              <span class="text-ink-2 truncate">{h}</span>
+              <span class="text-muted">{n}</span>
+            </div>
+          ))}
+        </Panel>
+      )}
     </aside>
   )
 }
@@ -428,7 +495,7 @@ export function Wire() {
             )
           })}
         </div>
-        <Rail today={today} now={now} />
+        <Rail today={today} now={now} events={events} watchset={watchset} />
       </div>
       {!IS_PRIVATE_BUILD && (
         <p class="font-mono text-[10.5px] text-muted max-w-[74ch]">
