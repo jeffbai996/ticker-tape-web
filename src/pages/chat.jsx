@@ -546,10 +546,11 @@ export function Chat() {
   // local conversation as thread #1, and list the threads for the rail.
   const refreshThreads = () => fetchThreadList().then(setThreads).catch(() => {})
   useEffect(() => {
-    if (!chatstoreAvailable()) return
     const onSync = () => { setMemories(loadMemories()); setJournal(loadJournal()) }
-    window.addEventListener(CHATSTORE_SYNC_EVENT, onSync)
-    syncNotes().catch(() => {})
+    if (chatstoreAvailable()) {
+      window.addEventListener(CHATSTORE_SYNC_EVENT, onSync)
+      syncNotes().catch(() => {})
+    }
     migrateLegacy().then(refreshThreads).catch(() => {})
     return () => window.removeEventListener(CHATSTORE_SYNC_EVENT, onSync)
   }, [])
@@ -1061,19 +1062,17 @@ export function Chat() {
           </span>
         )}
         <div class="ml-auto h-7 flex items-center gap-0.5 border border-line rounded-lg px-0.5">
-          {chatstoreAvailable() && (
-            <button
-              onClick={() => setDrawer(drawer === 'sessions' ? null : 'sessions')}
-              class={`relative w-6 h-6 grid place-items-center rounded-md ${drawer === 'sessions' ? 'text-accent bg-accent-soft' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
-              title="saved chat sessions"
-              aria-label="chat sessions"
-            >
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M5 5h14v11H9l-4 3V5z"/><path d="M8 9h8M8 12h5"/>
-              </svg>
-              {threads.length > 0 && <span class="absolute -top-1 -right-1 min-w-[13px] h-[13px] px-0.5 grid place-items-center rounded-full bg-surface-3 border border-line-2 font-mono text-[7.5px] text-ink-2 leading-none">{threads.length}</span>}
-            </button>
-          )}
+          <button
+            onClick={() => setDrawer(drawer === 'sessions' ? null : 'sessions')}
+            class={`relative w-6 h-6 grid place-items-center rounded-md ${drawer === 'sessions' ? 'text-accent bg-accent-soft' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
+            title="saved chat sessions"
+            aria-label="chat sessions"
+          >
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 5h14v11H9l-4 3V5z"/><path d="M8 9h8M8 12h5"/>
+            </svg>
+            {threads.length > 0 && <span class="absolute -top-1 -right-1 min-w-[13px] h-[13px] px-0.5 grid place-items-center rounded-full bg-surface-3 border border-line-2 font-mono text-[7.5px] text-ink-2 leading-none">{threads.length}</span>}
+          </button>
           <button
             onClick={() => { setMemories(loadMemories()); setDrawer(drawer === 'mem' ? null : 'mem') }}
             class={`relative w-6 h-6 grid place-items-center rounded-md ${drawer === 'mem' ? 'text-accent bg-accent-soft' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
@@ -1342,8 +1341,7 @@ export function Chat() {
         </div>
       </section>
 
-      {chatstoreAvailable() && (
-        <section class="chat-rail-section bg-surface-1 border border-line rounded-xl overflow-hidden shrink-0">
+      <section class="chat-rail-section bg-surface-1 border border-line rounded-xl overflow-hidden shrink-0">
           <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2 flex items-baseline gap-1.5">
             <h2 class="font-anth font-bold text-[10px] tracking-wider text-accent uppercase">sessions</h2>
             <span class="font-mono text-[9px] text-muted">{threads.length}</span>
@@ -1364,8 +1362,7 @@ export function Chat() {
               </div>
             ))}
           </div>
-        </section>
-      )}
+      </section>
 
       <section class="chat-rail-section bg-surface-1 border border-line rounded-xl overflow-hidden shrink-0">
         <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
