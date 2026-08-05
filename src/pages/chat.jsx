@@ -73,10 +73,10 @@ function exportChat(history) {
 }
 
 const SUGGESTIONS = [
-  { t: "what's moving today?", k: 'mkt' },
-  { t: 'how does NVDA look technically?', k: 'mkt' },
-  { t: "what's on the calendar this week?", k: 'mkt' },
-  { t: 'open TSLA research', k: 'app' },
+  { key: 'chat.action_moving', k: 'mkt' },
+  { key: 'chat.action_technical', k: 'mkt' },
+  { key: 'chat.action_calendar', k: 'mkt' },
+  { key: 'chat.action_research', k: 'app' },
 ]
 
 /**
@@ -90,26 +90,32 @@ function dynamicActions({ watchlist, quotes, earnDays, nextEvent, book, journal 
   const push = (t, k) => { if (!acts.some((a) => a.t === t)) acts.push({ t, k }) }
 
   const reporting = watchlist.filter((s) => earnDays[s] === 0).slice(0, 2)
-  for (const s of reporting) push(`summarize ${s}'s earnings report`, 'mkt')
+  for (const s of reporting) push(tt('chat.action_earnings_summary', { symbol: s }), 'mkt')
   const soon = watchlist.filter((s) => earnDays[s] > 0 && earnDays[s] <= 3)
     .sort((a, b) => earnDays[a] - earnDays[b])[0]
-  if (soon) push(`what should I watch in ${soon}'s earnings (${earnDays[soon]}d out)?`, 'mkt')
+  if (soon) push(tt('chat.action_earnings_preview', { symbol: soon, days: earnDays[soon] }), 'mkt')
 
   const movers = watchlist
     .map((s) => ({ s, pct: quotes[s]?.quote?.pct, price: quotes[s]?.quote?.price }))
     .filter((x) => x.pct != null && Math.abs(x.pct) >= 3)
     .sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct))
   for (const m of movers.slice(0, 2)) {
-    push(`what's driving ${m.s} ${m.pct > 0 ? 'up' : 'down'} ${Math.abs(m.pct).toFixed(1)}% today?`, 'mkt')
+    push(tt('chat.action_mover', {
+      symbol: m.s, direction: tl(m.pct > 0 ? 'up' : 'down'), pct: Math.abs(m.pct).toFixed(1),
+    }), 'mkt')
   }
 
   if (nextEvent && nextEvent.days <= 7) {
-    push(`what does ${nextEvent.rawLabel || nextEvent.label} (${nextEvent.days === 0 ? 'today' : `${nextEvent.days}d`}) mean for ${book ? 'my book' : 'the market'}?`, book ? 'book' : 'mkt')
+    push(tt('chat.action_event', {
+      event: tl(nextEvent.rawLabel || nextEvent.label),
+      when: nextEvent.days === 0 ? tl('today') : `${nextEvent.days}d`,
+      target: tl(book ? 'my book' : 'the market'),
+    }), book ? 'book' : 'mkt')
   }
 
   if (book) {
-    push('how is my book positioned this week?', 'book')
-    push("what's the biggest risk to the book right now?", 'book')
+    push(tt('chat.action_book_position'), 'book')
+    push(tt('chat.action_book_risk'), 'book')
   }
 
   // a live alert suggestion off the top mover — the arm tool is real
@@ -118,19 +124,19 @@ function dynamicActions({ watchlist, quotes, earnDays, nextEvent, book, journal 
     const lvl = top.pct > 0
       ? Math.ceil((top.price * 1.03) / 5) * 5
       : Math.floor((top.price * 0.97) / 5) * 5
-    push(`arm an alert on ${top.s} at ${lvl}`, 'app')
+    push(tt('chat.action_alert', { symbol: top.s, level: lvl }), 'app')
   }
 
-  push('which watchlist name looks strongest technically?', 'mkt')
+  push(tt('chat.action_strongest'), 'mkt')
 
   // journal recall — only when there is a journal to recall from
   const lastTagged = [...(journal || [])].reverse().find((e) => e.symbols?.length)
-  if (lastTagged) push(`what did my journal say about ${lastTagged.symbols[0]}?`, 'app')
+  if (lastTagged) push(tt('chat.action_journal', { symbol: lastTagged.symbols[0] }), 'app')
 
-  push('open the heatmap', 'app')
+  push(tt('chat.action_heatmap'), 'app')
   for (const s of SUGGESTIONS) {
     if (acts.length >= 12) break
-    push(s.t, s.k)
+    push(tt(s.key), s.k)
   }
   return acts.slice(0, 12)
 }
@@ -399,7 +405,7 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
             <div class={eyebrow}>{tl('on the calendar')}</div>
             {events.length ? events.slice(0, 4).map((ev) => (
               <a key={ev.label + ev.days} href="#/markets/calendar" class="flex items-baseline justify-between gap-2 font-mono text-[11.5px] py-px hover:no-underline">
-                <span class="text-ink truncate">{ev.rawLabel || ev.label}</span>
+                <span class="text-ink truncate">{tl(ev.rawLabel || ev.label)}</span>
                 <span class={ev.days <= 1 ? 'text-imminent font-bold' : ev.days <= 7 ? 'text-down' : 'text-accent'}>
                   {ev.days === 0 ? tl('today') : `${ev.days}d`}
                 </span>
@@ -1022,7 +1028,7 @@ export function Chat() {
       <div class="max-w-[56rem] w-full mx-auto flex items-center gap-2 px-1 pb-2 mb-1 border-b border-line flex-wrap">
         <h1 class="font-bold text-lg leading-none text-ink" style="font-family: 'Plus Jakarta Sans', sans-serif">{tl('AI Chat')}</h1>
         <span class={`w-1.5 h-1.5 rounded-full mr-1 ${onWire ? 'bg-up' : 'bg-accent'}`}
-              title={onWire ? 'online — private wire' : 'online — public proxy'} />
+              title={tl(onWire ? 'online — private wire' : 'online — public proxy')} />
         <label class="h-7 flex items-center gap-1.5 bg-surface-2 border border-line rounded-lg pl-2.5 pr-1 focus-within:border-accent/70 hover:border-line-2 transition-colors">
           <span class="font-mono text-[9px] uppercase tracking-wider text-muted">{tl('model')}</span>
           <select
@@ -1050,7 +1056,7 @@ export function Chat() {
                     : 'text-muted hover:text-ink hover:bg-surface-3'
                 }`}
               >
-                {lv}
+                {tl(lv)}
               </button>
             ))}
           </div>

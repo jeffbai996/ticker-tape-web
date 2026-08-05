@@ -5,7 +5,7 @@ import {
 } from '../lib/wire.js'
 import { getWatchlist } from '../lib/watchlist.js'
 import { IS_PRIVATE_BUILD } from '../lib/nav.js'
-import { tl } from '../lib/i18n.js'
+import { getLocale, t as tt, tl } from '../lib/i18n.js'
 
 // fragwire's relevance ramp, same colors as its pills: T1 sector (blue),
 // T2 core thesis (amber), T3 thesis on a name you hold (red).
@@ -26,8 +26,8 @@ function TierBadge({ tier }) {
   if (!tier) return null
   return (
     <span class={`inline-block align-middle mr-1.5 border rounded-[2px] px-1 font-mono font-bold text-[8.5px] tracking-wider leading-[1.6] ${TIER_CLS[tier]}`}
-      title={tier === 3 ? 'T3 — thesis story on a name you hold'
-        : tier === 2 ? 'T2 — core thesis story' : 'T1 — touches the sector'}>
+      title={tl(tier === 3 ? 'T3 — thesis story on a name you hold'
+        : tier === 2 ? 'T2 — core thesis story' : 'T1 — touches the sector')}>
       T{tier}
     </span>
   )
@@ -57,7 +57,7 @@ const hhmmss = (ts) =>
 // under 24h → clock time (fresh even if yesterday); older → the date
 const rowTime = (ts) => Date.now() / 1000 - ts < 86400
   ? hhmmss(ts)
-  : new Date(ts * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  : new Date(ts * 1000).toLocaleDateString(getLocale() === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric' })
 
 const countdown = (sec) => {
   if (sec <= 0) return 'now'
@@ -140,7 +140,7 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
           {ev.url && (
             <a href={ev.url} target="_blank" rel="noopener"
               onClick={(e) => e.stopPropagation()}
-              title={(() => { try { return new URL(ev.url).hostname.replace('www.', '') } catch { return 'open source' } })()}
+              title={(() => { try { return new URL(ev.url).hostname.replace('www.', '') } catch { return tl('open source') } })()}
               class={`inline-grid place-items-center align-middle ml-1.5 w-[15px] h-[15px] rounded-[3px] border text-[9px] leading-none hover:no-underline ${
                 hot ? 'border-black/40 text-black' : 'border-line-2 text-muted hover:text-accent hover:border-accent/60'}`}>↗</a>
           )}
@@ -149,7 +149,7 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
       </div>
       {open && ev.story_cluster && (
         <div class="px-2.5 pb-2 pl-[168px] max-sm:pl-2.5 flex flex-col gap-0.5">
-          <p class="text-[8.5px] uppercase tracking-wider text-muted">{ev.story_cluster.count} outlets on this story</p>
+          <p class="text-[8.5px] uppercase tracking-wider text-muted">{tt('wire.story_outlets', { count: ev.story_cluster.count })}</p>
           {ev.story_cluster.members.map((m) => (
             <p key={m.id} class="text-[11.5px] font-mono truncate">
               <span class="text-muted text-[9.5px] mr-1.5">{(() => { try { return new URL(m.url).hostname.replace('www.', '') } catch { return m.source } })()}</span>
@@ -162,7 +162,7 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
         <div class="px-2.5 pb-2 pl-[168px] max-sm:pl-2.5 flex flex-col gap-1.5">
           {ev.live_call.digests.map((dg) => (
             <p key={dg.id} class="text-[11.5px] leading-relaxed text-ink-2 max-w-[72ch] border-l-2 border-accent pl-2.5">
-              <span class="text-[8.5px] uppercase tracking-wider text-muted mr-1.5">digest #{(dg.meta || {}).digest_n || ''}</span>
+              <span class="text-[8.5px] uppercase tracking-wider text-muted mr-1.5">{tt('wire.digest_number', { number: (dg.meta || {}).digest_n || '' })}</span>
               {dg.body}
             </p>
           ))}
@@ -181,8 +181,8 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
           {ev.body && <p class="text-[11.5px] leading-relaxed text-ink-2 max-w-[72ch]">{ev.body}</p>}
           {!ev.body && !ev.story_cluster && ev.url && <ReadBody ev={ev} />}
           <p class="text-[9.5px] font-mono text-muted pt-1 flex flex-wrap gap-x-3">
-            <span>{new Date(ev.ts_event * 1000).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</span>
-            {latTxt && <span>tape latency {latTxt}</span>}
+            <span>{new Date(ev.ts_event * 1000).toLocaleString(getLocale() === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</span>
+            {latTxt && <span>{tt('wire.tape_latency', { latency: latTxt })}</span>}
             <span class="uppercase">{String(ev.type).replace(/_/g, ' ')}</span>
             {ev.url && (() => { try { return <span>{new URL(ev.url).hostname.replace('www.', '')}</span> } catch { return null } })()}
             {ev.url && <a href={ev.url} target="_blank" rel="noopener" class="text-ink-2 hover:text-accent" onClick={(e) => e.stopPropagation()}>{tl('open ↗')}</a>}
@@ -450,12 +450,12 @@ export function Wire() {
               }`}
               onClick={() => setModePersist(m)}
             >
-              {m}
+              {tl(m)}
             </button>
           ))}
         </div>
         <span class={`font-mono text-[11px] uppercase tracking-widest ${stateTone[state]}`}>
-          {state === 'demo' ? 'demo wire — synthetic events' : state}
+          {tl(state === 'demo' ? 'demo wire — synthetic events' : state)}
         </span>
         {/* Straight through to the board this tape is mirroring — this page is
             a reader, the wire's own UI has the tuning, alerts and reader. */}
@@ -483,11 +483,11 @@ export function Wire() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ add: syms }),
               }).then((r) => r.json())
-                .then((out) => setError(out.ok ? `synced ${syms.length} symbols → wire` : (out.error || 'sync failed')))
-                .catch(() => setError('sync failed'))
+                .then((out) => setError(out.ok ? tt('wire.sync_ok', { count: syms.length }) : (out.error || tt('wire.sync_failed'))))
+                .catch(() => setError(tt('wire.sync_failed')))
             }}
           >
-            push watchlist → wire
+            {tl('push watchlist → wire')}
           </button>
         )}
         {/* Private build has exactly one wire and it's auto-configured —
@@ -501,7 +501,7 @@ export function Wire() {
               onInput={(e) => setDraft(e.currentTarget.value)}
             />
             <button class="border border-line rounded-md px-3 py-1 text-[11.5px] font-semibold text-ink-2 hover:text-ink hover:border-ink-2">
-              connect
+              {tl('connect')}
             </button>
           </form>
         )}
@@ -517,7 +517,7 @@ export function Wire() {
             }`}
             onClick={() => setFilter(f.id)}
           >
-            {f.label}
+            {tl(f.label)}
           </button>
         ))}
       </div>
@@ -539,10 +539,7 @@ export function Wire() {
       </div>
       {!IS_PRIVATE_BUILD && (
         <p class="font-mono text-[10.5px] text-muted max-w-[74ch]">
-          BYO wire: this page ships no endpoint and no data — point it at any
-          fragwire-compatible service (/api/events + /api/stream, optionally
-          /api/today, /api/quotes, /api/meta) and everything renders in your
-          browser only. Blank endpoint runs a synthetic demo feed.
+          {tt('wire.byo_note')}
         </p>
       )}
     </div>

@@ -6,7 +6,7 @@ import { assembleBriefing, renderBriefing, briefingPrompt, BRIEFING_SYSTEM } fro
 import { useEarningsDays } from './dashboard.jsx'
 import { AiReport, MdLite } from '../components/AiReport.jsx'
 import { loadArchive, onArchiveChange, removeReport } from '../lib/archive.js'
-import { tl } from '../lib/i18n.js'
+import { formatBriefTechnicalNote, getLocale, tl } from '../lib/i18n.js'
 import { fmtPct } from '../lib/format.js'
 
 const INDEX_SYMBOLS = INDICES.map((i) => i.symbol)
@@ -47,7 +47,7 @@ function ArchivePanel() {
                 {r.symbol && <span class="text-ink font-bold">{r.symbol}</span>}
                 <span class="text-ink-2 truncate">{r.title}</span>
                 <span class="text-muted ml-auto shrink-0">
-                  {new Date(r.ts).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                  {new Date(r.ts).toLocaleString(getLocale() === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                 </span>
               </button>
               <button
@@ -94,6 +94,9 @@ const upDown = (v) => (v >= 0 ? 'text-up' : 'text-down')
 /** The briefing data as readable cards — the ALL-CAPS text block only lives
  *  on as the AI prompt body now. */
 function BriefData({ s }) {
+  const fmtDays = (days) => days === 0
+    ? tl('today')
+    : getLocale() === 'zh' ? `${days}天` : `${days}d`
   const movers = [
     ...s.movers.gainers.map((m) => ({ ...m, side: 'g' })),
     ...s.movers.losers.map((m) => ({ ...m, side: 'l' })),
@@ -103,16 +106,16 @@ function BriefData({ s }) {
       <Card title={tl('Macro tape')}>
         {s.macro.map((m) => (
           <div key={m.label} class={rowCls}>
-            <span class="font-anth text-ink-2">{m.label}</span>
+            <span class="font-anth text-ink-2">{tl(m.label)}</span>
             <span class="ml-auto text-ink">{m.price.toFixed(2)}</span>
             <span class={`w-16 text-right ${upDown(m.pct)}`}>{fmtPct(m.pct)}</span>
           </div>
         ))}
         {s.pulse && (
           <div class="px-3 py-1.5 font-mono text-[10.5px] text-muted border-t border-line">
-            breadth <span class="text-up">{s.pulse.adv}</span>/<span class="text-down">{s.pulse.dec}</span>
-            {' · '}avg <span class={upDown(s.pulse.avg)}>{fmtPct(s.pulse.avg)}</span>
-            {' · '}&gt;2% movers <span class="text-ink-2">{s.pulse.movers}/{s.pulse.total}</span>
+            {tl('breadth')} <span class="text-up">{s.pulse.adv}</span>/<span class="text-down">{s.pulse.dec}</span>
+            {' · '}{tl('avg')} <span class={upDown(s.pulse.avg)}>{fmtPct(s.pulse.avg)}</span>
+            {' · '}{tl('>2% movers')} <span class="text-ink-2">{s.pulse.movers}/{s.pulse.total}</span>
           </div>
         )}
       </Card>
@@ -133,7 +136,7 @@ function BriefData({ s }) {
             <a href={`#/research/${n.symbol.toLowerCase()}`} class="font-[650] font-tick text-ink hover:no-underline">{n.symbol}</a>
             <span class="ml-auto flex flex-wrap justify-end gap-1">
               {n.notes.map((note) => (
-                <span key={note} class="rounded border border-line px-1.5 py-px font-mono text-[9.5px] text-ink-2">{note}</span>
+                <span key={note} class="rounded border border-line px-1.5 py-px font-mono text-[9.5px] text-ink-2">{formatBriefTechnicalNote(note)}</span>
               ))}
             </span>
           </div>
@@ -146,15 +149,15 @@ function BriefData({ s }) {
             <a href={`#/research/${e.symbol.toLowerCase()}/earnings`} class="font-[650] font-tick text-ink hover:no-underline">{e.symbol}</a>
             <span class="font-anth text-[11px] text-muted">{tl('earnings')}</span>
             <span class={`w-14 text-right ${e.days === 0 ? 'text-imminent font-bold' : e.days <= 7 ? 'text-down' : 'text-accent'}`}>
-              {e.days === 0 ? 'today' : `${e.days}d`}
+              {fmtDays(e.days)}
             </span>
           </div>
         ))}
         {s.calendar.map((e) => (
           <div key={e.type + e.days} class={rowCls}>
             <span class="font-mono text-[10px] text-accent font-bold w-10">{e.type}</span>
-            <span class="font-anth text-[11px] text-ink-2 min-w-0 truncate">{e.label}</span>
-            <span class={`w-14 text-right ${e.days <= 7 ? 'text-down' : 'text-muted'}`}>{e.days}d</span>
+            <span class="font-anth text-[11px] text-ink-2 min-w-0 truncate">{tl(e.label)}</span>
+            <span class={`w-14 text-right ${e.days <= 7 ? 'text-down' : 'text-muted'}`}>{fmtDays(e.days)}</span>
           </div>
         ))}
         {!s.earnings.length && !s.calendar.length && (
@@ -180,7 +183,7 @@ export function Brief() {
   })
   const text = renderBriefing(sections)
 
-  const date = new Date().toLocaleDateString('en-US', {
+  const date = new Date().toLocaleDateString(getLocale() === 'zh' ? 'zh-CN' : 'en-US', {
     weekday: 'long', month: 'long', day: 'numeric', timeZone: 'America/New_York',
   })
 
