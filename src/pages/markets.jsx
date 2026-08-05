@@ -109,7 +109,7 @@ function GroupCard({ name, items, quotes, withUnits }) {
       <table class="w-full border-collapse">
         <tbody>
           {items.map((it) => (it.spread ? (
-            <SpreadRow key={it.label} label={tl(it.label)} hint={it.hint}
+            <SpreadRow key={it.label} label={tl(it.label)} hint={tl(it.hint)}
                        spread={it.spread} quotes={quotes} />
           ) : (
             <QuoteRow

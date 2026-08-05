@@ -115,6 +115,29 @@ const STRINGS = {
   'chat.wire_empty': { en: 'Ask about a ticker, a sector, or the book.', zh: '可以问股票、板块或持仓。' },
   'chat.session_messages': { en: '{n} messages', zh: '{n} 条消息' },
   'chat.exchange_saved': { en: '✓ exchange saved to journal #{id}', zh: '✓ 本轮对话已保存至交易日志 #{id}' },
+  'chat.action_earnings_summary': { en: "summarize {symbol}'s earnings report", zh: '总结 {symbol} 的财报' },
+  'chat.action_earnings_preview': { en: "what should I watch in {symbol}'s earnings ({days}d out)?", zh: '{symbol} 将在 {days} 天后发布财报，我该关注什么？' },
+  'chat.action_mover': { en: "what's driving {symbol} {direction} {pct}% today?", zh: '{symbol} 今日{direction} {pct}%，原因是什么？' },
+  'chat.action_event': { en: 'what does {event} ({when}) mean for {target}?', zh: '{event}（{when}）对{target}意味着什么？' },
+  'chat.action_book_position': { en: 'how is my book positioned this week?', zh: '本周我的持仓结构如何？' },
+  'chat.action_book_risk': { en: "what's the biggest risk to the book right now?", zh: '当前持仓最大的风险是什么？' },
+  'chat.action_alert': { en: 'arm an alert on {symbol} at {level}', zh: '在 {symbol} 到达 {level} 时设置提醒' },
+  'chat.action_strongest': { en: 'which watchlist name looks strongest technically?', zh: '自选股里哪个标的技术面最强？' },
+  'chat.action_journal': { en: 'what did my journal say about {symbol}?', zh: '我的交易日志里对 {symbol} 怎么说？' },
+  'chat.action_heatmap': { en: 'open the heatmap', zh: '打开热力图' },
+  'chat.action_moving': { en: "what's moving today?", zh: '今天哪些标的在异动？' },
+  'chat.action_technical': { en: 'how does NVDA look technically?', zh: 'NVDA 的技术面如何？' },
+  'chat.action_calendar': { en: "what's on the calendar this week?", zh: '本周有哪些重要日程？' },
+  'chat.action_research': { en: 'open TSLA research', zh: '打开 TSLA 研究页' },
+  'wire.sync_ok': { en: 'synced {count} symbols → wire', zh: '已同步 {count} 只股票 → 快讯' },
+  'wire.sync_failed': { en: 'sync failed', zh: '同步失败' },
+  'wire.byo_note': {
+    en: 'BYO wire: this page ships no endpoint and no data — point it at any fragwire-compatible service and everything renders in your browser only. Blank endpoint runs a synthetic demo feed.',
+    zh: '自带快讯源：此页不内置地址或数据。连接任意兼容 Fragwire 的服务后，内容只会在浏览器中渲染；地址留空则使用模拟数据。',
+  },
+  'wire.story_outlets': { en: '{count} outlets on this story', zh: '{count} 家媒体报道此事件' },
+  'wire.digest_number': { en: 'digest #{number}', zh: '摘要 #{number}' },
+  'wire.tape_latency': { en: 'tape latency {latency}', zh: '快讯延迟 {latency}' },
   'chat.cap_note': {
     en: 'shared daily spend across all visitors, worst-case charged',
     zh: '全站访客共享的每日用量，按最坏情况计费',
@@ -373,7 +396,7 @@ const LABELS = {
   Functions: '功能', Recent: '最近访问', 'From the terminal': '终端快捷方式', GO: '打开',
   'full command list': '完整命令列表', 'watch — full list': '加入自选 — 完整列表',
   'alert now': '当前', 'symbol chips': '股票代码', 'A/D': '涨 / 跌', 'ext A/D': '盘外涨 / 跌',
-  'down >3%': '跌超3%', 'RSI 14': 'RSI 14', 'vs SMA200': '相对SMA200',
+  'down >3%': '跌超3%', up: '上涨', down: '下跌', 'RSI 14': 'RSI 14', 'vs SMA200': '相对SMA200',
   'vs 50d': '相对50日线', 'vs 200d': '相对200日线',
   '+ new session': '+ 新建对话', '+ new': '+ 新建', 'new session': '新建对话', untitled: '未命名',
   'no matches': '无匹配', 'nothing logged yet': '暂无记录', journal: '日志',
@@ -386,6 +409,20 @@ const LABELS = {
   'sector, business, officers': '板块、业务与管理层', 'everything fragwire captured on the name': 'Fragwire收录的全部相关动态',
   Yield: '收益率', 'Rate (annual)': '年化股息', 'Payout ratio': '派息率', 'Ex-div date': '除息日',
   HQ: '总部', 'chart: SYM': '图表：代码',
+  'full workbench — overlays, RSI/MACD panes, compare mode': '完整图表 — 叠加指标、RSI/MACD窗格与对比模式',
+  'chain with greeks': '期权链与希腊值', 'years of prints, surprises, price reactions': '历年财报、超预期幅度与股价反应',
+  'rec trend, price targets, rating changes': '评级趋势、目标价与近期调整', 'insider transactions': '内部人士交易',
+  top: '精选', wire: '时间线', 'demo wire — synthetic events': '模拟快讯 — 合成事件', connecting: '连接中', error: '错误',
+  'push watchlist → wire': '同步自选股 → 快讯', connect: '连接', all: '全部',
+  earnings: '财报', filings: '申报文件', headlines: '新闻', 'macro + fed': '宏观 + 美联储', 'live audio': '实时音频',
+  'online — private wire': '在线 — 私有快讯', 'online — public proxy': '在线 — 公共代理',
+  'my book': '我的持仓', 'the market': '市场',
+  low: '低', medium: '中', high: '高', Run: '运行', '52w range': '52周区间', '1Y %': '1年涨跌',
+  rsi14: 'RSI 14', 'vol x20d': '成交量 / 20日均量', 'off high': '距高点', macd: 'MACD',
+  breadth: '涨跌家数', '>2% movers': '涨跌超2%', 'avg volume': '均量',
+  'T1 — touches the sector': 'T1 — 涉及相关板块', 'T2 — core thesis story': 'T2 — 核心逻辑事件',
+  'T3 — thesis story on a name you hold': 'T3 — 涉及持仓标的的核心事件', 'open source': '打开来源',
+  curve: '收益率曲线', 'long end': '长端',
 }
 
 export function t(key, params) {
@@ -404,4 +441,13 @@ export function tl(label) {
 
 export function hasLabelTranslation(label) {
   return Object.hasOwn(LABELS, label)
+}
+
+export function formatBriefTechnicalNote(note) {
+  if (locale !== 'zh') return note
+  let match = String(note).match(/^(\d+(?:\.\d+)?)x avg volume$/)
+  if (match) return `${match[1]}倍均量`
+  match = String(note).match(/^below 200d · RS (-?\d+)pp$/)
+  if (match) return `低于200日线 · 相对强弱 ${match[1]}个百分点`
+  return note
 }
