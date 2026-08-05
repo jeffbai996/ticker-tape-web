@@ -68,12 +68,12 @@ export function parseToolCall(text, defs = TOOL_DEFS) {
 }
 
 /** One turn against fragwire's router. Returns the assistant's raw text. */
-export async function wireComplete({ model, system, messages, signal }) {
+export async function wireComplete({ model, effort, system, messages, signal }) {
   const base = wireUrl().replace(/\/$/, '')
   const resp = await fetch(`${base}/api/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model, system, messages }),
+    body: JSON.stringify({ model, effort, system, messages }),
     signal: signal || AbortSignal.timeout(180_000),
   })
   const out = await resp.json().catch(() => ({}))
