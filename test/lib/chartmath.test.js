@@ -41,5 +41,7 @@ describe('chartmath series agree with indicators.js latest values', () => {
   it('ema seeds with sma', () => {
     const s = emaSeries(bars, 21)
     expect(s[0].time).toBe(bars[20].time)
+    const tail = bars.slice(0, 21).reduce((a, b) => a + b.close, 0) / 21
+    expect(s[0].value).toBeCloseTo(tail)
   })
 })
