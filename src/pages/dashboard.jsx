@@ -115,7 +115,7 @@ function TuiRow({ symbol, data, earnDays }) {
   return (
     <a
       href={`#/research/${symbol.toLowerCase()}`}
-      class="group/row relative block px-3 py-[3px] border-b border-line last:border-0 hover:bg-white/[0.035] hover:no-underline"
+      class="tui-row group/row relative block px-3 py-[3px] border-b border-line last:border-0 hover:bg-white/[0.035] hover:no-underline"
       title={q?.name ? `${symbol} — ${q.name}` : symbol}
     >
       {/* favorites are managed where they live: hover a row, tap the star
@@ -130,13 +130,23 @@ function TuiRow({ symbol, data, earnDays }) {
       <div class="flex gap-4 min-w-0">
         <div class="flex-1 min-w-0 overflow-hidden">
           <div class="flex items-baseline gap-2 max-sm:gap-1.5 font-mono text-[13px] max-sm:text-[12px] flex-nowrap max-sm:flex-wrap min-w-0">
-            <span class="text-ink font-[650] font-tick text-[12px] w-14 max-sm:w-12 shrink-0">{symbol}</span>
+            <span class="relative text-ink font-[650] font-tick text-[12px] w-14 max-sm:w-12 shrink-0">
+              {symbol}
+              {/* Compact/high-zoom rows cannot afford a permanent name gutter.
+                  Keep the data columns frozen and reveal the name from the
+                  ticker edge instead; aria-hidden avoids reading it twice. */}
+              {q?.name && (
+                <span class="tui-company-name-peek @min-[820px]:hidden" aria-hidden="true">
+                  {q.name}
+                </span>
+              )}
+            </span>
             {/* CLI parity: `[bold]{sym}[/][dim]{name}[/]`. The name rides in a
                 flexible gutter — it is the only thing on the row allowed to
                 give up width, so the fixed price/change/AH columns stay aligned
                 across rows AND never get pushed past the clip edge. Below
                 820px the text hides but the gutter stays, collapsing to 0. */}
-            <span class="hidden @min-[820px]:block flex-1 min-w-0 max-w-[120px]">
+            <span class="tui-company-name-wide hidden @min-[820px]:block flex-1 min-w-0 max-w-[120px]">
               <Marquee text={q?.name || ''} title={q?.name ? `${symbol} — ${q.name}` : symbol}
                 class="inline-block w-full text-[10.5px] text-muted font-normal font-anth" />
             </span>
