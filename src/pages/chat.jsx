@@ -13,6 +13,7 @@ import { fmtPct } from '../lib/format.js'
 import { buildChatContext, hasLiveBook } from '../lib/chatContext.js'
 import { loadMemories, addMemory, editMemory, removeMemory, applyMemoryTags } from '../lib/chatMemory.js'
 import { loadJournal, addJournalEntry, removeJournalEntry, searchJournal } from '../lib/journal.js'
+import { CHAT_HOME_EVENT, takeChatHomePending } from '../lib/chatnav.js'
 
 // Base prompt stays generic in source. Whether the assistant has a real book
 // is decided at runtime by whether the viewer wired in their own fragwire —
@@ -238,6 +239,119 @@ function ActivityTrace({ steps, busy }) {
   )
 }
 
+
+/**
+ * The launchpad — chat's home screen, and a place you can navigate back to.
+ * One instrument panel (three cells under a single frame, hairline-divided)
+ * rather than three floating cards: the terminal reads its state off single
+ * frames everywhere else, and the composer sits inside the pad so the empty
+ * page has a centre of gravity instead of a void under it.
+ */
+function Launchpad({ onWire, watchlist, quotes, earnDays, nextEvent, onPick,
+                     threadLen, onResume, composer }) {
+  const book = hasLiveBook()
+  const acts = dynamicActions({ watchlist, quotes, earnDays, nextEvent, book })
+  const movers = watchlist
+    .map((s) => ({ s, pct: quotes[s]?.quote?.pct }))
+    .filter((x) => x.pct != null)
+    .sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct))
+    .slice(0, 3)
+  const nextEarn = watchlist
+    .filter((s) => earnDays[s] != null && earnDays[s] >= 0)
+    .sort((a, b) => earnDays[a] - earnDays[b])
+    .slice(0, 3)
+
+  const cell = "px-3.5 py-2.5"
+  const eyebrow = "font-mono text-[9px] tracking-[0.16em] text-muted uppercase pb-1.5"
+
+  return (
+    <div class="w-full max-w-3xl px-1 py-4 flex flex-col gap-4">
+      <div class="flex items-start gap-3">
+        <div class="min-w-0">
+          <div class="font-mono text-[9px] tracking-[0.18em] text-muted uppercase flex items-center gap-1.5 pb-2">
+            <span class={`w-1.5 h-1.5 rounded-full ${onWire ? 'bg-up' : 'bg-muted'}`} />
+            {onWire ? 'wired · your subscription, your book' : 'proxied · no key in your browser'}
+          </div>
+          <h2 class="font-anth text-[21px] leading-[1.25] font-semibold text-ink">
+            {onWire
+              ? 'Ask about a ticker, a sector, or the book.'
+              : tt('chat.empty')}
+          </h2>
+          <div class="text-muted text-[11.5px] font-anth pt-1.5">
+            live quotes · technicals · calendar · watchlist · alerts · memory · journal · navigation
+          </div>
+        </div>
+        {threadLen > 0 && (
+          <button
+            type="button"
+            onClick={onResume}
+            class="ml-auto shrink-0 flex items-center gap-1.5 font-mono text-[10px] text-muted border border-line rounded-lg px-2.5 py-1.5 hover:border-accent/60 hover:text-ink transition-colors"
+            title="the thread is still here — this only parks it"
+          >
+            resume thread <span class="text-accent">{threadLen}</span>
+          </button>
+        )}
+      </div>
+
+      {/* right now — one readout, rebuilt from live data on every quote poll */}
+      <div class="grid grid-cols-1 sm:grid-cols-3 bg-surface-1 border border-line rounded-xl divide-y divide-line sm:divide-y-0 sm:divide-x">
+        <div class={cell}>
+          <div class={eyebrow}>moving now</div>
+          {movers.length ? movers.map(({ s, pct }) => (
+            <a key={s} href={`#/research/${s.toLowerCase()}`} class="flex items-baseline justify-between font-mono text-[12px] py-0.5 hover:no-underline">
+              <span class="text-ink font-bold font-tick">{s}</span>
+              <span class={pct >= 0 ? 'text-up' : 'text-down'}>{fmtPct(pct)}</span>
+            </a>
+          )) : <div class="font-mono text-[11px] text-muted py-1">loading…</div>}
+        </div>
+        <div class={cell}>
+          <div class={eyebrow}>next earnings</div>
+          {nextEarn.length ? nextEarn.map((s) => (
+            <a key={s} href={`#/research/${s.toLowerCase()}/earnings`} class="flex items-baseline justify-between font-mono text-[12px] py-0.5 hover:no-underline">
+              <span class="text-ink font-bold font-tick">{s}</span>
+              <span class={earnDays[s] === 0 ? 'text-imminent font-bold' : earnDays[s] <= 7 ? 'text-down' : 'text-accent'}>
+                {earnDays[s] === 0 ? 'today' : `${earnDays[s]}d`}
+              </span>
+            </a>
+          )) : <div class="font-mono text-[11px] text-muted py-1">loading…</div>}
+        </div>
+        <div class={cell}>
+          <div class={eyebrow}>on the calendar</div>
+          {nextEvent ? (
+            <a href="#/markets/calendar" class="flex items-baseline justify-between gap-2 font-mono text-[12px] py-0.5 hover:no-underline">
+              <span class="text-ink truncate">{nextEvent.label}</span>
+              <span class={nextEvent.days <= 1 ? 'text-imminent font-bold' : nextEvent.days <= 7 ? 'text-down' : 'text-accent'}>
+                {nextEvent.days === 0 ? 'today' : `${nextEvent.days}d`}
+              </span>
+            </a>
+          ) : <div class="font-mono text-[11px] text-muted py-1">clear runway</div>}
+        </div>
+      </div>
+
+      {composer}
+
+      <div>
+        <div class="font-mono text-[9px] tracking-[0.16em] text-muted uppercase pb-2">
+          start here
+        </div>
+        <div class="flex flex-wrap gap-1.5">
+          {acts.map((sug) => (
+            <button
+              key={sug}
+              type="button"
+              onClick={() => onPick(sug)}
+              class="font-anth text-[12px] text-ink-2 border border-line rounded-full px-3 py-1 hover:border-accent/60 hover:text-ink hover:bg-accent-soft transition-colors"
+            >
+              {sug}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+
 export function Chat() {
   const onWire = wireChatAvailable()
   const modelStorageKey = onWire ? 'chat_wire_model' : 'chat_model'
@@ -262,19 +376,31 @@ export function Chat() {
   const [memories, setMemories] = useState(loadMemories)
   const [journal, setJournal] = useState(loadJournal)
   const [jrFilter, setJrFilter] = useState('')
+  // The launchpad is a place you can go back to, not just the zero state:
+  // pressing AI Chat in the nav returns here with the thread still parked.
+  const [atHome, setAtHome] = useState(takeChatHomePending)
   const scrollRef = useRef(null)
   const inputRef = useRef(null)
   const historyRef = useRef(history)
   const queuedRef = useRef([])
   const busyRef = useRef(false)
 
+  const splash = history.length === 0 || atHome
+
   // Launchpad fuel — live quotes, earnings proximity, next calendar event.
   // useQuotes polls, so the pad's suggestions refresh on their own.
   const watchlist = useWatchlist()
-  const quotes = useQuotes(history.length === 0 ? watchlist : [])
-  const earnDays = useEarningsDays(history.length === 0 ? watchlist : [])
+  const quotes = useQuotes(splash ? watchlist : [])
+  const earnDays = useEarningsDays(splash ? watchlist : [])
   const nextEvent = mergedEvents(ECON_EVENTS, loadCatalysts(),
     new Date().toISOString().slice(0, 10), 30)[0] || null
+
+  // Warm case: already on the chat page when AI Chat is pressed again.
+  useEffect(() => {
+    const home = () => { setAtHome(true); setDrawer(null) }
+    window.addEventListener(CHAT_HOME_EVENT, home)
+    return () => window.removeEventListener(CHAT_HOME_EVENT, home)
+  }, [])
 
   useEffect(() => {
     const load = onWire
@@ -442,6 +568,7 @@ export function Chat() {
     if (!text) return
     const item = { text, model, effort, ts: Date.now() }
     clearComposer()
+    setAtHome(false)   // asking a question is how you leave the launchpad
     if (busyRef.current) {
       queuedRef.current = [...queuedRef.current, item]
       setQueued([...queuedRef.current])
@@ -476,11 +603,59 @@ export function Chat() {
     }
   }
 
+  const composer = (
+      <form onSubmit={send} class="max-w-3xl w-full pt-2">
+        {/* items-center keeps a one-line placeholder vertically centered
+            against the 32px send button; the textarea grows downward from
+            there (Jeff 2026-08-04: "placeholder isn't centered"). */}
+        <div class="flex items-center gap-2 bg-surface-1 border border-line rounded-2xl px-3 py-1.5 focus-within:border-accent/70 focus-within:shadow-[0_0_0_1px_rgba(245,158,11,0.15)] transition-all">
+          <textarea
+            ref={inputRef}
+            value={input}
+            rows={1}
+            onInput={(e) => {
+              setInput(e.currentTarget.value)
+              autoGrow(e.currentTarget)
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(e) }
+            }}
+            placeholder={busy ? tt('chat.follow_up') : tt('chat.placeholder')}
+            class="flex-1 bg-transparent resize-none outline-none text-[13.5px] leading-[21px] py-[5.5px] text-ink placeholder:text-muted max-h-40 font-anth"
+          />
+          <button
+            type="submit"
+            disabled={!input.trim()}
+            title={busy ? 'queue follow-up  ⏎' : 'send  ⏎'}
+            class="shrink-0 w-8 h-8 grid place-items-center rounded-full bg-accent text-black disabled:bg-surface-3 disabled:text-muted transition-colors"
+          >
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+          </button>
+        </div>
+        <div class="flex items-center gap-3 px-2 pt-1 font-mono text-[9.5px] text-muted">
+          <span><kbd class="text-ink-2">⏎</kbd> send</span>
+          <span><kbd class="text-ink-2">⇧⏎</kbd> newline</span>
+          {queued.length > 0 && <span class="text-accent">{queued.length} queued</span>}
+          {!onWire && <SpendMeter spend={spend} />}
+        </div>
+      </form>
+  )
+
   return (
     <div class="flex-1 flex flex-col p-3 min-h-0 min-w-0 select-text">
-      <div class="flex items-center gap-3 px-1 pb-2 flex-wrap">
-        <h1 class="font-bold text-lg text-ink" style="font-family: 'Plus Jakarta Sans', sans-serif">{tl('AI Chat')}</h1>
-        <label class="flex items-center gap-1.5 bg-surface-2 border border-line rounded-lg pl-2.5 pr-1 py-1 focus-within:border-accent/70 hover:border-line-2 transition-colors">
+      {/* One control height across the row — the title, the wire pill, the
+          model housing, the effort pills and the icon rail all centre on the
+          same axis (Jeff 2026-08-04: "aren't vertically aligned"). */}
+      <div class="flex items-center gap-2 px-1 pb-2 mb-1 border-b border-line flex-wrap">
+        <h1 class="font-bold text-lg leading-none text-ink pr-1" style="font-family: 'Plus Jakarta Sans', sans-serif">{tl('AI Chat')}</h1>
+        {onWire && (
+          <span class="h-7 inline-flex items-center gap-1.5 font-mono text-[10px] text-muted border border-line rounded-lg px-2"
+                title="answers come from your own subscription via fragwire — no metered API, no cap">
+            <span class="w-1.5 h-1.5 rounded-full bg-up" />
+            via <span class="text-accent">wire</span>
+          </span>
+        )}
+        <label class="h-7 flex items-center gap-1.5 bg-surface-2 border border-line rounded-lg pl-2.5 pr-1 focus-within:border-accent/70 hover:border-line-2 transition-colors">
           <span class="font-mono text-[9px] uppercase tracking-wider text-muted">model</span>
           <select
             value={model}
@@ -492,40 +667,36 @@ export function Chat() {
             ))}
           </select>
         </label>
-        {onWire && (
-          <span class="font-mono text-[10px] text-muted border border-line rounded-md px-2 py-1"
-                title="answers come from your own subscription via fragwire — no metered API, no cap">
-            via <span class="text-accent">wire</span>
-          </span>
+        {effortLevels.length > 0 && (
+          <div class="h-7 flex items-center gap-0.5 bg-surface-2 border border-line rounded-lg px-0.5" title="thinking effort">
+            {effortLevels.map((lv) => (
+              <button
+                key={lv}
+                onClick={() => {
+                  setEffort(lv)
+                  localStorage.setItem('chat_effort', lv)
+                }}
+                class={`px-2 h-[22px] font-mono text-[10px] rounded-md transition-colors ${
+                  effort === lv
+                    ? 'bg-accent text-black font-bold'
+                    : 'text-muted hover:text-ink hover:bg-surface-3'
+                }`}
+              >
+                {lv}
+              </button>
+            ))}
+          </div>
         )}
-        {effortLevels.length > 0 && <div class="flex items-center gap-0.5 bg-surface-2 border border-line rounded-lg p-0.5" title="thinking effort">
-          {effortLevels.map((lv) => (
-            <button
-              key={lv}
-              onClick={() => {
-                setEffort(lv)
-                localStorage.setItem('chat_effort', lv)
-              }}
-              class={`px-2 py-[3px] font-mono text-[10px] rounded-md transition-colors ${
-                effort === lv
-                  ? 'bg-accent text-black font-bold'
-                  : 'text-muted hover:text-ink hover:bg-surface-3'
-              }`}
-            >
-              {lv}
-            </button>
-          ))}
-        </div>}
         {onWire && selectedModel?.fixed_effort && (
-          <span class="font-mono text-[10px] text-muted border border-line rounded-md px-2 py-1"
+          <span class="h-7 inline-flex items-center font-mono text-[10px] text-muted border border-line rounded-lg px-2"
                 title="this subscription model has a fixed thinking tier">
             {selectedModel.fixed_effort}
           </span>
         )}
-        <div class="ml-auto flex items-center gap-3">
+        <div class="ml-auto h-7 flex items-center gap-0.5 border border-line rounded-lg px-0.5">
           <button
             onClick={() => { setMemories(loadMemories()); setDrawer(drawer === 'mem' ? null : 'mem') }}
-            class={`w-7 h-7 grid place-items-center rounded-md ${drawer === 'mem' ? 'text-accent bg-accent-soft' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
+            class={`w-6 h-6 grid place-items-center rounded-md ${drawer === 'mem' ? 'text-accent bg-accent-soft' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
             title="persistent memories — the assistant carries these into every conversation"
             aria-label="memories"
           >
@@ -533,20 +704,20 @@ export function Chat() {
           </button>
           <button
             onClick={() => { setJournal(loadJournal()); setDrawer(drawer === 'journal' ? null : 'journal') }}
-            class={`w-7 h-7 grid place-items-center rounded-md ${drawer === 'journal' ? 'text-accent bg-accent-soft' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
+            class={`w-6 h-6 grid place-items-center rounded-md ${drawer === 'journal' ? 'text-accent bg-accent-soft' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
             title="trade journal — your own decisions and rationale, searchable"
             aria-label="trade journal"
           >
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H20v17H7.5A2.5 2.5 0 0 0 5 21.5zM5 4.5v17M9 7h7M9 11h7M9 15h4"/></svg>
           </button>
           {history.length > 0 && (
-            <button onClick={() => exportChat(history)} class="w-7 h-7 grid place-items-center rounded-md text-muted hover:text-ink hover:bg-surface-2"
+            <button onClick={() => exportChat(history)} class="w-6 h-6 grid place-items-center rounded-md text-muted hover:text-ink hover:bg-surface-2"
               title="download the transcript as markdown">
               <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12M7 10l5 5 5-5M5 20h14"/></svg>
             </button>
           )}
           {history.length > 0 && (
-            <button onClick={clear} class="w-7 h-7 grid place-items-center rounded-md text-muted hover:text-down hover:bg-surface-2" title={tl('clear')}>
+            <button onClick={clear} class="w-6 h-6 grid place-items-center rounded-md text-muted hover:text-down hover:bg-surface-2" title={tl('clear')}>
               <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M9 3h6l1 4H8zM7 7l1 14h8l1-14M10 11v6M14 11v6"/></svg>
             </button>
           )}
@@ -603,83 +774,26 @@ export function Chat() {
         </div>
       )}
 
-      <div ref={scrollRef} class="flex-1 overflow-y-auto min-h-0 max-w-3xl w-full flex flex-col gap-2 px-1">
-        {history.length === 0 && (() => {
-          const book = hasLiveBook()
-          const acts = dynamicActions({ watchlist, quotes, earnDays, nextEvent, book })
-          const movers = watchlist
-            .map((s) => ({ s, pct: quotes[s]?.quote?.pct }))
-            .filter((x) => x.pct != null)
-            .sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct))
-            .slice(0, 3)
-          const nextEarn = watchlist
-            .filter((s) => earnDays[s] != null && earnDays[s] >= 0)
-            .sort((a, b) => earnDays[a] - earnDays[b])
-            .slice(0, 3)
-          return (
-            <div class="pt-6 flex flex-col items-start gap-5 w-full">
-              <div>
-                <div class="text-ink text-[16px] font-anth font-semibold">
-                  {onWire
-                    ? 'Ask about a ticker, a sector, or the book.'
-                    : tt('chat.empty')}
-                </div>
-                <div class="text-muted text-[12px] font-anth pt-1">
-                  live quotes · technicals · calendar · watchlist · alerts · memory · journal · navigation
-                </div>
-              </div>
-
-              {/* right now — the pad rebuilds itself from live data */}
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full">
-                <div class="bg-surface-1 border border-line rounded-xl px-3 py-2">
-                  <div class="font-mono text-[9px] tracking-wider text-muted uppercase pb-1">moving now</div>
-                  {movers.length ? movers.map(({ s, pct }) => (
-                    <a key={s} href={`#/research/${s.toLowerCase()}`} class="flex items-baseline justify-between font-mono text-[12px] py-0.5 hover:no-underline">
-                      <span class="text-ink font-bold">{s}</span>
-                      <span class={pct >= 0 ? 'text-up' : 'text-down'}>{fmtPct(pct)}</span>
-                    </a>
-                  )) : <div class="font-mono text-[11px] text-muted py-1">loading…</div>}
-                </div>
-                <div class="bg-surface-1 border border-line rounded-xl px-3 py-2">
-                  <div class="font-mono text-[9px] tracking-wider text-muted uppercase pb-1">next earnings</div>
-                  {nextEarn.length ? nextEarn.map((s) => (
-                    <a key={s} href={`#/research/${s.toLowerCase()}/earnings`} class="flex items-baseline justify-between font-mono text-[12px] py-0.5 hover:no-underline">
-                      <span class="text-ink font-bold">{s}</span>
-                      <span class={earnDays[s] === 0 ? 'text-imminent font-bold' : earnDays[s] <= 7 ? 'text-down' : 'text-accent'}>
-                        {earnDays[s]}d
-                      </span>
-                    </a>
-                  )) : <div class="font-mono text-[11px] text-muted py-1">loading…</div>}
-                </div>
-                <div class="bg-surface-1 border border-line rounded-xl px-3 py-2">
-                  <div class="font-mono text-[9px] tracking-wider text-muted uppercase pb-1">on the calendar</div>
-                  {nextEvent ? (
-                    <a href="#/markets/calendar" class="block font-mono text-[12px] py-0.5 hover:no-underline">
-                      <span class="text-ink">{nextEvent.label}</span>{' '}
-                      <span class={nextEvent.days <= 1 ? 'text-imminent font-bold' : nextEvent.days <= 7 ? 'text-down' : 'text-accent'}>
-                        {nextEvent.days === 0 ? 'today' : `${nextEvent.days}d`}
-                      </span>
-                    </a>
-                  ) : <div class="font-mono text-[11px] text-muted py-1">clear runway</div>}
-                </div>
-              </div>
-
-              <div class="flex flex-wrap gap-1.5">
-                {acts.map((sug) => (
-                  <button
-                    key={sug}
-                    type="button"
-                    onClick={() => { setInput(sug); inputRef.current?.focus() }}
-                    class="font-anth text-[12px] text-ink-2 border border-line rounded-full px-3 py-1 hover:border-accent/60 hover:text-ink hover:bg-accent-soft transition-colors"
-                  >
-                    {sug}
-                  </button>
-                ))}
-              </div>
-
-            </div>
-          )
-        })()}
+      {/* safe centering: plain justify-center clips the top of the launchpad
+          when it outgrows the viewport (phone), because overflow only scrolls
+          toward the end edge. */}
+      {splash ? (
+        <div class="flex-1 min-h-0 overflow-y-auto flex flex-col [justify-content:safe_center]">
+          <Launchpad
+            onWire={onWire}
+            watchlist={watchlist}
+            quotes={quotes}
+            earnDays={earnDays}
+            nextEvent={nextEvent}
+            threadLen={history.length}
+            onResume={() => setAtHome(false)}
+            onPick={(text) => { setInput(text); inputRef.current?.focus() }}
+            composer={composer}
+          />
+        </div>
+      ) : (
+        <>
+          <div ref={scrollRef} class="flex-1 overflow-y-auto min-h-0 max-w-3xl w-full flex flex-col gap-2 px-1">
         {history.map((m, i) => {
           if (m.role === 'tool') return null
           if (m.role === 'assistant' && m.toolCalls?.length) {
@@ -758,43 +872,10 @@ export function Chat() {
         {error && (
           <div class="self-start font-mono text-[11px] text-down px-1">{error}</div>
         )}
-      </div>
-
-      <form onSubmit={send} class="max-w-3xl w-full pt-2">
-        {/* items-center keeps a one-line placeholder vertically centered
-            against the 32px send button; the textarea grows downward from
-            there (Jeff 2026-08-04: "placeholder isn't centered"). */}
-        <div class="flex items-center gap-2 bg-surface-1 border border-line rounded-2xl px-3 py-1.5 focus-within:border-accent/70 focus-within:shadow-[0_0_0_1px_rgba(245,158,11,0.15)] transition-all">
-          <textarea
-            ref={inputRef}
-            value={input}
-            rows={1}
-            onInput={(e) => {
-              setInput(e.currentTarget.value)
-              autoGrow(e.currentTarget)
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(e) }
-            }}
-            placeholder={busy ? tt('chat.follow_up') : tt('chat.placeholder')}
-            class="flex-1 bg-transparent resize-none outline-none text-[13.5px] leading-[21px] py-[5.5px] text-ink placeholder:text-muted max-h-40 font-anth"
-          />
-          <button
-            type="submit"
-            disabled={!input.trim()}
-            title={busy ? 'queue follow-up  ⏎' : 'send  ⏎'}
-            class="shrink-0 w-8 h-8 grid place-items-center rounded-full bg-accent text-black disabled:bg-surface-3 disabled:text-muted transition-colors"
-          >
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
-          </button>
-        </div>
-        <div class="flex items-center gap-3 px-2 pt-1 font-mono text-[9.5px] text-muted">
-          <span><kbd class="text-ink-2">⏎</kbd> send</span>
-          <span><kbd class="text-ink-2">⇧⏎</kbd> newline</span>
-          {queued.length > 0 && <span class="text-accent">{queued.length} queued</span>}
-          {!onWire && <SpendMeter spend={spend} />}
-        </div>
-      </form>
+          </div>
+          {composer}
+        </>
+      )}
     </div>
   )
 }
