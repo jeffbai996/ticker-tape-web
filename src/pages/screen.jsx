@@ -3,7 +3,7 @@ import { createChart, LineSeries } from 'lightweight-charts'
 import { useQuotes } from '../hooks.js'
 import { fetchHistory } from '../lib/history.js'
 import { fetchFundamentals } from '../lib/fundamentals.js'
-import { rsi, sma } from '../lib/indicators.js'
+import { macd, rsi, sma } from '../lib/indicators.js'
 import { dailyReturns, pearson, normalize } from '../lib/stats.js'
 import { fmtPrice, fmtPct, fmtBig, fmtRatio, fmtFracPct } from '../lib/format.js'
 import { tl, t as tt } from '../lib/i18n.js'
@@ -306,6 +306,101 @@ function Valuation({ symbols }) {
   )
 }
 
+/** CLI parity: the rsi / sma_cross / vol screens as one sortable sheet. */
+function TechScreen({ symbols, hist }) {
+  const [sortKey, setSortKey] = useState('rsi')
+  const rows = symbols.map((sym) => {
+    const bars = hist[sym]?.bars || []
+    const closes = bars.map((b) => b.close)
+    const price = closes[closes.length - 1] ?? null
+    const s50 = sma(closes, 50)
+    const s200 = sma(closes, 200)
+    const r = rsi(closes, 14)
+    const m = macd(closes)
+    const vols = bars.map((b) => b.volume || 0)
+    const v20 = vols.length > 21 ? vols.slice(-21, -1).reduce((a, b) => a + b, 0) / 20 : null
+    const volX = v20 ? (vols[vols.length - 1] || 0) / v20 : null
+    const hi = closes.length ? Math.max(...closes) : null
+    // golden/death cross within the last 10 sessions
+    let cross = null
+    if (closes.length > 210) {
+      const smaAt = (n, back) => {
+        const seg = closes.slice(closes.length - n - back, closes.length - back)
+        return seg.reduce((a, b) => a + b, 0) / n
+      }
+      const nowDiff = s50 - s200
+      const thenDiff = smaAt(50, 10) - smaAt(200, 10)
+      if (nowDiff > 0 && thenDiff <= 0) cross = 'golden'
+      else if (nowDiff < 0 && thenDiff >= 0) cross = 'death'
+    }
+    return {
+      sym, price, rsi: r, s50, s200, volX, cross,
+      offHigh: hi && price ? ((price / hi) - 1) * 100 : null,
+      macdHist: m?.hist ?? null,
+    }
+  }).filter((r) => r.price != null)
+  const sorters = {
+    rsi: (a, b) => (b.rsi ?? -1) - (a.rsi ?? -1),
+    volX: (a, b) => (b.volX ?? -1) - (a.volX ?? -1),
+    offHigh: (a, b) => (a.offHigh ?? 1) - (b.offHigh ?? 1),
+    macdHist: (a, b) => (b.macdHist ?? -1e9) - (a.macdHist ?? -1e9),
+  }
+  rows.sort(sorters[sortKey] || sorters.rsi)
+  const th = (key, label) => (
+    <th class={`px-2 py-1.5 text-right cursor-pointer select-none ${sortKey === key ? 'text-accent' : ''}`}
+      onClick={() => setSortKey(key)}>{label}{sortKey === key ? ' ▾' : ''}</th>
+  )
+  return (
+    <section class="bg-surface-1 border border-line rounded-xl overflow-x-auto max-w-4xl mt-2">
+      <table class="w-full border-collapse font-mono text-[11px]">
+        <thead>
+          <tr class="bg-surface-2 text-[9px] text-muted uppercase tracking-wider">
+            <th class="px-3 py-1.5 text-left">sym</th>
+            <th class="px-2 py-1.5 text-right">px</th>
+            {th('rsi', 'rsi14')}
+            <th class="px-2 py-1.5 text-right">vs 50d</th>
+            <th class="px-2 py-1.5 text-right">vs 200d</th>
+            <th class="px-2 py-1.5 text-center">cross</th>
+            {th('volX', 'vol x20d')}
+            {th('offHigh', 'off high')}
+            {th('macdHist', 'macd')}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.sym} class="border-t border-line hover:bg-surface-3 cursor-pointer"
+              onClick={() => (location.hash = `#/research/${r.sym.toLowerCase()}`)}>
+              <td class="px-3 py-[3px] font-[650] font-tick text-ink">{r.sym}</td>
+              <td class="px-2 py-[3px] text-right text-ink-2">{r.price.toFixed(2)}</td>
+              <td class={`px-2 py-[3px] text-right font-semibold ${r.rsi == null ? 'text-muted' : r.rsi >= 70 ? 'text-down' : r.rsi <= 30 ? 'text-up' : 'text-ink-2'}`}>
+                {r.rsi != null ? r.rsi.toFixed(1) : '—'}
+              </td>
+              {[r.s50, r.s200].map((v, i) => {
+                const d = v ? ((r.price / v) - 1) * 100 : null
+                return <td key={i} class={`px-2 py-[3px] text-right ${d == null ? 'text-muted' : d >= 0 ? 'text-up' : 'text-down'}`}>
+                  {d == null ? '—' : `${d >= 0 ? '+' : ''}${d.toFixed(1)}%`}</td>
+              })}
+              <td class="px-2 py-[3px] text-center">
+                {r.cross === 'golden' && <span class="text-up font-bold text-[10px]">GOLDEN</span>}
+                {r.cross === 'death' && <span class="text-down font-bold text-[10px]">DEATH</span>}
+              </td>
+              <td class={`px-2 py-[3px] text-right ${r.volX != null && r.volX >= 2 ? 'text-accent font-semibold' : 'text-ink-2'}`}>
+                {r.volX != null ? `${r.volX.toFixed(1)}x` : '—'}
+              </td>
+              <td class={`px-2 py-[3px] text-right ${r.offHigh != null && r.offHigh <= -15 ? 'text-down' : 'text-ink-2'}`}>
+                {r.offHigh != null ? `${r.offHigh.toFixed(0)}%` : '—'}
+              </td>
+              <td class={`px-2 py-[3px] text-right ${r.macdHist == null ? 'text-muted' : r.macdHist >= 0 ? 'text-up' : 'text-down'}`}>
+                {r.macdHist != null ? r.macdHist.toFixed(2) : '—'}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  )
+}
+
 export function Screen({ route }) {
   const view = route.sub || 'screen'
   const [raw, setRaw] = useState(() => localStorage.getItem('screen_symbols') || DEFAULT_SYMBOLS)
@@ -322,6 +417,7 @@ export function Screen({ route }) {
       <SymbolInput value={raw} onChange={update} />
       {view === 'screen' && <ScreenTable symbols={symbols} hist={hist} />}
       {view === 'compare' && <Compare symbols={symbols} hist={hist} />}
+      {view === 'technicals' && <TechScreen symbols={symbols} hist={hist} />}
       {view === 'correlation' && <Correlation symbols={symbols} hist={hist} />}
       {view === 'valuation' && <Valuation symbols={symbols} />}
     </div>

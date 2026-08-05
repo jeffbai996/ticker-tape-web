@@ -33,6 +33,10 @@ export const NAV = [
       { id: 'sizing', label: 'Sizing' },
       { id: 'carry', label: 'Carry' },
       { id: 'cockpit', label: 'Cockpit' },
+      { id: 'whatif', label: 'What-if' },
+      { id: 'trades', label: 'Trades' },
+      { id: 'timetravel', label: 'Time travel' },
+      { id: 'thesis', label: 'Thesis' },
       { id: 'timeline', label: 'Timeline' },
       { id: 'backtest', label: 'Backtest' },
     ],
@@ -42,6 +46,7 @@ export const NAV = [
     label: 'Screening',
     subs: [
       { id: 'compare', label: 'Compare' },
+      { id: 'technicals', label: 'Technicals' },
       { id: 'correlation', label: 'Correlation' },
       { id: 'valuation', label: 'Valuation' },
     ],

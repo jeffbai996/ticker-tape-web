@@ -24,7 +24,7 @@ import { useWatchlist } from '../hooks.js'
 import { getCached } from '../lib/feed.js'
 import { fetchEarningsDate } from '../lib/fundamentals.js'
 import { memoPrompt, BRIEFING_SYSTEM } from '../lib/briefing.js'
-import { AiReport } from '../components/AiReport.jsx'
+import { AiReport, MdLite } from '../components/AiReport.jsx'
 import { Fig } from '../components/Fig.jsx'
 import { ChartSuite } from '../components/ChartSuite.jsx'
 
@@ -1403,6 +1403,59 @@ function WireMini({ symbol }) {
   )
 }
 
+/** Dividend read: yield/rate/dates from fundamentals + the broker's
+ *  dividend markdown when a wire is connected. */
+function DividendsView({ symbol }) {
+  const [f, setF] = useState(null)
+  const [md, setMd] = useState(null)
+  useEffect(() => {
+    setF(null); setMd(null)
+    fetchFundamentals(symbol).then(setF).catch(() => setF({}))
+    const base = wireUrl()
+    if (base) {
+      fetch(`${base.replace(/\/$/, '')}/api/ibkr/dividends?scope=symbol&symbol=${encodeURIComponent(symbol)}`,
+        { signal: AbortSignal.timeout(25_000) })
+        .then((r) => r.json())
+        .then((out) => setMd(out.ok ? out.markdown : null))
+        .catch(() => setMd(null))
+    }
+  }, [symbol])
+  const cellRow = (label, value) => (
+    <div class="flex justify-between gap-3 px-3 py-[4px] border-b border-line last:border-0">
+      <span class="font-anth text-muted text-[11px]">{label}</span>
+      <span class="font-mono text-[11px] text-ink">{value ?? '—'}</span>
+    </div>
+  )
+  return (
+    <div class="flex flex-col gap-2 max-w-2xl">
+      <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
+        <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
+          <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Dividends')} — {symbol}</h2>
+        </header>
+        {f == null ? (
+          <div class="px-3 py-2 font-mono text-[11px] text-muted animate-pulse">loading…</div>
+        ) : (
+          <>
+            {cellRow('Yield', f.dividendYield != null ? fmtFracPct(f.dividendYield) : '—')}
+            {cellRow('Rate (annual)', f.dividendRate != null ? fmtPrice(f.dividendRate) : '—')}
+            {cellRow('Payout ratio', f.payoutRatio != null ? fmtFracPct(f.payoutRatio) : '—')}
+            {cellRow('Ex-div date', f.exDividendDate
+              ? new Date(f.exDividendDate * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—')}
+          </>
+        )}
+      </section>
+      {md && md.trim() && !/^no dividend/i.test(md.trim()) && (
+        <section class="bg-surface-1 border border-line rounded-xl px-3 py-2 font-anth text-[12.5px] leading-relaxed text-ink-2">
+          <MdLite text={md} />
+        </section>
+      )}
+      {f != null && f.dividendYield == null && (
+        <p class="px-1 font-mono text-[10.5px] text-muted">{symbol} pays no dividend — growth name, the yield is the thesis.</p>
+      )}
+    </div>
+  )
+}
+
 function WatchStar({ symbol }) {
   const watched = useWatchlist().includes(symbol)
   return (
@@ -1587,6 +1640,8 @@ export function Research({ route }) {
         <FilingsView symbol={symbol} />
       ) : route.view === 'wire' ? (
         <SymbolWireView symbol={symbol} />
+      ) : route.view === 'dividends' ? (
+        <DividendsView symbol={symbol} />
       ) : route.view === 'profile' ? (
         <ProfileView symbol={symbol} />
       ) : route.view === 'analysts' ? (
