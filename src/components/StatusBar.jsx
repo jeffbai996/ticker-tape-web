@@ -16,6 +16,7 @@ const STATE_CHIP = {
   post: 'text-[#5ba8d9] border-[#5ba8d9]/50 bg-[#5ba8d9]/10',
   closed: 'text-down border-down/50 bg-down/10',
 }
+const COMPACT_STATE_LABEL = { open: 'O', pre: 'P', post: 'A', closed: 'C', holiday: 'H' }
 
 // Outside regular hours the cash indices freeze — swap in the 24h futures
 // contracts, exactly like the TUI status bar does.
@@ -80,7 +81,8 @@ function useEdgeScroll(ref, zone = 70, maxSpeed = 9) {
 // amber rolodex clock with a click-to-cycle timezone (ET → HKT → PT).
 // IANA zone names mean DST is the platform's problem, not ours.
 function RollingClock() {
-  const el = useRef(null)
+  const desktopClock = useRef(null)
+  const mobileClock = useRef(null)
   const [zi, setZi] = useState(() => {
     const saved = localStorage.getItem('tape-clock-tz')
     const i = CLOCK_ZONES.findIndex((z) => z.id === saved)
@@ -88,10 +90,10 @@ function RollingClock() {
   })
   useEffect(() => {
     const paint = () => {
-      if (el.current) {
-        paintRollingTime(el.current, new Date().toLocaleTimeString('en-US',
-          { hour12: false, timeZone: CLOCK_ZONES[zi].id }))
-      }
+      const value = new Date().toLocaleTimeString('en-US',
+        { hour12: false, timeZone: CLOCK_ZONES[zi].id })
+      if (desktopClock.current) paintRollingTime(desktopClock.current, value)
+      if (mobileClock.current) paintRollingTime(mobileClock.current, value.slice(0, 5))
     }
     paint()
     const t = setInterval(paint, 1000)
@@ -108,7 +110,8 @@ function RollingClock() {
       class="flex items-baseline gap-1 whitespace-nowrap font-anth group px-1.5 py-0.5 rounded hover:bg-accent-soft hover:outline hover:outline-1 hover:outline-accent/50"
       title="cycle timezone (ET → HKT → PT)"
     >
-      <span ref={el} class="inline-flex items-baseline text-accent font-semibold text-[12px]" />
+      <span ref={desktopClock} class="max-md:hidden inline-flex items-baseline text-accent font-semibold text-[12px]" />
+      <span ref={mobileClock} class="md:hidden inline-flex items-baseline text-accent font-semibold text-[12px]" />
       <span class="text-[8.5px] tracking-wider text-muted group-hover:text-white hover:text-white transition-colors">
         {CLOCK_ZONES[zi].label}
       </span>
@@ -145,6 +148,7 @@ export function StatusBar() {
     state !== 'open' && FUTURES_SWAP[i.symbol] ? FUTURES_SWAP[i.symbol] : i)
   const quotes = useQuotes(strip.map((i) => i.symbol))
   const chipLabel = holiday ? 'HOLIDAY' : state.toUpperCase()
+  const compactChipLabel = COMPACT_STATE_LABEL[holiday ? 'holiday' : state]
   // "session closes in 2h 14m" on hover — ET boundary walk, DST via Intl
   const etParts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: 'numeric', hour12: false }).formatToParts(now)
   const etMins = Number(etParts.find((p) => p.type === 'hour').value) % 24 * 60
@@ -156,7 +160,7 @@ export function StatusBar() {
     : 'next session monday'
 
   return (
-    <header class="flex items-center gap-3 px-3 h-9 shrink-0 bg-black border-b border-line font-mono text-[11px] select-none">
+    <header class="flex items-center gap-3 max-md:gap-1.5 px-3 max-md:px-2 h-9 shrink-0 bg-black border-b border-line font-mono text-[11px] select-none">
       {/* the wordmark is a link home and never looked like one — it now lights
           up (amber wash + rule) under the pointer (Jeff 2026-08-04) */}
       <a
@@ -165,14 +169,16 @@ export function StatusBar() {
         class="font-bold text-accent tracking-tight text-[13px] -mx-1 px-1 py-0.5 rounded border border-transparent
                hover:no-underline hover:bg-accent-soft hover:border-accent/40 hover:text-accent transition-colors"
       >
-        ticker-tape
+        <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" class="md:hidden w-5 h-5" />
+        <span class="max-md:hidden">ticker-tape</span>
       </a>
 
       <span
-        class={`px-1.5 py-px rounded border text-[10px] font-anth font-bold tracking-wider whitespace-nowrap ${STATE_CHIP[holiday ? 'closed' : state]}`}
+        class={`px-1.5 max-md:px-0 py-px max-md:w-5 max-md:h-5 max-md:grid max-md:place-items-center rounded border text-[10px] font-anth font-bold tracking-wider max-md:tracking-normal whitespace-nowrap ${STATE_CHIP[holiday ? 'closed' : state]}`}
         title={chipTitle}
       >
-        {tl(chipLabel)}
+        <span class="max-md:hidden">{tl(chipLabel)}</span>
+        <span class="md:hidden">{compactChipLabel}</span>
       </span>
 
       {/* one scrollable line, centred in the bar so it lines up with the

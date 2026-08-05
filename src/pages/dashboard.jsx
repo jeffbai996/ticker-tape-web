@@ -18,9 +18,6 @@ import {
 import { watch, unwatch } from '../lib/watchlist.js'
 import { addWatchlistSymbol, removeWatchlistSymbol } from '../lib/watchlists.js'
 import { loadUserGroups, onUserGroupsChange } from '../lib/usergroups.js'
-import {
-  getCategoryOverrides, onCategoryOverridesChange, setCategoryOverride,
-} from '../lib/categories.js'
 import { groupDashboardRows, quoteSpread, selectFlatRows } from '../lib/dashboardRows.js'
 import { fmtPrice, fmtPriceBare, fmtPct, fmtChange, fmtVol, rangePos } from '../lib/format.js'
 import { Histo } from '../components/Histo.jsx'
@@ -141,27 +138,7 @@ function CompactDayRange({ lo, hi, v }) {
   )
 }
 
-function CategoryPicker({ symbol, value, options }) {
-  return (
-    <select
-      aria-label={`category for ${symbol}`}
-      title={`assign ${symbol} category`}
-      value={value || ''}
-      onClick={(e) => { e.preventDefault(); e.stopPropagation() }}
-      onChange={(e) => {
-        e.preventDefault()
-        e.stopPropagation()
-        setCategoryOverride(symbol, e.currentTarget.value || null)
-      }}
-      class="absolute right-8 @min-[545px]:right-auto @min-[545px]:left-2.5 top-1/2 @min-[545px]:top-2.5 -translate-y-1/2 @min-[545px]:translate-y-0 z-10 w-[4.7rem] @min-[545px]:w-28 bg-surface-2 border border-line rounded px-1 py-0.5 font-anth text-[9px] text-muted outline-none opacity-0 group-hover/row:opacity-100 focus:opacity-100 @max-[544px]:opacity-100 hover:border-accent/60 hover:text-ink transition-opacity"
-    >
-      <option value="">auto</option>
-      {options.map((name) => <option key={name} value={name}>{name}</option>)}
-    </select>
-  )
-}
-
-function TuiRow({ symbol, data, earnDays, onRemove, category, categoryOptions }) {
+function TuiRow({ symbol, data, earnDays, onRemove }) {
   const q = data?.quote
   const up = (q?.pct ?? 0) >= 0
   const extUp = (q?.extPct ?? 0) >= 0
@@ -185,7 +162,6 @@ function TuiRow({ symbol, data, earnDays, onRemove, category, categoryOptions })
       >
         ★
       </button>
-      <CategoryPicker symbol={symbol} value={category} options={categoryOptions} />
       <div class="flex gap-4 min-w-0">
         <div class="flex-1 min-w-0 overflow-hidden">
           <div class="flex items-baseline gap-2 max-sm:gap-1.5 font-mono text-[13px] max-sm:text-[12px] flex-nowrap max-sm:flex-wrap min-w-0">
@@ -650,7 +626,6 @@ export function Dashboard({ listId = null }) {
   const earnDays = useEarningsDays(watchlist)
   const [widgets, setWidgets] = useState(getWidgets)
   const [groupPrefs, setGroupPrefs] = useState(getGroupPrefs)
-  const [categoryOverrides, setCategoryOverrides] = useState(getCategoryOverrides)
   const [viewMode, setViewModeState] = useState(() => localStorage.getItem('dashboard_view_mode_v1') || 'grouped')
   const [sort, setSortState] = useState(() => localStorage.getItem('dashboard_sort_v1') || 'manual')
   const [filter, setFilter] = useState('')
@@ -663,16 +638,12 @@ export function Dashboard({ listId = null }) {
     localStorage.setItem('dashboard_sort_v1', value)
   }
   useEffect(() => onGroupsChange(setGroupPrefs), [])
-  useEffect(() => onCategoryOverridesChange(setCategoryOverrides), [])
   const [, bumpGroups] = useState(0)
   useEffect(() => onUserGroupsChange(() => bumpGroups((n) => n + 1)), [])
   const userGroups = loadUserGroups()
-  const categoryOptions = [...new Set([
-    ...Object.keys(userGroups), ...BUCKETS.map((bucket) => bucket.name), 'General',
-  ])]
   const visibleManual = selectFlatRows(watchlist, quotes, { filter }).map((row) => row.symbol)
   const ordered = orderGroups(
-    groupDashboardRows(visibleManual, categoryOverrides, userGroups),
+    groupDashboardRows(visibleManual, userGroups),
     groupPrefs.order,
   )
   const flatRows = selectFlatRows(watchlist, quotes, { filter, sort })
@@ -710,29 +681,26 @@ export function Dashboard({ listId = null }) {
         <div class={`${activeList ? 'ml-auto' : ''} inline-flex rounded-lg border border-line bg-surface-1 p-0.5 shrink-0`}>
           <button onClick={() => setViewMode('grouped')}
             class={`px-2 py-1 rounded-md font-anth text-[10px] transition-colors ${viewMode === 'grouped' ? 'bg-accent-soft text-accent' : 'text-muted hover:text-ink'}`}>
-            Categories
+            Sectors
           </button>
           <button onClick={() => setViewMode('flat')}
             class={`px-2 py-1 rounded-md font-anth text-[10px] transition-colors ${viewMode === 'flat' ? 'bg-accent-soft text-accent' : 'text-muted hover:text-ink'}`}>
-            All tickers
+            All
           </button>
         </div>
         <input value={filter} onInput={(e) => setFilter(e.currentTarget.value)}
-          placeholder="filter tickers…"
+          placeholder="search…"
           class="min-w-0 w-32 sm:w-40 bg-surface-1 border border-line rounded-lg px-2 py-1 font-anth text-[10px] text-ink outline-none focus:border-accent placeholder:text-muted" />
         {viewMode === 'flat' && (
           <select value={sort} onChange={(e) => setSort(e.currentTarget.value)}
             class="bg-surface-1 border border-line rounded-lg px-2 py-1 font-anth text-[10px] text-ink-2 outline-none focus:border-accent">
-            <option value="manual">Watchlist order</option>
+            <option value="manual">Sort</option>
             <option value="symbol">Ticker</option>
             <option value="change">% change</option>
             <option value="price">Price</option>
             <option value="spread">Spread</option>
           </select>
         )}
-        <a href="#/dashboard/watchlists" class="ml-auto max-sm:hidden font-anth text-[10px] text-muted hover:text-accent hover:no-underline whitespace-nowrap">
-          manage lists
-        </a>
       </div>
       {/* Thesis strip: bucket averages at a glance. One swipeable line at
           every width — it wrapped to four lines of prime real estate
@@ -781,13 +749,13 @@ export function Dashboard({ listId = null }) {
                 </div>
                 {!folded && g.symbols.map((s) => (
                   <TuiRow key={s} symbol={s} data={quotes[s]} earnDays={earnDays[s]}
-                    onRemove={removeSymbol} category={categoryOverrides[s]} categoryOptions={categoryOptions} />
+                    onRemove={removeSymbol} />
                 ))}
               </div>
             )
           }) : flatRows.map(({ symbol }) => (
             <TuiRow key={symbol} symbol={symbol} data={quotes[symbol]} earnDays={earnDays[symbol]}
-              onRemove={removeSymbol} category={categoryOverrides[symbol]} categoryOptions={categoryOptions} />
+              onRemove={removeSymbol} />
           ))}
           {!watchlist.length && (
             <div class="px-3 py-8 text-center font-anth text-[11px] text-muted">empty watchlist — add the first ticker below</div>

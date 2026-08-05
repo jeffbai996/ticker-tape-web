@@ -80,7 +80,7 @@ function UpdatedLine() {
 export function Sidebar({ route }) {
   const mainWatchlist = useWatchlist()
   const namedWatchlists = useNamedWatchlists()
-  const activeNamed = route.section === 'dashboard' && route.sub !== 'watchlists'
+  const activeNamed = route.section === 'watchlists' && route.sub
     ? namedWatchlists.find((item) => item.id === route.sub)
     : null
   const watchlist = activeNamed?.symbols || mainWatchlist
@@ -131,18 +131,6 @@ export function Sidebar({ route }) {
                     }`}
                   >
                     {tl(sub.label)}
-                  </a>
-                ))}
-                {section.id === 'dashboard' && namedWatchlists.map((list) => (
-                  <a
-                    key={list.id}
-                    href={hrefFor('dashboard', list.id)}
-                    class={`px-3 py-0.5 font-anth text-[10.5px] truncate ${
-                      route.sub === list.id ? 'text-accent' : 'text-muted hover:text-ink-2'
-                    }`}
-                    title={list.name}
-                  >
-                    {list.name}
                   </a>
                 ))}
               </div>

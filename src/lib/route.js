@@ -13,12 +13,18 @@ export function parseHash(hash) {
     .split('/')
     .filter(Boolean)
 
+  // The first watchlists release nested the feature beneath Dashboard. Keep
+  // those saved/deep links working while exposing the canonical top-level IA.
+  if (parts[0] === 'dashboard' && parts[1]) {
+    if (parts[1] === 'watchlists') return { section: 'watchlists', sub: null }
+    if (WATCHLIST_RE.test(parts[1])) return { section: 'watchlists', sub: parts[1] }
+  }
+
   const section = findSection(parts[0]) ? parts[0] : DEFAULT_SECTION
   if (section !== parts[0]) return { section: DEFAULT_SECTION, sub: null }
 
-  // Dashboard sub-routes are saved watchlist ids, plus the manager itself.
-  // Their names are data, so they cannot be enumerated in static NAV.
-  if (section === 'dashboard') {
+  // Saved watchlist ids are data, so they cannot be enumerated in static NAV.
+  if (section === 'watchlists') {
     const sub = parts[1] && WATCHLIST_RE.test(parts[1]) ? parts[1] : null
     return { section, sub }
   }

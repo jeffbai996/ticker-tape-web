@@ -18,9 +18,12 @@ describe('parseHash', () => {
     expect(parseHash('#/screen/correlation')).toEqual({ section: 'screen', sub: 'correlation' })
   })
 
-  it('parses the watchlist manager and named dashboard routes', () => {
-    expect(parseHash('#/dashboard/watchlists')).toEqual({ section: 'dashboard', sub: 'watchlists' })
-    expect(parseHash('#/dashboard/semis-radar')).toEqual({ section: 'dashboard', sub: 'semis-radar' })
+  it('parses Watchlists as a top-level section with named list routes', () => {
+    expect(parseHash('#/watchlists')).toEqual({ section: 'watchlists', sub: null })
+    expect(parseHash('#/watchlists/semis-radar')).toEqual({ section: 'watchlists', sub: 'semis-radar' })
+    // Preserve links created by the first watchlists implementation.
+    expect(parseHash('#/dashboard/watchlists')).toEqual({ section: 'watchlists', sub: null })
+    expect(parseHash('#/dashboard/semis-radar')).toEqual({ section: 'watchlists', sub: 'semis-radar' })
     expect(parseHash('#/dashboard/<script>')).toEqual({ section: 'dashboard', sub: null })
   })
 
