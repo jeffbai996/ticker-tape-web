@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { createChart, AreaSeries } from 'lightweight-charts'
 import { boundedTimeScale } from '../lib/chartview.js'
-import { useQuotes, useWatchlist } from '../hooks.js'
+import { useNamedWatchlists, useQuotes, useWatchlist } from '../hooks.js'
 import { BUCKETS } from '../lib/symbols.js'
 import { pulseStats } from '../lib/pulse.js'
 import { fetchEarningsDate } from '../lib/fundamentals.js'
@@ -15,8 +15,13 @@ import {
   getGroupPrefs, isCollapsed, moveGroup, onGroupsChange, orderGroups,
   toggleCollapsed,
 } from '../lib/catgroups.js'
-import { watch, unwatch, isWatched } from '../lib/watchlist.js'
+import { watch, unwatch } from '../lib/watchlist.js'
+import { addWatchlistSymbol, removeWatchlistSymbol } from '../lib/watchlists.js'
 import { loadUserGroups, onUserGroupsChange } from '../lib/usergroups.js'
+import {
+  getCategoryOverrides, onCategoryOverridesChange, setCategoryOverride,
+} from '../lib/categories.js'
+import { groupDashboardRows, quoteSpread, selectFlatRows } from '../lib/dashboardRows.js'
 import { fmtPrice, fmtPriceBare, fmtPct, fmtChange, fmtVol, rangePos } from '../lib/format.js'
 import { Histo } from '../components/Histo.jsx'
 import { Marquee } from '../components/Marquee.jsx'
@@ -26,6 +31,7 @@ import { tl } from '../lib/i18n.js'
 const DAY = 86_400_000
 const ETF_SKIP = new Set(['SPY', 'QQQ', 'IWM', 'GLD', 'TLT'])
 const fmtAbsChange = (v) => fmtChange(Math.abs(v)).replace('+', '')
+const fmtSpread = (v) => v == null ? '—' : v < 0.1 ? v.toFixed(3) : v.toFixed(2)
 
 /** Days until each symbol's next earnings — feeds the `27d` badge + panel.
  *  Exported for the briefing page, which reuses the same fan-out. */
@@ -135,7 +141,27 @@ function CompactDayRange({ lo, hi, v }) {
   )
 }
 
-function TuiRow({ symbol, data, earnDays }) {
+function CategoryPicker({ symbol, value, options }) {
+  return (
+    <select
+      aria-label={`category for ${symbol}`}
+      title={`assign ${symbol} category`}
+      value={value || ''}
+      onClick={(e) => { e.preventDefault(); e.stopPropagation() }}
+      onChange={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        setCategoryOverride(symbol, e.currentTarget.value || null)
+      }}
+      class="absolute right-8 @min-[545px]:right-auto @min-[545px]:left-2.5 top-1/2 @min-[545px]:top-2.5 -translate-y-1/2 @min-[545px]:translate-y-0 z-10 w-[4.7rem] @min-[545px]:w-28 bg-surface-2 border border-line rounded px-1 py-0.5 font-anth text-[9px] text-muted outline-none opacity-0 group-hover/row:opacity-100 focus:opacity-100 @max-[544px]:opacity-100 hover:border-accent/60 hover:text-ink transition-opacity"
+    >
+      <option value="">auto</option>
+      {options.map((name) => <option key={name} value={name}>{name}</option>)}
+    </select>
+  )
+}
+
+function TuiRow({ symbol, data, earnDays, onRemove, category, categoryOptions }) {
   const q = data?.quote
   const up = (q?.pct ?? 0) >= 0
   const extUp = (q?.extPct ?? 0) >= 0
@@ -153,12 +179,13 @@ function TuiRow({ symbol, data, earnDays }) {
       {/* favorites are managed where they live: hover a row, tap the star
           (Jeff 2026-08-05). Filled = on the board; a tap lifts it off. */}
       <button
-        onClick={(e) => { e.preventDefault(); e.stopPropagation(); unwatch(symbol) }}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(symbol) }}
         title={`remove ${symbol} from the board`}
         class="absolute right-1.5 top-1/2 -translate-y-1/2 z-10 w-6 h-6 grid place-items-center rounded-md text-accent opacity-0 group-hover/row:opacity-100 hover:bg-surface-2 hover:text-down transition-opacity"
       >
         ★
       </button>
+      <CategoryPicker symbol={symbol} value={category} options={categoryOptions} />
       <div class="flex gap-4 min-w-0">
         <div class="flex-1 min-w-0 overflow-hidden">
           <div class="flex items-baseline gap-2 max-sm:gap-1.5 font-mono text-[13px] max-sm:text-[12px] flex-nowrap max-sm:flex-wrap min-w-0">
@@ -227,7 +254,13 @@ function TuiRow({ symbol, data, earnDays }) {
               <CompactDayRange lo={q?.dayLow} hi={q?.dayHigh} v={q?.price} />
             )}
             <RangeBar label="DAY" lo={q?.dayLow} hi={q?.dayHigh} v={q?.price} />
-            <span class="w-[4.5rem] text-right">
+            <span class="w-[4.5rem] @min-[820px]:w-[9.5rem] text-right whitespace-nowrap">
+              {q && quoteSpread(q) != null && (
+                <span class="hidden @min-[820px]:inline mr-2">
+                  <span class="text-accent/60 text-[9px]">SPR</span>{' '}
+                  <span class="text-ink-2 font-normal">{fmtSpread(quoteSpread(q))}</span>
+                </span>
+              )}
               {q?.volume != null && (
                 <>
                   <span class="text-accent/70">VOL</span>{' '}
@@ -240,7 +273,7 @@ function TuiRow({ symbol, data, earnDays }) {
             {data?.tech && (
               <RangeBar label="52W" lo={data.tech.low52} hi={data.tech.high52} v={q?.price} />
             )}
-            <span class="w-[4.5rem] text-right">
+            <span class="w-[4.5rem] @min-[820px]:w-[9.5rem] text-right">
               {avgVol != null && (
                 <>
                   <span class="text-accent/60 text-[9px]">AVG</span>{' '}
@@ -509,7 +542,7 @@ function AddWidget() {
  *  command bar's `w SYM` — neither reads as a control, and the sidebar is
  *  hidden entirely below 768px (Jeff 2026-08-04: "not very obvious where to
  *  add tickers"). Mirrors AddWidget's dashed-button → inline-form idiom. */
-function AddSymbolRow() {
+function AddSymbolRow({ onAdd, isPresent }) {
   const [open, setOpen] = useState(false)
   const [sym, setSym] = useState('')
   const [err, setErr] = useState('')
@@ -520,9 +553,9 @@ function AddSymbolRow() {
     e.preventDefault()
     const v = sym.trim().toUpperCase()
     if (!v) return close()
-    if (watch(v)) return close()
-    // watch() returns null for invalid / duplicate / list-full — say which.
-    setErr(isWatched(v) ? `${v} ${tl('already on the list')}` : `${tl('not a symbol')}: ${v}`)
+    if (onAdd(v)) return close()
+    // The mutator returns null for invalid / duplicate / list-full — say which.
+    setErr(isPresent(v) ? `${v} ${tl('already on the list')}` : `${tl('not a symbol')}: ${v}`)
   }
   if (!open) {
     return (
@@ -558,26 +591,6 @@ function AddSymbolRow() {
 /** Watchlist split into bucket groups (TUI's `── group ──` separators).
  *  User groups (`group semis NVDA …` in the command bar) come first and claim
  *  their symbols away from the built-in buckets. */
-function groupRows(watchlist) {
-  const groups = []
-  const seen = new Set()
-  for (const [name, syms] of Object.entries(loadUserGroups())) {
-    const inList = syms.filter((s) => watchlist.includes(s) && !seen.has(s))
-    if (!inList.length) continue
-    groups.push({ name, symbols: inList })
-    inList.forEach((s) => seen.add(s))
-  }
-  for (const b of BUCKETS) {
-    const syms = b.symbols.filter((s) => watchlist.includes(s) && !seen.has(s))
-    if (!syms.length) continue
-    groups.push({ name: b.name, symbols: syms })
-    syms.forEach((s) => seen.add(s))
-  }
-  const rest = watchlist.filter((s) => !seen.has(s))
-  if (rest.length) groups.push({ name: 'General', symbols: rest })
-  return groups
-}
-
 function RailWidget({ w, all, watchlist, earnDays, quotes }) {
   if (w.type === 'pulse') return <PulsePanel quotes={all} />
   if (w.type === 'earnings') return <EarningsPanel symbols={watchlist} days={earnDays} quotes={quotes} />
@@ -598,12 +611,12 @@ function RailWidget({ w, all, watchlist, earnDays, quotes }) {
 
 /** "+ add" that blooms into an input in place — one control, no chrome.
  *  Enter adds (uppercased) and keeps focus for the next one; Esc folds it. */
-function QuickAdd() {
+function QuickAdd({ onAdd }) {
   const [open, setOpen] = useState(false)
   const [v, setV] = useState('')
   const submit = (e) => {
     e.preventDefault()
-    if (watch(v)) setV('')
+    if (onAdd(v)) setV('')
   }
   if (!open) {
     return (
@@ -628,18 +641,50 @@ function QuickAdd() {
   )
 }
 
-export function Dashboard() {
-  const watchlist = useWatchlist()
+export function Dashboard({ listId = null }) {
+  const mainWatchlist = useWatchlist()
+  const namedWatchlists = useNamedWatchlists()
+  const activeList = listId ? namedWatchlists.find((item) => item.id === listId) : null
+  const watchlist = activeList?.symbols || mainWatchlist
   const quotes = useQuotes(watchlist)
   const earnDays = useEarningsDays(watchlist)
   const [widgets, setWidgets] = useState(getWidgets)
   const [groupPrefs, setGroupPrefs] = useState(getGroupPrefs)
+  const [categoryOverrides, setCategoryOverrides] = useState(getCategoryOverrides)
+  const [viewMode, setViewModeState] = useState(() => localStorage.getItem('dashboard_view_mode_v1') || 'grouped')
+  const [sort, setSortState] = useState(() => localStorage.getItem('dashboard_sort_v1') || 'manual')
+  const [filter, setFilter] = useState('')
+  const setViewMode = (mode) => {
+    setViewModeState(mode)
+    localStorage.setItem('dashboard_view_mode_v1', mode)
+  }
+  const setSort = (value) => {
+    setSortState(value)
+    localStorage.setItem('dashboard_sort_v1', value)
+  }
   useEffect(() => onGroupsChange(setGroupPrefs), [])
+  useEffect(() => onCategoryOverridesChange(setCategoryOverrides), [])
   const [, bumpGroups] = useState(0)
   useEffect(() => onUserGroupsChange(() => bumpGroups((n) => n + 1)), [])
-  const ordered = orderGroups(groupRows(watchlist), groupPrefs.order)
+  const userGroups = loadUserGroups()
+  const categoryOptions = [...new Set([
+    ...Object.keys(userGroups), ...BUCKETS.map((bucket) => bucket.name), 'General',
+  ])]
+  const visibleManual = selectFlatRows(watchlist, quotes, { filter }).map((row) => row.symbol)
+  const ordered = orderGroups(
+    groupDashboardRows(visibleManual, categoryOverrides, userGroups),
+    groupPrefs.order,
+  )
+  const flatRows = selectFlatRows(watchlist, quotes, { filter, sort })
   const names = ordered.map((g) => g.name)
   useEffect(() => onWidgetsChange((w) => setWidgets([...w])), [])
+  const addSymbol = activeList
+    ? (symbol) => addWatchlistSymbol(activeList.id, symbol)
+    : watch
+  const removeSymbol = activeList
+    ? (symbol) => removeWatchlistSymbol(activeList.id, symbol)
+    : unwatch
+  const isPresent = (symbol) => watchlist.includes(String(symbol || '').trim().toUpperCase())
 
   // 10s tick keeps the "updated" line and stale banner honest between fetches.
   const [, tick] = useState(0)
@@ -655,6 +700,40 @@ export function Dashboard() {
 
   return (
     <div class="flex-1 p-3 select-text min-w-0">
+      <div class="flex items-center gap-2 px-1 pb-2 min-w-0">
+        {activeList && (
+          <div class="min-w-0 mr-1">
+            <div class="font-mono text-[8px] uppercase tracking-wider text-muted">Watchlist</div>
+            <div class="font-anth font-bold text-[13px] text-ink truncate">{activeList.name}</div>
+          </div>
+        )}
+        <div class={`${activeList ? 'ml-auto' : ''} inline-flex rounded-lg border border-line bg-surface-1 p-0.5 shrink-0`}>
+          <button onClick={() => setViewMode('grouped')}
+            class={`px-2 py-1 rounded-md font-anth text-[10px] transition-colors ${viewMode === 'grouped' ? 'bg-accent-soft text-accent' : 'text-muted hover:text-ink'}`}>
+            Categories
+          </button>
+          <button onClick={() => setViewMode('flat')}
+            class={`px-2 py-1 rounded-md font-anth text-[10px] transition-colors ${viewMode === 'flat' ? 'bg-accent-soft text-accent' : 'text-muted hover:text-ink'}`}>
+            All tickers
+          </button>
+        </div>
+        <input value={filter} onInput={(e) => setFilter(e.currentTarget.value)}
+          placeholder="filter tickers…"
+          class="min-w-0 w-32 sm:w-40 bg-surface-1 border border-line rounded-lg px-2 py-1 font-anth text-[10px] text-ink outline-none focus:border-accent placeholder:text-muted" />
+        {viewMode === 'flat' && (
+          <select value={sort} onChange={(e) => setSort(e.currentTarget.value)}
+            class="bg-surface-1 border border-line rounded-lg px-2 py-1 font-anth text-[10px] text-ink-2 outline-none focus:border-accent">
+            <option value="manual">Watchlist order</option>
+            <option value="symbol">Ticker</option>
+            <option value="change">% change</option>
+            <option value="price">Price</option>
+            <option value="spread">Spread</option>
+          </select>
+        )}
+        <a href="#/dashboard/watchlists" class="ml-auto max-sm:hidden font-anth text-[10px] text-muted hover:text-accent hover:no-underline whitespace-nowrap">
+          manage lists
+        </a>
+      </div>
       {/* Thesis strip: bucket averages at a glance. One swipeable line at
           every width — it wrapped to four lines of prime real estate
           (Jeff 2026-08-04: "keep it all on one line somehow"). */}
@@ -670,7 +749,7 @@ export function Dashboard() {
             </span>
           )
         })}
-        <QuickAdd />
+        <QuickAdd onAdd={addSymbol} />
       </div>
 
       {/* lg (1024px) not xl: the rail used to vanish one browser-zoom notch in.
@@ -678,7 +757,7 @@ export function Dashboard() {
           CSS viewport before genuinely running out of room. */}
       <div class="grid gap-2 lg:grid-cols-[1fr_230px] min-w-0">
         <section class="@container bg-surface-1 border border-line rounded-xl overflow-hidden min-w-0">
-          {ordered.map((g, gi) => {
+          {viewMode === 'grouped' ? ordered.map((g, gi) => {
             const folded = isCollapsed(g.name, groupPrefs)
             return (
               <div key={g.name}>
@@ -701,12 +780,19 @@ export function Dashboard() {
                   </span>
                 </div>
                 {!folded && g.symbols.map((s) => (
-                  <TuiRow key={s} symbol={s} data={quotes[s]} earnDays={earnDays[s]} />
+                  <TuiRow key={s} symbol={s} data={quotes[s]} earnDays={earnDays[s]}
+                    onRemove={removeSymbol} category={categoryOverrides[s]} categoryOptions={categoryOptions} />
                 ))}
               </div>
             )
-          })}
-          <AddSymbolRow />
+          }) : flatRows.map(({ symbol }) => (
+            <TuiRow key={symbol} symbol={symbol} data={quotes[symbol]} earnDays={earnDays[symbol]}
+              onRemove={removeSymbol} category={categoryOverrides[symbol]} categoryOptions={categoryOptions} />
+          ))}
+          {!watchlist.length && (
+            <div class="px-3 py-8 text-center font-anth text-[11px] text-muted">empty watchlist — add the first ticker below</div>
+          )}
+          <AddSymbolRow onAdd={addSymbol} isPresent={isPresent} />
         </section>
         <div class="flex flex-col gap-3 min-w-0">
           {widgets.map((w) => (

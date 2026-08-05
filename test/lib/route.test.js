@@ -18,6 +18,12 @@ describe('parseHash', () => {
     expect(parseHash('#/screen/correlation')).toEqual({ section: 'screen', sub: 'correlation' })
   })
 
+  it('parses the watchlist manager and named dashboard routes', () => {
+    expect(parseHash('#/dashboard/watchlists')).toEqual({ section: 'dashboard', sub: 'watchlists' })
+    expect(parseHash('#/dashboard/semis-radar')).toEqual({ section: 'dashboard', sub: 'semis-radar' })
+    expect(parseHash('#/dashboard/<script>')).toEqual({ section: 'dashboard', sub: null })
+  })
+
   it('ignores trailing slashes', () => {
     expect(parseHash('#/markets/')).toEqual({ section: 'markets', sub: null })
   })

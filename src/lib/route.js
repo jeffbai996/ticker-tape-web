@@ -4,6 +4,7 @@ import { NAV, DEFAULT_SECTION, findSection } from './nav.js'
 // server-side rewrites, so deep links on a path router would 404 at the CDN.
 
 const SYMBOL_RE = /^[a-z0-9.^=-]{1,12}$/
+const WATCHLIST_RE = /^[a-z0-9-]{1,40}$/
 
 export function parseHash(hash) {
   const parts = (hash || '')
@@ -14,6 +15,13 @@ export function parseHash(hash) {
 
   const section = findSection(parts[0]) ? parts[0] : DEFAULT_SECTION
   if (section !== parts[0]) return { section: DEFAULT_SECTION, sub: null }
+
+  // Dashboard sub-routes are saved watchlist ids, plus the manager itself.
+  // Their names are data, so they cannot be enumerated in static NAV.
+  if (section === 'dashboard') {
+    const sub = parts[1] && WATCHLIST_RE.test(parts[1]) ? parts[1] : null
+    return { section, sub }
+  }
 
   // Research's sub-path is a free-form ticker, not a registered tab; an
   // optional third segment picks a per-symbol view.

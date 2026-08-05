@@ -19,7 +19,7 @@ export const BUCKETS = [
   { name: 'Megacaps', symbols: ['AAPL', 'MSFT', 'GOOG', 'GOOGL', 'AMZN', 'META', 'TSLA'] },
   { name: 'Semis', symbols: [
     'NVDA', 'AMD', 'INTC', 'TSM', 'MSFT', 'QCOM', 'MU', 'AMAT', 'GOOGL',
-    'ASML', 'KLAC', 'MRVL', 'ARM', 'TXN', 'ADI', 'NXPI', 'ON', 'MCHP', 'SMCI',
+    'ASML', 'KLAC', 'MRVL', 'ARM', 'TXN', 'ADI', 'NXPI', 'ON', 'MCHP', 'SMCI', 'SNDK',
   ] },
   { name: 'Software & AI', symbols: [
     'PLTR', 'CRM', 'ORCL', 'ADBE', 'NOW', 'SNOW', 'MDB', 'DDOG', 'NET',
