@@ -34,7 +34,7 @@ function DemoBanner({ live, account, margin }) {
   if (live) {
     return (
       <div class="mx-1 mb-2 px-3 py-1.5 bg-surface-1 border border-up/50 rounded-lg font-mono text-[11px] text-up font-bold tracking-wider select-none">
-        LIVE · {account || 'ibkr'}{margin?.cushion_pct != null ? ` · cushion ${margin.cushion_pct > 0 ? '+' : ''}${margin.cushion_pct}%` : ''}
+        {tt('portfolio.live')} · {account || 'IBKR'}{margin?.cushion_pct != null ? ` · ${tl('Cushion')} ${margin.cushion_pct > 0 ? '+' : ''}${margin.cushion_pct}%` : ''}
       </div>
     )
   }
@@ -136,10 +136,10 @@ function Positions({ priceMap, positions, margin }) {
             <h2 class="font-anth font-bold text-[10px] tracking-wider text-accent uppercase">{tl('Margin')}</h2>
           </header>
           <div class="px-2.5 py-1.5 font-mono text-[11px] leading-[1.7]">
-            {margin.equity != null && <div class="flex justify-between"><span class="text-muted">equity</span><span class="text-ink font-semibold">{dollars(margin.equity)}</span></div>}
-            {margin.maintenance != null && <div class="flex justify-between"><span class="text-muted">maintenance</span><span class="text-ink-2">{dollars(margin.maintenance)}</span></div>}
-            {margin.above_maintenance != null && <div class="flex justify-between"><span class="text-muted">above maint</span><span class="text-ink-2">{dollars(margin.above_maintenance)}</span></div>}
-            {margin.cushion_pct != null && <div class="flex justify-between"><span class="text-muted">cushion</span>
+            {margin.equity != null && <div class="flex justify-between"><span class="text-muted">{tl('Equity')}</span><span class="text-ink font-semibold">{dollars(margin.equity)}</span></div>}
+            {margin.maintenance != null && <div class="flex justify-between"><span class="text-muted">{tl('Maintenance')}</span><span class="text-ink-2">{dollars(margin.maintenance)}</span></div>}
+            {margin.above_maintenance != null && <div class="flex justify-between"><span class="text-muted">{tl('Above maintenance')}</span><span class="text-ink-2">{dollars(margin.above_maintenance)}</span></div>}
+            {margin.cushion_pct != null && <div class="flex justify-between"><span class="text-muted">{tl('Cushion')}</span>
               <span class={`font-semibold ${margin.cushion_pct < 8 ? 'text-down' : 'text-up'}`}>{margin.cushion_pct.toFixed(2)}%</span></div>}
           </div>
         </section>
@@ -158,22 +158,23 @@ function AccountStat({ label, value, cls = 'text-ink' }) {
   )
 }
 
-function Account({ priceMap, positions }) {
+function Account({ priceMap, positions, margin, account }) {
   const s = accountSummary(positions, priceMap)
+  const live = !!margin
   return (
     <div class="max-w-4xl">
       <div class="px-1 pb-2 font-mono text-[11px] text-muted">
-        {tl('Account')} <span class="text-ink-2">{DEMO_ACCOUNT_ID}</span> · {tt('demo.formulas')}
+        {tl('Account')} <span class="text-ink-2">{account || DEMO_ACCOUNT_ID}</span> · {live ? tt('portfolio.live_book') : tt('demo.formulas')}
       </div>
       <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <AccountStat label="NLV" value={dollars(s.nlv)} />
+        <AccountStat label="NLV" value={dollars(margin?.equity ?? s.nlv)} />
         <AccountStat label={tl('Cash')} value={dollars(s.cash)} />
         <AccountStat label={tl('Gross exposure')} value={dollars(s.gross)} />
         <AccountStat label={tl('Leverage')} value={s.leverage != null ? `${s.leverage.toFixed(2)}x` : '—'} />
-        <AccountStat label={tl('Maintenance')} value={dollars(s.maintenance)} />
-        <AccountStat label={tl('Excess liquidity')} value={dollars(s.excessLiq)} />
-        <AccountStat label={tl('Cushion')} value={s.cushionPct != null ? `${s.cushionPct.toFixed(1)}%` : '—'}
-          cls={s.cushionPct != null && s.cushionPct < 15 ? 'text-down' : 'text-up'} />
+        <AccountStat label={tl('Maintenance')} value={dollars(margin?.maintenance ?? s.maintenance)} />
+        <AccountStat label={tl('Excess liquidity')} value={dollars(margin?.above_maintenance ?? s.excessLiq)} />
+        <AccountStat label={tl('Cushion')} value={(margin?.cushion_pct ?? s.cushionPct) != null ? `${(margin?.cushion_pct ?? s.cushionPct).toFixed(1)}%` : '—'}
+          cls={(margin?.cushion_pct ?? s.cushionPct) != null && (margin?.cushion_pct ?? s.cushionPct) < 15 ? 'text-down' : 'text-up'} />
         <AccountStat label={tl('Day P&L')} value={signedMoney(s.dayPnl)} cls={pnlCls(s.dayPnl)} />
         <AccountStat label={tl('Unreal P&L')} value={signedMoney(s.unrealPnl)} cls={pnlCls(s.unrealPnl)} />
       </div>
@@ -666,9 +667,9 @@ function IbkrMd({ url, empty }) {
       .catch((err) => !dead && setState({ status: 'err', md: String(err.message || err) }))
     return () => { dead = true }
   }, [url])
-  if (state.status === 'loading') return <div class="px-1 py-2 font-mono text-[11px] text-muted animate-pulse">asking the gateway…</div>
+  if (state.status === 'loading') return <div class="px-1 py-2 font-mono text-[11px] text-muted animate-pulse">{tt('portfolio.gateway_loading')}</div>
   if (state.status === 'err') return <div class="px-1 py-2 font-mono text-[11px] text-down">{state.md}</div>
-  if (!state.md.trim()) return <div class="px-1 py-2 font-mono text-[11px] text-muted">{empty || 'nothing to show'}</div>
+  if (!state.md.trim()) return <div class="px-1 py-2 font-mono text-[11px] text-muted">{empty || tt('portfolio.gateway_empty')}</div>
   return (
     <section class="bg-surface-1 border border-line rounded-xl px-3 py-2 font-anth text-[12.5px] leading-relaxed text-ink-2 max-w-3xl overflow-x-auto">
       <MdLite text={state.md} />
@@ -707,7 +708,7 @@ function WhatIf() {
         <button class="border border-accent text-accent bg-accent-soft rounded-lg px-3 py-1 font-semibold hover:bg-accent hover:text-black">
           run what-if
         </button>
-        <span class="text-[10px] text-muted">margin impact from the gateway — nothing is placed</span>
+        <span class="text-[10px] text-muted">{tt('portfolio.margin_preview')}</span>
       </form>
       {url && <IbkrMd url={url} />}
     </div>
@@ -739,8 +740,8 @@ function Thesis() {
       .then((r) => r.json()).then(setSnap).catch(() => setSnap({ ok: false }))
   }, [])
   if (!wireBase()) return <NeedsWire />
-  if (!snap) return <div class="px-1 py-2 font-mono text-[11px] text-muted animate-pulse">reading the watcher…</div>
-  if (!snap.available) return <div class="px-1 py-2 font-mono text-[11px] text-muted">breaker watcher unavailable on this box</div>
+  if (!snap) return <div class="px-1 py-2 font-mono text-[11px] text-muted animate-pulse">{tt('portfolio.watcher_loading')}</div>
+  if (!snap.available) return <div class="px-1 py-2 font-mono text-[11px] text-muted">{tt('portfolio.watcher_unavailable')}</div>
   const VERD = {
     FIRED: 'bg-down text-black', AWAITING: 'bg-accent text-black',
     CLEAR: 'bg-up/20 text-up', NO_DATA: 'bg-surface-3 text-muted',
@@ -749,7 +750,7 @@ function Thesis() {
     <div class="flex flex-col gap-2 max-w-3xl">
       <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
         <header class="px-3 py-1.5 border-b border-line-2 bg-surface-2">
-          <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">thesis breakers</h2>
+          <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Thesis breakers')}</h2>
         </header>
         {snap.breakers.map((b) => (
           <div key={b.id} class="border-t border-line/50 px-3 py-1.5 first:border-0">
@@ -767,7 +768,7 @@ function Thesis() {
       {snap.candidates?.length > 0 && (
         <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
           <header class="px-3 py-1.5 border-b border-line-2 bg-surface-2">
-            <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">new candidates</h2>
+            <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{tl('New candidates')}</h2>
           </header>
           {snap.candidates.map((c, i) => (
             <div key={i} class="border-t border-line/50 px-3 py-1 first:border-0 font-anth text-[12px] text-ink-2">
@@ -778,7 +779,7 @@ function Thesis() {
       )}
       {snap.rotation?.length > 0 && (
         <section class="bg-surface-1 border border-line rounded-xl px-3 py-1.5 font-mono text-[11px]">
-          <span class="text-muted uppercase text-[9px] tracking-wider">rotation estimate</span>{' '}
+          <span class="text-muted uppercase text-[9px] tracking-wider">{tl('Rotation estimate')}</span>{' '}
           <span class="text-ink font-semibold">{snap.rotation[0].estimate}</span>
           {snap.rotation[0].note && <span class="text-muted"> — {snap.rotation[0].note}</span>}
         </section>
@@ -829,21 +830,21 @@ function TimeTravel({ priceMap }) {
         <button class="border border-accent text-accent bg-accent-soft rounded-lg px-3 py-1 font-semibold hover:bg-accent hover:text-black">
           replay the book
         </button>
-        <span class="text-[10px] text-muted">off the backtest fills ledger — as-of positions, then vs now</span>
+        <span class="text-[10px] text-muted">{tt('portfolio.time_note')}</span>
       </form>
-      {rows === 'loading' && <div class="font-mono text-[11px] text-muted animate-pulse px-1">pricing the past…</div>}
+      {rows === 'loading' && <div class="font-mono text-[11px] text-muted animate-pulse px-1">{tt('portfolio.pricing_past')}</div>}
       {Array.isArray(rows) && (rows.length ? (
         <section class="bg-surface-1 border border-line rounded-xl overflow-x-auto">
           <table class="w-full border-collapse font-mono text-[11px]">
             <thead>
               <tr class="bg-surface-2 text-[9px] text-muted uppercase tracking-wider">
-                <th class="px-3 py-1.5 text-left">sym</th>
-                <th class="px-2 py-1.5 text-right">qty</th>
-                <th class="px-2 py-1.5 text-right">avg cost</th>
+                <th class="px-3 py-1.5 text-left">{tl('Sym')}</th>
+                <th class="px-2 py-1.5 text-right">{tl('Qty')}</th>
+                <th class="px-2 py-1.5 text-right">{tl('Avg cost')}</th>
                 <th class="px-2 py-1.5 text-right">px {date}</th>
-                <th class="px-2 py-1.5 text-right">value then</th>
-                <th class="px-2 py-1.5 text-right">px now</th>
-                <th class="px-3 py-1.5 text-right">since then</th>
+                <th class="px-2 py-1.5 text-right">{tl('Value then')}</th>
+                <th class="px-2 py-1.5 text-right">{tl('Price now')}</th>
+                <th class="px-3 py-1.5 text-right">{tl('Since then')}</th>
               </tr>
             </thead>
             <tbody>
@@ -866,19 +867,25 @@ function TimeTravel({ priceMap }) {
             </tbody>
           </table>
         </section>
-      ) : <div class="font-mono text-[11px] text-muted px-1">no open positions in the ledger on that date</div>)}
+      ) : <div class="font-mono text-[11px] text-muted px-1">{tt('portfolio.no_historical_positions')}</div>)}
     </div>
   )
 }
 
-function useLiveBook() {
+function useLiveBook(account) {
   // tailnet: fragwire fronts ibkr-mcp — the real book replaces the demo
   const [book, setBook] = useState(null)
   useEffect(() => {
     const base = wireUrl()
     if (!base) return
+    if (!account) return
+    setBook(null)
     let dead = false
-    const pull = () => fetch(`${base.replace(/\/$/, '')}/api/portfolio`,
+    const pull = () => {
+      const url = new URL(`${base.replace(/\/$/, '')}/api/portfolio`)
+      const params = url.searchParams
+      if (account) params.set('account', account)
+      return fetch(url,
         { signal: AbortSignal.timeout(10_000) })
       .then((r) => r.json())
       .then((out) => {
@@ -898,21 +905,48 @@ function useLiveBook() {
             })),
             margin: out.margin || null,
             account: out.account || '',
+            accountLabel: out.account_label || '',
           })
         } else if (!dead) {
           setBook((cur) => cur || false)   // false = wire up, ibkr not answering
         }
       })
       .catch(() => { if (!dead) setBook((cur) => cur || false) })
+    }
     pull()
     const t = setInterval(pull, 60_000)
     return () => { dead = true; clearInterval(t) }
-  }, [])
+  }, [account])
   return book
 }
 
+function usePortfolioAccounts() {
+  const [accounts, setAccounts] = useState(null)
+  useEffect(() => {
+    const base = wireUrl()
+    if (!base) return
+    fetch(`${base.replace(/\/$/, '')}/api/portfolio/accounts`, { signal: AbortSignal.timeout(10_000) })
+      .then((r) => r.json())
+      .then((out) => out.ok && setAccounts(out.accounts || []))
+      .catch(() => setAccounts([]))
+  }, [])
+  return accounts
+}
+
 export function Portfolio({ route }) {
-  const book = useLiveBook()
+  const accounts = usePortfolioAccounts()
+  const [account, setAccount] = useState(() => localStorage.getItem('portfolio_account_v1') || '')
+  useEffect(() => {
+    if (accounts?.length && !accounts.some((a) => a.id === account)) {
+      setAccount(accounts[0].id)
+      localStorage.setItem('portfolio_account_v1', accounts[0].id)
+    }
+  }, [accounts, account])
+  const onAccountChange = (next) => {
+    setAccount(next)
+    localStorage.setItem('portfolio_account_v1', next)
+  }
+  const book = useLiveBook(account)
   // a configured wire NEVER falls back to synthetic numbers — the demo book
   // only exists for the keyless public build (Jeff 2026-08-05)
   const wired = !!wireUrl()
@@ -944,7 +978,7 @@ export function Portfolio({ route }) {
     return (
       <div class="flex-1 p-3 min-w-0">
         <div class="mx-1 mb-2 px-3 py-1.5 bg-surface-1 border border-line rounded-lg font-mono text-[11px] text-muted font-bold tracking-wider">
-          {book === false ? 'IBKR LINK DOWN — nothing to show, retrying' : 'CONNECTING TO IBKR…'}
+          {book === false ? tt('portfolio.link_down') : tt('portfolio.connecting')}
         </div>
       </div>
     )
@@ -952,8 +986,17 @@ export function Portfolio({ route }) {
 
   return (
     <div class="flex-1 p-3 select-text min-w-0">
-      <DemoBanner live={!!book} account={book?.account} margin={book?.margin} />
-      <View priceMap={priceMap} positions={positions} margin={book?.margin || null} />
+      <div class="flex items-center gap-2 mx-1 mb-2">
+        <div class="flex-1"><DemoBanner live={!!book} account={book?.accountLabel || book?.account} margin={book?.margin} /></div>
+        {accounts?.length > 1 && <label class="shrink-0 flex items-center gap-2 px-2.5 py-1.5 bg-surface-1 border border-line rounded-lg">
+          <span class="font-anth text-[9px] uppercase tracking-wider text-muted max-sm:hidden">{tt('portfolio.account_switcher')}</span>
+          <select class="bg-transparent font-mono text-[11px] font-semibold text-ink outline-none" value={account}
+            onChange={(e) => onAccountChange(e.currentTarget.value)}>
+            {accounts.map((a) => <option value={a.id}>{a.label}</option>)}
+          </select>
+        </label>}
+      </div>
+      <View priceMap={priceMap} positions={positions} margin={book?.margin || null} account={book?.accountLabel || book?.account} />
     </div>
   )
 }
