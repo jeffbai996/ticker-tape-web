@@ -22,5 +22,21 @@ describe('compact dashboard company name', () => {
 
   it('flashes the regular print as ticker-by-ticker updates land', () => {
     expect(dashboard).toContain('<FlashPrice price={q.price} fmt={fmtPrice} />')
+    expect(readFileSync(resolve(process.cwd(), 'src/components/Fig.jsx'), 'utf8'))
+      .toContain("document.addEventListener('visibilitychange', rebaseline)")
+    expect(css).toContain('animation: tick-flash 1.35s')
+  })
+
+  it('fills the high-zoom regular-hours gap with a compact day range', () => {
+    expect(dashboard).toContain('function CompactDayRange')
+    expect(dashboard).toContain('hidden @min-[545px]:flex @min-[730px]:hidden')
+    expect(dashboard).toContain('{!q?.extLabel && (')
+    expect(dashboard).toContain('<CompactDayRange lo={q?.dayLow} hi={q?.dayHigh} v={q?.price} />')
+  })
+
+  it('keeps the richer day and 52-week ranges at lower browser zoom', () => {
+    expect(dashboard).toContain('<RangeBar label="DAY"')
+    expect(dashboard).toContain('<RangeBar label="52W"')
+    expect(dashboard).toContain('hidden @min-[730px]:flex')
   })
 })
