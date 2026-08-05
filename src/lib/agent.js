@@ -42,7 +42,7 @@ export function trimHistory(history, max) {
  * on that path, so tools ride the JSON protocol in wirechat.js — the model
  * answers with one JSON object to call a tool and prose to answer.
  */
-async function runAgenticOverWire({ system, messages, onRound }) {
+async function runAgenticOverWire({ model, system, messages, onRound }) {
   const added = []
   const sys = `${system}\n\n${toolProtocol()}`
   for (let round = 0; round < MAX_ROUNDS; round++) {
@@ -53,6 +53,7 @@ async function runAgenticOverWire({ system, messages, onRound }) {
         : { role: m.role, content: m.content }))
     const last = round === MAX_ROUNDS - 1
     const { text } = await wireComplete({
+      model,
       system: last ? `${system}\n\nAnswer now with what you have.` : sys,
       messages: convo,
     })
@@ -76,7 +77,7 @@ export async function runAgentic({ model, effort, system, messages, onDelta, onR
   // Private build talks to the user's own router; the metered API is the
   // fallback for anyone without one.
   if (wireChatAvailable()) {
-    return runAgenticOverWire({ system, messages, onRound })
+    return runAgenticOverWire({ model, system, messages, onRound })
   }
   const added = []
   const convo = () => [...messages, ...added]
