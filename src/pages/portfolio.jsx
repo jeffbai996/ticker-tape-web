@@ -51,12 +51,21 @@ const signedMoney = (v) =>
 
 const pnlCls = (v) => (v == null ? 'text-muted' : v >= 0 ? 'text-up' : 'text-down')
 
-function Positions({ priceMap, positions }) {
+function Positions({ priceMap, positions, margin }) {
   const rows = positionRows(positions, priceMap)
   const tot = (k) => (rows.every((r) => r[k] != null) ? rows.reduce((s, r) => s + r[k], 0) : null)
+  // aggregate by symbol for the weight ladder — CDR + US lines merge
+  const bySym = new Map()
+  for (const r of rows) {
+    if (r.weight == null) continue
+    bySym.set(r.symbol, (bySym.get(r.symbol) || 0) + r.weight)
+  }
+  const ladder = [...bySym.entries()].sort((a, b) => b[1] - a[1])
+  const maxW = ladder.length ? ladder[0][1] : 1
 
   return (
-    <section class="bg-surface-1 border border-line rounded-xl overflow-x-auto max-w-4xl">
+    <div class="grid gap-2 xl:grid-cols-[minmax(0,1fr)_280px] items-start">
+    <section class="bg-surface-1 border border-line rounded-xl overflow-x-auto">
       <table class="w-full border-collapse font-mono text-[11px]">
         <thead>
           <tr class="bg-surface-2 text-[9px] text-muted uppercase tracking-wider">
@@ -98,6 +107,41 @@ function Positions({ priceMap, positions }) {
         </tbody>
       </table>
     </section>
+
+    <div class="flex flex-col gap-2 max-xl:hidden">
+      <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
+        <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
+          <h2 class="font-anth font-bold text-[10px] tracking-wider text-accent uppercase">{tl('Concentration')}</h2>
+        </header>
+        <div class="px-2.5 py-1.5">
+          {ladder.map(([sym, w]) => (
+            <div key={sym} class="flex items-center gap-2 py-[2px] font-mono text-[10.5px]">
+              <span class="w-12 font-[650] font-tick text-ink">{sym}</span>
+              <div class="flex-1 h-3 relative">
+                <div class="absolute inset-y-0 left-0 rounded-sm bg-accent/30"
+                  style={{ width: `${(w / maxW) * 100}%` }} />
+              </div>
+              <span class="w-11 text-right text-ink-2">{w.toFixed(1)}%</span>
+            </div>
+          ))}
+        </div>
+      </section>
+      {margin && (
+        <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
+          <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
+            <h2 class="font-anth font-bold text-[10px] tracking-wider text-accent uppercase">{tl('Margin')}</h2>
+          </header>
+          <div class="px-2.5 py-1.5 font-mono text-[11px] leading-[1.7]">
+            {margin.equity != null && <div class="flex justify-between"><span class="text-muted">equity</span><span class="text-ink font-semibold">{dollars(margin.equity)}</span></div>}
+            {margin.maintenance != null && <div class="flex justify-between"><span class="text-muted">maintenance</span><span class="text-ink-2">{dollars(margin.maintenance)}</span></div>}
+            {margin.above_maintenance != null && <div class="flex justify-between"><span class="text-muted">above maint</span><span class="text-ink-2">{dollars(margin.above_maintenance)}</span></div>}
+            {margin.cushion_pct != null && <div class="flex justify-between"><span class="text-muted">cushion</span>
+              <span class={`font-semibold ${margin.cushion_pct < 8 ? 'text-down' : 'text-up'}`}>{margin.cushion_pct.toFixed(2)}%</span></div>}
+          </div>
+        </section>
+      )}
+    </div>
+    </div>
   )
 }
 
@@ -671,7 +715,7 @@ export function Portfolio({ route }) {
   return (
     <div class="flex-1 p-3 select-text min-w-0">
       <DemoBanner live={!!book} account={book?.account} margin={book?.margin} />
-      <View priceMap={priceMap} positions={positions} />
+      <View priceMap={priceMap} positions={positions} margin={book?.margin || null} />
     </div>
   )
 }

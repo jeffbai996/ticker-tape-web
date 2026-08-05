@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'preact/hooks'
+import { fetchHistory } from '../lib/history.js'
+import { BUCKETS } from '../lib/symbols.js'
 import { useQuotes, useWatchlist } from '../hooks.js'
 import { AiReport } from '../components/AiReport.jsx'
 import { BRIEFING_SYSTEM } from '../lib/briefing.js'
@@ -131,6 +133,68 @@ function Overview() {
   )
 }
 
+/** Trailing sector returns off cached 3M dailies — the rotation read. */
+function SectorRotation() {
+  const [hist, setHist] = useState({})
+  useEffect(() => {
+    let dead = false
+    SECTORS.forEach(({ symbol }, i) => {
+      setTimeout(() => {
+        if (!dead) {
+          fetchHistory(symbol, '3M')
+            .then((h) => !dead && setHist((cur) => ({ ...cur, [symbol]: h?.bars || [] })))
+            .catch(() => {})
+        }
+      }, i * 150)
+    })
+    return () => { dead = true }
+  }, [])
+  const ret = (bars, days) => {
+    if (!bars?.length) return null
+    const last = bars[bars.length - 1]?.close
+    const cutoff = Date.now() / 1000 - days * 86400
+    const base = bars.find((b) => b.time >= cutoff)?.close
+    return base && last ? ((last / base) - 1) * 100 : null
+  }
+  const rows = SECTORS.map((sec) => ({
+    ...sec, w1: ret(hist[sec.symbol], 7), m1: ret(hist[sec.symbol], 30), m3: ret(hist[sec.symbol], 91),
+  })).sort((a, b) => (b.m1 ?? -99) - (a.m1 ?? -99))
+  const cell = (v) => (
+    <td class={`px-2 py-[3px] text-right font-mono text-[11px] ${v == null ? 'text-muted' : v >= 0 ? 'text-up' : 'text-down'}`}>
+      {v == null ? '—' : fmtPct(v)}
+    </td>
+  )
+  return (
+    <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
+      <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
+        <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Rotation — trailing')}</h2>
+      </header>
+      <table class="w-full border-collapse">
+        <thead>
+          <tr class="text-[8.5px] font-mono text-muted uppercase tracking-wider">
+            <th class="px-3 py-1 text-left">sector</th>
+            <th class="px-2 py-1 text-right">1w</th>
+            <th class="px-2 py-1 text-right">1m</th>
+            <th class="px-2 py-1 text-right">3m</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.symbol} class="border-t border-line hover:bg-surface-3 cursor-pointer"
+              onClick={() => (location.hash = `#/research/${r.symbol.toLowerCase()}`)}>
+              <td class="px-3 py-[3px] font-mono text-[11px]">
+                <span class="font-[650] font-tick text-ink">{r.symbol}</span>{' '}
+                <span class="text-muted font-anth text-[10.5px] max-sm:hidden">{tl(r.label)}</span>
+              </td>
+              {cell(r.w1)}{cell(r.m1)}{cell(r.m3)}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  )
+}
+
 function Sectors() {
   const quotes = useQuotes(SECTORS.map((s) => s.symbol))
   const rows = SECTORS.map((s) => ({ ...s, q: quotes[s.symbol]?.quote }))
@@ -138,7 +202,8 @@ function Sectors() {
   const maxAbs = Math.max(0.01, ...rows.map((r) => Math.abs(r.q?.pct ?? 0)))
 
   return (
-    <section class="bg-surface-1 border border-line rounded-xl overflow-hidden max-w-2xl">
+    <div class="grid gap-2 xl:grid-cols-2 items-start">
+    <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
       <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
         <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">
           {tl('Sector ETFs — today')}
@@ -172,6 +237,8 @@ function Sectors() {
         })}
       </div>
     </section>
+    <SectorRotation />
+    </div>
   )
 }
 
@@ -198,11 +265,39 @@ function heatStyle(pct) {
 function Heatmap() {
   const watchlist = useWatchlist()
   const quotes = useQuotes(watchlist)
-  const tiles = watchlist.map((s) => ({ symbol: s, q: quotes[s]?.quote }))
-    .sort((a, b) => (b.q?.pct ?? -99) - (a.q?.pct ?? -99))
-
+  // bucketed, so the map reads by theme instead of one undifferentiated wall
+  const grouped = []
+  const seen = new Set()
+  for (const b of BUCKETS) {
+    const syms = watchlist.filter((s2) => b.symbols.includes(s2))
+    if (syms.length) { grouped.push({ name: b.name, syms }); syms.forEach((x) => seen.add(x)) }
+  }
+  const rest = watchlist.filter((s2) => !seen.has(s2))
+  if (rest.length) grouped.push({ name: 'Other', syms: rest })
   return (
-    <div class="grid gap-1.5 max-w-4xl" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))' }}>
+    <div class="flex flex-col gap-3">
+      {grouped.map(({ name, syms }) => {
+        const tiles = syms.map((s2) => ({ symbol: s2, q: quotes[s2]?.quote }))
+          .sort((a, b) => (b.q?.pct ?? -99) - (a.q?.pct ?? -99))
+        const pcts = tiles.map((t) => t.q?.pct).filter((v) => v != null)
+        const avg2 = pcts.length ? pcts.reduce((a, b) => a + b, 0) / pcts.length : null
+        return (
+          <div key={name}>
+            <div class="flex items-baseline gap-2 pb-1 px-0.5">
+              <span class="font-mono text-[10px] uppercase tracking-[.12em] text-muted">{tl(name)}</span>
+              {avg2 != null && <span class={`font-mono text-[10px] ${avg2 >= 0 ? 'text-up' : 'text-down'}`}>{fmtPct(avg2)}</span>}
+            </div>
+            <HeatTiles tiles={tiles} />
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function HeatTiles({ tiles }) {
+  return (
+    <div class="grid gap-1.5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(118px, 1fr))' }}>
       {tiles.map(({ symbol, q }) => (
         <a
           key={symbol}
