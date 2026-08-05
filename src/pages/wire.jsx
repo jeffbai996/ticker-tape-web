@@ -5,6 +5,7 @@ import {
 } from '../lib/wire.js'
 import { getWatchlist } from '../lib/watchlist.js'
 import { IS_PRIVATE_BUILD } from '../lib/nav.js'
+import { tl } from '../lib/i18n.js'
 
 // fragwire's relevance ramp, same colors as its pills: T1 sector (blue),
 // T2 core thesis (amber), T3 thesis on a name you hold (red).
@@ -93,10 +94,10 @@ function ReadBody({ ev }) {
   }, [ev.id])
   if (state.status === 'off') return null
   if (state.status === 'loading') {
-    return <p class="text-[10.5px] font-mono text-muted animate-pulse pt-1">pulling the story…</p>
+    return <p class="text-[10.5px] font-mono text-muted animate-pulse pt-1">{tl('pulling the story…')}</p>
   }
   if (state.status === 'empty') {
-    return <p class="text-[10.5px] font-mono text-muted pt-1">source wouldn't give up its text — open ↗ for the page</p>
+    return <p class="text-[10.5px] font-mono text-muted pt-1">{tl("source wouldn't give up its text — open ↗ for the page")}</p>
   }
   return (
     <div class="flex flex-col gap-1.5 pt-1 max-w-[74ch]">
@@ -167,7 +168,7 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
           ))}
           {ev.live_call.tail.length > 0 && (
             <div>
-              <p class="text-[8.5px] uppercase tracking-wider text-muted">latest audio</p>
+              <p class="text-[8.5px] uppercase tracking-wider text-muted">{tl('latest audio')}</p>
               {ev.live_call.tail.map((c) => (
                 <p key={c.id} class="text-[11px] leading-relaxed text-muted max-w-[72ch]">{c.body}</p>
               ))}
@@ -184,7 +185,7 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
             {latTxt && <span>tape latency {latTxt}</span>}
             <span class="uppercase">{String(ev.type).replace(/_/g, ' ')}</span>
             {ev.url && (() => { try { return <span>{new URL(ev.url).hostname.replace('www.', '')}</span> } catch { return null } })()}
-            {ev.url && <a href={ev.url} target="_blank" rel="noopener" class="text-ink-2 hover:text-accent" onClick={(e) => e.stopPropagation()}>open ↗</a>}
+            {ev.url && <a href={ev.url} target="_blank" rel="noopener" class="text-ink-2 hover:text-accent" onClick={(e) => e.stopPropagation()}>{tl('open ↗')}</a>}
           </p>
           {Object.keys(ev.numbers || {}).length > 0 && (
             <div class="flex flex-wrap gap-1.5 mt-1.5">
@@ -235,18 +236,18 @@ function Rail({ today, now, events, watchset }) {
 
   return (
     <aside class="flex flex-col gap-2 w-[290px] shrink-0 max-lg:w-full">
-      <Panel title="tape">
+      <Panel title={tl('tape')}>
         <div class="grid grid-cols-3 gap-1 py-0.5 font-mono text-center">
           <div><div class="text-[15px] font-semibold text-ink">{events.length}</div>
-            <div class="text-[8.5px] uppercase tracking-wider text-muted">buffered</div></div>
+            <div class="text-[8.5px] uppercase tracking-wider text-muted">{tl('buffered')}</div></div>
           <div><div class="text-[15px] font-semibold text-accent">{lastHour.length}</div>
-            <div class="text-[8.5px] uppercase tracking-wider text-muted">last hour</div></div>
+            <div class="text-[8.5px] uppercase tracking-wider text-muted">{tl('last hour')}</div></div>
           <div><div class="text-[15px] font-semibold text-ink">{symCount.size}</div>
-            <div class="text-[8.5px] uppercase tracking-wider text-muted">symbols</div></div>
+            <div class="text-[8.5px] uppercase tracking-wider text-muted">{tl('symbols')}</div></div>
         </div>
       </Panel>
       {hotSyms.length > 0 && (
-        <Panel title="most mentioned">
+        <Panel title={tl('most mentioned')}>
           <div class="flex flex-wrap gap-1 py-0.5">
             {hotSyms.map(([sym, n]) => (
               <a key={sym} href={`#/research/${sym.toLowerCase()}`}
@@ -258,9 +259,9 @@ function Rail({ today, now, events, watchset }) {
           </div>
         </Panel>
       )}
-      <Panel title="today">
+      <Panel title={tl('today')}>
         {(today?.calendar || []).length === 0 && (
-          <p class="font-mono text-[11px] text-muted py-0.5">nothing on the sheet</p>
+          <p class="font-mono text-[11px] text-muted py-0.5">{tl('nothing on the sheet')}</p>
         )}
         {(today?.calendar || []).map((row) => (
           <div key={row.id} class="py-[3px] font-mono">
@@ -274,9 +275,9 @@ function Rail({ today, now, events, watchset }) {
           </div>
         ))}
       </Panel>
-      <Panel title="coming up">
+      <Panel title={tl('coming up')}>
         {(today?.upcoming || []).length === 0 && (
-          <p class="font-mono text-[11px] text-muted py-0.5">nothing on the horizon</p>
+          <p class="font-mono text-[11px] text-muted py-0.5">{tl('nothing on the horizon')}</p>
         )}
         {(today?.upcoming || []).slice(0, 8).map((row) => (
           <div key={row.id} class="flex justify-between gap-2 py-[2.5px] font-mono text-[11px]">
@@ -299,7 +300,7 @@ function Rail({ today, now, events, watchset }) {
           ))}
         </Panel>
       )}
-      <Panel title="captured today">
+      <Panel title={tl('captured today')}>
         <div class="flex flex-wrap gap-1.5">
           {Object.entries(today?.captured || {}).sort((a, b) => b[1] - a[1]).map(([type, n]) => (
             <span key={type} class="border border-line rounded px-1.5 py-0.5 font-mono text-[10.5px] text-ink-2">
@@ -309,7 +310,7 @@ function Rail({ today, now, events, watchset }) {
         </div>
       </Panel>
       {topSrc.length > 0 && (
-        <Panel title="loudest sources">
+        <Panel title={tl('loudest sources')}>
           {topSrc.map(([h, n]) => (
             <div key={h} class="flex justify-between gap-2 py-[2px] font-mono text-[10.5px]">
               <span class="text-ink-2 truncate">{h}</span>
@@ -464,7 +465,7 @@ export function Wire() {
             target="_blank"
             rel="noopener"
             class="font-mono text-[11px] text-ink-2 hover:text-accent hover:no-underline border border-line rounded-md px-2 py-0.5"
-            title="open the wire's own board"
+            title={tl('open the wire board')}
           >
             fragwire ↗
           </a>
@@ -473,7 +474,7 @@ export function Wire() {
         {endpoint && (
           <button
             class="border border-line rounded-md px-2.5 py-1 text-[11.5px] font-semibold text-ink-2 hover:text-ink hover:border-ink-2"
-            title="add this site's watchlist symbols to the wire's watchlist"
+            title={tl('sync watchlist to wire')}
             onClick={() => {
               const syms = getWatchlist()
               if (!syms.length) return
@@ -495,7 +496,7 @@ export function Wire() {
           <form class="flex gap-2 ml-auto" onSubmit={applyEndpoint}>
             <input
               class="bg-surface-2 border border-line rounded-md px-2 py-1 font-mono text-[11.5px] text-ink outline-none focus:border-accent w-64"
-              placeholder="your wire URL (blank = demo)"
+              placeholder={tl('wire URL (blank = demo)')}
               value={draft}
               onInput={(e) => setDraft(e.currentTarget.value)}
             />
@@ -523,7 +524,7 @@ export function Wire() {
       <div class="flex gap-2 items-start max-lg:flex-col">
         <div class="flex-1 min-w-0 border border-line rounded-lg overflow-hidden bg-surface">
           {shown.length === 0 && (
-            <div class="px-3 py-6 font-mono text-[12px] text-muted">no events</div>
+            <div class="px-3 py-6 font-mono text-[12px] text-muted">{tl('no events')}</div>
           )}
           {shown.slice(0, 250).map((ev) => {
             // a session card's identity must survive id churn as chunks land

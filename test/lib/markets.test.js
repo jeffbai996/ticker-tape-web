@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { daysUntil, upcomingEvents, ECON_EVENTS } from '../../src/lib/markets.js'
+import {
+  daysUntil, upcomingEvents, ECON_EVENTS, MARKET_GROUPS, COMMODITY_GROUPS,
+  MARKET_DECK, RELATIVE_SIGNALS,
+} from '../../src/lib/markets.js'
+import { hasLabelTranslation } from '../../src/lib/i18n.js'
 
 describe('daysUntil', () => {
   it('counts forward days', () => {
@@ -38,5 +42,32 @@ describe('ECON_EVENTS', () => {
   it('is sorted ascending by date', () => {
     const dates = ECON_EVENTS.map((e) => e.date)
     expect(dates).toEqual([...dates].sort())
+  })
+})
+
+describe('market coverage', () => {
+  it('covers the major cross-asset regions instead of leaving the overview sparse', () => {
+    const names = MARKET_GROUPS.map((g) => g.name)
+    expect(names).toEqual(expect.arrayContaining([
+      'US Equity', 'Global ETFs', 'Canada', 'Europe', 'Asia-Pacific',
+      'Rates', 'Credit', 'Volatility', 'FX', 'Crypto',
+    ]))
+    expect(MARKET_GROUPS.flatMap((g) => g.items).filter((i) => i.symbol).length).toBeGreaterThanOrEqual(75)
+    expect(COMMODITY_GROUPS.flatMap((g) => g.items).length).toBeGreaterThanOrEqual(30)
+  })
+
+  it('exposes a front-page market deck and relative-value signals', () => {
+    expect(MARKET_DECK.length).toBeGreaterThanOrEqual(6)
+    expect(RELATIVE_SIGNALS.length).toBeGreaterThanOrEqual(5)
+  })
+
+  it('ships Chinese labels for every expanded market surface', () => {
+    const labels = [
+      ...MARKET_GROUPS.flatMap((group) => [group.name, ...group.items.map((item) => item.label)]),
+      ...COMMODITY_GROUPS.flatMap((group) => [group.name, ...group.items.map((item) => item.label)]),
+      ...MARKET_DECK.map((item) => item.label),
+      ...RELATIVE_SIGNALS.map((item) => item.label),
+    ]
+    expect(labels.filter((label) => !hasLabelTranslation(label))).toEqual([])
   })
 })

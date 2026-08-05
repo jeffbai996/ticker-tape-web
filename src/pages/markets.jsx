@@ -4,7 +4,10 @@ import { BUCKETS } from '../lib/symbols.js'
 import { useQuotes, useWatchlist } from '../hooks.js'
 import { AiReport } from '../components/AiReport.jsx'
 import { BRIEFING_SYSTEM } from '../lib/briefing.js'
-import { MARKET_GROUPS, SECTORS, COMMODITY_GROUPS, ECON_EVENTS, upcomingEvents } from '../lib/markets.js'
+import {
+  MARKET_GROUPS, SECTORS, COMMODITY_GROUPS, ECON_EVENTS, RELATIVE_SIGNALS,
+  upcomingEvents,
+} from '../lib/markets.js'
 import { loadCatalysts, onCatalystsChange, removeCatalyst, mergedEvents } from '../lib/catalysts.js'
 import { fetchEarningsDate } from '../lib/fundamentals.js'
 import { tl } from '../lib/i18n.js'
@@ -81,13 +84,15 @@ function QuoteRow({ label, symbol, data, unit }) {
   )
 }
 
+const groupId = (name) => `market-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+
 function GroupCard({ name, items, quotes, withUnits }) {
   const pcts = items.filter((i) => !i.spread)
     .map((i) => quotes[i.symbol]?.quote?.pct).filter((v) => v != null)
   const avg = pcts.length ? pcts.reduce((a, b) => a + b, 0) / pcts.length : null
   const green = pcts.filter((v) => v >= 0).length
   return (
-    <section class="bg-surface-1 border border-line rounded-xl overflow-hidden @container">
+    <section id={groupId(name)} class="bg-surface-1 border border-line rounded-xl overflow-hidden @container scroll-mt-3">
       <header class="flex items-baseline gap-2 px-2.5 py-1 border-b border-line-2 bg-surface-2">
         <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{tl(name)}</h2>
         {avg != null && (
@@ -95,7 +100,7 @@ function GroupCard({ name, items, quotes, withUnits }) {
             <span class={`font-mono text-[11px] font-semibold ${avg >= 0 ? 'text-up' : 'text-down'}`}>
               {fmtPct(avg)}
             </span>
-            <span class="ml-auto font-mono text-[9.5px] text-muted" title="advancing / total">
+            <span class="ml-auto font-mono text-[9.5px] text-muted" title={tl('advancing / total')}>
               {green}/{pcts.length}
             </span>
           </>
@@ -121,14 +126,67 @@ function GroupCard({ name, items, quotes, withUnits }) {
   )
 }
 
+function MarketJumpBar() {
+  return (
+    <nav class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-2" aria-label={tl('Market groups')}>
+      <span class="font-anth text-[9px] uppercase tracking-wider text-muted shrink-0 mr-1">{tl('Jump to')}</span>
+      {MARKET_GROUPS.map((group) => (
+        <button key={group.name} type="button"
+          onClick={() => document.getElementById(groupId(group.name))?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          class="shrink-0 rounded-full border border-line px-2.5 py-1 font-anth text-[10px] text-ink-2 hover:text-accent hover:border-accent/50 hover:no-underline">
+          {tl(group.name)}
+        </button>
+      ))}
+    </nav>
+  )
+}
+
+function RelativeSignals() {
+  const symbols = [...new Set(RELATIVE_SIGNALS.flatMap((item) => [item.a, item.b]))]
+  const quotes = useQuotes(symbols)
+  return (
+    <section class="bg-surface-1 border border-line rounded-xl overflow-hidden @container">
+      <header class="flex items-baseline gap-2 px-2.5 py-1 border-b border-line-2 bg-surface-2">
+        <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Relative signals')}</h2>
+        <span class="ml-auto font-anth text-[9px] text-muted">{tl('leadership and risk appetite')}</span>
+      </header>
+      <table class="w-full border-collapse">
+        <tbody>
+          {RELATIVE_SIGNALS.map((item) => {
+            const a = quotes[item.a]?.quote
+            const b = quotes[item.b]?.quote
+            const ratio = a?.price != null && b?.price ? a.price / b.price : null
+            const relative = a?.pct != null && b?.pct != null ? a.pct - b.pct : null
+            return (
+              <tr key={item.label} class="border-b border-line last:border-0 hover:bg-white/[0.035] cursor-pointer"
+                onClick={() => { location.hash = hrefFor('research', item.a.toLowerCase()) }}>
+                <td class="px-3 py-[3px] font-anth text-[11.5px] text-ink-2">{tl(item.label)}</td>
+                <td class="px-2 py-[3px] text-right font-mono text-[10px] text-muted">{item.a}/{item.b}</td>
+                <td class="px-2 py-[3px] text-right font-mono text-[11.5px] text-ink font-semibold">{ratio == null ? '—' : ratio.toFixed(ratio >= 100 ? 1 : ratio >= 10 ? 2 : 3)}</td>
+                <td class={`px-3 py-[3px] text-right font-mono text-[11px] ${relative == null ? 'text-muted' : relative >= 0 ? 'text-up' : 'text-down'}`}>
+                  {relative == null ? '—' : fmtPct(relative)}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </section>
+  )
+}
+
 function Overview() {
   const symbols = MARKET_GROUPS.flatMap((g) => g.items.map((i) => i.symbol)).filter(Boolean)
   const quotes = useQuotes(symbols)
   return (
-    <div class="grid gap-2 md:grid-cols-2 xl:grid-cols-3 min-[1800px]:grid-cols-4">
-      {MARKET_GROUPS.map((g) => (
-        <GroupCard key={g.name} name={g.name} items={g.items} quotes={quotes} />
-      ))}
+    <div>
+      <MarketJumpBar />
+      <div class="grid gap-2 md:grid-cols-2 xl:grid-cols-3 min-[1800px]:grid-cols-4 items-start">
+        {MARKET_GROUPS.map((g) => (
+          <GroupCard key={g.name} name={g.name} items={g.items} quotes={quotes} />
+        ))}
+        <RelativeSignals />
+      </div>
     </div>
   )
 }
@@ -172,7 +230,7 @@ function SectorRotation() {
       <table class="w-full border-collapse">
         <thead>
           <tr class="text-[8.5px] font-mono text-muted uppercase tracking-wider">
-            <th class="px-3 py-1 text-left">sector</th>
+            <th class="px-3 py-1 text-left">{tl('sector')}</th>
             <th class="px-2 py-1 text-right">1w</th>
             <th class="px-2 py-1 text-right">1m</th>
             <th class="px-2 py-1 text-right">3m</th>
@@ -333,13 +391,13 @@ function MoverTable({ title, rows }) {
       <table class="w-full border-collapse font-mono text-[11px]">
         <thead>
           <tr class="text-[8.5px] text-muted uppercase tracking-wider">
-            <th class="px-3 py-1 text-left">sym</th>
-            <th class="px-2 py-1 text-right">px</th>
-            <th class="px-2 py-1 text-right">chg</th>
+            <th class="px-3 py-1 text-left">{tl('sym')}</th>
+            <th class="px-2 py-1 text-right">{tl('px')}</th>
+            <th class="px-2 py-1 text-right">{tl('chg')}</th>
             <th class="px-2 py-1 text-right">%</th>
-            <th class="px-2 py-1 text-right max-xl:hidden">vol</th>
-            <th class="px-2 py-1 text-right max-2xl:hidden">ext</th>
-            <th class="px-2 py-1 max-xl:hidden">day</th>
+            <th class="px-2 py-1 text-right max-xl:hidden">{tl('vol')}</th>
+            <th class="px-2 py-1 text-right max-2xl:hidden">{tl('ext')}</th>
+            <th class="px-2 py-1 max-xl:hidden">{tl('day')}</th>
           </tr>
         </thead>
         <tbody>
@@ -525,7 +583,7 @@ function Calendar() {
                     <button
                       onClick={() => removeCatalyst(e.id)}
                       class="ml-2 font-mono text-[10px] text-muted opacity-0 group-hover:opacity-100 max-md:opacity-100 hover:text-down"
-                      title="remove catalyst"
+                      title={tl('remove catalyst')}
                     >
                       ✕
                     </button>

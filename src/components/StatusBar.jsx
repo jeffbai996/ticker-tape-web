@@ -108,7 +108,7 @@ function RollingClock() {
     <button
       onClick={cycle}
       class="flex items-baseline gap-1 whitespace-nowrap font-anth group px-1.5 py-0.5 rounded hover:bg-accent-soft hover:outline hover:outline-1 hover:outline-accent/50"
-      title="cycle timezone (ET → HKT → PT)"
+      title={tl('cycle timezone')}
     >
       <span ref={desktopClock} class="max-md:hidden inline-flex items-baseline text-accent font-semibold text-[12px]" />
       <span ref={mobileClock} class="md:hidden inline-flex items-baseline text-accent font-semibold text-[12px]" />
@@ -165,7 +165,7 @@ export function StatusBar() {
           up (amber wash + rule) under the pointer (Jeff 2026-08-04) */}
       <a
         href="#/"
-        title="dashboard"
+        title={tl('Dashboard')}
         class="font-bold text-accent tracking-tight text-[13px] -mx-1 px-1 py-0.5 rounded border border-transparent
                hover:no-underline hover:bg-accent-soft hover:border-accent/40 hover:text-accent transition-colors"
       >

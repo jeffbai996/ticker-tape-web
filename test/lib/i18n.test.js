@@ -1,5 +1,9 @@
+import { readFileSync, readdirSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, it, expect, beforeEach } from 'vitest'
-import { t, tl, getLocale, setLocale, onLocaleChange } from '../../src/lib/i18n.js'
+import {
+  t, tl, getLocale, setLocale, onLocaleChange, hasLabelTranslation,
+} from '../../src/lib/i18n.js'
 
 beforeEach(() => setLocale('en'))
 
@@ -31,6 +35,28 @@ describe('tl', () => {
     setLocale('zh')
     expect(tl('Gold')).toBe('黄金')
     expect(tl('Some Unknown Label')).toBe('Some Unknown Label')
+  })
+
+  it('uses the canonical Chinese market term for watchlists', () => {
+    setLocale('zh')
+    expect(tl('Watchlists')).toBe('自选股')
+    expect(tl('Watchlist')).toBe('自选股')
+    expect(tl('Create watchlist')).toBe('新建自选股')
+    expect(tl('Watchlist name')).toBe('自选股名称')
+  })
+
+  it('covers every literal UI label routed through tl', () => {
+    const root = resolve(process.cwd(), 'src')
+    const files = readdirSync(root, { recursive: true })
+      .filter((name) => /\.(?:js|jsx)$/.test(name) && name !== 'lib/i18n.js')
+    const missing = new Set()
+    for (const name of files) {
+      const source = readFileSync(resolve(root, name), 'utf8')
+      for (const match of source.matchAll(/\btl\(\s*(['"])(.*?)\1\s*\)/g)) {
+        if (!hasLabelTranslation(match[2])) missing.add(match[2])
+      }
+    }
+    expect([...missing].sort()).toEqual([])
   })
 })
 

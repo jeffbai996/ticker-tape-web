@@ -20,6 +20,7 @@ import { fetchHistory } from '../lib/history.js'
 import { createPCache } from '../lib/pcache.js'
 
 const SYMBOLS = DEMO_POSITIONS.map((p) => p.symbol)
+const BOTH_ACCOUNTS = 'all'
 
 function priceMapOf(live) {
   const out = {}
@@ -28,21 +29,6 @@ function priceMapOf(live) {
     if (q) out[s] = q
   }
   return out
-}
-
-function DemoBanner({ live, account, margin }) {
-  if (live) {
-    return (
-      <div class="mx-1 mb-2 px-3 py-1.5 bg-surface-1 border border-up/50 rounded-lg font-mono text-[11px] text-up font-bold tracking-wider select-none">
-        {tt('portfolio.live')} · {account || 'IBKR'}{margin?.cushion_pct != null ? ` · ${tl('Cushion')} ${margin.cushion_pct > 0 ? '+' : ''}${margin.cushion_pct}%` : ''}
-      </div>
-    )
-  }
-  return (
-    <div class="mx-1 mb-2 px-3 py-1.5 bg-accent-soft border border-accent rounded-lg font-mono text-[11px] text-accent font-bold tracking-wider">
-      {tt('demo.banner')}
-    </div>
-  )
 }
 
 const money = (v, digits = 0) =>
@@ -55,8 +41,65 @@ const signedMoney = (v) =>
 
 const pnlCls = (v) => (v == null ? 'text-muted' : v >= 0 ? 'text-up' : 'text-down')
 
-function Positions({ priceMap, positions, margin }) {
+function BookSummary({ rows, margin, fallbackNlv }) {
+  const sum = (key) => rows.every((row) => row[key] != null)
+    ? rows.reduce((total, row) => total + row[key], 0) : null
+  const gross = sum('mktValue')
+  const equity = margin?.equity ?? fallbackNlv ?? null
+  const leverage = gross != null && equity ? gross / equity : null
+  const items = [
+    ['NLV', dollars(equity ?? gross)],
+    [tl('Day P&L'), signedMoney(sum('dayPnl')), pnlCls(sum('dayPnl'))],
+    [tl('Gross exposure'), dollars(gross)],
+    [tl('Leverage'), leverage == null ? '—' : `${leverage.toFixed(2)}x`],
+    [tl('Excess liquidity'), dollars(margin?.above_maintenance)],
+    [tl('Cushion'), margin?.cushion_pct == null ? '—' : `${margin.cushion_pct.toFixed(1)}%`, margin?.cushion_pct < 8 ? 'text-down' : 'text-up'],
+  ]
+  return (
+    <section class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 border border-line rounded-xl overflow-hidden bg-surface-1">
+      {items.map(([label, value, cls = 'text-ink']) => (
+        <div key={label} class="px-3 py-2 border-r border-b border-line last:border-r-0 xl:border-b-0">
+          <div class="font-anth text-[8.5px] uppercase tracking-wider text-muted pb-0.5">{label}</div>
+          <div class={`font-mono text-[13px] font-semibold ${cls}`}>{value}</div>
+        </div>
+      ))}
+    </section>
+  )
+}
+
+function BookPulse({ rows }) {
+  const priced = rows.filter((row) => row.dayPnl != null)
+  const ranked = [...priced].sort((a, b) => b.dayPnl - a.dayPnl)
+  const contributor = ranked.find((row) => row.dayPnl >= 0)
+  const detractor = [...ranked].reverse().find((row) => row.dayPnl < 0)
+  const adv = priced.filter((row) => row.dayPnl >= 0).length
+  const biggest = [...rows].filter((row) => row.weight != null).sort((a, b) => b.weight - a.weight)[0]
+  const line = (label, row, cls) => (
+    <div class="flex items-baseline gap-2 px-2.5 py-[2px] font-mono text-[10.5px]">
+      <span class="text-muted">{label}</span>
+      <span class="ml-auto text-ink-2">{row?.symbol || '—'}</span>
+      <span class={`w-16 text-right ${cls}`}>{row ? signedMoney(row.dayPnl) : '—'}</span>
+    </div>
+  )
+  return (
+    <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
+      <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
+        <h2 class="font-anth font-bold text-[10px] tracking-wider text-accent uppercase">{tl('Book pulse')}</h2>
+      </header>
+      <div class="py-1">
+        <div class="flex justify-between px-2.5 py-[2px] font-mono text-[10.5px]"><span class="text-muted">{tl('A/D')}</span><span><span class="text-up">{adv}</span><span class="text-muted"> / </span><span class="text-down">{priced.length - adv}</span></span></div>
+        {line(tl('Top contributor'), contributor, 'text-up')}
+        {line(tl('Top detractor'), detractor, 'text-down')}
+        <div class="flex justify-between px-2.5 py-[2px] font-mono text-[10.5px]"><span class="text-muted">{tl('Largest line')}</span><span class="text-ink-2">{biggest ? `${biggest.symbol} ${biggest.weight.toFixed(1)}%` : '—'}</span></div>
+      </div>
+    </section>
+  )
+}
+
+function Positions({ priceMap, positions, margin, accountId }) {
   const rows = positionRows(positions, priceMap)
+  const fallback = accountSummary(positions, priceMap)
+  const combined = accountId === BOTH_ACCOUNTS
   const tot = (k) => (rows.every((r) => r[k] != null) ? rows.reduce((s, r) => s + r[k], 0) : null)
   // aggregate by symbol for the weight ladder — CDR + US lines merge
   const bySym = new Map()
@@ -68,12 +111,15 @@ function Positions({ priceMap, positions, margin }) {
   const maxW = ladder.length ? ladder[0][1] : 1
 
   return (
+    <div class="flex flex-col gap-2">
+    <BookSummary rows={rows} margin={margin} fallbackNlv={fallback.nlv} />
     <div class="grid gap-2 xl:grid-cols-[minmax(0,1fr)_280px] items-start">
     <section class="bg-surface-1 border border-line rounded-xl overflow-x-auto">
       <table class="w-full border-collapse font-mono text-[11px]">
         <thead>
           <tr class="bg-surface-2 text-[9px] text-muted uppercase tracking-wider">
             <th class="px-3 py-2 text-left">{tl('Sym')}</th>
+            {combined && <th class="px-2 py-2 text-left">{tl('Account')}</th>}
             <th class="px-2 py-2 text-right">{tl('Shares')}</th>
             <th class="px-2 py-2 text-right">{tl('Avg cost')}</th>
             <th class="px-2 py-2 text-right">{tl('Price')}</th>
@@ -85,9 +131,10 @@ function Positions({ priceMap, positions, margin }) {
         </thead>
         <tbody>
           {rows.map((r) => (
-            <tr key={r.symbol} class="border-t border-line hover:bg-surface-3 cursor-pointer"
+            <tr key={`${r.account || ''}-${r.symbol}-${r.currency || ''}`} class="border-t border-line hover:bg-surface-3 cursor-pointer"
               onClick={() => (location.hash = `#/research/${r.symbol.toLowerCase()}`)}>
               <td class="px-3 py-[3px] font-bold text-accent">{r.symbol}</td>
+              {combined && <td class="px-2 py-[3px] font-anth text-[10px] text-muted">{r.accountLabel || r.account_label || '—'}</td>}
               <td class="px-2 py-[3px] text-right text-muted text-[10.5px]">{r.shares}</td>
               <td class="px-2 py-[3px] text-right text-muted text-[10.5px]">{fmtPrice(r.avgCost)}</td>
               <td class="px-2 py-[3px] text-right text-ink-2 font-medium"><FlashPrice price={r.price} fmt={fmtPrice} /></td>
@@ -102,7 +149,7 @@ function Positions({ priceMap, positions, margin }) {
             </tr>
           ))}
           <tr class="border-t border-line-2 bg-surface-2 font-bold">
-            <td class="px-3 py-[6px] text-ink" colSpan={4}>{tl('Total')}</td>
+            <td class="px-3 py-[6px] text-ink" colSpan={combined ? 5 : 4}>{tl('Total')}</td>
             <td class="px-2 py-[6px] text-right text-ink text-[12.5px]">{money(tot('mktValue'))}</td>
             <td class="px-2 py-[6px] text-right text-ink-2">100%</td>
             <td class={`px-2 py-[6px] text-right text-[12.5px] ${pnlCls(tot('dayPnl'))}`}>{signedMoney(tot('dayPnl'))}</td>
@@ -144,6 +191,8 @@ function Positions({ priceMap, positions, margin }) {
           </div>
         </section>
       )}
+      <BookPulse rows={rows} />
+    </div>
     </div>
     </div>
   )
@@ -161,6 +210,14 @@ function AccountStat({ label, value, cls = 'text-ink' }) {
 function Account({ priceMap, positions, margin, account }) {
   const s = accountSummary(positions, priceMap)
   const live = !!margin
+  const rows = positionRows(positions, priceMap)
+  const gross = rows.every((row) => row.mktValue != null)
+    ? rows.reduce((total, row) => total + row.mktValue, 0) : null
+  const leverage = gross != null && margin?.equity ? gross / margin.equity : s.leverage
+  const dayPnl = rows.every((row) => row.dayPnl != null)
+    ? rows.reduce((total, row) => total + row.dayPnl, 0) : null
+  const unrealPnl = rows.every((row) => row.unrealPnl != null)
+    ? rows.reduce((total, row) => total + row.unrealPnl, 0) : null
   return (
     <div class="max-w-4xl">
       <div class="px-1 pb-2 font-mono text-[11px] text-muted">
@@ -168,15 +225,15 @@ function Account({ priceMap, positions, margin, account }) {
       </div>
       <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <AccountStat label="NLV" value={dollars(margin?.equity ?? s.nlv)} />
-        <AccountStat label={tl('Cash')} value={dollars(s.cash)} />
-        <AccountStat label={tl('Gross exposure')} value={dollars(s.gross)} />
-        <AccountStat label={tl('Leverage')} value={s.leverage != null ? `${s.leverage.toFixed(2)}x` : '—'} />
+        {!live && <AccountStat label={tl('Cash')} value={dollars(s.cash)} />}
+        <AccountStat label={tl('Gross exposure')} value={dollars(gross ?? s.gross)} />
+        <AccountStat label={tl('Leverage')} value={leverage != null ? `${leverage.toFixed(2)}x` : '—'} />
         <AccountStat label={tl('Maintenance')} value={dollars(margin?.maintenance ?? s.maintenance)} />
         <AccountStat label={tl('Excess liquidity')} value={dollars(margin?.above_maintenance ?? s.excessLiq)} />
         <AccountStat label={tl('Cushion')} value={(margin?.cushion_pct ?? s.cushionPct) != null ? `${(margin?.cushion_pct ?? s.cushionPct).toFixed(1)}%` : '—'}
           cls={(margin?.cushion_pct ?? s.cushionPct) != null && (margin?.cushion_pct ?? s.cushionPct) < 15 ? 'text-down' : 'text-up'} />
-        <AccountStat label={tl('Day P&L')} value={signedMoney(s.dayPnl)} cls={pnlCls(s.dayPnl)} />
-        <AccountStat label={tl('Unreal P&L')} value={signedMoney(s.unrealPnl)} cls={pnlCls(s.unrealPnl)} />
+        <AccountStat label={tl('Day P&L')} value={signedMoney(dayPnl)} cls={pnlCls(dayPnl)} />
+        <AccountStat label={tl('Unreal P&L')} value={signedMoney(unrealPnl)} cls={pnlCls(unrealPnl)} />
       </div>
     </div>
   )
@@ -677,18 +734,19 @@ function IbkrMd({ url, empty }) {
   )
 }
 
-function WhatIf() {
+function WhatIf({ accountId }) {
   const [action, setAction] = useState('SELL')
   const [symbol, setSymbol] = useState('')
   const [qty, setQty] = useState('')
   const [url, setUrl] = useState('')
   if (!wireBase()) return <NeedsWire />
+  if (accountId === BOTH_ACCOUNTS) return <div class="px-1 font-anth text-[11.5px] text-muted">{tt('portfolio.pick_one_account')}</div>
   const run = (e) => {
     e.preventDefault()
     const sym = symbol.trim().toUpperCase()
     const n = parseInt(qty, 10)
     if (!sym || !n) return
-    setUrl(`${wireBase()}/api/ibkr/what-if?action=${action}&symbol=${encodeURIComponent(sym)}&quantity=${n}`)
+    setUrl(`${wireBase()}/api/ibkr/what-if?action=${action}&symbol=${encodeURIComponent(sym)}&quantity=${n}&account=${encodeURIComponent(accountId || '')}`)
   }
   return (
     <div class="flex flex-col gap-2 max-w-3xl">
@@ -701,7 +759,7 @@ function WhatIf() {
                 : 'text-muted hover:text-ink'}`}>{a}</button>
           ))}
         </div>
-        <input value={qty} onInput={(e) => setQty(e.currentTarget.value)} placeholder="qty" inputMode="numeric"
+        <input value={qty} onInput={(e) => setQty(e.currentTarget.value)} placeholder={tl('qty')} inputMode="numeric"
           class="w-20 bg-surface-2 border border-line rounded-lg px-2 py-1 text-ink outline-none focus:border-accent" />
         <input value={symbol} onInput={(e) => setSymbol(e.currentTarget.value)} placeholder="SYM"
           class="w-24 bg-surface-2 border border-line rounded-lg px-2 py-1 text-ink uppercase outline-none focus:border-accent" />
@@ -715,9 +773,10 @@ function WhatIf() {
   )
 }
 
-function Trades() {
+function Trades({ accountId }) {
   const [view, setView] = useState('fills')
   if (!wireBase()) return <NeedsWire />
+  if (accountId === BOTH_ACCOUNTS) return <div class="px-1 font-anth text-[11.5px] text-muted">{tt('portfolio.pick_one_account')}</div>
   return (
     <div class="flex flex-col gap-2 max-w-3xl">
       <div class="flex gap-1 font-mono text-[11px]">
@@ -727,7 +786,7 @@ function Trades() {
               ? 'bg-accent border-accent text-black' : 'border-line text-ink-2 hover:text-ink'}`}>{v}</button>
         ))}
       </div>
-      <IbkrMd url={`${wireBase()}/api/ibkr/trades?view=${view}`} empty="no executions this session" />
+      <IbkrMd url={`${wireBase()}/api/ibkr/trades?view=${view}&account=${encodeURIComponent(accountId || '')}`} empty="no executions this session" />
     </div>
   )
 }
@@ -902,6 +961,8 @@ function useLiveBook(account) {
               liveValue: x.market_value ?? null,
               liveUnreal: x.unrealized_pnl ?? null,
               currency: x.currency || 'USD',
+              account: x.account || out.account || '',
+              accountLabel: x.account_label || out.account_label || '',
             })),
             margin: out.margin || null,
             account: out.account || '',
@@ -933,11 +994,56 @@ function usePortfolioAccounts() {
   return accounts
 }
 
+function AccountSwitcher({ accounts, account, onChange }) {
+  if (!accounts || accounts.length < 2) return null
+  const items = [accounts[0], { id: BOTH_ACCOUNTS, label: tl('Both') }, ...accounts.slice(1)]
+  const index = Math.max(0, items.findIndex((item) => item.id === account))
+  return (
+    <div class="relative grid rounded-lg border border-line bg-surface-1 p-0.5 overflow-hidden"
+      style={{ gridTemplateColumns: `repeat(${items.length}, minmax(3.5rem, 1fr))` }}
+      role="group" aria-label={tt('portfolio.account_switcher')}>
+      <span class="portfolio-account-slider absolute inset-y-0.5 left-0.5 rounded-md bg-surface-3 border border-line-2 transition-transform duration-300 ease-out"
+        style={{ width: `calc((100% - 4px) / ${items.length})`, transform: `translateX(${index * 100}%)` }} />
+      {items.map((item) => (
+        <button key={item.id} type="button" onClick={() => onChange(item.id)}
+          class={`relative z-10 px-3 py-1 font-anth text-[10.5px] font-semibold whitespace-nowrap ${item.id === account ? 'text-ink' : 'text-muted hover:text-ink'}`}>
+          {item.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function PortfolioHeader({ accounts, account, onChange, book, wired }) {
+  const live = !!book
+  const label = book?.accountLabel || book?.account || (account === BOTH_ACCOUNTS ? tl('Both') : '')
+  const detail = live
+    ? `${label} · ${tt('portfolio.live_book')}${book.margin?.cushion_pct != null ? ` · ${tl('Cushion')} ${book.margin.cushion_pct.toFixed(1)}%` : ''}`
+    : wired ? tt('portfolio.connecting') : tt('demo.banner')
+  return (
+    <header class="flex flex-wrap items-center gap-3 mx-1 mb-2 py-1">
+      <div class="flex min-w-0 items-center gap-2.5 mr-auto">
+        <span class="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-line-2 bg-surface-2 text-accent" aria-hidden="true">
+          <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 15.5h14M4.5 12l3-3 2.5 2 5-6.5M5 15.5V13m5 2.5V12m5 3.5V8" /></svg>
+        </span>
+        <div class="min-w-0">
+          <div class="flex items-center gap-2">
+            <h1 class="font-anth text-[13px] font-bold tracking-wide text-ink">{tl('Portfolio')}</h1>
+            {live && <span class="h-1.5 w-1.5 rounded-full bg-up" title={tt('portfolio.live')} />}
+          </div>
+          <div class="truncate font-anth text-[9.5px] text-muted">{detail}</div>
+        </div>
+      </div>
+      <AccountSwitcher accounts={accounts} account={account} onChange={onChange} />
+    </header>
+  )
+}
+
 export function Portfolio({ route }) {
   const accounts = usePortfolioAccounts()
   const [account, setAccount] = useState(() => localStorage.getItem('portfolio_account_v1') || '')
   useEffect(() => {
-    if (accounts?.length && !accounts.some((a) => a.id === account)) {
+    if (accounts?.length && account !== BOTH_ACCOUNTS && !accounts.some((a) => a.id === account)) {
       setAccount(accounts[0].id)
       localStorage.setItem('portfolio_account_v1', accounts[0].id)
     }
@@ -977,7 +1083,8 @@ export function Portfolio({ route }) {
   if (wired && !book) {
     return (
       <div class="flex-1 p-3 min-w-0">
-        <div class="mx-1 mb-2 px-3 py-1.5 bg-surface-1 border border-line rounded-lg font-mono text-[11px] text-muted font-bold tracking-wider">
+        <PortfolioHeader accounts={accounts} account={account} onChange={onAccountChange} book={null} wired />
+        <div class="mx-1 mb-2 px-3 py-2 bg-surface-1 border border-line rounded-lg font-mono text-[11px] text-muted">
           {book === false ? tt('portfolio.link_down') : tt('portfolio.connecting')}
         </div>
       </div>
@@ -986,17 +1093,9 @@ export function Portfolio({ route }) {
 
   return (
     <div class="flex-1 p-3 select-text min-w-0">
-      <div class="flex items-center gap-2 mx-1 mb-2">
-        <div class="flex-1"><DemoBanner live={!!book} account={book?.accountLabel || book?.account} margin={book?.margin} /></div>
-        {accounts?.length > 1 && <label class="shrink-0 flex items-center gap-2 px-2.5 py-1.5 bg-surface-1 border border-line rounded-lg">
-          <span class="font-anth text-[9px] uppercase tracking-wider text-muted max-sm:hidden">{tt('portfolio.account_switcher')}</span>
-          <select class="bg-transparent font-mono text-[11px] font-semibold text-ink outline-none" value={account}
-            onChange={(e) => onAccountChange(e.currentTarget.value)}>
-            {accounts.map((a) => <option value={a.id}>{a.label}</option>)}
-          </select>
-        </label>}
-      </div>
-      <View priceMap={priceMap} positions={positions} margin={book?.margin || null} account={book?.accountLabel || book?.account} />
+      <PortfolioHeader accounts={accounts} account={account} onChange={onAccountChange} book={book} wired={wired} />
+      <View priceMap={priceMap} positions={positions} margin={book?.margin || null}
+        account={book?.accountLabel || book?.account} accountId={account} />
     </div>
   )
 }
