@@ -8,6 +8,7 @@ import { fetchHistory } from './lib/history.js'
 import { sma, rsi } from './lib/indicators.js'
 import { getLocale, onLocaleChange } from './lib/i18n.js'
 import { getWatchlist, onWatchlistChange } from './lib/watchlist.js'
+import { loadWatchlists, onWatchlistsChange } from './lib/watchlists.js'
 import { createQuoteRenderGate } from './lib/quoteRenderGate.js'
 
 /** Current locale; re-renders the caller when it changes. */
@@ -22,6 +23,13 @@ export function useWatchlist() {
   const [list, set] = useState(getWatchlist)
   useEffect(() => onWatchlistChange((l) => set([...l])), [])
   return list
+}
+
+/** Additional user-created dashboard watchlists. */
+export function useNamedWatchlists() {
+  const [lists, set] = useState(loadWatchlists)
+  useEffect(() => onWatchlistsChange((items) => set([...items])), [])
+  return lists
 }
 
 /** Live quotes for a symbol list; re-renders as each symbol's data lands. */

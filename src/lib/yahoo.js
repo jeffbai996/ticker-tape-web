@@ -58,6 +58,9 @@ export function quoteFromV7(row) {
     dayLow: row?.regularMarketDayLow ?? null,
     volume: row?.regularMarketVolume ?? null,
     marketTime: row?.regularMarketTime ?? null,
+    // v7 uses the short field names here (not regularMarketBid/Ask).
+    bid: row?.bid ?? null,
+    ask: row?.ask ?? null,
     ...ext,
   }
 }
@@ -116,6 +119,8 @@ export function mergeSnapshotQuote(previous, snapshot, streamIsFresh) {
     marketTime: previous.marketTime ?? snapshot.marketTime,
     dayHigh: snapshot.dayHigh ?? previous.dayHigh ?? null,
     dayLow: snapshot.dayLow ?? previous.dayLow ?? null,
+    bid: previous.bid ?? snapshot.bid ?? null,
+    ask: previous.ask ?? snapshot.ask ?? null,
     ...(previous.extLabel ? {
       extLabel: previous.extLabel,
       extPrice: previous.extPrice,
