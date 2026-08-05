@@ -15,6 +15,12 @@ import { pulseStats } from '../lib/pulse.js'
 import { loadMemories, addMemory, editMemory, removeMemory, applyMemoryTags } from '../lib/chatMemory.js'
 import { loadJournal, addJournalEntry, removeJournalEntry, searchJournal } from '../lib/journal.js'
 import { CHAT_HOME_EVENT, takeChatHomePending } from '../lib/chatnav.js'
+import { CHATSTORE_SYNC_EVENT, chatstoreAvailable, syncNotes } from '../lib/chatstore.js'
+import {
+  fetchThreadList, loadActiveHistory, migrateLegacy, openThread,
+  removeThread, saveActiveHistory, startNewThread, currentThreadId,
+} from '../lib/threads.js'
+import { wireUrl } from '../lib/wire.js'
 
 // Base prompt stays generic in source. Whether the assistant has a real book
 // is decided at runtime by whether the viewer wired in their own fragwire —
@@ -43,23 +49,10 @@ function baseSystem() {
   return common + book
 }
 
-const HISTORY_KEY = 'chat_history_v1'
-const STORE_MAX = 400     // what the browser keeps and the page renders
 const MODEL_WINDOW = 48   // what a single turn actually sends to the model
 
-function loadHistory() {
-  try {
-    return JSON.parse(localStorage.getItem(HISTORY_KEY)) || []
-  } catch {
-    return []
-  }
-}
-
-function saveHistory(h) {
-  try {
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(trimHistory(h, STORE_MAX)))
-  } catch { /* best-effort */ }
-}
+const loadHistory = loadActiveHistory
+const saveHistory = saveActiveHistory
 
 /** Download the transcript as markdown (CLI `export` parity). */
 function exportChat(history) {
@@ -524,6 +517,7 @@ export function Chat() {
   // The launchpad is a place you can go back to, not just the zero state:
   // pressing AI Chat in the nav returns here with the thread still parked.
   const [atHome, setAtHome] = useState(takeChatHomePending)
+  const [threads, setThreads] = useState([])
   const scrollRef = useRef(null)
   const stickRef = useRef(true)      // autoscroll only while parked at the tail
   const abortRef = useRef(null)
@@ -542,6 +536,38 @@ export function Chat() {
   const earnDays = useEarningsDays(watchlist)
   const upcoming = mergedEvents(ECON_EVENTS, loadCatalysts(),
     new Date().toISOString().slice(0, 10), 60).slice(0, 4)
+
+  // Boot: pull the shared brain from the wire (server wins), adopt a legacy
+  // local conversation as thread #1, and list the threads for the rail.
+  const refreshThreads = () => {
+    fetchThreadList().then(setThreads).catch(() => {})
+  }
+  useEffect(() => {
+    if (!chatstoreAvailable()) return
+    const onSync = () => { setMemories(loadMemories()); setJournal(loadJournal()) }
+    window.addEventListener(CHATSTORE_SYNC_EVENT, onSync)
+    syncNotes().catch(() => {})
+    migrateLegacy().then(refreshThreads).catch(() => {})
+    return () => window.removeEventListener(CHATSTORE_SYNC_EVENT, onSync)
+  }, [])
+
+  const newThread = () => {
+    startNewThread()
+    historyRef.current = []
+    setHistory([])
+    setAtHome(true)
+    refreshThreads()
+  }
+
+  const switchThread = async (id) => {
+    try {
+      const messages = await openThread(id)
+      historyRef.current = messages
+      setHistory(messages)
+      setAtHome(false)
+      refreshThreads()
+    } catch { /* thread gone — list will refresh */ }
+  }
 
   // Warm case: already on the chat page when AI Chat is pressed again.
   useEffect(() => {
@@ -594,7 +620,10 @@ export function Chat() {
   const replaceHistory = (next, persist = false) => {
     historyRef.current = next
     setHistory(next)
-    if (persist) saveHistory(next)
+    if (persist) {
+      saveHistory(next)
+      if (chatstoreAvailable()) setTimeout(refreshThreads, 1500)
+    }
   }
 
   const drainFollowUps = () => {
@@ -745,6 +774,40 @@ export function Chat() {
     abortRef.current?.abort()
   }
 
+  const [rec, setRec] = useState(null)
+  const mic = async () => {
+    if (rec) { rec.stop(); return }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mr = new MediaRecorder(stream)
+      const chunks = []
+      mr.ondataavailable = (e) => chunks.push(e.data)
+      mr.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop())
+        setRec(null)
+        const blob = new Blob(chunks, { type: mr.mimeType || 'audio/webm' })
+        setNotice('transcribing…')
+        try {
+          const resp = await fetch(`${wireUrl().replace(/\/$/, '')}/api/transcribe`, {
+            method: 'POST', headers: { 'Content-Type': blob.type }, body: blob,
+          })
+          const out = await resp.json()
+          if (!out.ok) throw new Error(out.error || 'transcribe failed')
+          setNotice(null)
+          setInput((cur) => (cur ? `${cur} ` : '') + out.text)
+          inputRef.current?.focus()
+        } catch (err) {
+          setNotice(null)
+          setError(`transcription failed: ${err.message || err}`)
+        }
+      }
+      mr.start()
+      setRec(mr)
+    } catch {
+      setError('microphone unavailable')
+    }
+  }
+
   const clear = () => {
     replaceHistory([], true)
   }
@@ -797,6 +860,17 @@ export function Chat() {
             placeholder={busy ? tt('chat.follow_up') : tt('chat.placeholder')}
             class="flex-1 bg-transparent resize-none outline-none text-[13.5px] leading-[21px] py-[5.5px] text-ink placeholder:text-muted max-h-40 font-anth"
           />
+          {onWire && (
+            <button
+              type="button"
+              onClick={mic}
+              title={rec ? 'stop recording' : 'dictate (whisper on the wire)'}
+              class={`shrink-0 w-8 h-8 grid place-items-center rounded-md border transition-colors ${
+                rec ? 'border-down text-down animate-pulse' : 'border-line-2 text-muted hover:text-ink'}`}
+            >
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+            </button>
+          )}
           {busy && (
             <button
               type="button"
@@ -1110,6 +1184,31 @@ export function Chat() {
           </div>}
         </div>
       </section>
+
+      {chatstoreAvailable() && (
+        <section class="bg-surface-1 border border-line rounded-xl overflow-hidden shrink-0">
+          <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2 flex items-baseline gap-1.5">
+            <h2 class="font-anth font-bold text-[10px] tracking-wider text-accent uppercase">threads</h2>
+            <span class="font-mono text-[9px] text-muted">{threads.length}</span>
+            <button onClick={newThread} title="new thread"
+              class="ml-auto font-mono text-[10px] text-muted hover:text-accent">+ new</button>
+          </header>
+          <div class="px-1 py-1 max-h-[22vh] overflow-y-auto">
+            {threads.length === 0 && <div class="px-1.5 font-anth text-[11px] text-muted py-0.5">no saved threads</div>}
+            {threads.map((t) => (
+              <div key={t.id} class={`group flex items-baseline gap-1.5 px-1.5 py-0.5 rounded-md ${t.id === currentThreadId() ? 'bg-accent-soft' : 'hover:bg-surface-2'}`}>
+                <button onClick={() => switchThread(t.id)} class="flex-1 min-w-0 text-left">
+                  <span class={`block truncate font-anth text-[11px] ${t.id === currentThreadId() ? 'text-accent' : 'text-ink-2'}`}>{t.title || 'untitled'}</span>
+                </button>
+                <span class="font-mono text-[8.5px] text-muted shrink-0">{t.n}</span>
+                <button onClick={() => removeThread(t.id).then(() => { if (t.id === currentThreadId()) newThread(); refreshThreads() })}
+                  title="delete thread"
+                  class="opacity-0 group-hover:opacity-100 text-muted hover:text-down shrink-0 font-mono text-[10px]">✕</button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section class="bg-surface-1 border border-line rounded-xl overflow-hidden shrink-0">
         <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2 flex items-baseline gap-1.5">

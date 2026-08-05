@@ -19,6 +19,7 @@ import { ECON_EVENTS } from './markets.js'
 import { loadCatalysts, addCatalyst, mergedEvents, CATALYST_TYPES } from './catalysts.js'
 import { addMemory, editMemory, removeMemory } from './chatMemory.js'
 import { addJournalEntry, searchJournal, loadJournal } from './journal.js'
+import { wireUrl } from './wire.js'
 
 const SYM_RE = /^[A-Za-z0-9.^=-]{1,12}$/
 const MAX_SYMBOLS = 15
@@ -262,6 +263,17 @@ const sym = { type: 'string', description: 'Ticker symbol, e.g. NVDA' }
 
 export const TOOL_DEFS = [
   {
+    name: 'wire_search',
+    description: 'Search the connected news wire: q = full-text search over the archive (headlines+bodies), or symbol = the latest wire events for one ticker. Returns headlines with timestamps and types.',
+    parameters: {
+      type: 'object',
+      properties: {
+        q: { type: 'string', description: 'full-text query (omit when using symbol)' },
+        symbol: { type: 'string', description: 'ticker to pull recent wire events for' },
+      },
+    },
+  },
+  {
     name: 'get_quotes',
     description: 'Live quotes (price, day change, extended hours) for up to 15 symbols.',
     parameters: {
@@ -396,6 +408,29 @@ export const TOOL_DEFS = [
 ]
 
 const EXECUTORS = {
+  wire_search: async ({ q, symbol }) => {
+    const base = wireUrl()
+    if (!base) return { error: 'no wire connected in this browser' }
+    const b = base.replace(/\/$/, '')
+    const url = q
+      ? `${b}/api/search?q=${encodeURIComponent(q)}`
+      : symbol
+        ? `${b}/api/events?symbols=${encodeURIComponent(String(symbol).toUpperCase())}&newest=1&limit=12`
+        : null
+    if (!url) return { error: 'pass q or symbol' }
+    const resp = await fetch(url, { signal: AbortSignal.timeout(10_000) })
+    const out = await resp.json()
+    if (!out.ok) return { error: out.error || 'wire search failed' }
+    const events = (out.events || []).slice(-15).map((e) => ({
+      when: new Date(e.ts_event * 1000).toISOString().slice(0, 16).replace('T', ' '),
+      type: e.type,
+      symbols: e.symbols || [],
+      headline: e.headline,
+      ...(e.body ? { body: String(e.body).slice(0, 200) } : {}),
+    }))
+    return { count: events.length, events }
+  },
+
   get_quotes: getQuotes,
   get_technicals: getTechnicals,
   get_earnings: getEarnings,
