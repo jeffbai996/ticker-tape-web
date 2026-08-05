@@ -671,53 +671,56 @@ export function Dashboard({ listId = null }) {
 
   return (
     <div class="flex-1 p-3 select-text min-w-0">
-      <div class="flex items-center gap-2 px-1 pb-2 min-w-0">
-        {activeList && (
-          <div class="min-w-0 mr-1">
-            <div class="font-mono text-[8px] uppercase tracking-wider text-muted">Watchlist</div>
-            <div class="font-anth font-bold text-[13px] text-ink truncate">{activeList.name}</div>
+      <div class="dashboard-toolbar md:flex md:items-center md:gap-4 md:px-1 md:pb-2 min-w-0">
+        <div class="dashboard-controls flex items-center gap-2 px-1 pb-2 md:px-0 md:pb-0 min-w-0 shrink-0">
+          {activeList && (
+            <div class="min-w-0 mr-1">
+              <div class="font-mono text-[8px] uppercase tracking-wider text-muted">Watchlist</div>
+              <div class="font-anth font-bold text-[13px] text-ink truncate">{activeList.name}</div>
+            </div>
+          )}
+          <div class={`${activeList ? 'ml-auto' : ''} inline-flex rounded-lg border border-line bg-surface-1 p-0.5 shrink-0`}>
+            <button onClick={() => setViewMode('grouped')}
+              class={`px-2 py-1 rounded-md font-anth text-[10px] transition-colors ${viewMode === 'grouped' ? 'bg-accent-soft text-accent' : 'text-muted hover:text-ink'}`}>
+              Sectors
+            </button>
+            <button onClick={() => setViewMode('flat')}
+              class={`px-2 py-1 rounded-md font-anth text-[10px] transition-colors ${viewMode === 'flat' ? 'bg-accent-soft text-accent' : 'text-muted hover:text-ink'}`}>
+              All
+            </button>
           </div>
-        )}
-        <div class={`${activeList ? 'ml-auto' : ''} inline-flex rounded-lg border border-line bg-surface-1 p-0.5 shrink-0`}>
-          <button onClick={() => setViewMode('grouped')}
-            class={`px-2 py-1 rounded-md font-anth text-[10px] transition-colors ${viewMode === 'grouped' ? 'bg-accent-soft text-accent' : 'text-muted hover:text-ink'}`}>
-            Sectors
-          </button>
-          <button onClick={() => setViewMode('flat')}
-            class={`px-2 py-1 rounded-md font-anth text-[10px] transition-colors ${viewMode === 'flat' ? 'bg-accent-soft text-accent' : 'text-muted hover:text-ink'}`}>
-            All
-          </button>
+          <input value={filter} onInput={(e) => setFilter(e.currentTarget.value)}
+            placeholder="search…"
+            class="min-w-0 w-32 sm:w-40 bg-surface-1 border border-line rounded-lg px-2 py-1 font-anth text-[10px] text-ink outline-none focus:border-accent placeholder:text-muted" />
+          {viewMode === 'flat' && (
+            <select value={sort} onChange={(e) => setSort(e.currentTarget.value)}
+              class="bg-surface-1 border border-line rounded-lg px-2 py-1 font-anth text-[10px] text-ink-2 outline-none focus:border-accent">
+              <option value="manual">Sort</option>
+              <option value="symbol">Ticker</option>
+              <option value="change">% change</option>
+              <option value="price">Price</option>
+              <option value="spread">Spread</option>
+            </select>
+          )}
         </div>
-        <input value={filter} onInput={(e) => setFilter(e.currentTarget.value)}
-          placeholder="search…"
-          class="min-w-0 w-32 sm:w-40 bg-surface-1 border border-line rounded-lg px-2 py-1 font-anth text-[10px] text-ink outline-none focus:border-accent placeholder:text-muted" />
-        {viewMode === 'flat' && (
-          <select value={sort} onChange={(e) => setSort(e.currentTarget.value)}
-            class="bg-surface-1 border border-line rounded-lg px-2 py-1 font-anth text-[10px] text-ink-2 outline-none focus:border-accent">
-            <option value="manual">Sort</option>
-            <option value="symbol">Ticker</option>
-            <option value="change">% change</option>
-            <option value="price">Price</option>
-            <option value="spread">Spread</option>
-          </select>
-        )}
-      </div>
-      {/* Thesis strip: bucket averages at a glance. One swipeable line at
-          every width — it wrapped to four lines of prime real estate
-          (Jeff 2026-08-04: "keep it all on one line somehow"). */}
-      <div class="flex items-baseline gap-x-4 px-1 pb-2 font-mono text-[10px] flex-nowrap overflow-x-auto no-scrollbar">
-        {BUCKETS.map((b) => {
-          const inList = b.symbols.filter((s) => watchlist.includes(s))
-          const avg = bucketAvg(inList)
-          if (avg == null) return null
-          return (
-            <span key={b.name} class="whitespace-nowrap">
-              <span class="text-muted uppercase tracking-wider">{tl(b.name)}</span>{' '}
-              <span class={avg >= 0 ? 'text-up' : 'text-down'}>{fmtPct(avg)}</span>
-            </span>
-          )
-        })}
-        <QuickAdd onAdd={addSymbol} />
+
+        {/* Thesis strip: bucket averages at a glance. One swipeable line at
+            every width — it wrapped to four lines of prime real estate
+            (Jeff 2026-08-04: "keep it all on one line somehow"). */}
+        <div class="dashboard-sectors flex items-baseline gap-x-4 px-1 pb-2 md:px-0 md:pb-0 md:ml-auto md:flex-1 min-w-0 font-mono text-[10px] flex-nowrap overflow-x-auto no-scrollbar">
+          {BUCKETS.map((b) => {
+            const inList = b.symbols.filter((s) => watchlist.includes(s))
+            const avg = bucketAvg(inList)
+            if (avg == null) return null
+            return (
+              <span key={b.name} class="whitespace-nowrap">
+                <span class="text-muted uppercase tracking-wider">{tl(b.name)}</span>{' '}
+                <span class={avg >= 0 ? 'text-up' : 'text-down'}>{fmtPct(avg)}</span>
+              </span>
+            )
+          })}
+          <QuickAdd onAdd={addSymbol} />
+        </div>
       </div>
 
       {/* lg (1024px) not xl: the rail used to vanish one browser-zoom notch in.
