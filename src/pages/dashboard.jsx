@@ -126,9 +126,9 @@ function TuiRow({ symbol, data, earnDays }) {
                 give up width, so the fixed price/change/AH columns stay aligned
                 across rows AND never get pushed past the clip edge. Below
                 820px the text hides but the gutter stays, collapsing to 0. */}
-            <span class="flex-1 min-w-0 max-w-[120px]">
+            <span class="hidden @min-[820px]:block flex-1 min-w-0 max-w-[120px]">
               <Marquee text={q?.name || ''} title={q?.name ? `${symbol} — ${q.name}` : symbol}
-                class="hidden @min-[820px]:inline-block w-full text-[10.5px] text-muted font-normal font-anth" />
+                class="inline-block w-full text-[10.5px] text-muted font-normal font-anth" />
             </span>
             <span class="text-ink font-semibold w-[4.75rem] max-sm:w-[4.25rem] text-right shrink-0">{q ? fmtPrice(q.price) : '—'}</span>
             {q && (
@@ -154,8 +154,11 @@ function TuiRow({ symbol, data, earnDays }) {
           </div>
           {/* Phone width: badges scroll sideways instead of clipping mid-badge. */}
           <div class="flex items-center gap-2.5 pt-[2px] pl-0 min-w-0 @min-[430px]:overflow-hidden max-sm:overflow-x-auto no-scrollbar">
+            {/* grow/basis, not fixed steps: the sparkline soaks up whatever
+                the badges leave over, at every width and zoom (Jeff 2026-08-04:
+                "enlarge the sparkline with the slack space") */}
             <Histo bars={data?.histo} width={150} height={24}
-              class="w-[150px] @max-[900px]:w-[84px] @max-[640px]:w-[52px] @max-[430px]:w-[38px]" />
+              class="grow basis-[38px] min-w-[38px] max-w-[520px] h-6" />
             <Badges tech={data?.tech} earnDays={earnDays} />
           </div>
         </div>
