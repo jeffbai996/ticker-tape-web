@@ -33,12 +33,14 @@ describe('wire chat model selection', () => {
 
     await wireComplete({
       model: 'claude',
+      effort: 'high',
       system: 'system',
       messages: [{ role: 'user', content: 'hi' }],
     })
 
     expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({
       model: 'claude',
+      effort: 'high',
       system: 'system',
       messages: [{ role: 'user', content: 'hi' }],
     })
