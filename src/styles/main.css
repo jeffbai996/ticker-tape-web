@@ -201,10 +201,13 @@ body {
   }
 }
 
-/* Tape marquee: list rendered twice, scroll half the total width, loop. */
+/* Tape marquee: JS measures one cycle and renders enough copies to keep even
+   a one-symbol mobile watchlist filled while this moves exactly one cycle. */
 .tape-scroll {
-  animation: tape-scroll 60s linear infinite;
   will-change: transform;
+}
+.tape-scroll-ready {
+  animation: tape-scroll var(--tape-cycle-duration) linear infinite;
 }
 .tape-cycle { flex: none; }
 /* Row highlight, loud enough to actually see. accent-soft (13% amber) computes
@@ -236,8 +239,8 @@ body {
   color: #fff !important;
 }
 @keyframes tape-scroll {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(calc(-1 * var(--tape-cycle-width)), 0, 0); }
 }
 
 /* rolodex clock — fragwire's time-wheel */

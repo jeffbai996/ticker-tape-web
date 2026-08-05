@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { useQuotes, useWatchlist } from '../hooks.js'
 import { fmtPrice, fmtPct } from '../lib/format.js'
 import { hrefFor } from '../lib/route.js'
+import { marqueeCopies } from '../lib/marquee.js'
 import { tapeEntries } from '../lib/tape.js'
 import { tapeworthy, wireUrl } from '../lib/wire.js'
 
@@ -109,13 +110,42 @@ export function Tape() {
   const items = watchlist.map((s) => ({ symbol: s, q: quotes[s]?.quote }))
   const entries = tapeEntries(heads, items)
   const wrap = useRef(null)
+  const firstCycle = useRef(null)
+  const [marquee, setMarquee] = useState({ copies: 2, width: 0 })
   usePointerHighlight(wrap)
 
+  useEffect(() => {
+    const viewport = wrap.current
+    const cycle = firstCycle.current
+    if (!viewport || !cycle) return
+
+    const measure = () => {
+      const width = Math.ceil(cycle.getBoundingClientRect().width)
+      const copies = marqueeCopies(viewport.clientWidth, width)
+      setMarquee((current) => current.width === width && current.copies === copies
+        ? current
+        : { width, copies })
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(viewport)
+    observer.observe(cycle)
+    return () => observer.disconnect()
+  }, [entries.length])
+
+  const duration = Math.max(8, marquee.width / 82)
+
   return (
-    <div ref={wrap} class="h-7 shrink-0 bg-black border-b border-line overflow-hidden relative">
-      <div class="tape-scroll flex h-full w-max font-mono text-[11px]">
-        {[0, 1].map((copy) => (
-          <div key={copy} class="tape-cycle flex items-center h-full gap-6 pr-6">
+    <div ref={wrap} class="h-6 shrink-0 bg-black border-b border-line overflow-hidden relative">
+      <div
+        class={`tape-scroll flex h-full w-max font-mono text-[11px] ${marquee.width ? 'tape-scroll-ready' : ''}`}
+        style={marquee.width ? {
+          '--tape-cycle-width': `${marquee.width}px`,
+          '--tape-cycle-duration': `${duration}s`,
+        } : undefined}
+      >
+        {Array.from({ length: marquee.copies }, (_, copy) => (
+          <div ref={copy === 0 ? firstCycle : undefined} key={copy} class="tape-cycle flex items-center h-full gap-4 pr-4">
             {entries.map(({ kind, data }, i) => {
               if (kind === 'headline') {
                 const e = data
@@ -145,8 +175,10 @@ export function Tape() {
                   class="flex items-baseline gap-1.5 whitespace-nowrap hover:no-underline px-1.5 -mx-1 py-0.5"
                 >
                   <span class="text-ink font-bold font-tick text-[10px]">{symbol}</span>
-                  <span class="text-ink-2 font-semibold">{q ? fmtPrice(q.price) : '—'}</span>
-                  {q && <span class={`text-[10px] ${up ? 'text-up' : 'text-down'}`}>{fmtPct(q.pct)}</span>}
+                  <span class="text-ink-2 font-semibold min-w-[3.75rem]">{q ? fmtPrice(q.price) : '—'}</span>
+                  <span class={`text-[10px] min-w-[3.25rem] ${q ? (up ? 'text-up' : 'text-down') : 'text-muted'}`}>
+                    {q ? fmtPct(q.pct) : '—'}
+                  </span>
                 </a>
               )
             })}
