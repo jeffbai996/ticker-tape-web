@@ -59,7 +59,7 @@ function SymbolInput({ value, onChange }) {
         type="submit"
         class="bg-accent text-surface-0 font-mono font-bold text-[11px] px-3 rounded-lg hover:brightness-110"
       >
-        RUN
+        {tl('Run')}
       </button>
     </form>
   )
@@ -79,8 +79,8 @@ function ScreenTable({ symbols, hist }) {
             <th class="px-2 py-2 text-right">{tl('Day %')}</th>
             <th class="px-2 py-2 text-right">{tl('RSI 14')}</th>
             <th class="px-2 py-2 text-right">{tl('vs SMA200')}</th>
-            <th class="px-2 py-2 text-right">52w range</th>
-            <th class="px-3 py-2 text-right">1Y %</th>
+            <th class="px-2 py-2 text-right">{tl('52w range')}</th>
+            <th class="px-3 py-2 text-right">{tl('1Y %')}</th>
           </tr>
         </thead>
         <tbody>
@@ -359,13 +359,13 @@ function TechScreen({ symbols, hist }) {
           <tr class="bg-surface-2 text-[9px] text-muted uppercase tracking-wider">
             <th class="px-3 py-1.5 text-left">{tl('sym')}</th>
             <th class="px-2 py-1.5 text-right">{tl('px')}</th>
-            {th('rsi', 'rsi14')}
+            {th('rsi', tl('rsi14'))}
             <th class="px-2 py-1.5 text-right">{tl('vs 50d')}</th>
             <th class="px-2 py-1.5 text-right">{tl('vs 200d')}</th>
             <th class="px-2 py-1.5 text-center">{tl('cross')}</th>
-            {th('volX', 'vol x20d')}
-            {th('offHigh', 'off high')}
-            {th('macdHist', 'macd')}
+            {th('volX', tl('vol x20d'))}
+            {th('offHigh', tl('off high'))}
+            {th('macdHist', tl('macd'))}
           </tr>
         </thead>
         <tbody>

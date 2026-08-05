@@ -18,7 +18,7 @@ import { sma, rsi, macd, bollinger } from '../lib/indicators.js'
 import { fmtPrice, fmtPct, fmtChange, fmtVol, fmtBig, fmtRatio, fmtFracPct } from '../lib/format.js'
 import { hrefFor } from '../lib/route.js'
 import { Marquee } from '../components/Marquee.jsx'
-import { tl, t as tt } from '../lib/i18n.js'
+import { getLocale, tl, t as tt } from '../lib/i18n.js'
 import { Fig, FlashMetric, FlashPrice } from '../components/Fig.jsx'
 import { watch, unwatch } from '../lib/watchlist.js'
 import { useWatchlist } from '../hooks.js'
@@ -413,7 +413,7 @@ function News({ symbol }) {
           <div class="text-[12px] text-ink leading-snug">{n.title}</div>
           <div class="font-mono text-[10px] text-muted mt-0.5">
             {n.publisher}
-            {n.time && ` · ${new Date(n.time).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
+            {n.time && ` · ${new Date(n.time).toLocaleDateString(getLocale() === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric' })}`}
           </div>
         </a>
       ))}
@@ -1143,7 +1143,7 @@ function SymbolWireView({ symbol }) {
           {rows.map((e) => (
             <div key={e.id} class="grid grid-cols-[86px_36px_1fr] gap-x-2.5 items-baseline px-3 py-[3px] border-t border-line first:border-0 hover:bg-surface-3">
               <span class="text-muted whitespace-nowrap">
-                {new Date(e.ts_event * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toLowerCase()}
+                {new Date(e.ts_event * 1000).toLocaleDateString(getLocale() === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric' }).toLowerCase()}
                 {' '}
                 {new Date(e.ts_event * 1000).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', timeZone: 'America/New_York' })}
               </span>
@@ -1258,7 +1258,7 @@ function DesBand({ symbol, bars }) {
         value={ytdFull != null || ret1y != null ? `${fmtPct(ytdFull)} / ${fmtPct(ret1y)}` : null}
         tone={tone(ret1y)} />
       <DesCell n={20} label={tl('Next ern')}
-        value={cal?.date ? `${new Date(cal.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toLowerCase()} · ${Math.max(0, Math.round((cal.date - Date.now()) / 86400000))}d` : null} />
+        value={cal?.date ? `${new Date(cal.date).toLocaleDateString(getLocale() === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric' }).toLowerCase()} · ${Math.max(0, Math.round((cal.date - Date.now()) / 86400000))}${getLocale() === 'zh' ? '天' : 'd'}` : null} />
       <DesCell n={21} label={tl('Sector')} value={prof?.sector || null} />
       <DesCell n={22} label={tl('Industry')} value={prof?.industry || null} />
       <DesCell n={23} label={tl('Employees')}
@@ -1430,7 +1430,7 @@ function WireMini({ symbol }) {
           <div key={e.id} class="grid grid-cols-[18px_78px_30px_1fr] gap-x-2 items-baseline px-3 py-[2px] hover:bg-surface-3">
             <span class="text-muted text-[10px] text-right">{i + 1})</span>
             <span class="text-muted text-[10.5px] whitespace-nowrap">
-              {new Date(e.ts_event * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toLowerCase()}
+              {new Date(e.ts_event * 1000).toLocaleDateString(getLocale() === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric' }).toLowerCase()}
               {' '}
               {new Date(e.ts_event * 1000).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', timeZone: 'America/New_York' })}
             </span>
@@ -1482,7 +1482,7 @@ function DividendsView({ symbol }) {
             {cellRow('Rate (annual)', f.dividendRate != null ? fmtPrice(f.dividendRate) : '—')}
             {cellRow('Payout ratio', f.payoutRatio != null ? fmtFracPct(f.payoutRatio) : '—')}
             {cellRow('Ex-div date', f.exDividendDate
-              ? new Date(f.exDividendDate * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—')}
+              ? new Date(f.exDividendDate * 1000).toLocaleDateString(getLocale() === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—')}
           </>
         )}
       </section>
