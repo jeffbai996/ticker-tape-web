@@ -7,7 +7,7 @@
 import { streamChat } from './chatClient.js'
 import { TOOL_DEFS, executeTool } from './tools.js'
 import {
-  parseToolCall, toolProtocol, wireChatAvailable, wireComplete,
+  parseToolCall, toolProtocol, wireChatAvailable, wireComplete, wireStream,
 } from './wirechat.js'
 
 const MAX_ROUNDS = 6
@@ -50,7 +50,7 @@ function receiveFollowUps(takeFollowUps, added, onRound) {
 }
 
 async function runAgenticOverWire({
-  model, effort, system, messages, onRound, takeFollowUps,
+  model, effort, system, messages, onDelta, onThinking, onRound, takeFollowUps,
 }) {
   const added = []
   const sys = `${system}\n\n${toolProtocol()}`
@@ -64,12 +64,21 @@ async function runAgenticOverWire({
         ? { role: 'user', content: `TOOL_RESULT ${m.name}: ${m.content}` }
         : { role: m.role, content: m.content }))
     const last = round === MAX_ROUNDS - 1
-    const { text } = await wireComplete({
-      model,
-      effort,
-      system: last ? `${system}\n\nAnswer now with what you have.` : sys,
-      messages: convo,
-    })
+    const roundSystem = last ? `${system}\n\nAnswer now with what you have.` : sys
+    // Stream when the wire supports it — a tool-call round streams JSON, so
+    // the UI-side paint filters that out (chat.jsx showLive). Fall back to
+    // the one-shot endpoint on any pre-output failure (older fragwire).
+    let text = ''
+    try {
+      ;({ text } = await wireStream({
+        model, effort, system: roundSystem, messages: convo,
+        onDelta, onThinking,
+      }))
+    } catch {
+      ;({ text } = await wireComplete({
+        model, effort, system: roundSystem, messages: convo,
+      }))
+    }
     const call = last ? null : parseToolCall(text)
     if (!call) {
       added.push({ role: 'assistant', content: text })
@@ -87,13 +96,13 @@ async function runAgenticOverWire({
 }
 
 export async function runAgentic({
-  model, effort, system, messages, onDelta, onRound, takeFollowUps,
+  model, effort, system, messages, onDelta, onThinking, onRound, takeFollowUps,
 }) {
   // Private build talks to the user's own router; the metered API is the
   // fallback for anyone without one.
   if (wireChatAvailable()) {
     return runAgenticOverWire({
-      model, effort, system, messages, onRound, takeFollowUps,
+      model, effort, system, messages, onDelta, onThinking, onRound, takeFollowUps,
     })
   }
   const added = []
