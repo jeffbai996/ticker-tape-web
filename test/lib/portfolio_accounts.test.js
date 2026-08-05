@@ -1,0 +1,32 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { describe, expect, it } from 'vitest'
+
+const page = readFileSync(resolve(process.cwd(), 'src/pages/portfolio.jsx'), 'utf8')
+const labels = readFileSync(resolve(process.cwd(), 'src/lib/i18n.js'), 'utf8')
+
+describe('private portfolio account switching', () => {
+  it('loads configured accounts and scopes every book request', () => {
+    expect(page).toContain('/api/portfolio/accounts')
+    expect(page).toContain("localStorage.getItem('portfolio_account_v1')")
+    expect(page).toContain("params.set('account', account)")
+    expect(page).toContain('onAccountChange')
+  })
+
+  it('uses the live margin summary in the account view', () => {
+    expect(page).toContain('function Account({ priceMap, positions, margin, account })')
+    expect(page).toContain("margin?.equity")
+    expect(page).toContain("margin?.above_maintenance")
+  })
+})
+
+describe('portfolio translation coverage', () => {
+  it('routes portfolio status and gateway copy through i18n', () => {
+    for (const key of [
+      'portfolio.live', 'portfolio.connecting', 'portfolio.link_down',
+      'portfolio.gateway_loading', 'portfolio.gateway_empty',
+    ]) expect(labels).toContain(`'${key}'`)
+    expect(page).not.toContain('>asking the gateway…<')
+    expect(page).not.toContain('>CONNECTING TO IBKR…<')
+  })
+})
