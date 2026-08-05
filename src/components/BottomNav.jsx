@@ -1,11 +1,9 @@
 import { NAV, hrefFor } from '../lib/route.js'
 import { goChatHome } from '../lib/chatnav.js'
 import { tl } from '../lib/i18n.js'
-import { useNamedWatchlists } from '../hooks.js'
 
 // Mobile-only bottom tab bar (the sidebar is hidden below md). Scrolls
 // horizontally if the section list outgrows the viewport.
-
 export function BottomNav({ route }) {
   return (
     <nav class="md:hidden fixed bottom-0 inset-x-0 z-40 bg-surface-1 border-t border-line flex overflow-x-auto no-scrollbar">
@@ -28,14 +26,10 @@ export function BottomNav({ route }) {
 /** Mobile-only sub-tab strip for sections whose sub-nav lives in the sidebar. */
 export function SubTabs({ route }) {
   const section = NAV.find((s) => s.id === route.section)
-  const namedWatchlists = useNamedWatchlists()
   if (!section?.subs?.length) return null
   const tabs = [
     { id: null, label: 'Overview' },
     ...section.subs,
-    ...(section.id === 'dashboard'
-      ? namedWatchlists.map((item) => ({ id: item.id, label: item.name }))
-      : []),
   ]
   return (
     <div class="md:hidden flex gap-1.5 px-3 py-1.5 border-b border-line overflow-x-auto no-scrollbar bg-surface-1">
