@@ -90,6 +90,7 @@ const STRINGS = {
     zh: '股票代码，空格或逗号分隔（最多8个）',
   },
   'common.loading': { en: 'loading…', zh: '加载中…' },
+  'common.days': { en: '{days}d', zh: '{days}天' },
   'demo.banner': {
     en: 'DEMO — NOT REAL POSITIONS · synthetic book on live prices',
     zh: 'DEMO — 非真实持仓 · 模拟组合 + 实时价格',
@@ -115,6 +116,7 @@ const STRINGS = {
   'chat.wire_empty': { en: 'Ask about a ticker, a sector, or the book.', zh: '可以问股票、板块或持仓。' },
   'chat.session_messages': { en: '{n} messages', zh: '{n} 条消息' },
   'chat.exchange_saved': { en: '✓ exchange saved to journal #{id}', zh: '✓ 本轮对话已保存至交易日志 #{id}' },
+  'chat.earnings_due': { en: 'ern {when}', zh: '财报 {when}' },
   'chat.action_earnings_summary': { en: "summarize {symbol}'s earnings report", zh: '总结 {symbol} 的财报' },
   'chat.action_earnings_preview': { en: "what should I watch in {symbol}'s earnings ({days}d out)?", zh: '{symbol} 将在 {days} 天后发布财报，我该关注什么？' },
   'chat.action_mover': { en: "what's driving {symbol} {direction} {pct}% today?", zh: '{symbol} 今日{direction} {pct}%，原因是什么？' },
