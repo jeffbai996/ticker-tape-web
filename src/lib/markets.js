@@ -16,12 +16,12 @@ export const MARKET_GROUPS = [
   {
     name: 'US Futures',
     items: [
-      { symbol: 'ES=F', label: 'S&P 500 Fut' },
-      { symbol: 'NQ=F', label: 'Nasdaq Fut' },
-      { symbol: 'YM=F', label: 'Dow Fut' },
-      { symbol: 'RTY=F', label: 'Russell Fut' },
-      { symbol: 'ZN=F', label: '10Y Note Fut' },
-      { symbol: 'ZB=F', label: '30Y Bond Fut' },
+      { symbol: 'ES=F', label: 'S&P 500 Future' },
+      { symbol: 'NQ=F', label: 'Nasdaq Future' },
+      { symbol: 'YM=F', label: 'Dow Future' },
+      { symbol: 'RTY=F', label: 'Russell Future' },
+      { symbol: 'ZN=F', label: '10Y Note Future' },
+      { symbol: 'ZB=F', label: '30Y Bond Future' },
     ],
   },
   {

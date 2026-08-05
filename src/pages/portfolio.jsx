@@ -75,25 +75,25 @@ function Positions({ priceMap, positions }) {
             <tr key={r.symbol} class="border-t border-line hover:bg-surface-3 cursor-pointer"
               onClick={() => (location.hash = `#/research/${r.symbol.toLowerCase()}`)}>
               <td class="px-3 py-[3px] font-bold text-accent">{r.symbol}</td>
-              <td class="px-2 py-[3px] text-right text-ink-2">{r.shares}</td>
-              <td class="px-2 py-[3px] text-right text-muted">{fmtPrice(r.avgCost)}</td>
-              <td class="px-2 py-[3px] text-right text-ink">{fmtPrice(r.price)}</td>
-              <td class="px-2 py-[3px] text-right text-ink">{money(r.mktValue)}</td>
-              <td class="px-2 py-[3px] text-right text-ink-2">{r.weight != null ? `${r.weight.toFixed(1)}%` : '—'}</td>
-              <td class={`px-2 py-[3px] text-right ${pnlCls(r.dayPnl)}`}>
-                {signedMoney(r.dayPnl)} {r.dayPct != null && <span class="text-[10px]">({fmtPct(r.dayPct)})</span>}
+              <td class="px-2 py-[3px] text-right text-muted text-[10.5px]">{r.shares}</td>
+              <td class="px-2 py-[3px] text-right text-muted text-[10.5px]">{fmtPrice(r.avgCost)}</td>
+              <td class="px-2 py-[3px] text-right text-ink-2 font-medium">{fmtPrice(r.price)}</td>
+              <td class="px-2 py-[3px] text-right text-ink font-semibold text-[12px]">{money(r.mktValue)}</td>
+              <td class="px-2 py-[3px] text-right text-ink-2 font-medium">{r.weight != null ? `${r.weight.toFixed(1)}%` : '—'}</td>
+              <td class={`px-2 py-[3px] text-right font-semibold ${pnlCls(r.dayPnl)}`}>
+                {signedMoney(r.dayPnl)} {r.dayPct != null && <span class="text-[10px] font-normal">({fmtPct(r.dayPct)})</span>}
               </td>
-              <td class={`px-3 py-[3px] text-right ${pnlCls(r.unrealPnl)}`}>
-                {signedMoney(r.unrealPnl)} {r.unrealPct != null && <span class="text-[10px]">({fmtPct(r.unrealPct)})</span>}
+              <td class={`px-3 py-[3px] text-right font-semibold text-[12px] ${pnlCls(r.unrealPnl)}`}>
+                {signedMoney(r.unrealPnl)} {r.unrealPct != null && <span class="text-[10.5px] font-normal">({fmtPct(r.unrealPct)})</span>}
               </td>
             </tr>
           ))}
           <tr class="border-t border-line-2 bg-surface-2 font-bold">
             <td class="px-3 py-[6px] text-ink" colSpan={4}>{tl('Total')}</td>
-            <td class="px-2 py-[6px] text-right text-ink">{money(tot('mktValue'))}</td>
+            <td class="px-2 py-[6px] text-right text-ink text-[12.5px]">{money(tot('mktValue'))}</td>
             <td class="px-2 py-[6px] text-right text-ink-2">100%</td>
-            <td class={`px-2 py-[6px] text-right ${pnlCls(tot('dayPnl'))}`}>{signedMoney(tot('dayPnl'))}</td>
-            <td class={`px-3 py-[6px] text-right ${pnlCls(tot('unrealPnl'))}`}>{signedMoney(tot('unrealPnl'))}</td>
+            <td class={`px-2 py-[6px] text-right text-[12.5px] ${pnlCls(tot('dayPnl'))}`}>{signedMoney(tot('dayPnl'))}</td>
+            <td class={`px-3 py-[6px] text-right text-[12.5px] ${pnlCls(tot('unrealPnl'))}`}>{signedMoney(tot('unrealPnl'))}</td>
           </tr>
         </tbody>
       </table>
@@ -105,7 +105,7 @@ function AccountStat({ label, value, cls = 'text-ink' }) {
   return (
     <div class="bg-surface-1 border border-line rounded-xl px-4 py-3">
       <div class="text-[9px] text-muted uppercase tracking-wider pb-1">{label}</div>
-      <div class={`font-mono text-[16px] ${cls}`}>{value}</div>
+      <div class={`font-mono text-[19px] font-semibold tracking-tight ${cls}`}>{value}</div>
     </div>
   )
 }
@@ -607,14 +607,25 @@ function useLiveBook() {
         if (!dead && out.ok && out.positions?.length) {
           setBook({
             positions: out.positions.map((x) => ({
-              symbol: x.symbol, shares: x.shares, avgCost: x.avg_cost,
+              symbol: x.symbol,
+              shares: x.shares,
+              avgCost: x.avg_cost,
+              // IBKR's own marks ride along — a CAD CDR priced off the US
+              // listing's USD quote produced garbage cost basis (Jeff
+              // 2026-08-05); the broker already knows the truth.
+              livePrice: x.market_price ?? null,
+              liveValue: x.market_value ?? null,
+              liveUnreal: x.unrealized_pnl ?? null,
+              currency: x.currency || 'USD',
             })),
             margin: out.margin || null,
             account: out.account || '',
           })
+        } else if (!dead) {
+          setBook((cur) => cur || false)   // false = wire up, ibkr not answering
         }
       })
-      .catch(() => {})
+      .catch(() => { if (!dead) setBook((cur) => cur || false) })
     pull()
     const t = setInterval(pull, 60_000)
     return () => { dead = true; clearInterval(t) }
@@ -624,7 +635,10 @@ function useLiveBook() {
 
 export function Portfolio({ route }) {
   const book = useLiveBook()
-  const positions = book?.positions || DEMO_POSITIONS
+  // a configured wire NEVER falls back to synthetic numbers — the demo book
+  // only exists for the keyless public build (Jeff 2026-08-05)
+  const wired = !!wireUrl()
+  const positions = book?.positions || (wired ? [] : DEMO_POSITIONS)
   const symbols = positions.map((p) => p.symbol)
   const live = useQuotes(symbols)
   const priceMap = {}
@@ -643,6 +657,16 @@ export function Portfolio({ route }) {
     timeline: Timeline,
     backtest: Backtest,
   }[view] || Positions
+
+  if (wired && !book) {
+    return (
+      <div class="flex-1 p-3 min-w-0">
+        <div class="mx-1 mb-2 px-3 py-1.5 bg-surface-1 border border-line rounded-lg font-mono text-[11px] text-muted font-bold tracking-wider">
+          {book === false ? 'IBKR LINK DOWN — nothing to show, retrying' : 'CONNECTING TO IBKR…'}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div class="flex-1 p-3 select-text min-w-0">

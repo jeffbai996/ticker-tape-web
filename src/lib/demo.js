@@ -32,6 +32,27 @@ export const DEMO_BETAS = {
 export function positionRows(positions, priceMap) {
   const rows = positions.map((p) => {
     const q = priceMap[p.symbol]
+    // Live rows carry the broker's own marks. A CDR (or any non-US listing)
+    // shares a ticker with the US line but trades in another currency — the
+    // yahoo quote for that ticker is the WRONG instrument, so IBKR's price/
+    // value/P&L win whenever present. Yahoo only contributes the day-% (a
+    // ratio, currency-safe) for the day-P&L estimate.
+    if (p.livePrice != null) {
+      const mktValue = p.liveValue ?? p.livePrice * p.shares
+      const costBasis = p.avgCost * p.shares
+      const unrealPnl = p.liveUnreal ?? mktValue - costBasis
+      const dayPct = q?.pct ?? null
+      return {
+        ...p,
+        price: p.livePrice,
+        mktValue,
+        dayPnl: dayPct != null ? (dayPct / 100) * mktValue : null,
+        dayPct,
+        unrealPnl,
+        unrealPct: costBasis > 0 ? (unrealPnl / costBasis) * 100 : null,
+        weight: null,
+      }
+    }
     if (!q?.price) {
       return { ...p, price: null, mktValue: null, dayPnl: null, dayPct: null,
         unrealPnl: null, unrealPct: null, weight: null }
