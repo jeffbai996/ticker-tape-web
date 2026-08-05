@@ -295,7 +295,7 @@ function EarningsPanel({ symbols, days, quotes = {} }) {
           const name = quotes[symbol]?.quote?.name || ''
           return (
             <a key={symbol} href={`#/research/${symbol.toLowerCase()}/earnings`}
-              class="grid grid-cols-[2.85rem_minmax(0,1fr)_2rem] items-baseline gap-1.5 px-3 py-[2px] font-mono text-[11px] hover:bg-surface-3 hover:no-underline"
+              class="grid grid-cols-[2.55rem_minmax(0,1fr)_2rem] items-baseline gap-1.5 px-3 py-[2px] font-mono text-[11px] hover:bg-surface-3 hover:no-underline"
               title={name || symbol}>
               <span class="text-ink font-[650] font-anth truncate">{symbol}</span>
               {/* company name, quiet — the CLI's `[dim]{name}[/]`, sliding into
