@@ -8,6 +8,7 @@ import { fetchHistory } from './lib/history.js'
 import { sma, rsi } from './lib/indicators.js'
 import { getLocale, onLocaleChange } from './lib/i18n.js'
 import { getWatchlist, onWatchlistChange } from './lib/watchlist.js'
+import { createQuoteRenderGate } from './lib/quoteRenderGate.js'
 
 /** Current locale; re-renders the caller when it changes. */
 export function useLocale() {
@@ -30,9 +31,26 @@ export function useQuotes(symbols) {
   useEffect(() => {
     track(symbols)
     const wanted = new Set(symbols)
-    return subscribe((symbol) => {
-      if (wanted.has(symbol)) bump((n) => n + 1)
+    const requestFrame = globalThis.requestAnimationFrame?.bind(globalThis)
+      || ((fn) => setTimeout(fn, 16))
+    const cancelFrame = globalThis.cancelAnimationFrame?.bind(globalThis)
+      || clearTimeout
+    const gate = createQuoteRenderGate({
+      isHidden: () => document.hidden,
+      scheduleFrame: requestFrame,
+      cancelFrame,
+      render: () => bump((n) => n + 1),
     })
+    const unsub = subscribe((symbol) => {
+      if (wanted.has(symbol)) gate.onFeedUpdate()
+    })
+    const onVisibility = () => gate.onVisibilityChange()
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      unsub()
+      document.removeEventListener('visibilitychange', onVisibility)
+      gate.dispose()
+    }
   }, [symbols.join(',')])
 
   const out = {}
@@ -143,4 +161,3 @@ export function useAlertEngine() {
   const dismiss = (id) => setToasts((ts) => ts.filter((t) => t.id !== id))
   return { toasts, dismiss }
 }
-

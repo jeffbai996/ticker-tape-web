@@ -103,24 +103,25 @@ function RangeBar({ label, lo, hi, v, cls = '' }) {
   )
 }
 
-/** At higher browser zoom the numeric endpoints no longer fit. Keep the useful
- *  part — current position inside today's tape — and let AH reclaim the slot
- *  after the close. Exact low/high remain available on hover. */
+/** The compact breakpoint keeps the same low → position → high grammar as the
+ *  full range instead of turning the chart into an unlabeled mystery noodle. */
 function CompactDayRange({ lo, hi, v }) {
   const pos = rangePos(lo, hi, v)
   if (pos == null) return null
   return (
     <span
-      class="hidden @min-[545px]:flex @min-[730px]:hidden items-center gap-1.5 whitespace-nowrap"
+      class="hidden @min-[545px]:flex @min-[730px]:hidden items-center gap-1 whitespace-nowrap font-mono text-[9.5px]"
       title={`DAY ${fmtPriceBare(lo)} – ${fmtPriceBare(hi)}`}
     >
       <span class="text-accent/60 font-normal text-[9px]">DAY</span>
-      <span class="relative w-20 h-[3px] bg-line rounded-full shrink-0">
+      <span class="text-down/80 w-11 text-right">{fmtPriceBare(lo)}</span>
+      <span class="relative w-12 h-[3px] bg-line rounded-full shrink-0">
         <span
           class="absolute top-1/2 -translate-y-1/2 w-[3px] h-[7px] bg-accent-2 rounded-sm"
           style={{ left: `calc(${(pos * 100).toFixed(1)}% - 1.5px)` }}
         />
       </span>
+      <span class="text-up/80 w-11">{fmtPriceBare(hi)}</span>
     </span>
   )
 }
@@ -198,11 +199,10 @@ function TuiRow({ symbol, data, earnDays }) {
           </div>
           {/* Phone width: badges scroll sideways instead of clipping mid-badge. */}
           <div class="flex items-center gap-2.5 pt-[2px] pl-0 min-w-0 @min-[430px]:overflow-hidden max-sm:overflow-x-auto no-scrollbar">
-            {/* grow/basis, not fixed steps: the sparkline soaks up whatever
-                the badges leave over, at every width and zoom (Jeff 2026-08-04:
-                "enlarge the sparkline with the slack space") */}
+            {/* Container-relative width changes continuously with zoom. A
+                breakpoint used to turn this from postage stamp to runway. */}
             <Histo bars={data?.histo} width={150} height={24}
-              class="grow basis-[38px] min-w-[38px] max-w-[520px] h-6" />
+              class="w-[clamp(76px,18cqw,168px)] h-6" />
             <Badges tech={data?.tech} earnDays={earnDays} />
           </div>
         </div>

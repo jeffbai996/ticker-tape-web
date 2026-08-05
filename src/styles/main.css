@@ -399,20 +399,8 @@ body {
   .chat-trace-reveal, .chat-trace-caret { transition: none !important; }
 }
 
-/* Tick flash — hold the changed digits long enough to register, then ease the
-   semantic paint away. Hidden-tab catch-up is suppressed in FlashPrice. */
-.px-flash-up, .px-flash-down {
-  border-radius: 1px;
-  box-decoration-break: clone;
-  -webkit-box-decoration-break: clone;
-  animation: tick-flash 1.35s cubic-bezier(.16, 1, .3, 1) both;
-}
-.px-flash-up { --tick-paint: var(--color-up); }
-.px-flash-down { --tick-paint: var(--color-down); }
-@keyframes tick-flash {
-  0%, 62% { color: #050609; background-color: var(--tick-paint); }
-  100% { color: inherit; background-color: transparent; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .px-flash-up, .px-flash-down { animation: none; color: inherit; background: transparent; }
-}
+/* Tick flash — solid inverse video for 1.35s, then gone. The component owns
+   the hold timer; CSS does not fade, soften, round, or otherwise get cute. */
+.px-flash-up, .px-flash-down { color: #000; }
+.px-flash-up { background: #00ff55; }
+.px-flash-down { background: #ff2222; }

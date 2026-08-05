@@ -24,14 +24,22 @@ describe('compact dashboard company name', () => {
     expect(dashboard).toContain('<FlashPrice price={q.price} fmt={fmtPrice} />')
     expect(readFileSync(resolve(process.cwd(), 'src/components/Fig.jsx'), 'utf8'))
       .toContain("document.addEventListener('visibilitychange', rebaseline)")
-    expect(css).toContain('animation: tick-flash 1.35s')
+    expect(css).toContain('.px-flash-up { background: #00ff55; }')
+    expect(css).not.toContain('@keyframes tick-flash')
   })
 
-  it('fills the high-zoom regular-hours gap with a compact day range', () => {
+  it('fills the high-zoom regular-hours gap with a labeled day range', () => {
     expect(dashboard).toContain('function CompactDayRange')
     expect(dashboard).toContain('hidden @min-[545px]:flex @min-[730px]:hidden')
+    expect(dashboard).toContain('text-down/80 w-11 text-right')
+    expect(dashboard).toContain('text-up/80 w-11')
     expect(dashboard).toContain('{!q?.extLabel && (')
     expect(dashboard).toContain('<CompactDayRange lo={q?.dayLow} hi={q?.dayHigh} v={q?.price} />')
+  })
+
+  it('sizes the sparkline continuously instead of jumping at range breakpoints', () => {
+    expect(dashboard).toContain('w-[clamp(76px,18cqw,168px)]')
+    expect(dashboard).not.toContain('max-w-[520px]')
   })
 
   it('keeps the richer day and 52-week ranges at lower browser zoom', () => {
