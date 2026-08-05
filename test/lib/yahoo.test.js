@@ -89,12 +89,15 @@ describe('quoteFromV7', () => {
       regularMarketPrice: 390.49, regularMarketChange: 6.21,
       regularMarketChangePercent: 1.616, regularMarketVolume: 40690198,
       regularMarketDayHigh: 392.19, regularMarketDayLow: 383.7,
+      bid: 390.45, ask: 390.52,
     })
     expect(q.symbol).toBe('MSFT')
     expect(q.name).toBe('Microsoft Corporation')
     expect(q.price).toBeCloseTo(390.49)
     expect(q.pct).toBeCloseTo(1.616)
     expect(q.volume).toBe(40690198)
+    expect(q.bid).toBe(390.45)
+    expect(q.ask).toBe(390.52)
   })
 
   it('re-derives change from prevClose — v7 yield-index rows lie', async () => {
@@ -182,15 +185,16 @@ describe('mergeSnapshotQuote', () => {
   it('does not let a fallback snapshot overwrite a fresher streamed print', () => {
     const streamed = {
       symbol: 'AAPL', name: 'Apple Inc.', price: 101.5, change: 2.5,
-      pct: 2.525, volume: 1_250, marketTime: 101,
+      pct: 2.525, volume: 1_250, marketTime: 101, bid: 101.48, ask: 101.52,
     }
     const snapshot = {
       symbol: 'AAPL', name: 'Apple Inc.', price: 100, change: 1, pct: 1,
       volume: 1_000, dayHigh: 103, dayLow: 98, marketTime: 100,
+      bid: 99.98, ask: 100.02,
     }
     expect(mergeSnapshotQuote(streamed, snapshot, true)).toMatchObject({
       price: 101.5, change: 2.5, pct: 2.525, volume: 1_250,
-      marketTime: 101, dayHigh: 103,
+      marketTime: 101, dayHigh: 103, bid: 101.48, ask: 101.52,
     })
     expect(mergeSnapshotQuote(streamed, snapshot, false)).toEqual(snapshot)
   })

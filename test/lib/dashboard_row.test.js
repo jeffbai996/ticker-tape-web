@@ -54,4 +54,18 @@ describe('compact dashboard company name', () => {
     expect(dashboard).toContain('<RangeBar label="52W"')
     expect(dashboard).toContain('hidden @min-[730px]:flex')
   })
+
+  it('offers category assignment plus grouped and flat dashboard views', () => {
+    expect(dashboard).toContain('function CategoryPicker')
+    expect(dashboard).toContain("setViewMode('grouped')")
+    expect(dashboard).toContain("setViewMode('flat')")
+    expect(dashboard).toContain('placeholder="filter tickers…"')
+    expect(dashboard).toContain('<option value="spread">Spread</option>')
+  })
+
+  it('shows raw bid-ask spread without a basis-point suffix', () => {
+    expect(dashboard).toContain('<span class="text-accent/60 text-[9px]">SPR</span>')
+    expect(dashboard).toContain('fmtSpread(quoteSpread(q))')
+    expect(dashboard).not.toMatch(/SPR[^\n]*(?:bp|bps)/)
+  })
 })

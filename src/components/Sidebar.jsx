@@ -2,13 +2,14 @@ import { useEffect, useState } from 'preact/hooks'
 import { NAV, hrefFor } from '../lib/route.js'
 import { goChatHome } from '../lib/chatnav.js'
 import { tl } from '../lib/i18n.js'
-import { useQuotes, useWatchlist } from '../hooks.js'
+import { useNamedWatchlists, useQuotes, useWatchlist } from '../hooks.js'
 import { FlashPrice } from './Fig.jsx'
 import { watch, unwatch } from '../lib/watchlist.js'
+import { addWatchlistSymbol, removeWatchlistSymbol } from '../lib/watchlists.js'
 import { fmtPriceBare, fmtPct } from '../lib/format.js'
 import { lastGoodTs } from '../lib/feed.js'
 
-function WatchRow({ symbol, q }) {
+function WatchRow({ symbol, q, onRemove }) {
   const up = (q?.pct ?? 0) >= 0
   return (
     <div class="wl-row group flex items-baseline px-3 py-[3px] font-mono text-[11px]">
@@ -20,7 +21,7 @@ function WatchRow({ symbol, q }) {
         {q ? fmtPct(q.pct) : ''}
       </span>
       <button
-        onClick={() => unwatch(symbol)}
+        onClick={() => onRemove(symbol)}
         title={`unwatch ${symbol}`}
         class="w-0 overflow-hidden group-hover:w-4 text-right text-muted hover:text-down"
       >
@@ -30,11 +31,11 @@ function WatchRow({ symbol, q }) {
   )
 }
 
-function AddSymbol() {
+function AddSymbol({ onAdd }) {
   const [value, setValue] = useState('')
   const submit = (e) => {
     e.preventDefault()
-    if (watch(value)) setValue('')
+    if (onAdd(value)) setValue('')
   }
   // Dashed box + "+ add" reads as a control; the old bare underline with a
   // "+ SYM" placeholder was invisible (Jeff 2026-08-04). Same 56px footprint.
@@ -77,8 +78,19 @@ function UpdatedLine() {
 }
 
 export function Sidebar({ route }) {
-  const watchlist = useWatchlist()
+  const mainWatchlist = useWatchlist()
+  const namedWatchlists = useNamedWatchlists()
+  const activeNamed = route.section === 'dashboard' && route.sub !== 'watchlists'
+    ? namedWatchlists.find((item) => item.id === route.sub)
+    : null
+  const watchlist = activeNamed?.symbols || mainWatchlist
   const quotes = useQuotes(watchlist)
+  const addSymbol = activeNamed
+    ? (symbol) => addWatchlistSymbol(activeNamed.id, symbol)
+    : watch
+  const removeSymbol = activeNamed
+    ? (symbol) => removeWatchlistSymbol(activeNamed.id, symbol)
+    : unwatch
 
   return (
     <nav class="w-52 shrink-0 bg-black border-r border-line flex flex-col max-md:hidden min-h-0">
@@ -121,6 +133,18 @@ export function Sidebar({ route }) {
                     {tl(sub.label)}
                   </a>
                 ))}
+                {section.id === 'dashboard' && namedWatchlists.map((list) => (
+                  <a
+                    key={list.id}
+                    href={hrefFor('dashboard', list.id)}
+                    class={`px-3 py-0.5 font-anth text-[10.5px] truncate ${
+                      route.sub === list.id ? 'text-accent' : 'text-muted hover:text-ink-2'
+                    }`}
+                    title={list.name}
+                  >
+                    {list.name}
+                  </a>
+                ))}
               </div>
             )}
           </div>
@@ -128,12 +152,12 @@ export function Sidebar({ route }) {
       </div>
 
       <div class="px-3 pt-2 pb-1 border-t border-line font-mono text-[10px] tracking-wider text-muted flex items-baseline">
-        {tl('Watchlist').toUpperCase()}
-        <AddSymbol />
+        {(activeNamed?.name || tl('Watchlist')).toUpperCase()}
+        <AddSymbol onAdd={addSymbol} />
       </div>
       <div class="flex-1 overflow-y-auto min-h-0">
         {watchlist.map((s) => (
-          <WatchRow key={s} symbol={s} q={quotes[s]?.quote} />
+          <WatchRow key={s} symbol={s} q={quotes[s]?.quote} onRemove={removeSymbol} />
         ))}
       </div>
     </nav>

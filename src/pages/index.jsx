@@ -1,5 +1,6 @@
 import { Placeholder } from '../components/Placeholder.jsx'
 import { Dashboard } from './dashboard.jsx'
+import { WatchlistsPage } from './watchlists.jsx'
 import { Markets } from './markets.jsx'
 import { Research } from './research.jsx'
 import { Screen } from './screen.jsx'
@@ -45,7 +46,11 @@ const PAGES = {
 }
 
 export function Page({ route }) {
-  if (route.section === 'dashboard') return <Dashboard />
+  if (route.section === 'dashboard') {
+    return route.sub === 'watchlists'
+      ? <WatchlistsPage />
+      : <Dashboard listId={route.sub} />
+  }
   if (route.section === 'brief') return <Brief />
   if (route.section === 'markets') return <Markets route={route} />
   if (route.section === 'research') return <Research route={route} />
