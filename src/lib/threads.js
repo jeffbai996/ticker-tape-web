@@ -38,27 +38,52 @@ export function loadActiveHistory() {
 }
 
 let saveTimer = null
+let pendingMessages = null
+let saveChain = Promise.resolve()
+
+function cacheHistory(messages) {
+  try {
+    localStorage.setItem(LEGACY_KEY, JSON.stringify(messages))
+  } catch { /* best-effort cache */ }
+}
+
+function resetActiveThread() {
+  clearTimeout(saveTimer)
+  saveTimer = null
+  pendingMessages = null
+  setCurrent(null)
+  cacheHistory([])
+}
+
+/** Finish the active session's pending write before its identity changes. */
+export async function flushActiveHistory(messages = pendingMessages) {
+  clearTimeout(saveTimer)
+  saveTimer = null
+  const trimmed = trimHistory(messages || loadActiveHistory(), STORE_MAX)
+  pendingMessages = null
+  cacheHistory(trimmed)
+  if (!chatstoreAvailable() || (!trimmed.length && currentThreadId() == null)) return
+
+  saveChain = saveChain.catch(() => {}).then(async () => {
+    const id = currentThreadId()
+    if (id == null) {
+      const thread = await createThread(titleOf(trimmed), trimmed)
+      setCurrent(thread.id)
+    } else {
+      await updateThread(id, { messages: trimmed, title: titleOf(trimmed) })
+    }
+  })
+  await saveChain
+}
 
 /** Persist the active conversation: cache immediately, server debounced. */
 export function saveActiveHistory(messages) {
   const trimmed = trimHistory(messages, STORE_MAX)
-  try {
-    localStorage.setItem(LEGACY_KEY, JSON.stringify(trimmed))
-  } catch { /* best-effort cache */ }
+  cacheHistory(trimmed)
   if (!chatstoreAvailable()) return
+  pendingMessages = trimmed
   clearTimeout(saveTimer)
-  saveTimer = setTimeout(async () => {
-    try {
-      const id = currentThreadId()
-      if (!trimmed.length && id == null) return
-      if (id == null) {
-        const t = await createThread(titleOf(trimmed), trimmed)
-        setCurrent(t.id)
-      } else {
-        await updateThread(id, { messages: trimmed, title: titleOf(trimmed) })
-      }
-    } catch { /* offline — cache still has it */ }
-  }, 800)
+  saveTimer = setTimeout(() => flushActiveHistory().catch(() => {}), 800)
 }
 
 /** Thread list for the rail (server builds only). */
@@ -68,27 +93,23 @@ export async function fetchThreadList() {
 }
 
 /** Switch to a thread; resolves its messages. */
-export async function openThread(id) {
+export async function openThread(id, currentMessages) {
+  await flushActiveHistory(currentMessages)
   const t = await getThread(id)
   setCurrent(t.id)
-  try {
-    localStorage.setItem(LEGACY_KEY, JSON.stringify(t.messages))
-  } catch { /* cache only */ }
+  cacheHistory(t.messages)
   return t.messages
 }
 
 /** Park the current conversation and start fresh. */
-export function startNewThread() {
-  clearTimeout(saveTimer)
-  setCurrent(null)
-  try {
-    localStorage.setItem(LEGACY_KEY, '[]')
-  } catch { /* cache only */ }
+export async function startNewThread(currentMessages) {
+  await flushActiveHistory(currentMessages)
+  resetActiveThread()
 }
 
 export async function removeThread(id) {
   await deleteThread(id)
-  if (currentThreadId() === id) startNewThread()
+  if (currentThreadId() === id) resetActiveThread()
 }
 
 /** One-time migration: a legacy local conversation with no server threads

@@ -549,7 +549,7 @@ function Calendar() {
 export function Markets({ route }) {
   const view = route.sub || 'overview'
   return (
-    <div class="flex-1 p-3 select-text markets-page">
+    <div class="flex-1 p-3 select-text markets-page font-anth">
       {view === 'overview' && <Overview />}
       {view === 'movers' && <Movers />}
       {view === 'sectors' && <Sectors />}
