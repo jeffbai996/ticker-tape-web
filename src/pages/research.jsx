@@ -19,13 +19,13 @@ import { fmtPrice, fmtPct, fmtChange, fmtVol, fmtBig, fmtRatio, fmtFracPct } fro
 import { hrefFor } from '../lib/route.js'
 import { Marquee } from '../components/Marquee.jsx'
 import { tl, t as tt } from '../lib/i18n.js'
+import { Fig, FlashMetric, FlashPrice } from '../components/Fig.jsx'
 import { watch, unwatch } from '../lib/watchlist.js'
 import { useWatchlist } from '../hooks.js'
 import { getCached } from '../lib/feed.js'
 import { fetchEarningsDate } from '../lib/fundamentals.js'
 import { memoPrompt, BRIEFING_SYSTEM } from '../lib/briefing.js'
 import { AiReport, MdLite } from '../components/AiReport.jsx'
-import { Fig } from '../components/Fig.jsx'
 import { ChartSuite } from '../components/ChartSuite.jsx'
 import { emaSeries, macdSeries } from '../lib/chartmath.js'
 import { boundedTimeScale } from '../lib/chartview.js'
@@ -1610,9 +1610,10 @@ export function Research({ route }) {
               <Marquee text={q.name} class="w-full text-[12px] text-muted font-anth" />
             </span>
             <span class="ml-auto flex items-baseline gap-3 shrink-0 whitespace-nowrap">
-              <span class="font-mono text-lg text-ink">{fmtPrice(q.price)}</span>
+              <span class="font-mono text-lg text-ink"><FlashPrice price={q.price} fmt={fmtPrice} /></span>
               <span class={`font-mono font-semibold text-[15px] ${up ? 'text-up' : 'text-down'}`}>
-                {fmtChange(q.change)} {fmtPct(q.pct)}
+                <FlashMetric value={q.change} fmt={fmtChange} />{' '}
+                <FlashMetric value={q.pct} fmt={fmtPct} />
               </span>
               {q.volume != null && (
                 <span class="font-mono text-[11px] text-muted">vol {fmtVol(q.volume)}</span>
@@ -1620,7 +1621,7 @@ export function Research({ route }) {
               {q.extLabel && q.extPrice != null && (
                 <span class="font-mono text-[12px] whitespace-nowrap">
                   <span class="text-[#c084fc]">{q.extLabel}</span>{' '}
-                  <span class="text-ink-2">{fmtPrice(q.extPrice)}</span>
+                  <span class="text-ink-2"><FlashPrice price={q.extPrice} fmt={fmtPrice} /></span>
                   {q.extPct != null && (
                     <span class={`ml-1.5 ${extUp ? 'text-up' : 'text-down'}`}>
                       {extUp ? '▲' : '▼'}{Math.abs(q.extPct).toFixed(2)}%

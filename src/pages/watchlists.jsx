@@ -4,6 +4,7 @@ import {
   createWatchlist, removeWatchlist, renameWatchlist,
 } from '../lib/watchlists.js'
 import { fmtPct } from '../lib/format.js'
+import { t as tt, tl } from '../lib/i18n.js'
 
 function ListSummary({ symbols, quotes }) {
   const moves = symbols
@@ -18,17 +19,17 @@ function ListSummary({ symbols, quotes }) {
   return (
     <div class="grid grid-cols-3 gap-1.5">
       <div class="rounded-lg border border-line bg-black/25 px-2 py-1.5">
-        <div class="font-anth text-[8px] uppercase tracking-wider text-muted">average move</div>
+        <div class="font-anth text-[8px] uppercase tracking-wider text-muted">{tl('average move')}</div>
         <div class={`pt-0.5 font-mono text-[11px] font-semibold ${average == null ? 'text-muted' : average >= 0 ? 'text-up' : 'text-down'}`}>
           {average == null ? '—' : fmtPct(average)}
         </div>
       </div>
       <div class="rounded-lg border border-line bg-black/25 px-2 py-1.5">
-        <div class="font-anth text-[8px] uppercase tracking-wider text-muted">advancing</div>
+        <div class="font-anth text-[8px] uppercase tracking-wider text-muted">{tl('advancing')}</div>
         <div class="pt-0.5 font-mono text-[11px] font-semibold text-up">{advancing}</div>
       </div>
       <div class="rounded-lg border border-line bg-black/25 px-2 py-1.5">
-        <div class="font-anth text-[8px] uppercase tracking-wider text-muted">declining</div>
+        <div class="font-anth text-[8px] uppercase tracking-wider text-muted">{tl('declining')}</div>
         <div class="pt-0.5 font-mono text-[11px] font-semibold text-down">{declining}</div>
       </div>
     </div>
@@ -54,7 +55,7 @@ function SymbolPreview({ symbols, quotes }) {
         <span class="px-1 py-1 font-mono text-[9px] text-muted">+{symbols.length - shown.length}</span>
       )}
       {!symbols.length && (
-        <span class="font-anth text-[10px] leading-relaxed text-muted">No tickers yet. Open this list to build it.</span>
+        <span class="font-anth text-[10px] leading-relaxed text-muted">{tt('watchlists.empty')}</span>
       )}
     </div>
   )
@@ -79,18 +80,18 @@ function WatchlistCard({ item, quotes, primary = false }) {
               <form onSubmit={submit} class="flex gap-1 min-w-0 flex-1">
                 <input autoFocus value={name} onInput={(e) => setName(e.currentTarget.value)}
                   class="min-w-0 flex-1 bg-surface-2 border border-accent rounded px-2 py-1 font-anth text-[12px] text-ink outline-none" />
-                <button class="font-anth text-[10px] font-semibold text-accent px-1.5">Save</button>
+                <button class="font-anth text-[10px] font-semibold text-accent px-1.5">{tl('Save')}</button>
               </form>
             ) : (
               <a href={href} class="font-anth font-bold text-[14px] text-ink hover:text-accent hover:no-underline truncate">
                 {item.name}
               </a>
             )}
-            {primary && <span class="rounded border border-accent/40 bg-accent-soft px-1.5 py-px font-anth text-[7px] font-bold tracking-wider text-accent">PRIMARY</span>}
+            {primary && <span class="rounded border border-accent/40 bg-accent-soft px-1.5 py-px font-anth text-[7px] font-bold tracking-wider text-accent">{tl('PRIMARY')}</span>}
           </div>
           <div class="pt-0.5 font-anth text-[9px] text-muted">
-            {item.symbols.length} {item.symbols.length === 1 ? 'ticker' : 'tickers'}
-            {primary ? ' · shared across Briefing, Wire, AI, and the tape' : ' · independent dashboard view'}
+            {item.symbols.length} {tl(item.symbols.length === 1 ? 'ticker' : 'tickers')}
+            {primary ? ` · ${tl('shared across Briefing, Wire, AI, and the tape')}` : ` · ${tl('independent dashboard view')}`}
           </div>
         </div>
       </div>
@@ -99,13 +100,13 @@ function WatchlistCard({ item, quotes, primary = false }) {
       <SymbolPreview symbols={item.symbols} quotes={quotes} />
 
       <div class="flex items-center gap-3 border-t border-line pt-2.5 font-anth text-[10px] font-semibold">
-        <a href={href} class="text-accent hover:no-underline">Open dashboard →</a>
+        <a href={href} class="text-accent hover:no-underline">{tl('Open dashboard →')}</a>
         {!primary && (
           <>
-            <button onClick={() => { setName(item.name); setEditing((value) => !value) }} class="ml-auto text-muted hover:text-ink">Rename</button>
+            <button onClick={() => { setName(item.name); setEditing((value) => !value) }} class="ml-auto text-muted hover:text-ink">{tl('Rename')}</button>
             <button onClick={() => {
               if (confirm(`Delete watchlist “${item.name}”?`)) removeWatchlist(item.id)
-            }} class="text-muted hover:text-down">Delete</button>
+            }} class="text-muted hover:text-down">{tl('Delete')}</button>
           </>
         )}
       </div>
@@ -134,28 +135,28 @@ export function WatchlistsPage() {
       <div class="max-w-5xl mx-auto">
         <header class="flex flex-wrap items-end gap-3 px-1 pb-4 border-b border-line">
           <div class="min-w-0">
-            <div class="font-anth text-[9px] uppercase tracking-[0.18em] text-accent">Market workspace</div>
-            <h1 class="font-anth font-bold text-xl text-ink">Watchlists</h1>
-            <p class="pt-1 font-anth text-[10px] text-muted">Separate market lenses with the same live dashboard machinery.</p>
+            <div class="font-anth text-[9px] uppercase tracking-[0.18em] text-accent">{tl('Market workspace')}</div>
+            <h1 class="font-anth font-bold text-xl text-ink">{tl('Watchlists')}</h1>
+            <p class="pt-1 font-anth text-[10px] text-muted">{tt('watchlists.subtitle')}</p>
           </div>
           <form onSubmit={submit} class="ml-auto flex items-center gap-2 rounded-xl border border-line bg-surface-1 p-1.5">
             <input value={name} onInput={(e) => { setName(e.currentTarget.value); setError('') }}
-              aria-label="Watchlist name" placeholder="Watchlist name"
+              aria-label={tl('Watchlist name')} placeholder={tl('Watchlist name')}
               class="min-w-0 w-36 sm:w-44 bg-transparent px-2 py-1 font-anth text-[11px] text-ink outline-none placeholder:text-muted" />
-            <button class="rounded-lg border border-accent/60 bg-accent-soft px-2.5 py-1.5 font-anth text-[10px] font-semibold text-accent hover:bg-accent/15">Create watchlist</button>
+            <button class="rounded-lg border border-accent/60 bg-accent-soft px-2.5 py-1.5 font-anth text-[10px] font-semibold text-accent hover:bg-accent/15">{tl('Create watchlist')}</button>
           </form>
         </header>
         {error && <div class="px-1 pt-2 font-anth text-[10px] text-down">{error}</div>}
 
         <div class="grid md:grid-cols-2 gap-3 pt-4">
-          <WatchlistCard item={{ id: 'main', name: 'Main dashboard', symbols: main }} quotes={quotes} primary />
+          <WatchlistCard item={{ id: 'main', name: tl('Main dashboard'), symbols: main }} quotes={quotes} primary />
           {lists.map((item) => <WatchlistCard key={item.id} item={item} quotes={quotes} />)}
         </div>
 
         {!lists.length && (
           <div class="mt-3 rounded-xl border border-dashed border-line-2 px-4 py-5 text-center">
-            <div class="font-anth text-[11px] font-semibold text-ink-2">One dashboard is plenty—until it isn’t.</div>
-            <div class="pt-1 font-anth text-[10px] text-muted">Create a focused list for earnings, setups, sectors, or whatever fresh market disease has entered the building.</div>
+            <div class="font-anth text-[11px] font-semibold text-ink-2">{tt('watchlists.empty_title')}</div>
+            <div class="pt-1 font-anth text-[10px] text-muted">{tt('watchlists.empty_body')}</div>
           </div>
         )}
       </div>
