@@ -11,7 +11,7 @@ import { tl } from '../lib/i18n.js'
 import { EarningsDay } from '../components/EarningsDay.jsx'
 import { fmtPrice, fmtPct, fmtChange, fmtVol } from '../lib/format.js'
 import { Histo } from '../components/Histo.jsx'
-import { FlashPrice } from '../components/Fig.jsx'
+import { FlashMetric, FlashPrice } from '../components/Fig.jsx'
 import { hrefFor } from '../lib/route.js'
 import { rangePos } from '../lib/format.js'
 
@@ -68,10 +68,10 @@ function QuoteRow({ label, symbol, data, unit }) {
         {q ? <FlashPrice price={q.price} fmt={fmtPrice} /> : '—'}
       </td>
       <td class={`px-2 py-[3px] font-mono text-[11px] text-right w-20 ${tone}`}>
-        {q ? fmtChange(q.change) : ''}
+        {q ? <FlashMetric value={q.change} fmt={fmtChange} /> : ''}
       </td>
       <td class={`px-2 py-[3px] font-mono text-[11px] text-right w-16 ${tone}`}>
-        {q ? fmtPct(q.pct) : ''}
+        {q ? <FlashMetric value={q.pct} fmt={fmtPct} /> : ''}
       </td>
       <td class="px-2 py-[3px] hidden @[380px]:table-cell w-14"><DayMeter q={q} /></td>
       <td class="px-2 py-[3px] hidden @[460px]:table-cell">

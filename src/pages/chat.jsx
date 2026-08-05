@@ -357,7 +357,7 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
               : tt('chat.empty')}
           </h2>
           <div class="text-muted text-[11px] font-anth pt-1">
-            live quotes · technicals · calendar · watchlist · alerts · memory · journal · navigation
+            {tt('chat.context_line')}
           </div>
         </div>
         {threadLen > 0 && (
@@ -367,7 +367,7 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
             class="ml-auto shrink-0 flex items-center gap-1.5 font-mono text-[10px] text-muted border border-line rounded-lg px-2.5 py-1.5 hover:border-accent/60 hover:text-ink transition-colors"
             title="the thread is still here — this only parks it"
           >
-            resume thread <span class="text-accent">{threadLen}</span>
+            {tl('resume thread')} <span class="text-accent">{threadLen}</span>
           </button>
         )}
       </div>
@@ -376,7 +376,7 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
       <div class="bg-surface-1 border border-line rounded-xl divide-y divide-line">
         <div class="grid grid-cols-1 sm:grid-cols-3 divide-y divide-line sm:divide-y-0 sm:divide-x">
           <div class={cell}>
-            <div class={eyebrow}>moving now</div>
+            <div class={eyebrow}>{tl('moving now')}</div>
             {movers.length ? movers.map(({ s, pct }) => (
               <a key={s} href={`#/research/${s.toLowerCase()}`} class="flex items-baseline justify-between font-mono text-[11.5px] py-px hover:no-underline">
                 <span class="text-ink font-[650] font-tick">{s}</span>
@@ -385,23 +385,23 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
             )) : <div class="font-mono text-[11px] text-muted py-1">loading…</div>}
           </div>
           <div class={cell}>
-            <div class={eyebrow}>next earnings</div>
+            <div class={eyebrow}>{tl('next earnings')}</div>
             {nextEarn.length ? nextEarn.map((s) => (
               <a key={s} href={`#/research/${s.toLowerCase()}/earnings`} class="flex items-baseline justify-between font-mono text-[11.5px] py-px hover:no-underline">
                 <span class="text-ink font-[650] font-tick">{s}</span>
                 <span class={earnDays[s] === 0 ? 'text-imminent font-bold' : earnDays[s] <= 7 ? 'text-down' : 'text-accent'}>
-                  {earnDays[s] === 0 ? 'today' : `${earnDays[s]}d`}
+                  {earnDays[s] === 0 ? tl('today') : `${earnDays[s]}d`}
                 </span>
               </a>
             )) : <div class="font-mono text-[11px] text-muted py-1">loading…</div>}
           </div>
           <div class={cell}>
-            <div class={eyebrow}>on the calendar</div>
+            <div class={eyebrow}>{tl('on the calendar')}</div>
             {events.length ? events.slice(0, 4).map((ev) => (
               <a key={ev.label + ev.days} href="#/markets/calendar" class="flex items-baseline justify-between gap-2 font-mono text-[11.5px] py-px hover:no-underline">
                 <span class="text-ink truncate">{ev.rawLabel || ev.label}</span>
                 <span class={ev.days <= 1 ? 'text-imminent font-bold' : ev.days <= 7 ? 'text-down' : 'text-accent'}>
-                  {ev.days === 0 ? 'today' : `${ev.days}d`}
+                  {ev.days === 0 ? tl('today') : `${ev.days}d`}
                 </span>
               </a>
             )) : <div class="font-mono text-[11px] text-muted py-1">clear runway</div>}
@@ -409,7 +409,7 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
         </div>
         <div class={`grid grid-cols-1 divide-y divide-line sm:divide-y-0 sm:divide-x ${book ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
           <div class={cell}>
-            <div class={eyebrow}>pulse</div>
+            <div class={eyebrow}>{tl('Pulse')}</div>
             {pulse ? (
               <div class="font-mono text-[11.5px] leading-[1.55]">
                 <div class="flex justify-between"><span class="text-muted">A/D</span>
@@ -425,7 +425,7 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
           </div>
           {book && (
             <div class={cell}>
-              <div class={eyebrow}>the book</div>
+              <div class={eyebrow}>{tl('the book')}</div>
               {topPos.length ? (
                 <div class="font-mono text-[11.5px] leading-[1.55]">
                   {topPos.map((p) => (
@@ -437,7 +437,7 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
                   ))}
                   {bk?.margin?.cushion_pct != null && (
                     <div class="flex justify-between pt-px border-t border-line-2/60 mt-px">
-                      <span class="text-muted">cushion</span>
+                      <span class="text-muted">{tl('Cushion')}</span>
                       <span class={bk.margin.cushion_pct < 8 ? 'text-down' : 'text-ink-2'}>{bk.margin.cushion_pct.toFixed(1)}%</span>
                     </div>
                   )}
@@ -446,17 +446,17 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
             </div>
           )}
           <div class={cell}>
-            <div class={eyebrow}>context it carries</div>
+            <div class={eyebrow}>{tl('context it carries')}</div>
             <div class="font-mono text-[11.5px] leading-[1.55]">
               <button type="button" onClick={onOpenMem} class="flex justify-between w-full hover:text-ink">
-                <span class="text-muted">memories</span><span class="text-ink-2">{memN}</span>
+                <span class="text-muted">{tl('memories')}</span><span class="text-ink-2">{memN}</span>
               </button>
               <button type="button" onClick={onOpenJournal} class="flex justify-between w-full hover:text-ink">
-                <span class="text-muted">journal</span><span class="text-ink-2">{journalN}</span>
+                <span class="text-muted">{tl('journal')}</span><span class="text-ink-2">{journalN}</span>
               </button>
-              <div class="flex justify-between"><span class="text-muted">watching</span><span class="text-ink-2">{watchlist.length}</span></div>
-              <div class="flex justify-between"><span class="text-muted">book</span>
-                <span class={book ? 'text-up' : 'text-muted'}>{book ? 'live' : 'demo'}</span></div>
+              <div class="flex justify-between"><span class="text-muted">{tl('watching')}</span><span class="text-ink-2">{watchlist.length}</span></div>
+              <div class="flex justify-between"><span class="text-muted">{tl('book')}</span>
+                <span class={book ? 'text-up' : 'text-muted'}>{tl(book ? 'live' : 'demo')}</span></div>
             </div>
           </div>
         </div>
@@ -466,11 +466,11 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
 
       <div>
         <div class="flex items-baseline gap-3 pb-1.5">
-          <span class="font-mono text-[9px] tracking-[0.16em] text-muted uppercase">start here</span>
+          <span class="font-mono text-[9px] tracking-[0.16em] text-muted uppercase">{tl('start here')}</span>
           <span class="font-mono text-[9px] text-muted flex items-center gap-2.5">
-            <span class="flex items-center gap-1"><span class="w-1 h-1 rounded-full bg-accent" />markets</span>
-            {book && <span class="flex items-center gap-1"><span class="w-1 h-1 rounded-full bg-up" />book</span>}
-            <span class="flex items-center gap-1"><span class="w-1 h-1 rounded-full bg-accent-2" />app</span>
+            <span class="flex items-center gap-1"><span class="w-1 h-1 rounded-full bg-accent" />{tl('markets')}</span>
+            {book && <span class="flex items-center gap-1"><span class="w-1 h-1 rounded-full bg-up" />{tl('book')}</span>}
+            <span class="flex items-center gap-1"><span class="w-1 h-1 rounded-full bg-accent-2" />{tl('app')}</span>
           </span>
         </div>
         <div class="flex flex-wrap gap-1.5">
@@ -979,7 +979,7 @@ export function Chat() {
             <button
               type="button"
               onClick={stop}
-              title="stop generating"
+              title={tl('stop generating')}
               class="shrink-0 w-8 h-8 grid place-items-center rounded-md border border-line-2 text-ink-2 hover:text-down hover:border-down/60 transition-colors"
             >
               <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>
@@ -995,8 +995,8 @@ export function Chat() {
           </button>
         </div>
         <div class="flex items-center gap-3 px-2 pt-1 font-mono text-[9.5px] text-muted">
-          <span><kbd class="text-ink-2">⏎</kbd> send</span>
-          <span><kbd class="text-ink-2">⇧⏎</kbd> newline</span>
+          <span><kbd class="text-ink-2">⏎</kbd> {tl('send')}</span>
+          <span><kbd class="text-ink-2">⇧⏎</kbd> {tl('newline')}</span>
           {queued.length > 0 && <span class="text-accent">{queued.length} queued</span>}
           {!onWire && <SpendMeter spend={spend} />}
         </div>
@@ -1024,7 +1024,7 @@ export function Chat() {
         <span class={`w-1.5 h-1.5 rounded-full mr-1 ${onWire ? 'bg-up' : 'bg-accent'}`}
               title={onWire ? 'online — private wire' : 'online — public proxy'} />
         <label class="h-7 flex items-center gap-1.5 bg-surface-2 border border-line rounded-lg pl-2.5 pr-1 focus-within:border-accent/70 hover:border-line-2 transition-colors">
-          <span class="font-mono text-[9px] uppercase tracking-wider text-muted">model</span>
+          <span class="font-mono text-[9px] uppercase tracking-wider text-muted">{tl('model')}</span>
           <select
             value={model}
             onChange={(e) => chooseModel(e.currentTarget.value)}
@@ -1036,7 +1036,7 @@ export function Chat() {
           </select>
         </label>
         {effortLevels.length > 0 && (
-          <div class="h-7 flex items-center gap-0.5 bg-surface-2 border border-line rounded-lg px-0.5" title="thinking effort">
+          <div class="h-7 flex items-center gap-0.5 bg-surface-2 border border-line rounded-lg px-0.5" title={tl('thinking effort')}>
             {effortLevels.map((lv) => (
               <button
                 key={lv}
@@ -1065,8 +1065,8 @@ export function Chat() {
           <button
             onClick={() => setDrawer(drawer === 'sessions' ? null : 'sessions')}
             class={`relative w-6 h-6 grid place-items-center rounded-md ${drawer === 'sessions' ? 'text-accent bg-accent-soft' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
-            title="saved chat sessions"
-            aria-label="chat sessions"
+            title={tl('saved chat sessions')}
+            aria-label={tl('chat sessions')}
           >
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
               <path d="M5 5h14v11H9l-4 3V5z"/><path d="M8 9h8M8 12h5"/>
@@ -1117,8 +1117,8 @@ export function Chat() {
         <div class="max-w-xl w-full bg-surface-1 border border-line rounded-2xl px-4 py-3 max-h-[72vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
           <div class="flex items-center gap-3 pb-3 border-b border-line">
             <div>
-              <div class="font-anth text-[15px] font-semibold text-ink">Chat sessions</div>
-              <div class="font-anth text-[11px] text-muted">Saved automatically. Open any session without replacing this one.</div>
+              <div class="font-anth text-[15px] font-semibold text-ink">{tl('Chat sessions')}</div>
+              <div class="font-anth text-[11px] text-muted">{tl('Saved automatically. Open any session without replacing this one.')}</div>
             </div>
             <button type="button" disabled={busy} onClick={newThread}
               class="ml-auto font-anth text-[11px] text-accent border border-accent/40 rounded-md px-2 py-1 hover:bg-accent-soft disabled:opacity-40">
@@ -1127,7 +1127,7 @@ export function Chat() {
             <button class="text-muted hover:text-ink" onClick={() => setDrawer(null)} aria-label="close">✕</button>
           </div>
           <div class="py-2 flex flex-col gap-1">
-            {threads.length === 0 && <div class="font-anth text-[12px] text-muted py-1">no saved sessions yet</div>}
+            {threads.length === 0 && <div class="font-anth text-[12px] text-muted py-1">{tl('no saved sessions yet')}</div>}
             {threads.map((thread) => (
               <div key={thread.id} class={`group flex items-center gap-2 rounded-lg px-2 py-1.5 ${thread.id === currentThreadId() ? 'bg-accent-soft' : 'hover:bg-surface-2'}`}>
                 <button type="button" disabled={busy} onClick={() => switchThread(thread.id)} class="flex-1 min-w-0 text-left disabled:opacity-50">
@@ -1147,12 +1147,12 @@ export function Chat() {
         <div class="fixed inset-0 z-50 bg-black/55 grid place-items-center p-4" onClick={() => setDrawer(null)}>
         <div class="max-w-xl w-full bg-surface-1 border border-line rounded-2xl px-4 py-3 max-h-[72vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
           <div class="flex items-start gap-3 pb-3 border-b border-line">
-            <div><div class="font-anth text-[15px] font-semibold text-ink">Memories</div>
-              <div class="font-anth text-[11px] text-muted">Details the assistant should remember in future chats.</div></div>
+            <div><div class="font-anth text-[15px] font-semibold text-ink">{tl('Memories')}</div>
+              <div class="font-anth text-[11px] text-muted">{tl('Details the assistant should remember in future chats.')}</div></div>
             <button class="ml-auto text-muted hover:text-ink" onClick={() => setDrawer(null)} aria-label="close">✕</button>
           </div>
           {memories.length === 0 && (
-            <div class="font-anth text-[12px] text-muted py-1">nothing saved yet</div>
+            <div class="font-anth text-[12px] text-muted py-1">{tl('nothing saved yet')}</div>
           )}
           {memories.map((m) => (
             <NoteRow key={m.id} id={m.id} text={m.text}
@@ -1160,7 +1160,7 @@ export function Chat() {
               onSave={(t) => { editMemory(m.id, t); setMemories(loadMemories()) }}
               onDelete={() => { removeMemory(m.id); setMemories(loadMemories()) }} />
           ))}
-          <NoteAdd placeholder="add a memory…"
+          <NoteAdd placeholder={`${tl('add a memory')}…`}
             onAdd={(t) => { addMemory(t); setMemories(loadMemories()) }} />
         </div>
         </div>
@@ -1170,10 +1170,10 @@ export function Chat() {
         <div class="fixed inset-0 z-50 bg-black/55 grid place-items-center p-4" onClick={() => setDrawer(null)}>
         <div class="max-w-xl w-full bg-surface-1 border border-line rounded-2xl px-4 py-3 max-h-[72vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
           <div class="flex items-center gap-2 pb-3 border-b border-line">
-            <div><div class="font-anth text-[15px] font-semibold text-ink">Trade journal</div>
-              <div class="font-anth text-[11px] text-muted">Your decisions, rationale, and notes—not AI settings.</div></div>
+            <div><div class="font-anth text-[15px] font-semibold text-ink">{tl('Trade journal')}</div>
+              <div class="font-anth text-[11px] text-muted">{tl('Your decisions, rationale, and notes—not AI settings.')}</div></div>
             <input value={jrFilter} onInput={(e) => setJrFilter(e.currentTarget.value)}
-              placeholder="search…"
+              placeholder={`${tl('Search')}…`}
               class="ml-auto bg-surface-2 border border-line rounded-md px-2 py-0.5 font-mono text-[10px] text-ink outline-none focus:border-accent/60 w-32 placeholder:text-muted" />
             <button class="text-muted hover:text-ink" onClick={() => setDrawer(null)} aria-label="close">✕</button>
           </div>
@@ -1187,7 +1187,7 @@ export function Chat() {
               {jrFilter ? 'no matches' : 'nothing logged yet'}
             </div>
           )}
-          <NoteAdd placeholder="log a decision, a read, a why…"
+          <NoteAdd placeholder={`${tl('log a decision, a read, a why')}…`}
             onAdd={(t) => { addJournalEntry(t); setJournal(loadJournal()) }} />
         </div>
         </div>
@@ -1299,7 +1299,7 @@ export function Chat() {
             <div class="rounded-2xl px-3.5 py-2.5 text-[13.5px] leading-relaxed whitespace-pre-wrap bg-accent-soft/60 border border-accent/25 text-ink font-anth">
               {item.text}
             </div>
-            <span class="font-mono text-[9px] text-muted pr-1">queued follow-up</span>
+            <span class="font-mono text-[9px] text-muted pr-1">{tl('queued follow-up')}</span>
           </div>
         ))}
         {notice && (
@@ -1319,7 +1319,7 @@ export function Chat() {
     <aside class="hidden xl:flex w-[228px] shrink-0 flex-col gap-2 p-3 pl-0 overflow-y-auto min-h-0">
       <section class="chat-rail-section bg-surface-1 border border-line rounded-xl overflow-hidden shrink-0">
         <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-          <h2 class="font-anth font-bold text-[10px] tracking-wider text-accent uppercase">in view</h2>
+          <h2 class="font-anth font-bold text-[10px] tracking-wider text-accent uppercase">{tl('in view')}</h2>
         </header>
         <div class="px-2.5 py-1 font-mono text-[10.5px]">
           {railMovers.map(({ sym, pct }) => (
@@ -1343,13 +1343,13 @@ export function Chat() {
 
       <section class="chat-rail-section bg-surface-1 border border-line rounded-xl overflow-hidden shrink-0">
           <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2 flex items-baseline gap-1.5">
-            <h2 class="font-anth font-bold text-[10px] tracking-wider text-accent uppercase">sessions</h2>
+            <h2 class="font-anth font-bold text-[10px] tracking-wider text-accent uppercase">{tl('sessions')}</h2>
             <span class="font-mono text-[9px] text-muted">{threads.length}</span>
             <button onClick={newThread} disabled={busy} title="new session"
               class="ml-auto font-mono text-[10px] text-muted hover:text-accent">+ new</button>
           </header>
           <div class="px-1 py-1 max-h-[34vh] overflow-y-auto">
-            {threads.length === 0 && <div class="px-1.5 font-anth text-[11px] text-muted py-0.5">no saved threads</div>}
+            {threads.length === 0 && <div class="px-1.5 font-anth text-[11px] text-muted py-0.5">{tl('no saved threads')}</div>}
             {threads.map((t) => (
               <div key={t.id} class={`group flex items-baseline gap-1.5 px-1.5 py-0.5 rounded-md ${t.id === currentThreadId() ? 'bg-accent-soft' : 'hover:bg-surface-2'}`}>
                 <button onClick={() => switchThread(t.id)} class="flex-1 min-w-0 text-left">
@@ -1366,17 +1366,17 @@ export function Chat() {
 
       <section class="chat-rail-section bg-surface-1 border border-line rounded-xl overflow-hidden shrink-0">
         <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-          <h2 class="font-anth font-bold text-[10px] tracking-wider text-accent uppercase">library</h2>
+          <h2 class="font-anth font-bold text-[10px] tracking-wider text-accent uppercase">{tl('library')}</h2>
         </header>
         <div class="grid grid-cols-2 divide-x divide-line">
           <button type="button" onClick={() => { setMemories(loadMemories()); setDrawer('mem') }}
             class="group flex flex-col items-start gap-0.5 px-2.5 py-2 text-left hover:bg-surface-2">
-            <span class="font-anth text-[11px] text-ink-2 group-hover:text-ink">memories</span>
+            <span class="font-anth text-[11px] text-ink-2 group-hover:text-ink">{tl('memories')}</span>
             <span class="font-mono text-[15px] text-ink">{memories.length}</span>
           </button>
           <button type="button" onClick={() => { setJournal(loadJournal()); setDrawer('journal') }}
             class="group flex flex-col items-start gap-0.5 px-2.5 py-2 text-left hover:bg-surface-2">
-            <span class="font-anth text-[11px] text-ink-2 group-hover:text-ink">journal</span>
+            <span class="font-anth text-[11px] text-ink-2 group-hover:text-ink">{tl('journal')}</span>
             <span class="font-mono text-[15px] text-ink">{journal.length}</span>
           </button>
         </div>

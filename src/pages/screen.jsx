@@ -8,6 +8,7 @@ import { macd, rsi, sma } from '../lib/indicators.js'
 import { dailyReturns, pearson, normalize } from '../lib/stats.js'
 import { fmtPrice, fmtPct, fmtBig, fmtRatio, fmtFracPct } from '../lib/format.js'
 import { tl, t as tt } from '../lib/i18n.js'
+import { FlashMetric, FlashPrice } from '../components/Fig.jsx'
 
 const DEFAULT_SYMBOLS = 'AAPL MSFT NVDA GOOG AMZN SPY'
 const LINE_COLORS = ['#f59e0b', '#22d3ee', '#3fb950', '#f85149', '#a78bfa', '#ec4899', '#e7ecf3', '#79828d']
@@ -111,9 +112,9 @@ function ScreenTable({ symbols, hist }) {
                 onClick={() => (location.hash = `#/research/${sym.toLowerCase()}`)}
               >
                 <td class="px-3 py-[3px] font-bold text-accent">{sym}</td>
-                <td class="px-2 py-[3px] text-right text-ink">{q ? fmtPrice(price) : '…'}</td>
+                <td class="px-2 py-[3px] text-right text-ink">{q ? <FlashPrice price={price} fmt={fmtPrice} /> : '…'}</td>
                 <td class={`px-2 py-[3px] text-right ${dayUp ? 'text-up' : 'text-down'}`}>
-                  {q ? fmtPct(q.pct) : ''}
+                  {q ? <FlashMetric value={q.pct} fmt={fmtPct} /> : ''}
                 </td>
                 <td class={`px-2 py-[3px] text-right ${r == null ? 'text-muted' : r >= 70 ? 'text-down' : r <= 30 ? 'text-up' : 'text-ink'}`}>
                   {r == null ? '—' : r.toFixed(1)}

@@ -8,6 +8,7 @@ import {
 } from '../lib/demo.js'
 import { fmtPrice, fmtPct, fmtChange, fmtRatio } from '../lib/format.js'
 import { tl, t as tt } from '../lib/i18n.js'
+import { FlashPrice } from '../components/Fig.jsx'
 import {
   parseFillsCsv, assembleBacktest, convertFills, convertBars, needsFx, symbolCurrency,
 } from '../lib/backtest.js'
@@ -89,7 +90,7 @@ function Positions({ priceMap, positions, margin }) {
               <td class="px-3 py-[3px] font-bold text-accent">{r.symbol}</td>
               <td class="px-2 py-[3px] text-right text-muted text-[10.5px]">{r.shares}</td>
               <td class="px-2 py-[3px] text-right text-muted text-[10.5px]">{fmtPrice(r.avgCost)}</td>
-              <td class="px-2 py-[3px] text-right text-ink-2 font-medium">{fmtPrice(r.price)}</td>
+              <td class="px-2 py-[3px] text-right text-ink-2 font-medium"><FlashPrice price={r.price} fmt={fmtPrice} /></td>
               <td class="px-2 py-[3px] text-right text-ink font-semibold text-[12px]">{money(r.mktValue)}</td>
               <td class="px-2 py-[3px] text-right text-ink-2 font-medium">{r.weight != null ? `${r.weight.toFixed(1)}%` : '—'}</td>
               <td class={`px-2 py-[3px] text-right font-semibold ${pnlCls(r.dayPnl)}`}>
