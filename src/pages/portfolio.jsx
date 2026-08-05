@@ -13,6 +13,8 @@ import {
 import { demoFillsCsv, loadFillsCsv, saveFillsCsv, closesByDateFromChart } from '../lib/backtestData.js'
 import { proxyBase } from '../lib/feed.js'
 import { wireUrl } from '../lib/wire.js'
+import { MdLite } from '../components/AiReport.jsx'
+import { fetchHistory } from '../lib/history.js'
 import { createPCache } from '../lib/pcache.js'
 
 const SYMBOLS = DEMO_POSITIONS.map((p) => p.symbol)
@@ -637,6 +639,236 @@ function Backtest() {
   )
 }
 
+const wireBase = () => (wireUrl() ? wireUrl().replace(/\/$/, '') : '')
+
+function NeedsWire() {
+  return (
+    <div class="px-1 font-mono text-[11.5px] text-muted max-w-lg leading-relaxed">
+      this view reads the live broker link, which only exists on the private
+      wire build.
+    </div>
+  )
+}
+
+/** Markdown panel fed by a fragwire→IBKR tool endpoint. */
+function IbkrMd({ url, empty }) {
+  const [state, setState] = useState({ status: 'loading', md: '' })
+  useEffect(() => {
+    let dead = false
+    setState({ status: 'loading', md: '' })
+    fetch(url, { signal: AbortSignal.timeout(30_000) })
+      .then((r) => r.json())
+      .then((out) => !dead && setState(out.ok
+        ? { status: 'ok', md: out.markdown }
+        : { status: 'err', md: out.error || 'failed' }))
+      .catch((err) => !dead && setState({ status: 'err', md: String(err.message || err) }))
+    return () => { dead = true }
+  }, [url])
+  if (state.status === 'loading') return <div class="px-1 py-2 font-mono text-[11px] text-muted animate-pulse">asking the gateway…</div>
+  if (state.status === 'err') return <div class="px-1 py-2 font-mono text-[11px] text-down">{state.md}</div>
+  if (!state.md.trim()) return <div class="px-1 py-2 font-mono text-[11px] text-muted">{empty || 'nothing to show'}</div>
+  return (
+    <section class="bg-surface-1 border border-line rounded-xl px-3 py-2 font-anth text-[12.5px] leading-relaxed text-ink-2 max-w-3xl overflow-x-auto">
+      <MdLite text={state.md} />
+    </section>
+  )
+}
+
+function WhatIf() {
+  const [action, setAction] = useState('SELL')
+  const [symbol, setSymbol] = useState('')
+  const [qty, setQty] = useState('')
+  const [url, setUrl] = useState('')
+  if (!wireBase()) return <NeedsWire />
+  const run = (e) => {
+    e.preventDefault()
+    const sym = symbol.trim().toUpperCase()
+    const n = parseInt(qty, 10)
+    if (!sym || !n) return
+    setUrl(`${wireBase()}/api/ibkr/what-if?action=${action}&symbol=${encodeURIComponent(sym)}&quantity=${n}`)
+  }
+  return (
+    <div class="flex flex-col gap-2 max-w-3xl">
+      <form onSubmit={run} class="flex items-center gap-2 flex-wrap font-mono text-[11.5px]">
+        <div class="flex gap-0.5 bg-surface-2 border border-line rounded-lg p-0.5">
+          {['BUY', 'SELL'].map((a) => (
+            <button key={a} type="button" onClick={() => setAction(a)}
+              class={`px-2.5 py-1 rounded-md font-semibold ${action === a
+                ? (a === 'BUY' ? 'bg-up text-black' : 'bg-down text-black')
+                : 'text-muted hover:text-ink'}`}>{a}</button>
+          ))}
+        </div>
+        <input value={qty} onInput={(e) => setQty(e.currentTarget.value)} placeholder="qty" inputMode="numeric"
+          class="w-20 bg-surface-2 border border-line rounded-lg px-2 py-1 text-ink outline-none focus:border-accent" />
+        <input value={symbol} onInput={(e) => setSymbol(e.currentTarget.value)} placeholder="SYM"
+          class="w-24 bg-surface-2 border border-line rounded-lg px-2 py-1 text-ink uppercase outline-none focus:border-accent" />
+        <button class="border border-accent text-accent bg-accent-soft rounded-lg px-3 py-1 font-semibold hover:bg-accent hover:text-black">
+          run what-if
+        </button>
+        <span class="text-[10px] text-muted">margin impact from the gateway — nothing is placed</span>
+      </form>
+      {url && <IbkrMd url={url} />}
+    </div>
+  )
+}
+
+function Trades() {
+  const [view, setView] = useState('fills')
+  if (!wireBase()) return <NeedsWire />
+  return (
+    <div class="flex flex-col gap-2 max-w-3xl">
+      <div class="flex gap-1 font-mono text-[11px]">
+        {['fills', 'orders'].map((v) => (
+          <button key={v} onClick={() => setView(v)}
+            class={`border rounded-md px-2.5 py-0.5 font-semibold ${view === v
+              ? 'bg-accent border-accent text-black' : 'border-line text-ink-2 hover:text-ink'}`}>{v}</button>
+        ))}
+      </div>
+      <IbkrMd url={`${wireBase()}/api/ibkr/trades?view=${view}`} empty="no executions this session" />
+    </div>
+  )
+}
+
+function Thesis() {
+  const [snap, setSnap] = useState(null)
+  useEffect(() => {
+    if (!wireBase()) return
+    fetch(`${wireBase()}/api/breakers`, { signal: AbortSignal.timeout(10_000) })
+      .then((r) => r.json()).then(setSnap).catch(() => setSnap({ ok: false }))
+  }, [])
+  if (!wireBase()) return <NeedsWire />
+  if (!snap) return <div class="px-1 py-2 font-mono text-[11px] text-muted animate-pulse">reading the watcher…</div>
+  if (!snap.available) return <div class="px-1 py-2 font-mono text-[11px] text-muted">breaker watcher unavailable on this box</div>
+  const VERD = {
+    FIRED: 'bg-down text-black', AWAITING: 'bg-accent text-black',
+    CLEAR: 'bg-up/20 text-up', NO_DATA: 'bg-surface-3 text-muted',
+  }
+  return (
+    <div class="flex flex-col gap-2 max-w-3xl">
+      <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
+        <header class="px-3 py-1.5 border-b border-line-2 bg-surface-2">
+          <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">thesis breakers</h2>
+        </header>
+        {snap.breakers.map((b) => (
+          <div key={b.id} class="border-t border-line/50 px-3 py-1.5 first:border-0">
+            <div class="flex items-baseline gap-2 font-mono text-[11px]">
+              <span class={`px-1.5 rounded text-[9px] font-bold ${VERD[b.verdict] || VERD.NO_DATA}`}>{b.verdict.replace('_', ' ')}</span>
+              <span class="text-ink-2 text-[10px] uppercase tracking-wider">{b.category}</span>
+              <span class="text-muted text-[10px]">{b.severity}</span>
+              {b.updated_at && <span class="ml-auto text-muted text-[9.5px]">{new Date(b.updated_at * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>}
+            </div>
+            <div class="font-anth text-[12px] text-ink-2 leading-snug pt-0.5">{b.description}</div>
+            {b.reason && <div class="font-mono text-[10.5px] text-muted pt-0.5">{b.reason}</div>}
+          </div>
+        ))}
+      </section>
+      {snap.candidates?.length > 0 && (
+        <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
+          <header class="px-3 py-1.5 border-b border-line-2 bg-surface-2">
+            <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">new candidates</h2>
+          </header>
+          {snap.candidates.map((c, i) => (
+            <div key={i} class="border-t border-line/50 px-3 py-1 first:border-0 font-anth text-[12px] text-ink-2">
+              {c.url ? <a href={c.url} target="_blank" rel="noopener" class="hover:text-accent">{c.summary}</a> : c.summary}
+            </div>
+          ))}
+        </section>
+      )}
+      {snap.rotation?.length > 0 && (
+        <section class="bg-surface-1 border border-line rounded-xl px-3 py-1.5 font-mono text-[11px]">
+          <span class="text-muted uppercase text-[9px] tracking-wider">rotation estimate</span>{' '}
+          <span class="text-ink font-semibold">{snap.rotation[0].estimate}</span>
+          {snap.rotation[0].note && <span class="text-muted"> — {snap.rotation[0].note}</span>}
+        </section>
+      )}
+    </div>
+  )
+}
+
+function TimeTravel({ priceMap }) {
+  const [date, setDate] = useState('')
+  const [rows, setRows] = useState(null)
+  const csv = loadFillsCsv() || demoFillsCsv()
+  const run = async (e) => {
+    e.preventDefault()
+    if (!date) return
+    setRows('loading')
+    const fills = parseFillsCsv(csv).filter((f) => f.date <= date)
+    const bySym = new Map()
+    for (const f of fills) {
+      const cur = bySym.get(f.symbol) || { qty: 0, cost: 0 }
+      if (f.side === 'BUY') { cur.qty += f.qty; cur.cost += f.qty * f.price }
+      else {
+        const avg = cur.qty > 0 ? cur.cost / cur.qty : 0
+        cur.qty -= f.qty; cur.cost -= f.qty * avg
+      }
+      bySym.set(f.symbol, cur)
+    }
+    const open = [...bySym.entries()].filter(([, v]) => v.qty > 0.0001)
+    const out = await Promise.all(open.map(async ([sym, v]) => {
+      let then = null
+      try {
+        const h = await fetchHistory(sym, '5Y')
+        const target = new Date(date).getTime() / 1000
+        const bar = (h?.bars || []).reduce((best, b2) =>
+          (Math.abs(b2.time - target) < Math.abs((best?.time ?? Infinity) - target) ? b2 : best), null)
+        then = bar?.close ?? null
+      } catch { /* symbol gone */ }
+      const now = priceMap[sym]?.price ?? null
+      return { sym, qty: v.qty, avg: v.qty ? v.cost / v.qty : 0, then, now }
+    }))
+    setRows(out)
+  }
+  return (
+    <div class="flex flex-col gap-2 max-w-3xl">
+      <form onSubmit={run} class="flex items-center gap-2 font-mono text-[11.5px]">
+        <input type="date" value={date} onInput={(e) => setDate(e.currentTarget.value)}
+          class="bg-surface-2 border border-line rounded-lg px-2 py-1 text-ink outline-none focus:border-accent" />
+        <button class="border border-accent text-accent bg-accent-soft rounded-lg px-3 py-1 font-semibold hover:bg-accent hover:text-black">
+          replay the book
+        </button>
+        <span class="text-[10px] text-muted">off the backtest fills ledger — as-of positions, then vs now</span>
+      </form>
+      {rows === 'loading' && <div class="font-mono text-[11px] text-muted animate-pulse px-1">pricing the past…</div>}
+      {Array.isArray(rows) && (rows.length ? (
+        <section class="bg-surface-1 border border-line rounded-xl overflow-x-auto">
+          <table class="w-full border-collapse font-mono text-[11px]">
+            <thead>
+              <tr class="bg-surface-2 text-[9px] text-muted uppercase tracking-wider">
+                <th class="px-3 py-1.5 text-left">sym</th>
+                <th class="px-2 py-1.5 text-right">qty</th>
+                <th class="px-2 py-1.5 text-right">avg cost</th>
+                <th class="px-2 py-1.5 text-right">px {date}</th>
+                <th class="px-2 py-1.5 text-right">value then</th>
+                <th class="px-2 py-1.5 text-right">px now</th>
+                <th class="px-3 py-1.5 text-right">since then</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => {
+                const chg = r.then && r.now ? ((r.now / r.then) - 1) * 100 : null
+                return (
+                  <tr key={r.sym} class="border-t border-line">
+                    <td class="px-3 py-[3px] font-[650] font-tick text-ink">{r.sym}</td>
+                    <td class="px-2 py-[3px] text-right text-ink-2">{Math.round(r.qty)}</td>
+                    <td class="px-2 py-[3px] text-right text-muted">{r.avg.toFixed(2)}</td>
+                    <td class="px-2 py-[3px] text-right text-ink-2">{r.then != null ? r.then.toFixed(2) : '—'}</td>
+                    <td class="px-2 py-[3px] text-right text-ink font-semibold">{r.then != null ? money(r.then * r.qty) : '—'}</td>
+                    <td class="px-2 py-[3px] text-right text-ink-2">{r.now != null ? r.now.toFixed(2) : '—'}</td>
+                    <td class={`px-3 py-[3px] text-right font-semibold ${chg == null ? 'text-muted' : chg >= 0 ? 'text-up' : 'text-down'}`}>
+                      {chg == null ? '—' : fmtPct(chg)}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </section>
+      ) : <div class="font-mono text-[11px] text-muted px-1">no open positions in the ledger on that date</div>)}
+    </div>
+  )
+}
+
 function useLiveBook() {
   // tailnet: fragwire fronts ibkr-mcp — the real book replaces the demo
   const [book, setBook] = useState(null)
@@ -698,6 +930,10 @@ export function Portfolio({ route }) {
     sizing: Sizing,
     carry: Carry,
     cockpit: Cockpit,
+    whatif: WhatIf,
+    trades: Trades,
+    timetravel: TimeTravel,
+    thesis: Thesis,
     timeline: Timeline,
     backtest: Backtest,
   }[view] || Positions
