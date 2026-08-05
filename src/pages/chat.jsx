@@ -27,13 +27,20 @@ function baseSystem() {
     'pulse, the macro calendar (plus adding user catalysts to it), watchlist ' +
     'read/write, alert arming, persistent memory, and app navigation. Use them for ' +
     'anything involving current prices, technicals, or the watchlist instead of ' +
-    'answering from memory; call several in one round when that is faster. '
+    'answering from memory; call several in one round when that is faster. ' +
+    'Answer like a sharp desk colleague: lead with the direct call, then the ' +
+    'numbers behind it. Always quote the actual figures your tools returned ' +
+    '(price, %, levels, dates) — never vague direction words where a number ' +
+    'exists. A typical market answer covers the print, the driver, the levels ' +
+    'that matter, and what to watch next. Tight paragraphs or dash bullets. ' +
+    'No filler, no disclaimers, no restating the question. Depth beats ' +
+    'brevity — a thin answer is worse than a long one. '
   const book = hasLiveBook()
     ? 'A LIVE PORTFOLIO block in your context is the user\'s real book — treat ' +
       'position and margin questions as real. '
     : 'You have no access to any personal, account, or portfolio data — the ' +
       'portfolio section is a clearly-labeled synthetic demo. '
-  return common + book + 'Be concise.'
+  return common + book
 }
 
 const HISTORY_KEY = 'chat_history_v1'
@@ -246,21 +253,41 @@ function ToolChips({ calls, results }) {
   )
 }
 
-function ActivityTrace({ steps, busy }) {
+function ActivityTrace({ steps, busy, think }) {
   if (!steps.length) return null
-  return (
-    <details open={busy} class="self-start max-w-[95%] text-muted">
-      <summary class="cursor-pointer select-none font-mono text-[10px] hover:text-ink">
-        {busy ? 'Working' : 'Activity'} · {steps.length} {steps.length === 1 ? 'step' : 'steps'}
-      </summary>
-      <div class="mt-1 ml-1 pl-2 border-l border-line flex flex-col gap-1">
-        {steps.map((step) => (
-          <div key={step.key} class="flex items-center gap-1.5 font-mono text-[10px]">
+  const body = (
+    <div class="mt-1 ml-1 pl-2 border-l border-line flex flex-col gap-1">
+      {steps.map((step) => (
+        <div key={step.key} class="flex flex-col gap-0.5">
+          <div class="flex items-center gap-1.5 font-mono text-[10px]">
             <span class={step.done ? 'text-up' : 'text-accent animate-pulse'}>{step.done ? '✓' : '◌'}</span>
-            <span>{step.label}</span>
+            <span class={step.done ? '' : 'text-ink-2'}>{step.label}{step.done ? '' : <Thinking />}</span>
           </div>
-        ))}
+          {/* the model's live reasoning feed rides INSIDE its step — the
+              tail of it, operator-style, not a separate bubble above */}
+          {step.key === 'model' && !step.done && think && (
+            <div class="ml-4 max-w-[68ch] font-anth text-[10.5px] italic leading-snug text-muted/80 whitespace-pre-wrap [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:4] overflow-hidden">
+              {think.slice(-600)}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+  if (busy) {
+    return (
+      <div class="self-start max-w-[95%] text-muted">
+        <div class="font-mono text-[10px]">Working · {steps.length} {steps.length === 1 ? 'step' : 'steps'}</div>
+        {body}
       </div>
+    )
+  }
+  return (
+    <details class="self-start max-w-[95%] text-muted">
+      <summary class="cursor-pointer select-none font-mono text-[10px] hover:text-ink">
+        Activity · {steps.length} {steps.length === 1 ? 'step' : 'steps'}
+      </summary>
+      {body}
     </details>
   )
 }
@@ -467,6 +494,7 @@ export function Chat() {
   const [busy, setBusy] = useState(false)
   const [queued, setQueued] = useState([])
   const [activity, setActivity] = useState([])
+  const [think, setThink] = useState('')
   const [error, setError] = useState(null)
   const [notice, setNotice] = useState(null)          // memory-tag confirmations
   const [drawer, setDrawer] = useState(null)          // 'mem' | 'journal' | null
@@ -557,6 +585,7 @@ export function Chat() {
   const runTurn = async ({ text, model: runModel, effort: runEffort, ts }) => {
     setError(null)
     setNotice(null)
+    setThink('')
     setActivity([{ key: 'context', label: 'Reading live market context', done: false }])
 
     const base = [...historyRef.current, {
@@ -564,8 +593,12 @@ export function Chat() {
     }]
     let added = []
     let live = ''
-    const paint = () =>
-      setHistory([...base, ...added, ...(live ? [{ role: 'assistant', content: live }] : [])])
+    const paint = () => {
+      // a tool-call round streams raw {"tool": …} JSON — that renders as a
+      // chip once parsed, so don't flash the JSON as prose meanwhile
+      const showLive = live && !live.trimStart().startsWith('{')
+      setHistory([...base, ...added, ...(showLive ? [{ role: 'assistant', content: live }] : [])])
+    }
     paint()
 
     // CLI parity: volatile context (clock, memories, quotes, book, news for
@@ -623,9 +656,11 @@ export function Chat() {
           live += d
           paint()
         },
+        onThinking: (d) => setThink((cur) => cur + d),
         onRound: (entries) => {
           added = entries
           live = ''
+          setThink('')
           const last = entries[entries.length - 1]
           traceEntries(entries, last?.role === 'assistant' && !last.toolCalls?.length)
           paint()
@@ -734,8 +769,6 @@ export function Chat() {
         <div class="flex items-center gap-3 px-2 pt-1 font-mono text-[9.5px] text-muted">
           <span><kbd class="text-ink-2">⏎</kbd> send</span>
           <span><kbd class="text-ink-2">⇧⏎</kbd> newline</span>
-          <span class="hidden sm:inline">⏎ while busy queues a follow-up</span>
-          <span class="hidden md:inline">ask it to remember — memories persist</span>
           {queued.length > 0 && <span class="text-accent">{queued.length} queued</span>}
           {!onWire && <SpendMeter spend={spend} />}
         </div>
@@ -919,15 +952,12 @@ export function Chat() {
             )
           }
           if (m.role === 'assistant') {
+            if (!m.content) return null   // trace narrates the wait — no empty bubble
             return (
               <div key={i} class="group self-start max-w-[95%] relative"
                 title={m.ts ? `${m.model ? `${m.model} · ` : ''}${new Date(m.ts).toLocaleString()}` : undefined}>
                 <div class="rounded-2xl border px-3.5 py-2.5 text-[13.5px] leading-relaxed bg-surface-1 border-line text-ink font-anth">
-                  {m.content
-                    ? <MdLite text={m.content} />
-                    : busy && i === history.length - 1
-                      ? <Thinking />
-                      : null}
+                  {m.content ? <MdLite text={m.content} /> : null}
                 </div>
                 {m.content && (
                   <div class="absolute -top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
@@ -964,10 +994,7 @@ export function Chat() {
             </div>
           )
         })}
-        {busy && ['user', 'tool'].includes(history[history.length - 1]?.role) && (
-          <div class="self-start px-1"><Thinking /></div>
-        )}
-        <ActivityTrace steps={activity} busy={busy} />
+        <ActivityTrace steps={activity} busy={busy} think={think} />
         {queued.map((item, i) => (
           <div key={`${item.ts}-${i}`} class="self-end max-w-[85%] flex flex-col items-end gap-0.5">
             <div class="rounded-2xl px-3.5 py-2.5 text-[13.5px] leading-relaxed whitespace-pre-wrap bg-accent-soft/60 border border-accent/25 text-ink font-anth">

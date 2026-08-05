@@ -67,6 +67,57 @@ export function parseToolCall(text, defs = TOOL_DEFS) {
   }
 }
 
+/**
+ * Streaming turn against fragwire's SSE twin. Calls onDelta(text) and
+ * onThinking(text) as chunks land; resolves with the full text. Throws before
+ * any output if the endpoint is missing so callers can fall back to
+ * wireComplete.
+ */
+export async function wireStream({ model, effort, system, messages, onDelta, onThinking }) {
+  const base = wireUrl().replace(/\/$/, '')
+  const resp = await fetch(`${base}/api/chat/stream`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model, effort, system, messages }),
+  })
+  if (!resp.ok || !resp.body) throw new Error(`wire stream ${resp.status}`)
+  const reader = resp.body.getReader()
+  const decoder = new TextDecoder()
+  let buf = ''
+  let text = ''
+  let backend = ''
+  let failed = null
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buf += decoder.decode(value, { stream: true })
+    // SSE frames are blank-line separated; keep the trailing partial in buf
+    const frames = buf.split('\n\n')
+    buf = frames.pop()
+    for (const frame of frames) {
+      let event = 'message'
+      let data = ''
+      for (const line of frame.split('\n')) {
+        if (line.startsWith('event: ')) event = line.slice(7).trim()
+        else if (line.startsWith('data: ')) data += line.slice(6)
+      }
+      if (!data) continue
+      let payload
+      try { payload = JSON.parse(data) } catch { continue }
+      if (event === 'delta') {
+        if (payload.t === 'text') { text += payload.d; onDelta?.(payload.d) }
+        else if (payload.t === 'thinking') onThinking?.(payload.d)
+      } else if (event === 'done') {
+        backend = payload.backend || ''
+      } else if (event === 'error') {
+        failed = new Error(payload.error || 'wire stream failed')
+      }
+    }
+  }
+  if (failed && !text) throw failed
+  return { text, backend }
+}
+
 /** One turn against fragwire's router. Returns the assistant's raw text. */
 export async function wireComplete({ model, effort, system, messages, signal }) {
   const base = wireUrl().replace(/\/$/, '')
