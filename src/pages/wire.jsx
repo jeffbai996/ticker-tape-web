@@ -70,6 +70,44 @@ const TIER_EDGE = {
   1: 'border-l-[#58a6ff]/70', 2: 'border-l-accent', 3: 'border-l-[#f85149]',
 }
 
+/** Extracted article text for an expanded row — fragwire's /api/read does
+ *  the fetching/extraction server-side (fast=1: text now, no summarizer).
+ *  Only fires on wire events that have a URL but shipped no body. */
+function ReadBody({ ev }) {
+  const [state, setState] = useState({ status: 'loading', paras: [] })
+  useEffect(() => {
+    let dead = false
+    const base = wireUrl()
+    if (!base || ev.demo) { setState({ status: 'off', paras: [] }); return }
+    fetch(`${base.replace(/\/$/, '')}/api/read?id=${ev.id}&fast=1`,
+      { signal: AbortSignal.timeout(20_000) })
+      .then((r) => r.json())
+      .then((out) => {
+        if (dead) return
+        const text = out.ok ? (out.text || out.summary || '') : ''
+        const paras = String(text).split(/\n{2,}/).map((x) => x.trim()).filter(Boolean)
+        setState({ status: paras.length ? 'ok' : 'empty', paras })
+      })
+      .catch(() => !dead && setState({ status: 'empty', paras: [] }))
+    return () => { dead = true }
+  }, [ev.id])
+  if (state.status === 'off') return null
+  if (state.status === 'loading') {
+    return <p class="text-[10.5px] font-mono text-muted animate-pulse pt-1">pulling the story…</p>
+  }
+  if (state.status === 'empty') {
+    return <p class="text-[10.5px] font-mono text-muted pt-1">source wouldn't give up its text — open ↗ for the page</p>
+  }
+  return (
+    <div class="flex flex-col gap-1.5 pt-1 max-w-[74ch]">
+      {state.paras.slice(0, 14).map((para, i) => (
+        <p key={i} class="text-[11.5px] leading-relaxed text-ink-2 font-anth">{para}</p>
+      ))}
+      {state.paras.length > 14 && <p class="text-[10px] font-mono text-muted">…full text at the source ↗</p>}
+    </div>
+  )
+}
+
 function Row({ ev, hot, open, onToggle, tier = 0 }) {
   const lat = ev.ts_seen - ev.ts_event
   const latTxt = lat > 0.5 && lat < 600 ? `+${lat.toFixed(1)}s` : ''
@@ -140,6 +178,7 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
       {open && !ev.live_call && (
         <div class="px-2.5 pb-2 pl-[168px] max-sm:pl-2.5">
           {ev.body && <p class="text-[11.5px] leading-relaxed text-ink-2 max-w-[72ch]">{ev.body}</p>}
+          {!ev.body && !ev.story_cluster && ev.url && <ReadBody ev={ev} />}
           <p class="text-[9.5px] font-mono text-muted pt-1 flex flex-wrap gap-x-3">
             <span>{new Date(ev.ts_event * 1000).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</span>
             {latTxt && <span>tape latency {latTxt}</span>}
