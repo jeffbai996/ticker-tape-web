@@ -456,9 +456,12 @@ function MarketDeckPanel() {
           const q = quotes[item.symbol]?.quote
           return (
             <a key={item.symbol} href={`#/research/${item.symbol.toLowerCase()}`}
-              class="min-w-0 flex items-baseline gap-1.5 px-2.5 py-[2px] font-mono text-[10.5px] hover:bg-surface-3 hover:no-underline odd:border-r odd:border-line">
-              <span class="font-anth text-muted truncate">{tl(item.label)}</span>
-              <span class={`ml-auto shrink-0 font-semibold ${!q ? 'text-muted' : q.pct >= 0 ? 'text-up' : 'text-down'}`}>
+              class="min-w-0 flex items-baseline gap-1.5 px-2.5 py-[3px] hover:bg-surface-3 hover:no-underline odd:border-r odd:border-line">
+              {/* label ≠ value: micro-caps label in the quiet shade, tabular
+                  number carrying the color — they used to blur into one line
+                  (Jeff 2026-08-06: "something visually unsatisfying") */}
+              <span class="font-anth text-[9px] font-medium uppercase tracking-[0.08em] text-muted/80 truncate">{tl(item.label)}</span>
+              <span class={`ml-auto shrink-0 font-tick text-[11px] font-semibold tabular-nums ${!q ? 'text-muted' : q.pct >= 0 ? 'text-up' : 'text-down'}`}>
                 {q ? fmtPct(q.pct) : '—'}
               </span>
             </a>
@@ -656,7 +659,7 @@ function AddWidget() {
  *  add tickers"). Mirrors AddWidget's dashed-button → inline-form idiom. */
 /** Reorder mode: the flat list with grips — drag a row onto another, or
  *  nudge with the arrows. Exits back to the normal board via done. */
-function ReorderList({ watchlist, quotes, onMove, onPlace, onDone }) {
+function ReorderList({ watchlist, quotes, onMove, onPlace, onRemove, onDone }) {
   const [dragSym, setDragSym] = useState(null)
   return (
     <div>
@@ -691,6 +694,8 @@ function ReorderList({ watchlist, quotes, onMove, onPlace, onDone }) {
                 class="w-6 h-6 grid place-items-center rounded text-muted hover:text-ink hover:bg-surface-2">↑</button>
               <button onClick={() => onMove(s, 1)} title={tl('move down')}
                 class="w-6 h-6 grid place-items-center rounded text-muted hover:text-ink hover:bg-surface-2">↓</button>
+              <button onClick={() => onRemove(s)} title={tl('remove')}
+                class="w-6 h-6 grid place-items-center rounded text-muted hover:text-down hover:bg-surface-2">×</button>
             </span>
           </div>
         )
@@ -1066,14 +1071,16 @@ function BoardMenu({ sort, setSort, setViewMode, lists, listId, onSelectMode }) 
       <button onClick={() => setOpen((v) => !v)} title={tl('board menu')}
         class={`grid h-[26px] w-[26px] place-items-center rounded-lg border bg-surface-1 ${
           open ? 'border-accent/60 text-accent' : 'border-line text-muted hover:text-accent hover:border-accent/50'}`}>
-        <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
-          <path d="M2.5 4h11M2.5 8h11M2.5 12h11" />
+        <svg class="burger" viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+          <path d="M2.5 4h11" />
+          <path d="M2.5 8h11" />
+          <path d="M2.5 12h11" />
         </svg>
       </button>
       {open && (
         <div class="absolute top-full left-0 mt-1 w-52 z-40 bg-surface-1/95 backdrop-blur border border-line rounded-lg shadow-[0_8px_24px_rgba(0,0,0,0.6)] py-1">
           {head(tl('Watchlist'))}
-          {item(tl('Main board'), !listId, () => { setOpen(false); location.hash = '#/' })}
+          {item(tl('Dashboard'), !listId, () => { setOpen(false); location.hash = '#/' })}
           {lists.map((l) => item(l.name, listId === l.id,
             () => { setOpen(false); location.hash = `#/watchlists/${l.id}` }))}
           <div class="my-1 border-t border-line/70" />
@@ -1085,7 +1092,7 @@ function BoardMenu({ sort, setSort, setViewMode, lists, listId, onSelectMode }) 
             if (v !== 'manual') setViewMode('flat')
           }))}
           <div class="my-1 border-t border-line/70" />
-          {item(tl('select rows'), false, () => { setOpen(false); onSelectMode() })}
+          {item(tl('Select rows'), false, () => { setOpen(false); onSelectMode() })}
         </div>
       )}
     </div>
@@ -1329,7 +1336,7 @@ export function Dashboard({ listId = null }) {
         <section class="@container bg-surface-1 border border-line rounded-xl overflow-hidden min-w-0">
           {reordering ? (
             <ReorderList watchlist={watchlist} quotes={quotes}
-              onMove={nudgeSymbol} onPlace={dropSymbol}
+              onMove={nudgeSymbol} onPlace={dropSymbol} onRemove={removeSymbol}
               onDone={() => setReordering(false)} />
           ) : viewMode === 'grouped' ? ordered.map((g, gi) => {
             const folded = isCollapsed(g.name, groupPrefs)
