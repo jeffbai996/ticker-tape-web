@@ -277,12 +277,13 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
                   phone it was the same size as the print and clipped off the
                   right edge (Jeff 2026-08-04) */}
               {q?.extLabel && q.extPrice != null ? (
-                <span class="whitespace-nowrap text-[11px] max-sm:text-[10px] shrink-0 max-sm:ml-auto @min-[545px]:min-w-[8.8rem] @min-[545px]:text-right">
-                  {/* the whole extended print sits a weight tier under the
-                      regular quote — only the session tag stays bold as the
-                      anchor (Jeff 2026-08-06: "drop the AH % font weight") */}
+                <span class="whitespace-nowrap text-[11px] max-sm:text-[10px] shrink-0 max-sm:ml-auto @min-[545px]:min-w-[9.4rem] @min-[545px]:text-right">
+                  {/* only the PERCENT drops a weight tier (Jeff 2026-08-06);
+                      the extended price keeps its weight and runs a size
+                      bigger than the tag beside it — it's the figure you read,
+                      the tag and the % are its annotations */}
                   <span class={`font-semibold ${extendedLabelClass(q.extLabel)}`}>{q.extLabel}</span>{' '}
-                  <span class="text-ink-2 font-normal"><FlashPrice price={q.extPrice} fmt={fmtPriceBare} /></span>{' '}
+                  <span class="text-ink-2 font-semibold text-[12px] max-sm:text-[11px]"><FlashPrice price={q.extPrice} fmt={fmtPriceBare} /></span>{' '}
                   <span class={`font-light ${extUp ? 'text-up' : 'text-down'}`}>
                     {extUp ? '▲' : '▼'}{Math.abs(q.extPct ?? 0).toFixed(1)}%
                   </span>
@@ -291,8 +292,13 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
                 /* ghost slot: a row whose extended print hasn't loaded used to
                    let the name gutter grow and right-shift the whole quote
                    cluster off the column grid (Jeff 2026-08-06) */
-                <span class="whitespace-nowrap text-[11px] max-sm:hidden shrink-0 invisible @min-[545px]:min-w-[8.8rem] @min-[545px]:text-right" aria-hidden="true">
-                  PM 0000.00 ▼0.0%
+                <span class="whitespace-nowrap text-[11px] max-sm:hidden shrink-0 invisible @min-[545px]:min-w-[9.4rem] @min-[545px]:text-right" aria-hidden="true">
+                  {/* mirrors the real print part for part, including the
+                      larger price — a ghost narrower than the thing it
+                      reserves space for lets the column shift when data lands */}
+                  <span class="font-semibold">PM</span>{' '}
+                  <span class="font-semibold text-[12px]">0000.00</span>{' '}
+                  <span class="font-light">▼0.0%</span>
                 </span>
               ) : null}
             </span>
