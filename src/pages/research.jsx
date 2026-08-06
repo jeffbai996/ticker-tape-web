@@ -2113,7 +2113,10 @@ export function Research({ route }) {
             <span class="flex-1 min-w-[16ch]">
               <Marquee text={q.name} class="w-full text-[12px] text-muted font-anth" />
             </span>
-            <span class="ml-auto flex items-baseline gap-3 shrink-0 whitespace-nowrap">
+            {/* when the header wraps (phones) the quote line starts at the
+                left margin like everything else — ml-auto only makes sense
+                while it shares a line with the name (Jeff 2026-08-06) */}
+            <span class="ml-auto max-sm:ml-0 max-sm:w-full flex items-baseline gap-3 shrink-0 whitespace-nowrap">
               <span class="font-mono font-bold text-lg text-ink"><FlashPrice price={q.price} fmt={fmtPrice} /></span>
               <span class={`font-mono text-[15px] ${up ? 'text-up' : 'text-down'}`}>
                 <span class="font-semibold"><FlashMetric value={q.change} fmt={fmtChange} /></span>{' '}

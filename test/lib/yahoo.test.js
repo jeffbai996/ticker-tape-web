@@ -204,7 +204,13 @@ describe('mergeSnapshotQuote', () => {
       price: 101.5, change: 2.5, pct: 2.525, volume: 1_250,
       marketTime: 101, dayHigh: 103, bid: 101.48, ask: 101.52,
     })
-    expect(mergeSnapshotQuote(streamed, snapshot, false)).toEqual(snapshot)
+    // 2026-08-06: even with the stream stale, a snapshot whose EVENT TIME is
+    // older must not repaint a newer print — that's the red-flash-on-a-rising-
+    // tape bug. The old contract (stale stream → snapshot wins outright) only
+    // holds when the snapshot is actually newer.
+    expect(mergeSnapshotQuote(streamed, snapshot, false).price).toBe(101.5)
+    const newer = { ...snapshot, marketTime: 102 }
+    expect(mergeSnapshotQuote(streamed, newer, false)).toEqual(newer)
   })
 })
 
@@ -229,5 +235,42 @@ describe('quoteFromV7 extended-session label', () => {
 
   it('is AH again over the weekend, when nothing trades overnight', () => {
     expect(quoteFromV7(row, new Date('2026-08-08T02:00:00-04:00')).extLabel).toBe('AH')
+  })
+})
+
+describe('out-of-order prints never move the tape backwards', () => {
+  // The REST batch often reports an event older than the stream tick already
+  // painted; replacing it flashed red on a rising tape (Jeff 2026-08-06).
+  const prev = { symbol: 'NVDA', name: 'NVIDIA', price: 222.58, change: 10.64,
+                 pct: 5.02, volume: 100, marketTime: 1_000_100 }
+
+  it('batch snapshot with an older event time keeps the newer price', () => {
+    const snap = { symbol: 'NVDA', name: 'NVIDIA', price: 222.51, change: 10.57,
+                   pct: 4.99, volume: 99, marketTime: 1_000_040 }
+    const out = mergeSnapshotQuote(prev, snap, false)
+    expect(out.price).toBe(222.58)
+    expect(out.pct).toBe(5.02)
+  })
+
+  it('batch snapshot with a newer event time still wins when the stream is stale', () => {
+    const snap = { symbol: 'NVDA', name: 'NVIDIA', price: 222.70, change: 10.76,
+                   pct: 5.08, volume: 101, marketTime: 1_000_200 }
+    expect(mergeSnapshotQuote(prev, snap, false).price).toBe(222.70)
+  })
+
+  it('a late stream tick with an older event time is dropped', () => {
+    const out = quoteFromStream(
+      { symbol: 'NVDA', price: 222.40, time: 1_000_000_000, marketHours: 1 },
+      prev,
+    )
+    expect(out.price).toBe(222.58)
+  })
+
+  it('a fresh stream tick still paints', () => {
+    const out = quoteFromStream(
+      { symbol: 'NVDA', price: 222.61, time: 1_000_200_000, marketHours: 1 },
+      prev,
+    )
+    expect(out.price).toBe(222.61)
   })
 })
