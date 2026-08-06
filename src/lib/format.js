@@ -1,14 +1,17 @@
 const DASH = '—'
 
-// KRW/JPY-denominated listings print six-to-seven figure prices — cents on
-// a ₩1,495,000 quote are noise that overflows fixed columns into the next
-// field (SK hynix, Jeff 2026-08-06). Five figures and up drop the decimals.
+// KRW/JPY-denominated listings print six-to-seven figure prices that no
+// fixed column survives (SK hynix ₩1,495,000, Jeff 2026-08-06). Five figures
+// and up collapse to K-notation — "1495K" holds the column grid, full commas
+// don't.
 const BIG_PRICE = 10_000
+const kNotation = (abs) =>
+  `${abs >= 100_000 ? Math.round(abs / 1000) : (abs / 1000).toFixed(1)}K`
 
 export function fmtPrice(v) {
   if (v == null || Number.isNaN(v)) return DASH
-  const digits = Math.abs(v) >= BIG_PRICE ? 0 : 2
-  return v.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits })
+  if (Math.abs(v) >= BIG_PRICE) return kNotation(Math.abs(v))
+  return v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 /**
@@ -18,7 +21,7 @@ export function fmtPrice(v) {
  */
 export function fmtPriceBare(v) {
   if (v == null || Number.isNaN(v)) return DASH
-  if (Math.abs(v) >= BIG_PRICE) return v.toLocaleString('en-US', { maximumFractionDigits: 0 })
+  if (Math.abs(v) >= BIG_PRICE) return kNotation(Math.abs(v))
   return v.toFixed(2)
 }
 
@@ -30,7 +33,7 @@ export function fmtPct(v) {
 export function fmtChange(v) {
   if (v == null || Number.isNaN(v)) return DASH
   const abs = Math.abs(v)
-  if (abs >= BIG_PRICE) return `${v >= 0 ? '+' : '-'}${abs.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
+  if (abs >= BIG_PRICE) return `${v >= 0 ? '+' : '-'}${kNotation(abs)}`
   return `${v >= 0 ? '+' : '-'}${abs.toFixed(2)}`
 }
 
