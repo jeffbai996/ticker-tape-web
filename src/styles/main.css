@@ -183,7 +183,10 @@ body {
       transform .28s cubic-bezier(.16, 1, .3, 1),
       opacity .18s ease;
   }
-  @container (max-width: 819px) {
+  /* Only where the slot is too narrow to show ticker AND name at once. Above
+     that the name rides inline, so fading the ticker on hover just deleted
+     the ticker (Jeff 2026-08-05). */
+  @container (max-width: 544px) {
     .tui-row:hover .tui-company-symbol,
     .tui-row:focus-visible .tui-company-symbol,
     .tui-row:focus-within .tui-company-symbol {

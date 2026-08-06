@@ -94,18 +94,18 @@ function RangeBar({ label, lo, hi, v, cls = '' }) {
   const pos = rangePos(lo, hi, v)
   if (pos == null) return null
   return (
-    <span class={`hidden @min-[730px]:flex items-center gap-1 font-mono text-[11px] font-normal whitespace-nowrap ${cls}`}>
+    <span class={`hidden @min-[730px]:flex items-center gap-[3px] font-mono text-[11px] font-normal whitespace-nowrap ${cls}`}>
       <span class="text-accent/60 font-normal text-[9px] w-6">{label}</span>
-      <span class="text-down/80 w-14 text-right">
+      <span class="text-down/80 w-[3.15rem] text-right">
         <FlashMetric value={lo} fmt={fmtPriceBare} kind="low" />
       </span>
-      <span class="relative w-14 h-[3px] bg-line rounded-full shrink-0 mx-0.5">
+      <span class="relative w-14 h-[3px] bg-line rounded-full shrink-0 mx-1">
         <span
           class="absolute top-1/2 -translate-y-1/2 w-[3px] h-[7px] bg-accent-2 rounded-sm"
           style={{ left: `calc(${(pos * 100).toFixed(1)}% - 1.5px)` }}
         />
       </span>
-      <span class="text-up/80 w-14">
+      <span class="text-up/80 w-[3.15rem]">
         <FlashMetric value={hi} fmt={fmtPriceBare} kind="high" />
       </span>
     </span>
@@ -165,7 +165,7 @@ function TuiRow({ symbol, data, earnDays, onRemove }) {
       </button>
       {/* the meters column needs air off the quote cluster — at mid widths
           VOL was landing flush against the extended-hours percentage */}
-      <div class="flex gap-3 min-w-0">
+      <div class="flex gap-6 max-sm:gap-2 min-w-0">
         <div class="flex-1 min-w-0 overflow-hidden">
           <div class="flex items-baseline gap-1.5 max-sm:gap-1 font-mono text-[13px] max-sm:text-[12px] flex-nowrap max-sm:flex-wrap min-w-0">
             <span class="tui-company-identity relative flex items-baseline gap-1.5 flex-1 min-w-0 @min-[820px]:flex-none @min-[820px]:w-14 text-ink font-[650] font-tick text-[12px]">
@@ -214,9 +214,9 @@ function TuiRow({ symbol, data, earnDays, onRemove }) {
                   phone it was the same size as the print and clipped off the
                   right edge (Jeff 2026-08-04) */}
               {q?.extLabel && q.extPrice != null && (
-                <span class="whitespace-nowrap text-[12px] max-sm:text-[10px] w-auto shrink-0 max-sm:ml-auto">
+                <span class="whitespace-nowrap text-[11px] max-sm:text-[10px] w-auto shrink-0 max-sm:ml-auto">
                   <span class={extendedLabelClass(q.extLabel)}>{q.extLabel}</span>{' '}
-                  <span class="text-ink-2"><FlashPrice price={q.extPrice} fmt={fmtPriceBare} /></span>{' '}
+                  <span class="text-ink-2 font-semibold"><FlashPrice price={q.extPrice} fmt={fmtPriceBare} /></span>{' '}
                   <span class={extUp ? 'text-up' : 'text-down'}>
                     {extUp ? '▲' : '▼'}{Math.abs(q.extPct ?? 0).toFixed(1)}%
                   </span>
@@ -229,8 +229,13 @@ function TuiRow({ symbol, data, earnDays, onRemove }) {
             {/* Container-relative width changes continuously with zoom. A
                 breakpoint used to turn this from postage stamp to runway. */}
             <Histo bars={data?.histo} width={150} height={24}
-              class="w-[clamp(76px,18cqw,168px)] h-6" />
-            <Badges tech={data?.tech} earnDays={earnDays} />
+              class="w-[clamp(76px,18cqw,168px)] h-6 shrink-0" />
+            {/* badges yield first: they are chips you glance at, while a range
+                clipped mid-number (Jeff 2026-08-05: "RHS occluded") is worse
+                than a badge that isn't drawn */}
+            <div class="min-w-0 overflow-hidden max-sm:overflow-visible">
+              <Badges tech={data?.tech} earnDays={earnDays} />
+            </div>
             {/* An extended-hours print evicts the day range from the meters
                 column at this width, which used to mean no intraday range at
                 all overnight. The badge line has the room, so it takes it. */}
@@ -249,7 +254,7 @@ function TuiRow({ symbol, data, earnDays, onRemove }) {
               <CompactDayRange lo={q?.dayLow} hi={q?.dayHigh} v={q?.price} />
             )}
             <RangeBar label="DAY" lo={q?.dayLow} hi={q?.dayHigh} v={q?.price} />
-            <span class="w-16 @min-[820px]:w-[9.5rem] text-right whitespace-nowrap">
+            <span class="w-[3.7rem] @min-[820px]:w-[8.6rem] text-right whitespace-nowrap">
               {q && quoteSpread(q) != null && (
                 <span class="hidden @min-[820px]:inline mr-2">
                   <span class="text-accent/60 text-[9px]">SPR</span>{' '}
@@ -268,7 +273,7 @@ function TuiRow({ symbol, data, earnDays, onRemove }) {
             {data?.tech && (
               <RangeBar label="52W" lo={data.tech.low52} hi={data.tech.high52} v={q?.price} />
             )}
-            <span class="w-16 @min-[820px]:w-[9.5rem] text-right">
+            <span class="w-[3.7rem] @min-[820px]:w-[8.6rem] text-right">
               {avgVol != null && (
                 <>
                   <span class="text-accent/60 text-[9px]">AVG</span>{' '}
