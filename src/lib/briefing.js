@@ -17,9 +17,9 @@ export function assembleBriefing({ watchlist = [], quotes = {}, indices = [], in
   const byPct = [...valid].sort((a, b) => b.pct - a.pct)
   const movers = {
     gainers: byPct.filter((q) => q.pct > 0).slice(0, MAX_MOVERS)
-      .map((q) => ({ symbol: q.symbol, pct: q.pct, price: q.price })),
+      .map((q) => ({ symbol: q.symbol, pct: q.pct, price: q.price, name: q.name })),
     losers: byPct.filter((q) => q.pct < 0).reverse().slice(0, MAX_MOVERS)
-      .map((q) => ({ symbol: q.symbol, pct: q.pct, price: q.price })),
+      .map((q) => ({ symbol: q.symbol, pct: q.pct, price: q.price, name: q.name })),
   }
 
   const macro = indices
