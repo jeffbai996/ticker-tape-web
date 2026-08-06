@@ -99,6 +99,13 @@ export function quoteFromStream(tick, previous = {}) {
     }
   }
 
+  // Same out-of-order rule for the stream itself: a replayed/late tick with
+  // an older event time must not repaint over a newer print.
+  if (previous.marketTime != null && marketTime != null
+      && marketTime < previous.marketTime) {
+    return previous
+  }
+
   // A regular print makes any persisted extended-session adornment stale.
   const { extLabel, extPrice, extPct, extChange, extMarketTime, ...regular } = base
   return {
@@ -118,7 +125,14 @@ export function quoteFromStream(tick, previous = {}) {
 
 /** A snapshot enriches range/name data but cannot rewind a fresh live print. */
 export function mergeSnapshotQuote(previous, snapshot, streamIsFresh) {
-  if (!streamIsFresh || !previous) return snapshot
+  // An out-of-order print must never move the tape backwards: the REST batch
+  // often reports an event 15-60s OLDER than the stream tick already painted,
+  // and replacing it flashed red on a rising tape (and green on a falling
+  // one — Jeff 2026-08-06). Yahoo's own event timestamps decide, not
+  // freshness heuristics.
+  const regressed = previous?.marketTime != null && snapshot?.marketTime != null
+    && snapshot.marketTime < previous.marketTime
+  if (!(streamIsFresh || regressed) || !previous) return snapshot
   return {
     ...snapshot,
     name: snapshot.name || previous.name || '',
