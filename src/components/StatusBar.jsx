@@ -79,10 +79,10 @@ function RollingClock() {
       class="flex items-baseline gap-1 whitespace-nowrap font-anth group px-1.5 max-sm:pr-0 py-0.5 rounded hover:bg-accent-soft hover:outline hover:outline-1 hover:outline-accent/50"
       title={tl('cycle timezone')}
     >
-      {/* digits in the terminal mono, not the button's Jakarta (Jeff
-          2026-08-06: "clock is in Jakarta sans on mobile") */}
-      <span ref={desktopClock} class="max-md:hidden inline-flex items-baseline font-mono text-accent font-semibold text-[12px]" />
-      <span ref={mobileClock} class="md:hidden inline-flex items-baseline font-mono text-accent font-semibold text-[12px]" />
+      {/* Anthropic Sans digits (Jeff 2026-08-06) — falls back to Jakarta on
+          the public build, where the licensing-gated woff2 never ships */}
+      <span ref={desktopClock} class="max-md:hidden inline-flex items-baseline font-anth text-accent font-semibold text-[12px]" />
+      <span ref={mobileClock} class="md:hidden inline-flex items-baseline font-anth text-accent font-semibold text-[12px]" />
       <span class="text-[8.5px] tracking-wider text-muted group-hover:text-white hover:text-white transition-colors">
         {CLOCK_ZONES[zi].label}
       </span>
