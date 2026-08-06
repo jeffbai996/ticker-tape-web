@@ -228,8 +228,11 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
                   go to waste"). Now the name rides inline wherever the slot
                   has room, truncating into whatever is left. */}
               {q?.name && (
-                <span data-inline-name class="hidden @min-[545px]:block @min-[820px]:hidden min-w-0 truncate text-[10.5px] text-muted font-normal font-anth">
-                  {q.name}
+                /* the mid band truncated the name with no way to read the rest
+                   — same hover-scroll the wide band uses (Jeff 2026-08-06) */
+                <span data-inline-name class="hidden @min-[545px]:block @min-[820px]:hidden min-w-0">
+                  <Marquee text={q.name} title={`${symbol} — ${q.name}`}
+                    class="block min-w-0 text-[10.5px] text-muted font-normal font-anth" />
                 </span>
               )}
               {/* Below that the slot is too narrow for two strings, so the
