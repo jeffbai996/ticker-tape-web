@@ -2116,7 +2116,10 @@ export function Research({ route }) {
             {/* when the header wraps (phones) the quote line starts at the
                 left margin like everything else — ml-auto only makes sense
                 while it shares a line with the name (Jeff 2026-08-06) */}
-            <span class="ml-auto max-sm:ml-0 max-sm:w-full flex items-baseline gap-3 shrink-0 whitespace-nowrap">
+            {/* max-sm the cluster may exceed the viewport (AH tail clipped off
+                the right, Jeff 2026-08-06) — let the units wrap; each inner
+                span stays nowrap so a unit never breaks mid-number */}
+            <span class="ml-auto max-sm:ml-0 max-sm:w-full flex items-baseline gap-x-3 gap-y-0.5 shrink-0 whitespace-nowrap max-sm:flex-wrap">
               <span class="font-mono font-bold text-lg text-ink"><FlashPrice price={q.price} fmt={fmtPrice} /></span>
               <span class={`font-mono text-[15px] ${up ? 'text-up' : 'text-down'}`}>
                 <span class="font-semibold"><FlashMetric value={q.change} fmt={fmtChange} /></span>{' '}
@@ -2139,7 +2142,11 @@ export function Research({ route }) {
             </span>
           </>
         )}
-        {activeRange?.ticks && (
+        {/* range + tick pills drive only the Overview chart — on the Chart
+            tab they doubled ChartSuite's own picker, and on every other tab
+            they were dead controls (Jeff 2026-08-06: "redundancy w the
+            timeframes"). Overview-only. */}
+        {route.view == null && activeRange?.ticks && (
           <div class="flex items-center gap-1 shrink-0">
             {activeRange.ticks.map((v) => (
               <button key={v} onClick={() => setTick(v === (tick || activeRange.interval) ? v : v)}
@@ -2152,21 +2159,23 @@ export function Research({ route }) {
             ))}
           </div>
         )}
-        <div class="flex gap-1 flex-nowrap overflow-x-auto no-scrollbar shrink-0 max-w-full">
-          {RANGES.map((r) => (
-            <button
-              key={r.key}
-              onClick={() => selectRange(r.key)}
-              class={`font-mono text-[10px] px-2 py-1 rounded-md border whitespace-nowrap shrink-0 ${
-                rangeKey === r.key
-                  ? 'border-accent-2 text-accent-2 bg-accent-2-soft'
-                  : 'border-accent/30 text-muted hover:text-ink hover:bg-surface-3'
-              }`}
-            >
-              {r.key.toLowerCase()}
-            </button>
-          ))}
-        </div>
+        {route.view == null && (
+          <div class="flex gap-1 flex-nowrap overflow-x-auto no-scrollbar shrink-0 max-w-full">
+            {RANGES.map((r) => (
+              <button
+                key={r.key}
+                onClick={() => selectRange(r.key)}
+                class={`font-mono text-[10px] px-2 py-1 rounded-md border whitespace-nowrap shrink-0 ${
+                  rangeKey === r.key
+                    ? 'border-accent-2 text-accent-2 bg-accent-2-soft'
+                    : 'border-accent/30 text-muted hover:text-ink hover:bg-surface-3'
+                }`}
+              >
+                {r.key.toLowerCase()}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div class="flex gap-1 px-1 pb-2 select-none flex-nowrap overflow-x-auto no-scrollbar">
