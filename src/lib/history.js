@@ -9,10 +9,10 @@ import { createPCache } from './pcache.js'
 // before the window starts (see chartmath.warmedBars). MACD needs 34 prior
 // bars, so every daily range asks for the next size up; MAX has nothing older.
 export const RANGES = [
-  { key: '1D', range: '1d', interval: '5m', intraday: true, ttl: 60_000, warm: '5d', ticks: ['1m', '2m', '5m', '15m'] },
+  { key: '1D', range: '1d', interval: '5m', intraday: true, ttl: 60_000, warm: '5d', ticks: ['1m', '2m', '5m', '15m', '30m', '1h'] },
   { key: '5D', range: '5d', interval: '15m', intraday: true, ttl: 5 * 60_000, warm: '1mo', ticks: ['5m', '15m', '30m', '1h'] },
-  { key: '1M', range: '1mo', interval: '1d', ttl: 10 * 60_000, warm: '3mo' },
-  { key: '3M', range: '3mo', interval: '1d', ttl: 10 * 60_000, warm: '6mo' },
+  { key: '1M', range: '1mo', interval: '1d', ttl: 10 * 60_000, warm: '3mo', ticks: ['30m', '1h', '1d'] },
+  { key: '3M', range: '3mo', interval: '1d', ttl: 10 * 60_000, warm: '6mo', ticks: ['1h', '1d'] },
   { key: '6M', range: '6mo', interval: '1d', ttl: 10 * 60_000, warm: '1y' },
   { key: 'YTD', range: 'ytd', interval: '1d', ttl: 10 * 60_000, warm: '2y' },
   { key: '1Y', range: '1y', interval: '1d', ttl: 10 * 60_000, warm: '2y' },
@@ -69,7 +69,9 @@ export function fetchHistory(symbol, rangeKey, { warm = false, interval = null }
       if (wide) bars = lastSessionBars(barsFromChart(wide))
       if (!bars.length) throw new Error(`history ${symbol}: no bars`)
     }
-    return { quote: quoteFromChart(result), bars, intraday: !!r.intraday }
+    // a sub-daily tick on a daily range still needs the intraday time axis
+    const subDaily = /[mh]$/.test(iv) && iv !== '1mo'
+    return { quote: quoteFromChart(result), bars, intraday: !!r.intraday || subDaily }
   })
 }
 
