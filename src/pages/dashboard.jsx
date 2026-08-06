@@ -96,7 +96,20 @@ function Badges({ tech, earnDays }) {
 
 function RangeBar({ label, lo, hi, v, cls = '' }) {
   const pos = rangePos(lo, hi, v)
-  if (pos == null) return null
+  // A quote that hasn't filled its day range yet used to drop the whole block,
+  // which collapsed the meter cell and shifted VOL/AVG left on that row alone —
+  // the ragged column Jeff kept hitting (2026-08-06). Hold the space instead.
+  if (pos == null) {
+    return (
+      <span aria-hidden="true"
+        class={`hidden @min-[730px]:flex items-center gap-[3px] font-mono text-[11px] font-normal whitespace-nowrap invisible ${cls}`}>
+        <span class="text-[9px] w-6">{label}</span>
+        <span class="w-[3.15rem] text-right">0000.00</span>
+        <span class="w-14 h-[3px] shrink-0 mx-1" />
+        <span class="w-[3.15rem]">0000.00</span>
+      </span>
+    )
+  }
   return (
     <span class={`hidden @min-[730px]:flex items-center gap-[3px] font-mono text-[11px] font-normal whitespace-nowrap ${cls}`}>
       <span class="text-accent/60 font-normal text-[9px] w-6">{label}</span>
@@ -120,7 +133,17 @@ function RangeBar({ label, lo, hi, v, cls = '' }) {
  *  full range instead of turning the chart into an unlabeled mystery noodle. */
 function CompactDayRange({ lo, hi, v, cls = '' }) {
   const pos = rangePos(lo, hi, v)
-  if (pos == null) return null
+  if (pos == null) {
+    return (
+      <span aria-hidden="true"
+        class={`hidden @min-[545px]:flex @min-[730px]:hidden items-center gap-1 whitespace-nowrap font-mono text-[9.5px] invisible ${cls}`}>
+        <span class="text-[9px]">DAY</span>
+        <span class="w-11 text-right">0000.00</span>
+        <span class="w-12 h-[3px] shrink-0" />
+        <span class="w-11">0000.00</span>
+      </span>
+    )
+  }
   return (
     <span
       class={`hidden @min-[545px]:flex @min-[730px]:hidden items-center gap-1 whitespace-nowrap font-mono text-[9.5px] ${cls}`}
@@ -166,6 +189,7 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
   // nothing without it, and it costs no extra fetch
   const avgVol = q?.volume != null && data?.tech?.volRatio
     ? q.volume / data.tech.volRatio : null
+  const hasRange = q?.dayHigh != null && q?.dayLow != null && q?.price > 0
   return (
     <a
       href={`#/research/${symbol.toLowerCase()}`}
@@ -246,7 +270,7 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
                   phone it was the same size as the print and clipped off the
                   right edge (Jeff 2026-08-04) */}
               {q?.extLabel && q.extPrice != null ? (
-                <span class="whitespace-nowrap text-[11px] max-sm:text-[10px] w-auto shrink-0 max-sm:ml-auto">
+                <span class="whitespace-nowrap text-[11px] max-sm:text-[10px] shrink-0 max-sm:ml-auto @min-[545px]:w-[9.6rem] @min-[545px]:text-right">
                   <span class={`font-semibold ${extendedLabelClass(q.extLabel)}`}>{q.extLabel}</span>{' '}
                   <span class="text-ink-2 font-semibold"><FlashPrice price={q.extPrice} fmt={fmtPriceBare} /></span>{' '}
                   <span class={`font-normal ${extUp ? 'text-up' : 'text-down'}`}>
@@ -257,8 +281,8 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
                 /* ghost slot: a row whose extended print hasn't loaded used to
                    let the name gutter grow and right-shift the whole quote
                    cluster off the column grid (Jeff 2026-08-06) */
-                <span class="whitespace-nowrap text-[11px] max-sm:hidden shrink-0 invisible" aria-hidden="true">
-                  PM 000.00 ▼0.0%
+                <span class="whitespace-nowrap text-[11px] max-sm:hidden shrink-0 invisible @min-[545px]:w-[9.6rem] @min-[545px]:text-right" aria-hidden="true">
+                  PM 0000.00 ▼0.0%
                 </span>
               ) : null}
             </span>
@@ -289,44 +313,44 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
             once the row ran out of width (Jeff 2026-08-03). */}
         <div class="hidden @min-[545px]:flex shrink-0 flex-col justify-center gap-1 font-mono text-[11px]">
           <span class="flex items-baseline gap-1.5">
-            {!q?.extLabel && (
-              <CompactDayRange lo={q?.dayLow} hi={q?.dayHigh} v={q?.price} />
-            )}
+            {/* both meter lines carry the same three slots — compact range,
+                wide range, values. Line two used to skip the compact slot,
+                so its AVG started 169px left of the VOL above it whenever a
+                row had a compact range at all (Jeff 2026-08-06). A null range
+                ghosts, so the structure holds either way. */}
+            <CompactDayRange lo={q?.extLabel ? null : q?.dayLow}
+              hi={q?.extLabel ? null : q?.dayHigh} v={q?.price} />
             <RangeBar label="DAY" lo={q?.dayLow} hi={q?.dayHigh} v={q?.price} />
-            <span class="w-[4.6rem] @min-[820px]:w-[9.2rem] text-right whitespace-nowrap">
-              {q && quoteSpread(q) != null && (
-                <span class="hidden @min-[820px]:inline mr-2">
-                  <span class="text-accent/60 text-[9px]">SPR</span>{' '}
-                  <span class="text-ink-2 font-normal">{fmtSpread(quoteSpread(q))}</span>
+            <span class="flex items-baseline justify-end gap-1 w-[4.6rem] @min-[820px]:w-[9.2rem] whitespace-nowrap">
+              <span class="hidden @min-[820px]:flex items-baseline gap-1 mr-1">
+                <span class="text-accent/60 text-[9px] w-6 text-right">{q && quoteSpread(q) != null ? 'SPR' : ''}</span>
+                <span class="text-ink-2 font-normal w-[2.6rem] text-right">
+                  {q && quoteSpread(q) != null ? fmtSpread(quoteSpread(q)) : ''}
                 </span>
-              )}
-              {q?.volume != null && (
-                <>
-                  <span class="text-accent/70">VOL</span>{' '}
-                  <span class={heavy ? 'text-accent' : 'text-ink'}>{fmtVol(q.volume)}</span>
-                </>
-              )}
+              </span>
+              <span class="text-accent/70 w-6 text-right">{q?.volume != null ? 'VOL' : ''}</span>
+              <span class={`w-[2.9rem] text-right ${heavy ? 'text-accent' : 'text-ink'}`}>
+                {q?.volume != null ? fmtVol(q.volume) : ''}
+              </span>
             </span>
           </span>
           <span class="flex items-baseline gap-1.5">
-            {data?.tech && (
-              <RangeBar label="52W" lo={data.tech.low52} hi={data.tech.high52} v={q?.price} />
-            )}
-            <span class="w-[4.6rem] @min-[820px]:w-[9.2rem] text-right whitespace-nowrap">
-              {q?.dayHigh != null && q?.dayLow != null && q?.price > 0 && (
-                <span class="hidden @min-[820px]:inline mr-2">
-                  <span class="text-accent/60 text-[9px]">RNG</span>{' '}
-                  <span class="text-ink-2 font-normal">
-                    {(((q.dayHigh - q.dayLow) / q.price) * 100).toFixed(1)}%
-                  </span>
+            <CompactDayRange lo={null} hi={null} v={null} />
+            {/* always rendered: RangeBar ghosts its own width when the 52W
+                numbers haven't arrived, and skipping the element outright
+                collapsed the second meter line and slid AVG left */}
+            <RangeBar label="52W" lo={data?.tech?.low52} hi={data?.tech?.high52} v={q?.price} />
+            <span class="flex items-baseline justify-end gap-1 w-[4.6rem] @min-[820px]:w-[9.2rem] whitespace-nowrap">
+              <span class="hidden @min-[820px]:flex items-baseline gap-1 mr-1">
+                <span class="text-accent/60 text-[9px] w-6 text-right">{hasRange ? 'RNG' : ''}</span>
+                <span class="text-ink-2 font-normal w-[2.6rem] text-right">
+                  {hasRange ? `${(((q.dayHigh - q.dayLow) / q.price) * 100).toFixed(1)}%` : ''}
                 </span>
-              )}
-              {avgVol != null && (
-                <>
-                  <span class="text-accent/60 text-[9px]">AVG</span>{' '}
-                  <span class="text-ink-2 font-normal">{fmtVol(avgVol)}</span>
-                </>
-              )}
+              </span>
+              <span class="text-accent/60 text-[9px] w-6 text-right">{avgVol != null ? 'AVG' : ''}</span>
+              <span class="text-ink-2 font-normal w-[2.9rem] text-right">
+                {avgVol != null ? fmtVol(avgVol) : ''}
+              </span>
             </span>
           </span>
         </div>
