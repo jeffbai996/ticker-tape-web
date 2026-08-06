@@ -154,7 +154,9 @@ export function Tape() {
                   <a
                     key={`h-${e.id}-${i}`}
                     data-tape-item
-                    href={e.symbols?.[0] ? hrefFor('research', e.symbols[0].toLowerCase()) : '#/wire'}
+                    // the story itself, not the symbol's page and not the top
+                    // of the wire (Jeff 2026-08-05)
+                    href={`#/wire/${e.id}`}
                     class="flex items-baseline gap-2 whitespace-nowrap hover:no-underline px-1 py-0.5"
                     title={e.headline}
                   >
