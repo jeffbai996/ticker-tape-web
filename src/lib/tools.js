@@ -62,7 +62,8 @@ async function fetchQuoteBatch(symbols) {
   const resp = await fetch(url, { signal: AbortSignal.timeout(10_000) })
   if (!resp.ok) throw new Error(`quotes: HTTP ${resp.status}`)
   const data = await resp.json()
-  return (data?.quoteResponse?.result || []).map(quoteFromV7)
+  // not bare .map(quoteFromV7): map's index arg would land in the clock param
+  return (data?.quoteResponse?.result || []).map((row) => quoteFromV7(row))
 }
 
 // --- executors ---------------------------------------------------------
