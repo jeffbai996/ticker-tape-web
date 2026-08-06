@@ -3,6 +3,7 @@
 // the sidebar rail, the tape, the dashboard's Custom bucket, and the heatmap.
 
 import { WATCHLIST as DEFAULT_WATCHLIST } from './symbols.js'
+import { moveInList } from './watchorder.js'
 
 const KEY = 'watchlist_v1'
 const SYMBOL_RE = /^[A-Z0-9.^=-]{1,12}$/
@@ -51,6 +52,21 @@ export function unwatch(symbol) {
   const list = getWatchlist()
   if (!list.includes(sym)) return null
   const next = list.filter((s) => s !== sym)
+  save(next)
+  return next
+}
+
+/** Nudge a symbol by ±1 (reorder arrows). */
+export function moveSymbol(symbol, delta) {
+  const next = moveInList(getWatchlist(), (symbol || '').toUpperCase(), delta)
+  save(next)
+  return next
+}
+
+/** Drop `symbol` into `before`'s slot (drag & drop landing). */
+export function placeSymbol(symbol, before) {
+  const next = moveInList(getWatchlist(), (symbol || '').toUpperCase(),
+                          { before: (before || '').toUpperCase() })
   save(next)
   return next
 }
