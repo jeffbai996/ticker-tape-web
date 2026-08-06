@@ -15,9 +15,10 @@ import {
 import { demoFillsCsv, loadFillsCsv, saveFillsCsv, closesByDateFromChart } from '../lib/backtestData.js'
 import { proxyBase } from '../lib/feed.js'
 import { wireUrl } from '../lib/wire.js'
-import { MdLite } from '../components/AiReport.jsx'
+import { AiReport, MdLite } from '../components/AiReport.jsx'
 import { fetchHistory } from '../lib/history.js'
 import { createPCache } from '../lib/pcache.js'
+import { thesisAnalysisPrompt, thesisHealth, thesisSignals } from '../lib/thesis.js'
 
 const SYMBOLS = DEMO_POSITIONS.map((p) => p.symbol)
 const BOTH_ACCOUNTS = 'all'
@@ -944,41 +945,95 @@ function DividendsFold({ accountId }) {
 
 function Thesis() {
   const [snap, setSnap] = useState(null)
+  const [signals, setSignals] = useState([])
   useEffect(() => {
     if (!wireBase()) return
-    fetch(`${wireBase()}/api/breakers`, { signal: AbortSignal.timeout(10_000) })
-      .then((r) => r.json()).then(setSnap).catch(() => setSnap({ ok: false }))
+    let cancelled = false
+    const read = async (path) => {
+      const response = await fetch(`${wireBase()}${path}`, { signal: AbortSignal.timeout(10_000) })
+      if (!response.ok) throw new Error(`wire ${response.status}`)
+      return response.json()
+    }
+    Promise.all([
+      read('/api/breakers'),
+      read('/api/events?limit=240&newest=1').then((out) => thesisSignals(out.events)).catch(() => []),
+    ]).then(([snapshot, nextSignals]) => {
+      if (cancelled) return
+      setSnap(snapshot)
+      setSignals(nextSignals)
+    }).catch(() => {
+      if (!cancelled) setSnap({ ok: false })
+    })
+    return () => { cancelled = true }
   }, [])
   if (!wireBase()) return <NeedsWire />
   if (!snap) return <div class="px-1 py-2 font-mono text-[11px] text-muted animate-pulse">{tt('portfolio.watcher_loading')}</div>
   if (!snap.available) return <div class="px-1 py-2 font-mono text-[11px] text-muted">{tt('portfolio.watcher_unavailable')}</div>
+  const health = thesisHealth(snap.breakers)
   const VERD = {
     FIRED: 'bg-down text-black', AWAITING: 'bg-accent text-black',
-    CLEAR: 'bg-up/20 text-up', NO_DATA: 'bg-surface-3 text-muted',
+    CLEAR: 'bg-up/20 text-up', INSUFFICIENT_DATA: 'bg-surface-3 text-muted',
+    NO_DATA: 'bg-surface-3 text-muted',
   }
+  const verdictLabel = (verdict) => verdict === 'INSUFFICIENT_DATA'
+    ? tl('NEEDS REVIEW') : tl(verdict.replace('_', ' '))
+  const displayReason = (reason) => /^no manual input recorded/i.test(reason || '') ? '' : reason
   return (
     <div class="flex flex-col gap-2 max-w-3xl">
       <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
-        <header class="px-3 py-1.5 border-b border-line-2 bg-surface-2">
-          <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Thesis breakers')}</h2>
+        <header class="flex items-center gap-2 px-3 py-2 border-b border-line-2 bg-surface-2">
+          <h2 class="font-jakarta font-bold text-[15px] tracking-tight text-accent">{tl('Thesis Watcher')}</h2>
+          <span class={`ml-auto font-mono text-[10px] font-bold tracking-wider ${health.state === 'GOOD' ? 'text-up' : 'text-down'}`}>{health.state}</span>
         </header>
+        <div class="flex flex-wrap gap-x-3 gap-y-0.5 px-3 py-1.5 border-b border-line/50 font-mono text-[9.5px] uppercase tracking-wider text-muted">
+          <span>{health.fired} {tl('FIRED')}</span>
+          <span>{health.clear} {tl('CLEAR')}</span>
+          <span>{health.review} {tl('NEEDS REVIEW')}</span>
+        </div>
         {snap.breakers.map((b) => (
           <div key={b.id} class="border-t border-line/50 px-3 py-1.5 first:border-0">
             <div class="flex items-baseline gap-2 font-mono text-[11px]">
-              <span class={`px-1.5 rounded text-[9px] font-bold ${VERD[b.verdict] || VERD.NO_DATA}`}>{b.verdict.replace('_', ' ')}</span>
+              <span class={`px-1.5 rounded text-[9px] font-bold ${VERD[b.verdict] || VERD.NO_DATA}`}>{verdictLabel(b.verdict)}</span>
               <span class="text-ink-2 text-[10px] uppercase tracking-wider">{b.category}</span>
               <span class="text-muted text-[10px]">{b.severity}</span>
               {b.updated_at && <span class="ml-auto text-muted text-[9.5px]">{new Date(b.updated_at * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>}
             </div>
             <div class="font-anth text-[12px] text-ink-2 leading-snug pt-0.5">{b.description}</div>
-            {b.reason && <div class="font-mono text-[10.5px] text-muted pt-0.5">{b.reason}</div>}
+            {displayReason(b.reason) && <div class="font-mono text-[10.5px] text-muted pt-0.5">{b.reason}</div>}
           </div>
         ))}
       </section>
+      <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
+        <header class="flex items-center gap-2 px-3 py-1.5 border-b border-line-2 bg-surface-2">
+          <h2 class="font-jakarta font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Thesis signals')}</h2>
+          <span class="ml-auto font-mono text-[9px] text-muted">{signals.length}</span>
+        </header>
+        {signals.length ? signals.map((signal) => (
+          <div key={signal.id} class="border-t border-line/50 px-3 py-1.5 first:border-0">
+            <div class="flex items-center gap-2 font-mono text-[9px] uppercase tracking-wider text-muted">
+              <span class={`rounded px-1 font-bold ${signal.meta?.thesis >= 3 ? 'bg-down text-black' : 'bg-accent text-black'}`}>T{signal.meta?.thesis}</span>
+              <span>{signal.source || 'wire'}</span>
+              <span>{signal.type?.replaceAll('_', ' ')}</span>
+            </div>
+            {signal.url ? <a href={signal.url} target="_blank" rel="noopener" class="block pt-0.5 font-jakarta text-[12px] leading-snug text-ink-2 hover:text-accent">{signal.headline}</a>
+              : <div class="pt-0.5 font-jakarta text-[12px] leading-snug text-ink-2">{signal.headline}</div>}
+          </div>
+        )) : <div class="px-3 py-2 font-jakarta text-[11px] text-muted">{tl('No thesis-tagged wire signals in this window.')}</div>}
+      </section>
+      <AiReport
+        label="AI thesis read"
+        filename="research-watcher.md"
+        hint={tl('grounded in watcher conditions and wire evidence')}
+        buildPrompt={async () => ({
+          system: 'You are an evidence-first investment research assistant. Distinguish reported facts from inference and stay within the supplied record.',
+          prompt: thesisAnalysisPrompt(snap.breakers, signals),
+        })}
+        archive={{ kind: 'briefing', title: 'Thesis Watcher' }}
+      />
       {snap.candidates?.length > 0 && (
         <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
           <header class="px-3 py-1.5 border-b border-line-2 bg-surface-2">
-            <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{tl('New candidates')}</h2>
+            <h2 class="font-jakarta font-bold text-[11px] tracking-wider text-accent uppercase">{tl('New candidates')}</h2>
           </header>
           {snap.candidates.map((c, i) => (
             <div key={i} class="border-t border-line/50 px-3 py-1 first:border-0 font-anth text-[12px] text-ink-2">

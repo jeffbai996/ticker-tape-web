@@ -297,6 +297,10 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+.font-jakarta {
+  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+}
+
 /* AI chat motion + execution trace. The trace is a first-class transcript
    object: live work unfolds in place, then contracts to a durable summary. */
 .chat-message-enter,

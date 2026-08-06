@@ -37,7 +37,7 @@ export const NAV = [
       { id: 'whatif', label: 'What-if' },
       { id: 'trades', label: 'Trades' },
       { id: 'timetravel', label: 'Time travel' },
-      { id: 'thesis', label: 'Thesis' },
+      { id: 'thesis', label: 'Thesis Watcher' },
       { id: 'timeline', label: 'Timeline' },
       { id: 'backtest', label: 'Backtest' },
     ],
