@@ -192,3 +192,21 @@ function computeStats(book, bench) {
   }
   return { bookReturnPct, benchmarkReturnPct, alphaPct, maxDrawdownPct }
 }
+
+/** Broker executions (fragwire's fills ledger) → the same row shape the CSV
+ *  parser emits, dated on the New York calendar so a west-coast evening fill
+ *  lands on its session's date. Keeps ascending time order. */
+export function serverFillsToLedger(fills) {
+  const out = []
+  const rows = [...(fills || [])].sort((a, b) => (a?.ts || 0) - (b?.ts || 0))
+  for (const f of rows) {
+    if (!f || !f.symbol || !(f.qty > 0) || !(f.price > 0)) continue
+    const side = String(f.side || '').toUpperCase()
+    if (side !== 'BUY' && side !== 'SELL') continue
+    const date = new Date(f.ts * 1000).toLocaleDateString('en-CA',
+      { timeZone: 'America/New_York' })
+    out.push({ date, symbol: String(f.symbol).toUpperCase(), side,
+      qty: f.qty, price: f.price, currency: (f.currency || 'USD').toUpperCase() })
+  }
+  return out
+}
