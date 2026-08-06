@@ -131,9 +131,9 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
   return (
     <div
       id={`ev-${ev.id}`}
-      class={`border-b border-line/30 border-l-2 font-mono transition-colors duration-1000 cursor-pointer ${
-        hot ? 'bg-accent text-black border-l-transparent'
-          : `${TIER_EDGE[tier] || 'border-l-transparent'} ${open ? 'bg-surface-1' : 'hover:bg-accent-soft'}`
+      class={`border-b border-line/30 border-l-2 font-mono transition-colors cursor-pointer ${
+        hot ? 'duration-1000 bg-accent text-black border-l-transparent'
+          : `duration-100 ${TIER_EDGE[tier] || 'border-l-transparent'} ${open ? 'bg-surface-1' : 'hover:bg-accent-soft'}`
       }`}
       onClick={onToggle}
     >
@@ -195,6 +195,7 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
       )}
       {open && !ev.live_call && (
         <div class="px-2.5 pb-2 mx-auto w-full max-w-[78ch]">
+          <h3 class="font-anth font-semibold text-[15px] leading-snug text-ink pt-1.5 pb-1">{ev.headline}</h3>
           {ev.body && <p class="text-[11.5px] leading-relaxed text-ink-2 max-w-[72ch]">{ev.body}</p>}
           {!ev.body && !ev.story_cluster && ev.url && <ReadBody ev={ev} />}
           {/* info reads dim, clickable reads amber — everything grey made the
@@ -206,10 +207,13 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
             {ev.url && (() => {
               try {
                 const host = new URL(ev.url).hostname.replace('www.', '')
+                // aggregator links carry the true source in the headline tail
+                const m = host === 'news.google.com' && ev.headline.match(/ [-–] ([^-–]{2,40})$/)
+                const label = m ? m[1].trim() : host
                 return (
                   <a href={ev.url} target="_blank" rel="noopener"
                      class="text-accent hover:underline" onClick={(e) => e.stopPropagation()}>
-                    {host} ↗
+                    {label} ↗
                   </a>
                 )
               } catch { return null }

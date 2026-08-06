@@ -722,15 +722,32 @@ function RailWidget({ w, all, watchlist, earnDays, quotes }) {
 function SectorScroller({ watchlist, quotes, onAdd }) {
   const scroller = useRef(null)
   const [canRight, setCanRight] = useState(false)
+  const [canLeft, setCanLeft] = useState(false)
   useEffect(() => {
     const el = scroller.current
     if (!el) return
-    const measure = () => setCanRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 2)
+    const measure = () => {
+      setCanRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 2)
+      setCanLeft(el.scrollLeft > 2)
+    }
     measure()
     el.addEventListener('scroll', measure, { passive: true })
-    const observer = new ResizeObserver(measure)
-    observer.observe(el)
-    return () => { el.removeEventListener('scroll', measure); observer.disconnect() }
+    // the sector cells only MOUNT once quotes land — at mount the strip holds
+    // just the add-pill, so observing the then-current children saw nothing.
+    // Watch the child list itself and re-measure as cells appear.
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    const mo = new MutationObserver(() => {
+      measure()
+      for (const child of el.children) ro.observe(child)
+    })
+    mo.observe(el, { childList: true })
+    for (const child of el.children) ro.observe(child)
+    return () => {
+      el.removeEventListener('scroll', measure)
+      ro.disconnect()
+      mo.disconnect()
+    }
   }, [watchlist.join(',')])
   const bucketAvg = (symbols) => {
     const pcts = symbols.map((s) => quotes[s]?.quote?.pct).filter((p) => p != null)
@@ -753,12 +770,23 @@ function SectorScroller({ watchlist, quotes, onAdd }) {
         })}
         <QuickAdd onAdd={onAdd} />
       </div>
+      {canLeft && (
+        <span class="absolute left-0 inset-y-0 flex items-center pr-1 bg-gradient-to-r from-black via-black/70 to-transparent">
+          <button type="button" aria-label={tl('Scroll sectors left')}
+            onClick={() => { const el = scroller.current
+              el?.scrollTo({ left: Math.max(0, el.scrollLeft - 180), behavior: 'smooth' }) }}
+            class="grid h-5 w-5 place-items-center rounded-full border border-line-2 bg-surface-2/80 text-muted hover:text-accent hover:border-accent/50">
+            <svg viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5 5.5 8l4.5 4.5" /></svg>
+          </button>
+        </span>
+      )}
       {canRight && (
-        <span class="sector-scroll-fade absolute right-0 inset-y-0 flex items-center pl-1">
+        <span class="absolute right-0 inset-y-0 flex items-center pl-1 bg-gradient-to-l from-black via-black/70 to-transparent">
           <button type="button" aria-label={tl('Scroll sectors right')}
-            onClick={() => scroller.current?.scrollBy({ left: 180, behavior: 'smooth' })}
-            class="grid h-6 w-6 place-items-center rounded-full border border-line-2 bg-surface-2 text-muted hover:text-accent hover:border-accent/50">
-            <svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m6 3.5 4.5 4.5L6 12.5" /></svg>
+            onClick={() => { const el = scroller.current
+              el?.scrollTo({ left: Math.min(el.scrollWidth - el.clientWidth, el.scrollLeft + 180), behavior: 'smooth' }) }}
+            class="grid h-5 w-5 place-items-center rounded-full border border-line-2 bg-surface-2/80 text-muted hover:text-accent hover:border-accent/50">
+            <svg viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m6 3.5 4.5 4.5L6 12.5" /></svg>
           </button>
         </span>
       )}
@@ -920,11 +948,11 @@ export function Dashboard({ listId = null }) {
           )}
           <div class={`${activeList ? 'ml-auto' : ''} inline-flex rounded-lg border border-line bg-surface-1 p-0.5 shrink-0`}>
             <button onClick={() => setViewMode('grouped')}
-              class={`px-2 py-1 rounded-md font-anth text-[10px] transition-colors ${viewMode === 'grouped' ? 'bg-accent-soft text-accent' : 'text-muted hover:text-ink'}`}>
+              class={`px-2 py-0.5 rounded-md font-anth text-[10px] transition-colors ${viewMode === 'grouped' ? 'bg-accent-2-soft text-accent-2' : 'text-muted hover:text-ink'}`}>
               {tl('Sectors')}
             </button>
             <button onClick={() => setViewMode('flat')}
-              class={`px-2 py-1 rounded-md font-anth text-[10px] transition-colors ${viewMode === 'flat' ? 'bg-accent-soft text-accent' : 'text-muted hover:text-ink'}`}>
+              class={`px-2 py-0.5 rounded-md font-anth text-[10px] transition-colors ${viewMode === 'flat' ? 'bg-accent-2-soft text-accent-2' : 'text-muted hover:text-ink'}`}>
               {tl('All')}
             </button>
           </div>
