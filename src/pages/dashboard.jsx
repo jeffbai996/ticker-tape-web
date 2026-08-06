@@ -907,7 +907,7 @@ function BoardMenu({ sort, setSort, setViewMode, lists, listId, onSelectMode }) 
 /** The board's search box doubles as a global ticker lookup: type a company
  *  name ("Hynix") and every venue Yahoo knows drops down — the local rows
  *  keep filtering underneath, terminal not required (Jeff 2026-08-06). */
-function TickerSearch({ filter, setFilter }) {
+function TickerSearch({ filter, setFilter, activeList }) {
   const [hits, setHits] = useState(null)
   const [open, setOpen] = useState(false)
   // The box now rests folded to just the glass and blooms open on click —
@@ -957,21 +957,39 @@ function TickerSearch({ filter, setFilter }) {
             : 'w-[26px] sm:w-[88px] pr-0 sm:pr-2 cursor-pointer max-sm:placeholder:text-transparent'}`} />
       {open && hits?.length > 0 && (
         <div class="absolute top-full left-0 mt-1 w-72 max-w-[80vw] z-40 bg-surface-1/95 backdrop-blur border border-line rounded-lg shadow-[0_8px_24px_rgba(0,0,0,0.6)] overflow-hidden">
-          {hits.map((h) => (
-            <div key={h.symbol}
-              class="flex items-baseline gap-2 px-2.5 py-1.5 border-t border-line/60 first:border-0 hover:bg-accent-soft cursor-pointer"
-              onClick={() => { setOpen(false); setFilter(''); location.hash = `#/research/${h.symbol.toLowerCase()}` }}>
-              <span class="font-mono font-bold text-[11px] text-accent shrink-0">{h.symbol}</span>
-              <span class="font-anth text-[10.5px] text-ink-2 truncate">{h.name}</span>
-              <span class="ml-auto font-mono text-[8.5px] uppercase tracking-wider text-muted shrink-0">{h.exch}</span>
-              <button
-                title={isWatched(h.symbol) ? tl('on the board') : tl('add to watchlist')}
-                onClick={(e) => { e.stopPropagation(); watch(h.symbol) }}
-                class={`shrink-0 w-5 h-5 grid place-items-center rounded ${isWatched(h.symbol) ? 'text-accent' : 'text-muted hover:text-accent'}`}>
-                {isWatched(h.symbol) ? '★' : '☆'}
-              </button>
-            </div>
-          ))}
+          {hits.map((h) => {
+            // the star targets whichever board you're LOOKING at — a custom
+            // list when one is open, the main board otherwise — and a second
+            // tap removes, so favoriting is reversible from the same spot
+            // (Jeff 2026-08-06)
+            const inList = activeList
+              ? activeList.symbols.includes(h.symbol)
+              : isWatched(h.symbol)
+            const toggle = () => {
+              if (activeList) {
+                if (inList) removeWatchlistSymbol(activeList.id, h.symbol)
+                else addWatchlistSymbol(activeList.id, h.symbol)
+              } else if (inList) unwatch(h.symbol)
+              else watch(h.symbol)
+            }
+            return (
+              <div key={h.symbol}
+                class="flex items-baseline gap-2 px-2.5 py-1.5 border-t border-line/60 first:border-0 hover:bg-accent-soft cursor-pointer"
+                onClick={() => { setOpen(false); setFilter(''); location.hash = `#/research/${h.symbol.toLowerCase()}` }}>
+                <span class="font-mono font-bold text-[11px] text-accent shrink-0">{h.symbol}</span>
+                <span class="font-anth text-[10.5px] text-ink-2 truncate">{h.name}</span>
+                <span class="ml-auto font-mono text-[8.5px] uppercase tracking-wider text-muted shrink-0">{h.exch}</span>
+                <button
+                  title={inList
+                    ? (activeList ? tl('remove from list') : tl('remove from board'))
+                    : (activeList ? tl('add to this list') : tl('add to watchlist'))}
+                  onClick={(e) => { e.stopPropagation(); toggle() }}
+                  class={`shrink-0 w-5 h-5 grid place-items-center rounded ${inList ? 'text-accent' : 'text-muted hover:text-accent'}`}>
+                  {inList ? '★' : '☆'}
+                </button>
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
@@ -1081,7 +1099,7 @@ export function Dashboard({ listId = null }) {
               {tl('All')}
             </button>
           </div>
-          <TickerSearch filter={filter} setFilter={setFilter} />
+          <TickerSearch filter={filter} setFilter={setFilter} activeList={activeList} />
         </div>
 
         {/* batch trigger sits left of the sector strip; while active the

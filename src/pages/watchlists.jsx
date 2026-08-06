@@ -93,10 +93,29 @@ function WatchlistCard({ item, quotes, earnDays, allLists, primary = false }) {
     ? unwatch(symbol) : removeWatchlistSymbol(item.id, symbol)
   const send = (symbol) => { if (destId) { addTo(destId, symbol); dropFrom(symbol) } }
   const exportSymbols = () => {
-    navigator.clipboard?.writeText(item.symbols.join(' ')).then(() => {
+    const text = item.symbols.join(' ')
+    const flash = () => {
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
-    }).catch(() => {})
+    }
+    // clipboard API needs a secure context — the plain-http tailnet build gets
+    // undefined here, and even where it exists the write can be denied — either
+    // way Export silently no-oped (2026-08-06). execCommand still works in both.
+    const legacyCopy = () => {
+      const ta = document.createElement('textarea')
+      ta.value = text
+      ta.style.position = 'fixed'
+      ta.style.opacity = '0'
+      document.body.appendChild(ta)
+      ta.select()
+      try { if (document.execCommand('copy')) flash() } catch { /* no clipboard at all */ }
+      ta.remove()
+    }
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).then(flash).catch(legacyCopy)
+      return
+    }
+    legacyCopy()
   }
   const href = primary ? '#/' : `#/watchlists/${item.id}`
   const submit = (event) => {
@@ -175,7 +194,7 @@ export function WatchlistsPage() {
   const [name, setName] = useState('')
   const [seed, setSeed] = useState('')
   const [error, setError] = useState('')
-  const allLists = [{ id: 'main', name: tl('Main dashboard') }, ...lists]
+  const allLists = [{ id: 'main', name: tl('Dashboard') }, ...lists]
   const submit = (event) => {
     event.preventDefault()
     // import path: paste "NVDA MU MSFT" (or CSV) and the list is born full
@@ -210,7 +229,7 @@ export function WatchlistsPage() {
         {error && <div class="px-1 pt-2 font-anth text-[10px] text-down">{error}</div>}
 
         <div class="grid md:grid-cols-2 gap-3 pt-4">
-          <WatchlistCard item={{ id: 'main', name: tl('Main dashboard'), symbols: main }}
+          <WatchlistCard item={{ id: 'main', name: tl('Dashboard'), symbols: main }}
             quotes={quotes} earnDays={earnDays} allLists={allLists} primary />
           {lists.map((item) => (
             <WatchlistCard key={item.id} item={item} quotes={quotes}
