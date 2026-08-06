@@ -179,6 +179,13 @@ describe('quoteFromStream', () => {
     }, previous)
     expect(post).toMatchObject({ price: 100, extLabel: 'AH', extPrice: 98, extPct: -1 })
   })
+
+  it('labels Yahoo overnight-session ticks separately from after-hours', () => {
+    const overnight = quoteFromStream({
+      symbol: 'AAPL', price: 100.5, changePercent: 0.5, time: 103_000, marketHours: 4,
+    }, previous)
+    expect(overnight).toMatchObject({ price: 100, extLabel: 'OVT', extPrice: 100.5, extPct: 0.5 })
+  })
 })
 
 describe('mergeSnapshotQuote', () => {

@@ -66,4 +66,19 @@ describe('compact mobile status bar', () => {
     expect(tape).toContain('ResizeObserver')
     expect(tape).toContain("'--tape-cycle-width'")
   })
+
+  it('keeps both quote strips tightly spaced', () => {
+    expect(status).toContain('class="w-full flex items-baseline gap-1.5')
+    expect(status).toContain('leading-5 px-0.5')
+    expect(status).not.toContain('items-baseline gap-4 overflow-x-auto')
+    expect(tape).toContain('class="tape-cycle flex items-center h-full gap-1.5 pr-1.5"')
+    expect(tape).toContain('hover:no-underline px-0.5 py-0.5')
+    expect(tape).not.toContain('h-full gap-4 pr-4')
+  })
+
+  it('shows the overnight quote beside the regular print in the tape', () => {
+    expect(tape).toContain('q.extLabel')
+    expect(tape).toContain('q.extPrice')
+    expect(tape).toContain('text-[#c084fc]')
+  })
 })
