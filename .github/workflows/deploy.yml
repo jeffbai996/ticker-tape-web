@@ -32,13 +32,18 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: 'dist'
+      # Pages throttles rapid-fire deploys: after a burst, the deployment
+      # sits "queued" until deploy-pages' timeout kills it — and that timeout
+      # is HARD-CAPPED at 10 minutes inside the action (MAX_TIMEOUT clamps
+      # any larger input; verified against the pinned source, 2026-08-06 —
+      # five stale deploys in a row during a heavy iteration burst). So the
+      # ride-out has to be a second attempt, not a longer first one.
       - id: deployment
         uses: actions/deploy-pages@v4
-        with:
-          # Pages throttles rapid-fire deploys: after ~10 in an hour the
-          # deployment sits "queued" past the default 10-minute timeout and
-          # the run FAILS even though the build was fine (2026-08-06 — five
-          # stale deploys in a row during a heavy iteration burst). 25 min
-          # rides out the throttle window; cancel-in-progress above still
-          # drops superseded runs.
-          timeout: 1500000
+        continue-on-error: true
+      - name: Cool off before retrying the throttled deployment
+        if: steps.deployment.outcome == 'failure'
+        run: sleep 180
+      - id: deployment_retry
+        if: steps.deployment.outcome == 'failure'
+        uses: actions/deploy-pages@v4
