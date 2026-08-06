@@ -140,7 +140,7 @@ function CompactDayRange({ lo, hi, v, cls = '' }) {
   )
 }
 
-function TuiRow({ symbol, data, earnDays, onRemove }) {
+function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggleSelect }) {
   const q = data?.quote
   // Touch has no hover, so a tap on the ticker used to jump straight to the
   // symbol page and the name was unreachable (Jeff 2026-08-05). First tap
@@ -166,18 +166,28 @@ function TuiRow({ symbol, data, earnDays, onRemove }) {
   return (
     <a
       href={`#/research/${symbol.toLowerCase()}`}
-      class={`tui-row group/row relative block px-3 py-[3px] border-b border-line last:border-0 hover:bg-white/[0.035] hover:no-underline${revealed ? ' is-revealed' : ''}`}
+      onClick={(e) => { if (selecting) { e.preventDefault(); e.stopPropagation(); onToggleSelect(symbol) } }}
+      class={`tui-row group/row relative block px-3 py-[3px] border-b border-line last:border-0 hover:no-underline${
+        selecting ? ' pl-9 cursor-pointer' : ''}${selected ? ' bg-accent-soft' : ' hover:bg-white/[0.035]'}${revealed ? ' is-revealed' : ''}`}
       title={q?.name ? `${symbol} — ${q.name}` : symbol}
     >
+      {/* select mode: rows become toggles — the box replaces navigation, so
+          a misclick can't yank you off the board mid-batch */}
+      {selecting && (
+        <span class={`absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 grid place-items-center rounded border text-[10px] leading-none ${
+          selected ? 'border-accent bg-accent text-black' : 'border-line-2 text-transparent'}`}>
+          ✓
+        </span>
+      )}
       {/* favorites are managed where they live: hover a row, tap the star
           (Jeff 2026-08-05). Filled = on the board; a tap lifts it off. */}
-      <button
+      {!selecting && <button
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(symbol) }}
         title={`remove ${symbol} from the board`}
         class="absolute right-1.5 top-1/2 -translate-y-1/2 z-10 w-6 h-6 grid place-items-center rounded-md text-accent opacity-0 group-hover/row:opacity-100 hover:bg-surface-2 hover:text-down transition-opacity"
       >
         ★
-      </button>
+      </button>}
       {/* the meters column needs air off the quote cluster — at mid widths
           VOL was landing flush against the extended-hours percentage */}
       <div class="flex gap-6 max-sm:gap-2 min-w-0">
@@ -826,12 +836,77 @@ function QuickAdd({ onAdd }) {
   )
 }
 
+/** Toolbar hamburger, left of the sector strip: sort, select mode and the
+ *  watchlist picker fold into one menu instead of three standalone controls
+ *  (Jeff 2026-08-06: "saves a ton of space"). */
+function BoardMenu({ sort, setSort, setViewMode, lists, listId, onSelectMode }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+  useEffect(() => {
+    if (!open) return
+    const close = (e) => { if (!ref.current?.contains(e.target)) setOpen(false) }
+    const key = (e) => e.key === 'Escape' && setOpen(false)
+    addEventListener('pointerdown', close)
+    addEventListener('keydown', key)
+    return () => { removeEventListener('pointerdown', close); removeEventListener('keydown', key) }
+  }, [open])
+  const SORTS = [
+    ['manual', tl('Manual')], ['symbol', tl('Ticker')],
+    ['change', `% ${tl('Reaction')}`], ['price', tl('Price')], ['spread', tl('Spread')],
+  ]
+  const head = (label) => (
+    <div class="px-2.5 pt-1.5 pb-0.5 font-mono text-[8.5px] uppercase tracking-wider text-muted">{label}</div>
+  )
+  const item = (label, active, onClick) => (
+    <button onClick={onClick}
+      class={`w-full flex items-center gap-2 px-2.5 py-1 text-left font-anth text-[11px] hover:bg-accent-soft ${
+        active ? 'text-accent' : 'text-ink-2'}`}>
+      <span class={`w-3 shrink-0 text-[10px] ${active ? '' : 'invisible'}`}>✓</span>
+      <span class="truncate">{label}</span>
+    </button>
+  )
+  return (
+    <div ref={ref} class="relative shrink-0">
+      <button onClick={() => setOpen((v) => !v)} title={tl('board menu')}
+        class={`grid h-[26px] w-[26px] place-items-center rounded-lg border bg-surface-1 ${
+          open ? 'border-accent/60 text-accent' : 'border-line text-muted hover:text-accent hover:border-accent/50'}`}>
+        <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+          <path d="M2.5 4h11M2.5 8h11M2.5 12h11" />
+        </svg>
+      </button>
+      {open && (
+        <div class="absolute top-full left-0 mt-1 w-52 z-40 bg-surface-1/95 backdrop-blur border border-line rounded-lg shadow-[0_8px_24px_rgba(0,0,0,0.6)] py-1">
+          {head(tl('Watchlist'))}
+          {item(tl('Main board'), !listId, () => { setOpen(false); location.hash = '#/' })}
+          {lists.map((l) => item(l.name, listId === l.id,
+            () => { setOpen(false); location.hash = `#/watchlists/${l.id}` }))}
+          <div class="my-1 border-t border-line/70" />
+          {head(tl('Sort'))}
+          {SORTS.map(([v, label]) => item(label, sort === v, () => {
+            setOpen(false)
+            setSort(v)
+            // any real sort implies the flat view — grouped rows don't reorder
+            if (v !== 'manual') setViewMode('flat')
+          }))}
+          <div class="my-1 border-t border-line/70" />
+          {item(tl('select rows'), false, () => { setOpen(false); onSelectMode() })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 /** The board's search box doubles as a global ticker lookup: type a company
  *  name ("Hynix") and every venue Yahoo knows drops down — the local rows
  *  keep filtering underneath, terminal not required (Jeff 2026-08-06). */
 function TickerSearch({ filter, setFilter }) {
   const [hits, setHits] = useState(null)
   const [open, setOpen] = useState(false)
+  // The box now rests folded to just the glass and blooms open on click —
+  // at rest it was eating a third of the toolbar the sector strip wants
+  // (Jeff 2026-08-06: "shorten the search bar usually until clicked").
+  const [expanded, setExpanded] = useState(false)
+  const inputRef = useRef(null)
   const boxRef = useRef(null)
   useEffect(() => {
     const q = filter.trim()
@@ -854,11 +929,19 @@ function TickerSearch({ filter, setFilter }) {
       <span class="absolute left-2 top-1/2 -translate-y-1/2 text-muted pointer-events-none">
         <svg viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7" cy="7" r="4.4" /><path d="m10.4 10.4 3 3" /></svg>
       </span>
-      <input value={filter} onInput={(e) => setFilter(e.currentTarget.value)}
-        onFocus={() => hits?.length && setOpen(true)}
-        onKeyDown={(e) => e.key === 'Escape' && setOpen(false)}
-        placeholder={`${tl('Search')}…`}
-        class="min-w-0 w-36 sm:w-44 bg-surface-1 border border-line rounded-lg pl-6 pr-2 py-1 font-anth text-[10px] text-ink outline-none focus:border-accent placeholder:text-muted" />
+      <input ref={inputRef} value={filter} onInput={(e) => setFilter(e.currentTarget.value)}
+        onFocus={() => { setExpanded(true); if (hits?.length) setOpen(true) }}
+        onClick={() => setExpanded(true)}
+        onBlur={() => { if (!filter.trim()) setExpanded(false) }}
+        onKeyDown={(e) => {
+          if (e.key !== 'Escape') return
+          setOpen(false)
+          if (!filter.trim()) { setExpanded(false); e.currentTarget.blur() }
+        }}
+        placeholder={expanded ? `${tl('Search')}…` : ''}
+        aria-label={tl('Search')}
+        class={`min-w-0 bg-surface-1 border border-line rounded-lg pl-6 py-1 font-anth text-[10px] text-ink outline-none focus:border-accent placeholder:text-muted transition-[width] duration-300 ease-out ${
+          expanded ? 'w-36 sm:w-44 pr-2' : 'w-[26px] pr-0 cursor-pointer'}`} />
       {open && hits?.length > 0 && (
         <div class="absolute top-full left-0 mt-1 w-72 max-w-[80vw] z-40 bg-surface-1/95 backdrop-blur border border-line rounded-lg shadow-[0_8px_24px_rgba(0,0,0,0.6)] overflow-hidden">
           {hits.map((h) => (
@@ -922,12 +1005,32 @@ export function Dashboard({ listId = null }) {
     : unwatch
   const isPresent = (symbol) => watchlist.includes(String(symbol || '').trim().toUpperCase())
   const [reordering, setReordering] = useState(false)
+  // batch mode: tick rows, act once — one-star-at-a-time was the only way to
+  // clear several names off the board (Jeff 2026-08-06)
+  const [selecting, setSelecting] = useState(false)
+  const [selected, setSelected] = useState(() => new Set())
+  const toggleSelect = (sym) => setSelected((prev) => {
+    const next = new Set(prev)
+    if (next.has(sym)) next.delete(sym)
+    else next.add(sym)
+    return next
+  })
+  const endSelect = () => { setSelecting(false); setSelected(new Set()) }
+  const batchRemove = () => { for (const s of selected) removeSymbol(s); endSelect() }
   const nudgeSymbol = activeList
     ? (sym, d) => moveWatchlistSymbol(activeList.id, sym, d)
     : moveSymbol
   const dropSymbol = activeList
     ? (sym, before) => moveWatchlistSymbol(activeList.id, sym, { before })
     : placeSymbol
+  // successive inserts before the first UNselected row land the picks at the
+  // top in their current relative order
+  const batchTop = () => {
+    const sel = watchlist.filter((s) => selected.has(s))
+    const anchor = watchlist.find((s) => !selected.has(s))
+    if (anchor) for (const s of sel) dropSymbol(s, anchor)
+    endSelect()
+  }
 
   // 10s tick keeps the "updated" line and stale banner honest between fetches.
   const [, tick] = useState(0)
@@ -957,22 +1060,41 @@ export function Dashboard({ listId = null }) {
             </button>
           </div>
           <TickerSearch filter={filter} setFilter={setFilter} />
-          {viewMode === 'flat' && (
-            <select value={sort} onChange={(e) => setSort(e.currentTarget.value)}
-              class="bg-surface-1 border border-line rounded-lg px-2 py-1 font-anth text-[10px] text-ink-2 outline-none focus:border-accent">
-              <option value="manual">{tl('Sort')}</option>
-              <option value="symbol">{tl('Ticker')}</option>
-              <option value="change">% {tl('Reaction')}</option>
-              <option value="price">{tl('Price')}</option>
-              <option value="spread">{tl('Spread')}</option>
-            </select>
-          )}
         </div>
 
-        {/* Thesis strip: bucket averages at a glance. One swipeable line at
-            every width — it wrapped to four lines of prime real estate
-            (Jeff 2026-08-04: "keep it all on one line somehow"). */}
-        <SectorScroller watchlist={watchlist} quotes={quotes} onAdd={addSymbol} />
+        {/* batch trigger sits left of the sector strip; while active the
+            strip yields its slot to the action bar (Jeff 2026-08-06) */}
+        {selecting ? (
+          <div class="md:ml-auto flex items-center gap-1.5 px-1 pb-2 md:px-0 md:pb-0 font-mono text-[10px] whitespace-nowrap overflow-x-auto no-scrollbar">
+            <span class="text-muted">{selected.size} {tl('selected')}</span>
+            <button onClick={() => setSelected(new Set(viewMode === 'flat' ? flatRows.map((r) => r.symbol) : visibleManual))}
+              class="px-2 py-0.5 rounded border border-line text-ink-2 hover:border-accent hover:text-accent">
+              {tl('select all')}
+            </button>
+            <button onClick={batchTop} disabled={!selected.size}
+              class="px-2 py-0.5 rounded border border-line text-ink-2 hover:border-accent hover:text-accent disabled:opacity-40 disabled:pointer-events-none">
+              {tl('top')}
+            </button>
+            <button onClick={batchRemove} disabled={!selected.size}
+              class="px-2 py-0.5 rounded border border-line text-ink-2 hover:border-down hover:text-down disabled:opacity-40 disabled:pointer-events-none">
+              {tl('remove')}
+            </button>
+            <button onClick={endSelect}
+              class="px-2 py-0.5 rounded border border-accent text-accent hover:bg-accent hover:text-black font-semibold">
+              {tl('done')}
+            </button>
+          </div>
+        ) : (
+          <div class="flex items-center gap-2 min-w-0 md:flex-1 md:ml-auto max-md:px-1">
+            <BoardMenu sort={sort} setSort={setSort} setViewMode={setViewMode}
+              lists={namedWatchlists} listId={activeList?.id || null}
+              onSelectMode={() => setSelecting(true)} />
+            {/* Thesis strip: bucket averages at a glance. One swipeable line at
+                every width — it wrapped to four lines of prime real estate
+                (Jeff 2026-08-04: "keep it all on one line somehow"). */}
+            <SectorScroller watchlist={watchlist} quotes={quotes} onAdd={addSymbol} />
+          </div>
+        )}
       </div>
 
       {/* lg (1024px) not xl: the rail used to vanish one browser-zoom notch in.
@@ -1008,13 +1130,15 @@ export function Dashboard({ listId = null }) {
                 </div>
                 {!folded && g.symbols.map((s) => (
                   <TuiRow key={s} symbol={s} data={quotes[s]} earnDays={earnDays[s]}
-                    onRemove={removeSymbol} />
+                    onRemove={removeSymbol} selecting={selecting}
+                    selected={selected.has(s)} onToggleSelect={toggleSelect} />
                 ))}
               </div>
             )
           }) : flatRows.map(({ symbol }) => (
             <TuiRow key={symbol} symbol={symbol} data={quotes[symbol]} earnDays={earnDays[symbol]}
-              onRemove={removeSymbol} />
+              onRemove={removeSymbol} selecting={selecting}
+              selected={selected.has(symbol)} onToggleSelect={toggleSelect} />
           ))}
           {!watchlist.length && (
             <div class="px-3 py-8 text-center font-anth text-[11px] text-muted">{tl('empty watchlist — add the first ticker below')}</div>
