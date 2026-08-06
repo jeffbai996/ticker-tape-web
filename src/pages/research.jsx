@@ -998,8 +998,8 @@ function ProfileView({ symbol }) {
         </div>
       </SectionCard>
       {p.summary && (
-        <SectionCard title={tl('Business')}>
-          <p class="p-4 pt-3 text-[12.5px] leading-relaxed text-ink-2 max-w-[74ch]">{p.summary}</p>
+        <SectionCard title={tl('Description')}>
+          <p class="p-4 pt-3 font-anth text-[11.5px] leading-relaxed text-ink-2 max-w-[74ch]">{p.summary}</p>
         </SectionCard>
       )}
       </div>
@@ -1102,6 +1102,105 @@ function FilingsView({ symbol }) {
             ))}
           </tbody>
         </table>
+      </SectionCard>
+    </div>
+  )
+}
+
+function SymbolNewsView({ symbol, name }) {
+  const [yahoo, setYahoo] = useState(null)
+  const [wireRows, setWireRows] = useState(null)
+  const base = wireUrl()
+  useEffect(() => {
+    let dead = false
+    setYahoo(null)
+    fetchNews(symbol).then((n) => !dead && setYahoo(n)).catch(() => !dead && setYahoo([]))
+    return () => { dead = true }
+  }, [symbol])
+  useEffect(() => {
+    let dead = false
+    setWireRows(null)
+    if (!base) { setWireRows([]); return }
+    const root = base.replace(/\/$/, '')
+    const queries = [
+      fetch(`${root}/api/events?symbols=${encodeURIComponent(symbol)}&limit=40&newest=1`,
+            { signal: AbortSignal.timeout(10_000) }).then((r) => r.json()).catch(() => null),
+      fetch(`${root}/api/search?q=${encodeURIComponent(symbol)}`,
+            { signal: AbortSignal.timeout(10_000) }).then((r) => r.json()).catch(() => null),
+    ]
+    // untagged stories talk about the company, not the ticker
+    const word = (name || '').split(/[\s,]+/)[0]
+    if (word && word.toLowerCase() !== symbol.toLowerCase()) {
+      queries.push(fetch(`${root}/api/search?q=${encodeURIComponent(word)}`,
+                         { signal: AbortSignal.timeout(10_000) }).then((r) => r.json()).catch(() => null))
+    }
+    Promise.all(queries).then((outs) => {
+      if (dead) return
+      const seen = new Set()
+      const rows = []
+      for (const out of outs) {
+        for (const e of out?.events || []) {
+          if (seen.has(e.id)) continue
+          seen.add(e.id)
+          if (e.type === 'brief' || e.type === 'transcript_chunk') continue
+          rows.push(e)
+        }
+      }
+      rows.sort((a, b) => (b.ts_event || 0) - (a.ts_event || 0))
+      setWireRows(rows.slice(0, 40))
+    })
+    return () => { dead = true }
+  }, [symbol, base, name])
+
+  const CODE = { earnings_release: 'ERN', filing: 'FIL', headline: 'NWS',
+    macro_print: 'ECO', price_move: 'PX', digest: 'DIG' }
+  return (
+    <div class="flex flex-col gap-3 max-w-6xl">
+      {base && (
+        <SectionCard title={`${tl('On the wire')} · ${symbol}`}>
+          {wireRows === null ? (
+            <div class="px-3 py-2 font-mono text-[11px] text-muted">{tt('common.loading')}</div>
+          ) : !wireRows.length ? (
+            <div class="px-3 py-2 font-mono text-[11px] text-muted">{tt('research.nothing_on_wire', { symbol })}</div>
+          ) : (
+            <div class="font-mono text-[11.5px]">
+              {wireRows.map((e) => (
+                <div key={e.id} class="grid grid-cols-[86px_36px_1fr] gap-x-2.5 items-baseline px-3 py-[3px] border-t border-line first:border-0 hover:bg-surface-3">
+                  <span class="text-muted whitespace-nowrap">
+                    {new Date(e.ts_event * 1000).toLocaleDateString(getLocale() === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric' }).toLowerCase()}
+                    {' '}
+                    {new Date(e.ts_event * 1000).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', timeZone: 'America/New_York' })}
+                  </span>
+                  <span class={`text-[10px] tracking-wider ${e.type === 'earnings_release' || e.type === 'price_move' ? 'text-accent font-semibold' : 'text-muted'}`}>
+                    {CODE[e.type] || (e.type || '').slice(0, 3).toUpperCase()}
+                  </span>
+                  {e.url
+                    ? <a class="text-ink-2 hover:text-accent truncate" href={e.url} target="_blank" rel="noopener">{e.headline}</a>
+                    : <span class="text-ink-2 truncate">{e.headline}</span>}
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+      )}
+      <SectionCard title={`${tl('News')} · ${symbol}`}>
+        {yahoo === null ? (
+          <div class="px-3 py-2 font-mono text-[11px] text-muted">{tt('common.loading')}</div>
+        ) : !yahoo.length ? (
+          <div class="px-3 py-2 font-mono text-[11px] text-muted">{tl('no headlines')}</div>
+        ) : (
+          <div class="font-mono text-[11.5px]">
+            {yahoo.map((n, i) => (
+              <div key={i} class="grid grid-cols-[86px_1fr_auto] gap-x-2.5 items-baseline px-3 py-[3px] border-t border-line first:border-0 hover:bg-surface-3">
+                <span class="text-muted whitespace-nowrap">
+                  {n.time ? new Date(n.time).toLocaleDateString(getLocale() === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric' }).toLowerCase() : '—'}
+                </span>
+                <a class="text-ink-2 hover:text-accent truncate" href={n.link} target="_blank" rel="noopener">{n.title}</a>
+                <span class="text-[10px] text-muted truncate max-w-[16ch]">{n.publisher}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </SectionCard>
     </div>
   )
@@ -1557,8 +1656,8 @@ export function Research({ route }) {
   // Options. 0 = the tenth tab. Inputs keep their digits.
   useEffect(() => {
     if (!symbol) return
-    const VIEWS = [null, 'intraday', 'options', 'earnings', 'analysts',
-                   'insider', 'holders', 'filings', 'profile', 'wire']
+    const VIEWS = [null, 'news', 'intraday', 'options', 'earnings',
+                   'analysts', 'insider', 'holders', 'filings', 'profile']
     const onKey = (e) => {
       if (e.target instanceof HTMLInputElement
           || e.target instanceof HTMLTextAreaElement
@@ -1649,6 +1748,7 @@ export function Research({ route }) {
       <div class="flex gap-1 px-1 pb-2 select-none flex-nowrap overflow-x-auto no-scrollbar">
         {[
           { id: null, label: tl('Overview'), href: `#/research/${symbol.toLowerCase()}` },
+          { id: 'news', label: tl('News'), href: `#/research/${symbol.toLowerCase()}/news` },
           { id: 'intraday', label: tl('Chart'), href: `#/research/${symbol.toLowerCase()}/intraday` },
           { id: 'options', label: tl('Options'), href: `#/research/${symbol.toLowerCase()}/options` },
           { id: 'earnings', label: tl('Earnings'), href: `#/research/${symbol.toLowerCase()}/earnings` },
@@ -1657,7 +1757,6 @@ export function Research({ route }) {
           { id: 'holders', label: tl('Holders'), href: `#/research/${symbol.toLowerCase()}/holders` },
           { id: 'filings', label: tl('Filings'), href: `#/research/${symbol.toLowerCase()}/filings` },
           { id: 'profile', label: tl('Profile'), href: `#/research/${symbol.toLowerCase()}/profile` },
-          { id: 'wire', label: tl('Wire'), href: `#/research/${symbol.toLowerCase()}/wire` },
         ].map((tab, ti) => (
           <a
             key={tab.label}
@@ -1691,8 +1790,8 @@ export function Research({ route }) {
         <HoldersView symbol={symbol} />
       ) : route.view === 'filings' ? (
         <FilingsView symbol={symbol} />
-      ) : route.view === 'wire' ? (
-        <SymbolWireView symbol={symbol} />
+      ) : route.view === 'wire' || route.view === 'news' ? (
+        <SymbolNewsView symbol={symbol} name={q?.name} />
       ) : route.view === 'dividends' ? (
         <DividendsView symbol={symbol} />
       ) : route.view === 'profile' ? (

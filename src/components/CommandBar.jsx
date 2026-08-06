@@ -289,6 +289,8 @@ export function CommandBar() {
     const onDoc = (e) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return
       if (e.key === '/' || e.key.length !== 1) return
+      // research pages own bare digits — bloomberg speed keys (1 = Overview)
+      if (/^[0-9]$/.test(e.key) && location.hash.startsWith('#/research/')) return
       const el = document.activeElement
       if (el?.isContentEditable) return
       if (/^(INPUT|TEXTAREA|SELECT)$/.test(el?.tagName || '')) return
