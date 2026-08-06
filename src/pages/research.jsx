@@ -18,7 +18,7 @@ import { bsDelta } from '../lib/bs.js'
 import { vwapSeries } from '../lib/vwap.js'
 import { LineSeries } from 'lightweight-charts'
 import { sma, rsi, macd, bollinger } from '../lib/indicators.js'
-import { fmtPrice, fmtPct, fmtChange, fmtVol, fmtBig, fmtRatio, fmtFracPct } from '../lib/format.js'
+import { fmtPrice, fmtPriceBare, fmtPct, fmtChange, fmtVol, fmtBig, fmtRatio, fmtFracPct } from '../lib/format.js'
 import { hrefFor } from '../lib/route.js'
 import { Marquee } from '../components/Marquee.jsx'
 import { getLocale, tl, t as tt } from '../lib/i18n.js'
@@ -1186,8 +1186,43 @@ function OwnershipView({ symbol }) {
   )
 }
 
+function DesSpark({ symbol }) {
+  const [hist, setHist] = useState(null)
+  useEffect(() => {
+    setHist(null)
+    fetchHistory(symbol, '1Y').then(setHist).catch(() => setHist({ bars: [] }))
+  }, [symbol])
+  const closes = hist?.bars?.map((b) => b.close) || []
+  if (!closes.length) return <div class="h-[92px]" />
+  const lo = Math.min(...closes)
+  const hi = Math.max(...closes)
+  const W = 200
+  const H = 72
+  const x = (i) => (i / (closes.length - 1)) * W
+  const y = (v) => H - ((v - lo) / (hi - lo || 1)) * (H - 4) - 2
+  const path = closes.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ')
+  const up = closes[closes.length - 1] >= closes[0]
+  const tone = up ? 'var(--color-up)' : 'var(--color-down)'
+  return (
+    <div class="flex flex-col gap-0.5">
+      <div class="flex justify-between font-mono text-[8.5px] text-muted uppercase tracking-wider">
+        <span>1Y</span><span>{fmtPriceBare(lo)} – {fmtPriceBare(hi)}</span>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} class="w-full h-[72px]" preserveAspectRatio="none">
+        <path d={`${path} L${W},${H} L0,${H} Z`} fill={tone} opacity="0.08" />
+        <path d={path} fill="none" stroke={tone} stroke-width="1.4" />
+      </svg>
+    </div>
+  )
+}
+
 function ProfileView({ symbol }) {
   const [p, failed] = useFetched(symbol, fetchProfile)
+  const [f, setF] = useState(null)
+  useEffect(() => {
+    setF(null)
+    fetchFundamentals(symbol).then(setF).catch(() => {})
+  }, [symbol])
   if (failed || (p === null && failed)) {
     return <div class="px-1 font-mono text-[11px] text-muted">no profile for {symbol}</div>
   }
@@ -1203,25 +1238,49 @@ function ProfileView({ symbol }) {
           {p.summary && (
             <p class="font-anth text-[11.5px] leading-relaxed text-ink-2 flex-1 min-w-0">{p.summary}</p>
           )}
-          <dl class="shrink-0 w-52 max-md:w-full font-mono text-[11px] flex flex-col gap-1.5 border-l border-line pl-4 max-md:border-l-0 max-md:pl-0 max-md:pt-3 max-md:border-t">
-            {[
-              [tl('Sector'), p.sector, 'text-ink'],
-              [tl('Industry'), p.industry, 'text-ink-2'],
-              [tl('Employees'), p.employees ? p.employees.toLocaleString() : null, 'text-ink-2'],
-              [tl('HQ'), [p.city, p.state, p.country].filter(Boolean).join(', ') || null, 'text-ink-2'],
-            ].map(([label, value, toneCls]) => (
-              <div key={label} class="flex flex-col">
-                <dt class="text-[8.5px] uppercase tracking-wider text-muted">{label}</dt>
-                <dd class={toneCls}>{value || '—'}</dd>
-              </div>
-            ))}
-            {p.website && (
-              <div class="flex flex-col">
-                <dt class="text-[8.5px] uppercase tracking-wider text-muted">{tl('Website')}</dt>
-                <dd><a class="text-accent hover:underline" href={p.website} target="_blank" rel="noopener">{p.website.replace(/^https?:\/\//, '')}</a></dd>
-              </div>
-            )}
-          </dl>
+          <div class="shrink-0 w-60 max-md:w-full flex flex-col gap-3 border-l border-line pl-4 max-md:border-l-0 max-md:pl-0 max-md:pt-3 max-md:border-t">
+            <DesSpark symbol={symbol} />
+            <dl class="font-mono text-[11px] flex flex-col gap-1.5">
+              {[
+                [tl('Sector'), p.sector, 'text-ink'],
+                [tl('Industry'), p.industry, 'text-ink-2'],
+                [tl('Mkt cap'), f?.marketCap != null ? fmtBig(f.marketCap) : null, 'text-ink'],
+                [tl('Employees'), p.employees ? p.employees.toLocaleString() : null, 'text-ink-2'],
+              ].map(([label, value, toneCls]) => (
+                <div key={label} class="flex flex-col">
+                  <dt class="text-[8.5px] uppercase tracking-wider text-muted">{label}</dt>
+                  <dd class={toneCls}>{value || '—'}</dd>
+                </div>
+              ))}
+              {(p.address || p.city) && (
+                <div class="flex flex-col">
+                  <dt class="text-[8.5px] uppercase tracking-wider text-muted">{tl('HQ')}</dt>
+                  {p.address && <dd class="text-ink-2">{p.address}</dd>}
+                  <dd class="text-ink-2">{[p.city, p.state].filter(Boolean).join(', ')}{p.zip ? ` ${p.zip}` : ''}</dd>
+                  {/* country reads as its own line, not run into the city */}
+                  {p.country && <dd class="text-ink-2">{p.country}</dd>}
+                </div>
+              )}
+              {p.phone && (
+                <div class="flex flex-col">
+                  <dt class="text-[8.5px] uppercase tracking-wider text-muted">{tl('Phone')}</dt>
+                  <dd class="text-ink-2">{p.phone}</dd>
+                </div>
+              )}
+              {p.website && (
+                <div class="flex flex-col">
+                  <dt class="text-[8.5px] uppercase tracking-wider text-muted">{tl('Website')}</dt>
+                  <dd><a class="text-accent hover:underline" href={p.website} target="_blank" rel="noopener">{p.website.replace(/^https?:\/\//, '')}</a></dd>
+                </div>
+              )}
+              {p.irWebsite && (
+                <div class="flex flex-col">
+                  <dt class="text-[8.5px] uppercase tracking-wider text-muted">IR</dt>
+                  <dd><a class="text-accent hover:underline" href={p.irWebsite} target="_blank" rel="noopener">{p.irWebsite.replace(/^https?:\/\//, '').slice(0, 34)}</a></dd>
+                </div>
+              )}
+            </dl>
+          </div>
         </div>
       </SectionCard>
       {p.officers.length > 0 && (

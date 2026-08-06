@@ -160,10 +160,14 @@ export function parseProfile(result) {
     sector: p.sector ?? null,
     industry: p.industry ?? null,
     employees: p.fullTimeEmployees ?? null,
+    address: p.address1 ?? null,
     city: p.city ?? null,
     state: p.state ?? null,
+    zip: p.zip ?? null,
     country: p.country ?? null,
+    phone: p.phone ?? null,
     website: p.website ?? null,
+    irWebsite: p.irWebsite ?? null,
     summary: p.longBusinessSummary ?? null,
     officers: (p.companyOfficers || [])
       .filter((o) => o?.name)
