@@ -13,7 +13,10 @@ describe('compact dashboard company name', () => {
     // the swap only covers widths too narrow to show both strings at once;
     // above that the name rides inline in the slot's spare width
     expect(dashboard).toContain('class="tui-company-name-swap @min-[545px]:hidden"')
-    expect(dashboard).toContain('@min-[545px]:block @min-[820px]:hidden min-w-0 truncate')
+    // 2026-08-06: the mid-band name hover-scrolls instead of hard-truncating,
+    // so the reader can see the rest of a long name at that zoom
+    expect(dashboard).toContain('data-inline-name class="hidden @min-[545px]:block @min-[820px]:hidden min-w-0"')
+    expect(dashboard).toMatch(/data-inline-name[\s\S]{0,200}<Marquee text=\{q\.name\}/)
     expect(dashboard).toContain('aria-hidden="true"')
     expect(dashboard).toContain('class="tui-company-name-wide hidden @min-[820px]:block')
     expect(css).toContain('.tui-row:hover .tui-company-symbol')
