@@ -324,7 +324,10 @@ const LABELS = {
   'Main board': '主看板', 'board menu': '看板菜单',
   sessions: '会话', live: '直播', capturing: '录制中', armed: '待命', queued: '排队中',
   positions: '持仓', 'margin ladder': '保证金梯度', 'filter by symbol': '按代码筛选',
-  'upcoming dividends': '即将派息',
+  'upcoming dividends': '即将派息', 'snapshots since': '快照始于', days: '天',
+  'snapshot store live — the curve draws itself as daily history accrues':
+    '快照存储已启用 — 每日数据累积后曲线自动生成',
+  'broker snapshot': '券商快照',
   'drag rows or use the arrows': '拖动行或使用箭头调整顺序',
   'move up': '上移', 'move down': '下移',
   'not a symbol': '代码无效',
