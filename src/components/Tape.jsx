@@ -3,7 +3,7 @@ import { useQuotes, useWatchlist } from '../hooks.js'
 import { fmtPrice, fmtPct } from '../lib/format.js'
 import { hrefFor } from '../lib/route.js'
 import { marqueeCopies } from '../lib/marquee.js'
-import { tapeEntries } from '../lib/tape.js'
+import { tapeBadge, tapeEntries } from '../lib/tape.js'
 import { tapeworthy, wireUrl } from '../lib/wire.js'
 import { extendedLabelClass } from '../lib/extendedHours.js'
 
@@ -91,23 +91,12 @@ function useWireHeadlines() {
 
 // The category, not a blanket WIRE stamp — an ERN pill and a FED pill read
 // differently at a glance (Jeff 2026-08-04).
-const TAPE_CODE = {
-  price_move: 'MOVE',
-  earnings_release: 'ERN',
-  filing: 'FIL',
-  fed_headline: 'FED',
-  fed_speech: 'FED',
-  macro_print: 'MACRO',
-  headline: 'NEWS',
-  digest: 'AUDIO',
-  transcript_chunk: 'AUDIO',
-  brief: 'BRIEF',
-}
 
 export function Tape() {
   const watchlist = useWatchlist()
   const quotes = useQuotes(watchlist)
   const heads = useWireHeadlines()
+  const watchset = new Set(watchlist)
   const items = watchlist.map((s) => ({ symbol: s, q: quotes[s]?.quote }))
   const entries = tapeEntries(heads, items)
   const wrap = useRef(null)
@@ -160,8 +149,8 @@ export function Tape() {
                     class="flex items-baseline gap-2 whitespace-nowrap hover:no-underline px-1 py-0.5"
                     title={e.headline}
                   >
-                    <span class="text-[9px] font-bold tracking-wider text-black bg-accent px-1 rounded-sm">
-                      {TAPE_CODE[e.type] || 'WIRE'}
+                    <span class={`text-[9px] font-bold tracking-wider px-1 rounded-sm ${tapeBadge(e, watchset).cls}`}>
+                      {tapeBadge(e, watchset).code}
                     </span>
                     <span class="text-accent font-semibold max-w-[46ch] truncate">{e.headline}</span>
                   </a>

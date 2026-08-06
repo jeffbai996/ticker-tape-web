@@ -17,6 +17,21 @@ describe('tapeworthy', () => {
     expect(tapeworthy([ev({ meta: {} })], { now: NOW })).toHaveLength(0)
   })
 
+  // typed events carry their own category (ERN/FIL/FED/MACRO) — the whole
+  // point of the tape badge — and a filing doesn't need a triage score to be
+  // worth a slot (Jeff 2026-08-05: "is there nothing more informative")
+  it('takes typed signal events on their own merit', () => {
+    for (const type of ['earnings_release', 'filing', 'fed_headline',
+                        'fed_speech', 'macro_print']) {
+      expect(tapeworthy([ev({ type, meta: {} })], { now: NOW })).toHaveLength(1)
+    }
+  })
+
+  it('still drops untyped chatter that the triage scored low', () => {
+    expect(tapeworthy([ev({ type: 'headline', meta: { thesis: 1 } })], { now: NOW }))
+      .toHaveLength(0)
+  })
+
   it('always takes price moves, whatever the triage said', () => {
     const out = tapeworthy([ev({ type: 'price_move', meta: {} })], { now: NOW })
     expect(out).toHaveLength(1)
