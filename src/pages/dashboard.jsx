@@ -930,7 +930,7 @@ function RailWidget({ w, all, watchlist, earnDays, quotes }) {
   )
 }
 
-function SectorScroller({ watchlist, quotes, onAdd }) {
+function SectorScroller({ watchlist, quotes }) {
   const scroller = useRef(null)
   const [canRight, setCanRight] = useState(false)
   const [canLeft, setCanLeft] = useState(false)
@@ -979,7 +979,6 @@ function SectorScroller({ watchlist, quotes, onAdd }) {
             </a>
           )
         })}
-        <QuickAdd onAdd={onAdd} />
       </div>
       {canLeft && (
         <span class="absolute left-0 inset-y-0 flex items-center pr-1 bg-gradient-to-r from-black via-black/70 to-transparent">
@@ -1002,38 +1001,6 @@ function SectorScroller({ watchlist, quotes, onAdd }) {
         </span>
       )}
     </div>
-  )
-}
-
-/** "+ add" that blooms into an input in place — one control, no chrome.
- *  Enter adds (uppercased) and keeps focus for the next one; Esc folds it. */
-function QuickAdd({ onAdd }) {
-  const [open, setOpen] = useState(false)
-  const [v, setV] = useState('')
-  const submit = (e) => {
-    e.preventDefault()
-    if (onAdd(v)) setV('')
-  }
-  if (!open) {
-    return (
-      <button onClick={() => setOpen(true)}
-        class="whitespace-nowrap font-mono text-[10px] text-muted border border-dashed border-line-2 rounded-full px-2 py-px hover:text-accent hover:border-accent/60 transition-colors">
-        + {tl('add')}
-      </button>
-    )
-  }
-  return (
-    <form onSubmit={submit} class="inline-flex">
-      <input
-        autoFocus
-        value={v}
-        onInput={(e) => setV(e.currentTarget.value)}
-        onKeyDown={(e) => { if (e.key === 'Escape') { setOpen(false); setV('') } }}
-        onBlur={() => { if (!v.trim()) setOpen(false) }}
-        placeholder="SYM"
-        class="w-16 bg-surface-2 border border-accent/60 rounded-full px-2 py-px font-mono text-[10px] text-ink uppercase outline-none placeholder:text-muted placeholder:normal-case"
-      />
-    </form>
   )
 }
 
@@ -1148,25 +1115,26 @@ function TickerSearch({ filter, setFilter, activeList }) {
         placeholder={`${tl('Search')}…`}
         aria-label={tl('Search')}
         class={`min-w-0 bg-surface-1 border border-line rounded-lg pl-6 py-1 font-anth text-[10px] text-ink outline-none focus:border-accent placeholder:text-muted transition-[width] duration-300 ease-out ${
-          expanded ? 'w-36 sm:w-44 pr-2'
+          expanded ? 'w-44 sm:w-60 pr-2'
             : 'w-[26px] sm:w-[88px] pr-0 sm:pr-2 cursor-pointer max-sm:placeholder:text-transparent'}`} />
       {open && hits?.length > 0 && (
-        <div class="absolute top-full left-0 mt-1 w-72 max-w-[80vw] z-40 bg-surface-1/95 backdrop-blur border border-line rounded-lg shadow-[0_8px_24px_rgba(0,0,0,0.6)] overflow-hidden">
-          {hits.map((h) => {
-            // the star targets whichever board you're LOOKING at — a custom
-            // list when one is open, the main board otherwise — and a second
-            // tap removes, so favoriting is reversible from the same spot
-            // (Jeff 2026-08-06)
-            const inList = activeList
+        <div class="absolute top-full left-0 mt-1 w-[26rem] max-w-[88vw] z-40 bg-surface-1/95 backdrop-blur border border-line rounded-lg shadow-[0_8px_24px_rgba(0,0,0,0.6)] overflow-hidden">
+          {hits.slice(0, 5).map((h) => {
+            // two targets, two buttons (Jeff 2026-08-06): [+] drops the hit
+            // on whichever board you're LOOKING at, the star is the main
+            // watchlist — both toggle, so either action reverses in place
+            const inCur = activeList
               ? activeList.symbols.includes(h.symbol)
               : isWatched(h.symbol)
-            const toggle = () => {
+            const toggleCur = () => {
               if (activeList) {
-                if (inList) removeWatchlistSymbol(activeList.id, h.symbol)
+                if (inCur) removeWatchlistSymbol(activeList.id, h.symbol)
                 else addWatchlistSymbol(activeList.id, h.symbol)
-              } else if (inList) unwatch(h.symbol)
+              } else if (inCur) unwatch(h.symbol)
               else watch(h.symbol)
             }
+            const starred = isWatched(h.symbol)
+            const toggleStar = () => { if (starred) unwatch(h.symbol); else watch(h.symbol) }
             return (
               <div key={h.symbol}
                 class="flex items-baseline gap-2 px-2.5 py-1.5 border-t border-line/60 first:border-0 hover:bg-accent-soft cursor-pointer"
@@ -1175,12 +1143,18 @@ function TickerSearch({ filter, setFilter, activeList }) {
                 <span class="font-anth text-[10.5px] text-ink-2 truncate">{h.name}</span>
                 <span class="ml-auto font-mono text-[8.5px] uppercase tracking-wider text-muted shrink-0">{h.exch}</span>
                 <button
-                  title={inList
-                    ? (activeList ? tl('remove from list') : tl('remove from board'))
-                    : (activeList ? tl('add to this list') : tl('add to watchlist'))}
-                  onClick={(e) => { e.stopPropagation(); toggle() }}
-                  class={`shrink-0 w-5 h-5 grid place-items-center rounded ${inList ? 'text-accent' : 'text-muted hover:text-accent'}`}>
-                  {inList ? '★' : '☆'}
+                  title={inCur ? tl('remove from current watchlist') : tl('add to current watchlist')}
+                  onClick={(e) => { e.stopPropagation(); toggleCur() }}
+                  class={`shrink-0 w-5 h-5 grid place-items-center rounded ${inCur ? 'text-accent' : 'text-muted hover:text-accent'}`}>
+                  <svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                    {inCur ? <path d="m3.5 8.5 3 3 6-6.5" /> : <path d="M8 3.5v9M3.5 8h9" />}
+                  </svg>
+                </button>
+                <button
+                  title={starred ? tl('remove from board') : tl('add to watchlist')}
+                  onClick={(e) => { e.stopPropagation(); toggleStar() }}
+                  class={`shrink-0 w-5 h-5 grid place-items-center rounded ${starred ? 'text-accent' : 'text-muted hover:text-accent'}`}>
+                  {starred ? '★' : '☆'}
                 </button>
               </div>
             )
@@ -1324,7 +1298,7 @@ export function Dashboard({ listId = null }) {
             {/* Thesis strip: bucket averages at a glance. One swipeable line at
                 every width — it wrapped to four lines of prime real estate
                 (Jeff 2026-08-04: "keep it all on one line somehow"). */}
-            <SectorScroller watchlist={watchlist} quotes={quotes} onAdd={addSymbol} />
+            <SectorScroller watchlist={watchlist} quotes={quotes} />
           </div>
         )}
       </div>
