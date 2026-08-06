@@ -426,15 +426,22 @@ function MacroCalPanel() {
       </header>
       <div class="overflow-y-auto min-h-0">
       <div class="py-1">
-        {events.map((e) => (
-          <div key={`${e.date}-${e.type}-${e.id ?? ''}`} class="flex items-baseline gap-2 px-3 py-[2px] font-mono text-[11px]">
-            <span class={`w-10 font-bold shrink-0 truncate ${e.user ? 'text-[#00c8ff]' : ECON_COLORS[e.type] || 'text-ink-2'}`}>
-              {e.user ? (e.symbol === 'MACRO' ? e.type : e.symbol) : e.type}
-            </span>
-            <span class="text-muted flex-1 truncate">{e.user ? e.rawLabel : tl(e.label)}</span>
-            <span class={dayCls(e.days)}>{e.days === 0 ? tl('today') : `${e.days}d`}</span>
-          </div>
-        ))}
+        {events.map((e) => {
+          // every row goes somewhere: a ticker catalyst to its research page,
+          // everything else to the full calendar (Jeff 2026-08-06)
+          const href = e.user && e.symbol && e.symbol !== 'MACRO'
+            ? `#/research/${e.symbol.toLowerCase()}` : '#/markets/calendar'
+          return (
+            <a key={`${e.date}-${e.type}-${e.id ?? ''}`} href={href}
+              class="flex items-baseline gap-2 px-3 py-[2px] font-mono text-[11px] hover:bg-surface-3 hover:no-underline">
+              <span class={`w-10 font-bold shrink-0 truncate ${e.user ? 'text-[#00c8ff]' : ECON_COLORS[e.type] || 'text-ink-2'}`}>
+                {e.user ? (e.symbol === 'MACRO' ? e.type : e.symbol) : e.type}
+              </span>
+              <span class="text-muted flex-1 truncate">{e.user ? e.rawLabel : tl(e.label)}</span>
+              <span class={dayCls(e.days)}>{e.days === 0 ? tl('today') : `${e.days}d`}</span>
+            </a>
+          )
+        })}
       </div>
     </div>
     </section>

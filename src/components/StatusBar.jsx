@@ -97,7 +97,10 @@ function StripCell({ symbol, label, q }) {
     <a href={hrefFor('research', symbol.toLowerCase())}
        class="hl-row flex items-baseline gap-1.5 whitespace-nowrap leading-5 px-1 hover:no-underline">
       <span class="text-muted/60 font-tick text-[10px]">{tl(label)}</span>
-      <span class={`font-semibold ${isVix ? vixClass(q?.price) : 'text-ink-2'}`}>{q ? <FlashPrice price={q.price} fmt={fmtPrice} /> : '—'}</span>
+      {/* no thousands separators in the strip — "29536.50" scans faster at a
+          glance than "29,536.50" in a 10px ribbon (Jeff 2026-08-06); commas
+          stay everywhere else */}
+      <span class={`font-semibold ${isVix ? vixClass(q?.price) : 'text-ink-2'}`}>{q ? <FlashPrice price={q.price} fmt={(v) => fmtPrice(v).replace(/,/g, '')} /> : '—'}</span>
       {q && !isVix && <span class={`text-[10px] ${up ? 'text-up' : 'text-down'}`}>{fmtPct(q.pct)}</span>}
     </a>
   )
