@@ -97,14 +97,30 @@ function ReadBody({ ev }) {
     return <p class="text-[10.5px] font-mono text-muted animate-pulse pt-1">{tl('pulling the story…')}</p>
   }
   if (state.status === 'empty') {
-    return <p class="text-[10.5px] font-mono text-muted pt-1">{tl("source wouldn't give up its text — open ↗ for the page")}</p>
+    return (
+      <p class="text-[10.5px] font-mono text-muted pt-1">
+        {tl("source wouldn't give up its text —")}{' '}
+        <a href={ev.url} target="_blank" rel="noopener"
+           class="text-accent hover:underline" onClick={(e) => e.stopPropagation()}>
+          {tl('open the page ↗')}
+        </a>
+      </p>
+    )
   }
   return (
     <div class="flex flex-col gap-1.5 pt-1 max-w-[74ch]">
       {state.paras.slice(0, 14).map((para, i) => (
         <p key={i} class="text-[11.5px] leading-relaxed text-ink-2 font-anth">{para}</p>
       ))}
-      {state.paras.length > 14 && <p class="text-[10px] font-mono text-muted">…full text at the source ↗</p>}
+      {state.paras.length > 14 && (
+        <p class="text-[10px] font-mono text-muted">
+          …{' '}
+          <a href={ev.url} target="_blank" rel="noopener"
+             class="text-accent hover:underline" onClick={(e) => e.stopPropagation()}>
+            {tl('full text at the source ↗')}
+          </a>
+        </p>
+      )}
     </div>
   )
 }
@@ -178,15 +194,26 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
         </div>
       )}
       {open && !ev.live_call && (
-        <div class="px-2.5 pb-2 pl-[168px] max-sm:pl-2.5">
+        <div class="px-2.5 pb-2 mx-auto w-full max-w-[78ch]">
           {ev.body && <p class="text-[11.5px] leading-relaxed text-ink-2 max-w-[72ch]">{ev.body}</p>}
           {!ev.body && !ev.story_cluster && ev.url && <ReadBody ev={ev} />}
-          <p class="text-[9.5px] font-mono text-muted pt-1 flex flex-wrap gap-x-3">
-            <span>{new Date(ev.ts_event * 1000).toLocaleString(getLocale() === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</span>
-            {latTxt && <span>{tt('wire.tape_latency', { latency: latTxt })}</span>}
-            <span class="uppercase">{String(ev.type).replace(/_/g, ' ')}</span>
-            {ev.url && (() => { try { return <span>{new URL(ev.url).hostname.replace('www.', '')}</span> } catch { return null } })()}
-            {ev.url && <a href={ev.url} target="_blank" rel="noopener" class="text-ink-2 hover:text-accent" onClick={(e) => e.stopPropagation()}>{tl('open ↗')}</a>}
+          {/* info reads dim, clickable reads amber — everything grey made the
+              links invisible (Jeff 2026-08-05) */}
+          <p class="text-[9.5px] font-mono pt-1.5 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-line/40 mt-1.5">
+            <span class="text-ink-2">{new Date(ev.ts_event * 1000).toLocaleString(getLocale() === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</span>
+            {latTxt && <span class="text-muted">{tl('tape latency')}{' '}<span class="text-ink-2">{latTxt}</span></span>}
+            <span class="uppercase tracking-wider text-muted">{String(ev.type).replace(/_/g, ' ')}</span>
+            {ev.url && (() => {
+              try {
+                const host = new URL(ev.url).hostname.replace('www.', '')
+                return (
+                  <a href={ev.url} target="_blank" rel="noopener"
+                     class="text-accent hover:underline" onClick={(e) => e.stopPropagation()}>
+                    {host} ↗
+                  </a>
+                )
+              } catch { return null }
+            })()}
           </p>
           {Object.keys(ev.numbers || {}).length > 0 && (
             <div class="flex flex-wrap gap-1.5 mt-1.5">
