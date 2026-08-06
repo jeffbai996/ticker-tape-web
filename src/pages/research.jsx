@@ -1634,7 +1634,7 @@ export function Research({ route }) {
             <button
               key={r.key}
               onClick={() => selectRange(r.key)}
-              class={`font-anth text-[11px] px-2 py-1 rounded-md border whitespace-nowrap shrink-0 ${
+              class={`font-mono text-[11px] px-2 py-1 rounded-md border whitespace-nowrap shrink-0 ${
                 rangeKey === r.key
                   ? 'border-accent-2 text-accent-2 bg-accent-2-soft'
                   : 'border-line text-muted hover:text-ink hover:bg-surface-3'
@@ -1662,7 +1662,7 @@ export function Research({ route }) {
           <a
             key={tab.label}
             href={tab.href}
-            class={`font-anth text-[11px] px-2.5 py-1 rounded-md border hover:no-underline whitespace-nowrap shrink-0 ${
+            class={`font-mono text-[11px] px-2.5 py-1 rounded-md border hover:no-underline whitespace-nowrap shrink-0 ${
               route.view === tab.id
                 ? 'border-accent-2 text-accent-2 bg-accent-2-soft'
                 : 'border-line text-muted hover:text-ink hover:bg-surface-3'
