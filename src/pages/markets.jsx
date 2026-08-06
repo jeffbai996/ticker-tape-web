@@ -4,7 +4,7 @@ import { BUCKETS } from '../lib/symbols.js'
 import { useQuotes, useWatchlist } from '../hooks.js'
 import { AiReport } from '../components/AiReport.jsx'
 import { BRIEFING_SYSTEM } from '../lib/briefing.js'
-import {
+import { EARNINGS_UNIVERSE,
   MARKET_GROUPS, SECTORS, COMMODITY_GROUPS, ECON_EVENTS, RELATIVE_SIGNALS,
   upcomingEvents,
 } from '../lib/markets.js'
@@ -488,8 +488,11 @@ function Movers() {
 // history, the wire on that name).
 function EarningsTab() {
   const watchlist = useWatchlist()
-  // ETFs have no earnings — skip the obvious ones to save requests.
-  const named = watchlist.filter((s) => !['SPY', 'QQQ', 'IWM', 'GLD', 'TLT'].includes(s))
+  // ETFs have no earnings — skip the obvious ones to save requests. The page
+  // covers the same expanded universe as the rail widget: watchlist plus the
+  // megacaps whose prints move the whole tape (Jeff 2026-08-06).
+  const named = [...new Set([...watchlist, ...EARNINGS_UNIVERSE])]
+    .filter((s) => !['SPY', 'QQQ', 'IWM', 'GLD', 'TLT'].includes(s))
   return <EarningsDay symbols={named} />
 }
 

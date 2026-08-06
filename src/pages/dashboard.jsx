@@ -6,7 +6,7 @@ import { marketState } from '../lib/marketState.js'
 import { BUCKETS } from '../lib/symbols.js'
 import { pulseStats } from '../lib/pulse.js'
 import { fetchEarningsDate } from '../lib/fundamentals.js'
-import { ECON_EVENTS, MARKET_DECK, upcomingEvents } from '../lib/markets.js'
+import { EARNINGS_UNIVERSE, ECON_EVENTS, MARKET_DECK, upcomingEvents } from '../lib/markets.js'
 import { loadCatalysts, onCatalystsChange, mergedEvents } from '../lib/catalysts.js'
 import { fetchHistory } from '../lib/history.js'
 import {
@@ -414,10 +414,11 @@ function MacroCalPanel() {
       : d <= 30 ? 'text-accent' : 'text-muted'
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden flex flex-col max-h-[42vh]">
-      <header class="px-3 py-1.5 border-b border-line-2 bg-surface-2">
+      <header class="flex items-center px-3 py-1.5 border-b border-line-2 bg-surface-2">
         <a href="#/markets/calendar" class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase hover:no-underline">
           {tl('Calendar')}
         </a>
+        <a href="#/markets/calendar" aria-label={tl('Open calendar')} class="ml-auto text-muted hover:text-accent hover:no-underline">→</a>
       </header>
       <div class="overflow-y-auto min-h-0">
       <div class="py-1">
@@ -464,28 +465,39 @@ function MarketDeckPanel() {
   )
 }
 
-function EarningsPanel({ symbols, days, quotes = {} }) {
-  const upcoming = symbols
+function EarningsPanel({ symbols, quotes = {} }) {
+  // the board's names plus the megacaps whose prints move the whole tape —
+  // a widget that misses NVDA's report because it fell off the watchlist is
+  // not doing its one job (Jeff 2026-08-06)
+  const uni = [...new Set([...symbols, ...EARNINGS_UNIVERSE])]
+  const days = useEarningsDays(uni)
+  const held = new Set(symbols)
+  const upcoming = uni
     .filter((s) => days[s] != null)
     .map((s) => ({ symbol: s, d: days[s] }))
-    .sort((a, b) => a.d - b.d)
-    .slice(0, 9)
+    .sort((a, b) => a.d - b.d || (held.has(b.symbol) - held.has(a.symbol)))
+    .slice(0, 10)
   if (!upcoming.length) return null
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden flex flex-col max-h-[42vh]">
-      <header class="px-3 py-1.5 border-b border-line-2 bg-surface-2">
-        <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Earnings')}</h2>
+      <header class="flex items-center px-3 py-1.5 border-b border-line-2 bg-surface-2">
+        <a href="#/markets/earnings" class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase hover:no-underline">
+          {tl('Earnings')}
+        </a>
+        <a href="#/markets/earnings" aria-label={tl('Open earnings')} class="ml-auto text-muted hover:text-accent hover:no-underline">→</a>
       </header>
       <div class="overflow-y-auto min-h-0">
       <div class="py-1">
         {upcoming.map(({ symbol, d }) => {
-          // the quote feed already carries shortName — no extra fetch
+          // the quote feed already carries shortName — no extra fetch;
+          // universe-only names have no quote here and just show the ticker
           const name = quotes[symbol]?.quote?.name || ''
+          const mine = held.has(symbol)
           return (
             <a key={symbol} href={`#/research/${symbol.toLowerCase()}/earnings`}
               class="grid grid-cols-[2.55rem_minmax(0,1fr)_2rem] items-baseline gap-1.5 px-3 py-[2px] font-mono text-[11px] hover:bg-surface-3 hover:no-underline"
               title={name || symbol}>
-              <span class="text-ink font-[650] font-anth truncate">{symbol}</span>
+              <span class={`font-[650] font-anth truncate ${mine ? 'text-ink' : 'text-ink-2'}`}>{symbol}</span>
               {/* company name, quiet — the CLI's `[dim]{name}[/]`, sliding into
                   view on hover when the rail is too narrow to hold it */}
               <Marquee text={name} class="min-w-0 text-left text-[9px] text-muted font-anth font-light" />
@@ -739,6 +751,52 @@ function AddSymbolRow({ onAdd, isPresent, onReorder }) {
 }
 
 
+
+/** The fear gauges on one card: the vol complex plus credit, the dials that
+ *  say whether a red tape is noise or the start of something. */
+const RISK_DECK = [
+  { symbol: '^VIX', label: 'VIX' },
+  { symbol: '^VIX9D', label: 'VIX 9D' },
+  { symbol: '^VVIX', label: 'VVIX' },
+  { symbol: '^MOVE', label: 'MOVE' },
+  { symbol: '^SKEW', label: 'SKEW' },
+  { symbol: 'HYG', label: 'HY credit' },
+]
+
+function RiskPanel() {
+  const quotes = useQuotes(RISK_DECK.map((d) => d.symbol))
+  const vix = quotes['^VIX']?.quote?.price
+  const vix9 = quotes['^VIX9D']?.quote?.price
+  // 9D above 30D = the stress is NOW, not priced later — the single most
+  // useful read on this card, so it gets named instead of implied
+  const inverted = vix != null && vix9 != null && vix9 > vix
+  return (
+    <div class="py-1">
+      {RISK_DECK.map(({ symbol, label }) => {
+        const q = quotes[symbol]?.quote
+        const up = (q?.pct ?? 0) >= 0
+        return (
+          <a key={symbol} href={`#/research/${symbol.toLowerCase()}`}
+            class="flex items-baseline gap-2 px-3 py-[2px] font-mono text-[10.5px] hover:bg-surface-3 hover:no-underline">
+            <span class="font-anth text-muted w-[3.9rem] shrink-0 truncate">{tl(label)}</span>
+            <span class={`ml-auto ${symbol === '^VIX' && q?.price > 25 ? 'text-down font-bold' : 'text-ink-2'}`}>
+              {q ? fmtPrice(q.price) : '—'}
+            </span>
+            <span class={`w-[3.4rem] text-right ${symbol === 'HYG' ? (up ? 'text-up' : 'text-down') : (up ? 'text-down' : 'text-up')}`}>
+              {q ? fmtPct(q.pct) : ''}
+            </span>
+          </a>
+        )
+      })}
+      {inverted && (
+        <div class="mx-3 mt-1 mb-0.5 rounded border border-down/40 bg-down/10 px-2 py-0.5 font-mono text-[9.5px] text-down">
+          {tl('9D over 30D — term structure inverted')}
+        </div>
+      )}
+    </div>
+  )
+}
+
 /** Where the money moved today, by group. Ranked so the rotation reads off
  *  the top row instead of out of thirty individual % cells. */
 function HeatPanel({ watchlist, quotes }) {
@@ -838,12 +896,13 @@ function RangePanel({ quotes }) {
 function RailWidget({ w, all, watchlist, earnDays, quotes }) {
   if (w.type === 'pulse') return <PulsePanel quotes={all} />
   if (w.type === 'markets') return <MarketDeckPanel />
-  if (w.type === 'earnings') return <EarningsPanel symbols={watchlist} days={earnDays} quotes={quotes} />
+  if (w.type === 'earnings') return <EarningsPanel symbols={watchlist} quotes={quotes} />
   if (w.type === 'calendar') return <MacroCalPanel />
   const title = w.type === 'movers' ? tl('Movers')
     : w.type === 'heat' ? tl('Group heat')
     : w.type === 'alerts' ? tl('Alerts')
     : w.type === 'range' ? tl('At the extremes')
+    : w.type === 'risk' ? tl('Risk dials')
     : null
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
@@ -856,6 +915,7 @@ function RailWidget({ w, all, watchlist, earnDays, quotes }) {
       {w.type === 'heat' && <HeatPanel watchlist={watchlist} quotes={quotes} />}
       {w.type === 'alerts' && <AlertsPanel quotes={quotes} />}
       {w.type === 'range' && <RangePanel quotes={all} />}
+      {w.type === 'risk' && <RiskPanel />}
       {w.type === 'chart' && <ChartWidget symbol={w.symbol} />}
     </section>
   )
