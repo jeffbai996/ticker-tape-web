@@ -217,8 +217,11 @@ function TuiRow({ symbol, data, earnDays, onRemove }) {
               <span class="text-ink font-semibold w-[4.4rem] max-sm:w-[4.1rem] text-right shrink-0">
                 {q ? <FlashPrice price={q.price} fmt={fmtPrice} /> : '—'}
               </span>
+              {/* min-width, not width: a wide print (▼ 15.22 (-4.05%)) used to
+                  overflow the fixed box and land flush against the ON label,
+                  while narrower ones still line up */}
               {q && (
-                <span class={`${up ? 'text-up' : 'text-down'} whitespace-nowrap w-[7.25rem] @max-[800px]:w-auto max-sm:w-auto shrink-0`}>
+                <span class={`${up ? 'text-up' : 'text-down'} whitespace-nowrap min-w-[7.25rem] @max-[800px]:min-w-0 max-sm:min-w-0 shrink-0`}>
                   {up ? '▲' : '▼'} <FlashMetric value={q.change} fmt={fmtAbsChange} kind="change" />{' '}
                   <span class="font-normal text-[11px] max-sm:text-[10px]">
                     (<FlashMetric value={q.pct} fmt={fmtPct} kind="change" />)
@@ -232,7 +235,7 @@ function TuiRow({ symbol, data, earnDays, onRemove }) {
                 <span class="whitespace-nowrap text-[11px] max-sm:text-[10px] w-auto shrink-0 max-sm:ml-auto">
                   <span class={extendedLabelClass(q.extLabel)}>{q.extLabel}</span>{' '}
                   <span class="text-ink-2 font-semibold"><FlashPrice price={q.extPrice} fmt={fmtPriceBare} /></span>{' '}
-                  <span class={extUp ? 'text-up' : 'text-down'}>
+                  <span class={`font-normal ${extUp ? 'text-up' : 'text-down'}`}>
                     {extUp ? '▲' : '▼'}{Math.abs(q.extPct ?? 0).toFixed(1)}%
                   </span>
                 </span>
@@ -269,7 +272,7 @@ function TuiRow({ symbol, data, earnDays, onRemove }) {
               <CompactDayRange lo={q?.dayLow} hi={q?.dayHigh} v={q?.price} />
             )}
             <RangeBar label="DAY" lo={q?.dayLow} hi={q?.dayHigh} v={q?.price} />
-            <span class="w-[3.7rem] @min-[820px]:w-[8.6rem] text-right whitespace-nowrap">
+            <span class="w-[4.6rem] @min-[820px]:w-[9.2rem] text-right whitespace-nowrap">
               {q && quoteSpread(q) != null && (
                 <span class="hidden @min-[820px]:inline mr-2">
                   <span class="text-accent/60 text-[9px]">SPR</span>{' '}
@@ -288,7 +291,7 @@ function TuiRow({ symbol, data, earnDays, onRemove }) {
             {data?.tech && (
               <RangeBar label="52W" lo={data.tech.low52} hi={data.tech.high52} v={q?.price} />
             )}
-            <span class="w-[3.7rem] @min-[820px]:w-[8.6rem] text-right">
+            <span class="w-[4.6rem] @min-[820px]:w-[9.2rem] text-right whitespace-nowrap">
               {avgVol != null && (
                 <>
                   <span class="text-accent/60 text-[9px]">AVG</span>{' '}
