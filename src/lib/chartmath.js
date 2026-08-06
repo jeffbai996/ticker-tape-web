@@ -104,3 +104,29 @@ export function normalizedSeries(bars) {
   const base = bars[0].close
   return bars.map((b) => ({ time: b.time, value: (b.close / base - 1) * 100 }))
 }
+
+/**
+ * Merge a warm-up prefix onto the visible bars so indicators have history to
+ * spin up on. Without it every oscillator starts N bars INSIDE the chart —
+ * RSI 14 bars late, MACD 34 — which reads as "the data doesn't go back as far
+ * as the candles" (Jeff 2026-08-06). Real terminals load the pad silently.
+ *
+ * `pad` is a longer fetch of the same symbol/interval; only its bars strictly
+ * older than the window are kept, so a stale or overlapping pad can't
+ * duplicate or reorder anything.
+ */
+export function warmedBars(bars, pad) {
+  if (!bars?.length || !pad?.length) return bars || []
+  const start = bars[0].time
+  const prefix = pad.filter((b) => b.time < start)
+  if (!prefix.length) return bars
+  return [...prefix, ...bars]
+}
+
+/** Drop the warm-up rows: an indicator computed over `warmedBars` must still
+ *  render only inside the window the user asked for. */
+export function trimToWindow(series, bars) {
+  if (!bars?.length) return series
+  const start = bars[0].time
+  return series.filter((p) => p.time >= start)
+}
