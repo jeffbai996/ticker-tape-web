@@ -764,9 +764,9 @@ function SectorScroller({ watchlist, quotes, onAdd }) {
     return pcts.length ? pcts.reduce((a, b) => a + b, 0) / pcts.length : null
   }
   return (
-    <div class="relative md:ml-auto md:flex-1 min-w-0">
+    <div class="relative flex-1 min-w-0">
       <div ref={scroller}
-        class={`dashboard-sectors flex items-baseline gap-x-4 px-1 pb-2 md:px-0 md:pb-0 min-w-0 font-mono text-[10px] flex-nowrap overflow-x-auto no-scrollbar ${canRight ? 'pr-9' : ''}`}>
+        class={`dashboard-sectors flex items-baseline gap-x-4 min-w-0 font-mono text-[10px] flex-nowrap overflow-x-auto no-scrollbar ${canRight ? 'pr-9' : ''}`}>
         {BUCKETS.map((b) => {
           const inList = b.symbols.filter((s) => watchlist.includes(s))
           const avg = bucketAvg(inList)
@@ -926,7 +926,10 @@ function TickerSearch({ filter, setFilter }) {
   }, [])
   return (
     <div ref={boxRef} class="relative min-w-0">
-      <span class="absolute left-2 top-1/2 -translate-y-1/2 text-muted pointer-events-none">
+      {/* folded, the glass owns the whole pill and centers dead-on; open, it
+          docks left as the input's affordance (Jeff 2026-08-06) */}
+      <span class={`absolute inset-y-0 text-muted pointer-events-none grid place-items-center ${
+        expanded ? 'left-2' : 'inset-x-0'}`}>
         <svg viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7" cy="7" r="4.4" /><path d="m10.4 10.4 3 3" /></svg>
       </span>
       <input ref={inputRef} value={filter} onInput={(e) => setFilter(e.currentTarget.value)}
@@ -1041,8 +1044,10 @@ export function Dashboard({ listId = null }) {
   const all = watchlist.map((s) => quotes[s]?.quote).filter((q) => q?.pct != null)
   return (
     <div class="flex-1 p-3 select-text min-w-0">
-      <div class="dashboard-toolbar md:flex md:items-center md:gap-4 md:px-1 md:pb-2 min-w-0">
-        <div class="dashboard-controls flex items-center gap-2 px-1 pb-2 md:px-0 md:pb-0 min-w-0 shrink-0">
+      {/* ONE row at every width (Jeff 2026-08-06: "do not use a second row
+          in any view") — the strip scrolls, everything else shrinks */}
+      <div class="dashboard-toolbar flex items-center gap-2 md:gap-4 px-1 pb-2 min-w-0">
+        <div class="dashboard-controls flex items-center gap-2 min-w-0 shrink-0">
           {activeList && (
             <div class="min-w-0 mr-1">
               <div class="font-mono text-[8px] uppercase tracking-wider text-muted">{tl('Watchlist')}</div>
@@ -1065,7 +1070,7 @@ export function Dashboard({ listId = null }) {
         {/* batch trigger sits left of the sector strip; while active the
             strip yields its slot to the action bar (Jeff 2026-08-06) */}
         {selecting ? (
-          <div class="md:ml-auto flex items-center gap-1.5 px-1 pb-2 md:px-0 md:pb-0 font-mono text-[10px] whitespace-nowrap overflow-x-auto no-scrollbar">
+          <div class="ml-auto flex items-center gap-1.5 font-mono text-[10px] whitespace-nowrap overflow-x-auto no-scrollbar">
             <span class="text-muted">{selected.size} {tl('selected')}</span>
             <button onClick={() => setSelected(new Set(viewMode === 'flat' ? flatRows.map((r) => r.symbol) : visibleManual))}
               class="px-2 py-0.5 rounded border border-line text-ink-2 hover:border-accent hover:text-accent">
@@ -1085,7 +1090,7 @@ export function Dashboard({ listId = null }) {
             </button>
           </div>
         ) : (
-          <div class="flex items-center gap-2 min-w-0 md:flex-1 md:ml-auto max-md:px-1">
+          <div class="flex items-center gap-2 min-w-0 flex-1 ml-auto">
             <BoardMenu sort={sort} setSort={setSort} setViewMode={setViewMode}
               lists={namedWatchlists} listId={activeList?.id || null}
               onSelectMode={() => setSelecting(true)} />
