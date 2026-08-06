@@ -15,8 +15,8 @@ import {
   getGroupPrefs, isCollapsed, moveGroup, onGroupsChange, orderGroups,
   toggleCollapsed,
 } from '../lib/catgroups.js'
-import { watch, unwatch } from '../lib/watchlist.js'
-import { addWatchlistSymbol, removeWatchlistSymbol } from '../lib/watchlists.js'
+import { moveSymbol, placeSymbol, unwatch, watch } from '../lib/watchlist.js'
+import { addWatchlistSymbol, moveWatchlistSymbol, removeWatchlistSymbol } from '../lib/watchlists.js'
 import { loadUserGroups, onUserGroupsChange } from '../lib/usergroups.js'
 import { groupDashboardRows, quoteSpread, selectFlatRows } from '../lib/dashboardRows.js'
 import { fmtPrice, fmtPriceBare, fmtPct, fmtChange, fmtVol, rangePos } from '../lib/format.js'
@@ -596,7 +596,52 @@ function AddWidget() {
  *  command bar's `w SYM` — neither reads as a control, and the sidebar is
  *  hidden entirely below 768px (Jeff 2026-08-04: "not very obvious where to
  *  add tickers"). Mirrors AddWidget's dashed-button → inline-form idiom. */
-function AddSymbolRow({ onAdd, isPresent }) {
+/** Reorder mode: the flat list with grips — drag a row onto another, or
+ *  nudge with the arrows. Exits back to the normal board via done. */
+function ReorderList({ watchlist, quotes, onMove, onPlace, onDone }) {
+  const [dragSym, setDragSym] = useState(null)
+  return (
+    <div>
+      <div class="flex items-center px-3 py-1.5 border-b border-line font-mono text-[10px] tracking-wider text-muted uppercase">
+        {tl('drag rows or use the arrows')}
+        <button onClick={onDone}
+          class="ml-auto px-2 py-0.5 rounded border border-accent text-accent hover:bg-accent hover:text-black font-semibold normal-case">
+          {tl('done')}
+        </button>
+      </div>
+      {watchlist.map((s) => {
+        const q = quotes[s]?.quote
+        const up = (q?.pct ?? 0) >= 0
+        return (
+          <div
+            key={s}
+            draggable
+            onDragStart={(e) => { setDragSym(s); e.dataTransfer.effectAllowed = 'move' }}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => { e.preventDefault(); if (dragSym && dragSym !== s) onPlace(dragSym, s) }}
+            onDragEnd={() => setDragSym(null)}
+            class={`flex items-center gap-2.5 px-3 py-1 border-b border-line/60 font-mono text-[12px] cursor-grab active:cursor-grabbing select-none ${
+              dragSym === s ? 'opacity-40' : 'hover:bg-white/[0.035]'
+            }`}
+          >
+            <span class="text-muted text-[13px] leading-none">≡</span>
+            <span class="text-ink font-[650] font-tick w-14">{s}</span>
+            <span class="text-ink-2">{q ? fmtPrice(q.price) : '—'}</span>
+            {q && <span class={`text-[10px] ${up ? 'text-up' : 'text-down'}`}>{fmtPct(q.pct)}</span>}
+            <span class="ml-auto flex gap-0.5">
+              <button onClick={() => onMove(s, -1)} title={tl('move up')}
+                class="w-6 h-6 grid place-items-center rounded text-muted hover:text-ink hover:bg-surface-2">↑</button>
+              <button onClick={() => onMove(s, 1)} title={tl('move down')}
+                class="w-6 h-6 grid place-items-center rounded text-muted hover:text-ink hover:bg-surface-2">↓</button>
+            </span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function AddSymbolRow({ onAdd, isPresent, onReorder }) {
   const [open, setOpen] = useState(false)
   const [sym, setSym] = useState('')
   const [err, setErr] = useState('')
@@ -613,12 +658,21 @@ function AddSymbolRow({ onAdd, isPresent }) {
   }
   if (!open) {
     return (
-      <button
-        onClick={() => setOpen(true)}
-        class="w-full border-t border-line px-3 py-2 text-left font-mono text-[11px] tracking-wider text-muted hover:text-accent hover:bg-white/[0.035]"
-      >
-        + {tl('add symbol')}
-      </button>
+      <div class="flex items-center border-t border-line">
+        <button
+          onClick={() => setOpen(true)}
+          class="flex-1 px-3 py-2 text-left font-mono text-[11px] tracking-wider text-muted hover:text-accent hover:bg-white/[0.035]"
+        >
+          + {tl('add symbol')}
+        </button>
+        <button
+          onClick={onReorder}
+          title={tl('reorder the list')}
+          class="px-3 py-2 font-mono text-[11px] tracking-wider text-muted hover:text-accent hover:bg-white/[0.035]"
+        >
+          ⇅ {tl('reorder')}
+        </button>
+      </div>
     )
   }
   return (
@@ -782,6 +836,13 @@ export function Dashboard({ listId = null }) {
     ? (symbol) => removeWatchlistSymbol(activeList.id, symbol)
     : unwatch
   const isPresent = (symbol) => watchlist.includes(String(symbol || '').trim().toUpperCase())
+  const [reordering, setReordering] = useState(false)
+  const nudgeSymbol = activeList
+    ? (sym, d) => moveWatchlistSymbol(activeList.id, sym, d)
+    : moveSymbol
+  const dropSymbol = activeList
+    ? (sym, before) => moveWatchlistSymbol(activeList.id, sym, { before })
+    : placeSymbol
 
   // 10s tick keeps the "updated" line and stale banner honest between fetches.
   const [, tick] = useState(0)
@@ -836,7 +897,11 @@ export function Dashboard({ listId = null }) {
           CSS viewport before genuinely running out of room. */}
       <div class="grid gap-2 lg:grid-cols-[1fr_230px] min-w-0">
         <section class="@container bg-surface-1 border border-line rounded-xl overflow-hidden min-w-0">
-          {viewMode === 'grouped' ? ordered.map((g, gi) => {
+          {reordering ? (
+            <ReorderList watchlist={watchlist} quotes={quotes}
+              onMove={nudgeSymbol} onPlace={dropSymbol}
+              onDone={() => setReordering(false)} />
+          ) : viewMode === 'grouped' ? ordered.map((g, gi) => {
             const folded = isCollapsed(g.name, groupPrefs)
             return (
               <div key={g.name}>
@@ -871,7 +936,10 @@ export function Dashboard({ listId = null }) {
           {!watchlist.length && (
             <div class="px-3 py-8 text-center font-anth text-[11px] text-muted">{tl('empty watchlist — add the first ticker below')}</div>
           )}
-          <AddSymbolRow onAdd={addSymbol} isPresent={isPresent} />
+          {!reordering && (
+            <AddSymbolRow onAdd={addSymbol} isPresent={isPresent}
+              onReorder={() => setReordering(true)} />
+          )}
         </section>
         <div class="flex flex-col gap-3 min-w-0">
           {widgets.map((w) => (

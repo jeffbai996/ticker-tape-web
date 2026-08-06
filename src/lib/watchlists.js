@@ -2,6 +2,8 @@
 // watchlist.js because Briefing, Wire, chat tools, and the global ticker tape
 // all intentionally share it. These lists are alternate dashboard lenses.
 
+import { moveInList } from './watchorder.js'
+
 const KEY = 'named_watchlists_v1'
 const SYMBOL_RE = /^[A-Z0-9.^=-]{1,12}$/
 const MAX_SYMBOLS = 60
@@ -103,6 +105,10 @@ export function addWatchlistSymbol(id, value) {
   const item = getWatchlistById(id)
   if (!item || item.symbols.includes(symbol) || item.symbols.length >= MAX_SYMBOLS) return null
   return updateSymbols(id, (symbols) => [...symbols, symbol])
+}
+
+export function moveWatchlistSymbol(id, symbol, where) {
+  return updateSymbols(id, (symbols) => moveInList(symbols, symbol, where))
 }
 
 export function removeWatchlistSymbol(id, value) {
