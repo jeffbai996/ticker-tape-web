@@ -57,6 +57,15 @@ export function getWatchlistById(id) {
   return loadWatchlists().find((item) => item.id === id) || null
 }
 
+/** Bulk replace from the cloud-sync merge — runs through the same cleaning
+ *  as loadWatchlists so a hostile remote document can't smuggle junk in. */
+export function replaceWatchlists(items) {
+  try { localStorage.setItem(KEY, JSON.stringify(items || [])) } catch { /* best-effort */ }
+  const clean = loadWatchlists()
+  persist(clean)
+  return clean
+}
+
 export function createWatchlist(value, symbols = []) {
   const name = cleanName(value)
   if (!name) return null
