@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { parseCommand } from '../lib/commands.js'
+import { applyCompletion, completions } from '../lib/complete.js'
+import { getWatchlist } from '../lib/watchlist.js'
 import { watch, unwatch } from '../lib/watchlist.js'
 import { addAlert, conditionText } from '../lib/alerts.js'
 import { addCatalyst, removeCatalyst, loadCatalysts } from '../lib/catalysts.js'
@@ -50,6 +52,10 @@ export function CommandBar() {
   const [value, setValue] = useState('')
   const [log, setLog] = useState([])
   const [open, setOpen] = useState(false)
+  // `hot` = the user started typing with nothing else focused, so the line
+  // grows and lights up — it was too easy to type into an invisible console
+  // (Jeff 2026-08-05)
+  const [hot, setHot] = useState(false)
   const [histIdx, setHistIdx] = useState(-1)
   const history = useRef([])
   const scrollRef = useRef(null)
@@ -277,9 +283,39 @@ export function CommandBar() {
     }
   }
 
+  // Anything printable typed while nothing else has focus belongs to the
+  // command line. `/` still belongs to the palette.
+  useEffect(() => {
+    const onDoc = (e) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      if (e.key === '/' || e.key.length !== 1) return
+      const el = document.activeElement
+      if (el?.isContentEditable) return
+      if (/^(INPUT|TEXTAREA|SELECT)$/.test(el?.tagName || '')) return
+      const input = inputRef.current
+      if (!input) return
+      e.preventDefault()
+      input.focus()
+      setValue((v) => v + e.key)
+      setHot(true)
+    }
+    addEventListener('keydown', onDoc)
+    return () => removeEventListener('keydown', onDoc)
+  }, [])
+
+  const suggestions = value.trim()
+    ? completions(value, getWatchlist()).slice(0, 8)
+    : []
+
   const onKey = (e) => {
     const h = history.current
+    if (e.key === 'Tab' && suggestions.length) {
+      e.preventDefault()
+      setValue(applyCompletion(value, suggestions))
+      return
+    }
     if (e.key === 'Escape') {
+      setHot(false)
       setOpen(false)
     } else if (e.key === 'ArrowUp' && h.length) {
       e.preventDefault()
@@ -331,9 +367,29 @@ export function CommandBar() {
           </div>
         </div>
       )}
+      {suggestions.length > 0 && (
+        <div class="absolute bottom-full left-0 right-0 z-30 flex items-center gap-1 px-3 py-1
+                    bg-surface-2/95 backdrop-blur border-t border-line-2 overflow-x-auto no-scrollbar">
+          {suggestions.map((sug, i) => (
+            <button
+              key={sug}
+              type="button"
+              onClick={() => { setValue(`${sug} `); inputRef.current?.focus() }}
+              class={`shrink-0 px-1.5 py-px rounded font-mono text-[10.5px] ${
+                i === 0 ? 'bg-accent text-black font-semibold' : 'text-ink-2 hover:text-ink'
+              }`}
+            >
+              {sug.split(/\s+/).pop()}
+            </button>
+          ))}
+          <span class="ml-auto shrink-0 text-[9px] font-mono text-muted tracking-wider">tab</span>
+        </div>
+      )}
       <form
         onSubmit={run}
-        class="flex items-center gap-2 px-3 h-8 bg-surface-1 border-t border-line font-mono text-[11px]"
+        class={`flex items-center gap-2 px-3 bg-surface-1 border-t font-mono text-[11px] transition-all ${
+          hot ? 'h-11 border-accent/70 bg-accent-soft' : 'h-8 border-line'
+        }`}
       >
         <span class="text-accent font-bold shrink-0">ticker&gt;</span>
         <input
@@ -341,6 +397,7 @@ export function CommandBar() {
           value={value}
           onInput={(e) => setValue(e.currentTarget.value)}
           onKeyDown={onKey}
+          onBlur={() => setHot(false)}
           placeholder={tl('type command or symbol…  (h = help)')}
           class="flex-1 bg-transparent outline-none text-ink placeholder:text-muted min-w-0"
         />
