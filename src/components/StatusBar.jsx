@@ -117,8 +117,9 @@ export function StatusBar() {
   const strip = INDICES.map((i) =>
     state !== 'open' && FUTURES_SWAP[i.symbol] ? FUTURES_SWAP[i.symbol] : i)
   const quotes = useQuotes(strip.map((i) => i.symbol))
-  // "PM" reads as afternoon, not premarket — the chip says PRE (Jeff 2026-08-06)
-  const chipLabel = holiday ? 'HOLIDAY' : state === 'pre' ? 'PRE' : state === 'post' ? 'AH' : state.toUpperCase()
+  // "PM" reads as afternoon, not premarket — the chip says PRE; and POST, not
+  // AH, to match the session-state family OPEN/CLOSED/POST/PRE (Jeff 2026-08-06)
+  const chipLabel = holiday ? 'HOLIDAY' : state === 'pre' ? 'PRE' : state === 'post' ? 'POST' : state.toUpperCase()
   const compactChipLabel = (getLocale() === 'zh' ? COMPACT_STATE_LABEL_ZH : COMPACT_STATE_LABEL)[holiday ? 'holiday' : state]
   // "session closes in 2h 14m" on hover — ET boundary walk, DST via Intl
   const etParts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: 'numeric', hour12: false }).formatToParts(now)
