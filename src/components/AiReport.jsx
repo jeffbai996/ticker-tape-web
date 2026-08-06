@@ -5,6 +5,7 @@ import { wireUrl } from '../lib/wire.js'
 import { IS_PRIVATE_BUILD } from '../lib/nav.js'
 import { saveReport } from '../lib/archive.js'
 import { tl } from '../lib/i18n.js'
+import { LENGTHS, TONES, applyDials, loadDials, saveDials } from '../lib/aidials.js'
 
 // One-click AI synthesis panel: build a prompt, stream the answer, offer
 // copy/download. On a wire build the writer is picked from the subscription
@@ -83,6 +84,30 @@ function renderLine(line, i, parts) {
   }
 }
 
+/** One notch row: label plus mutually-exclusive pills. */
+function DialGroup({ label, options, value, onPick }) {
+  return (
+    <div class="flex items-center gap-1.5">
+      <span class="font-anth text-[9px] uppercase tracking-wider text-muted">{label}</span>
+      <div class="flex gap-1">
+        {options.map((o) => (
+          <button key={o.key} onClick={() => onPick(o.key)}
+            class={`font-mono text-[10px] px-2 py-0.5 rounded border ${
+              value === o.key ? 'border-accent text-accent bg-accent-soft' : 'border-line text-muted hover:text-ink'}`}>
+            {tl(o.label)}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/** The collapsed control has to say what it's set to, or the dials are
+ *  invisible state that silently changes every report. */
+function dialSummary(dials) {
+  return `${dials.length[0].toUpperCase()}/${dials.tone[0].toUpperCase()}${dials.disconfirm ? '/D' : ''}`
+}
+
 /**
  * props:
  *  buildPrompt: async () => ({system, prompt}) — assembled at click time so
@@ -94,6 +119,10 @@ function renderLine(line, i, parts) {
  */
 export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI report', hint = '', archive = null }) {
   const [text, setText] = useState('')
+  // dials are shared across every generate button — set the shape once and
+  // the briefing, the market read and the thesis memo all honour it
+  const [dials, setDials] = useState(loadDials)
+  const [showDials, setShowDials] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [copied, setCopied] = useState(false)
@@ -131,6 +160,7 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
     setText('')
     try {
       const { system, prompt } = await buildPrompt()
+      const shaped = applyDials(system, dials)
       let acc = ''
       const wire = wireUrl()
       if (wire) {
@@ -138,7 +168,7 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
         // /api/chat/stream; the metered API never enters this path.
         try {
           await wireStream({
-            model: writer, effort: '', system,
+            model: writer, effort: '', system: shaped,
             messages: [{ role: 'user', content: prompt }],
             onDelta: (d) => { acc += d; setText(acc) },
           })
@@ -147,7 +177,7 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
           const resp = await fetch(`${wire.replace(/\/$/, '')}/api/generate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ system, prompt,
+            body: JSON.stringify({ system: shaped, prompt,
               purpose: (archive?.kind || 'ttw-report') }),
             signal: AbortSignal.timeout(240_000),
           })
@@ -159,7 +189,7 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
       } else {
         await streamChat({
           model: REPORT_MODEL,
-          system,
+          system: shaped,
           messages: [{ role: 'user', content: prompt }],
           onDelta: (d) => {
             acc += d
@@ -222,6 +252,14 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
             </>
           )}
           <button
+            onClick={() => setShowDials((v) => !v)}
+            title={tl('output dials')}
+            class={`font-mono text-[10px] px-1.5 py-0.5 rounded border ${
+              showDials ? 'border-accent text-accent' : 'border-line text-muted hover:text-ink'}`}
+          >
+            {dialSummary(dials)}
+          </button>
+          <button
             onClick={generate}
             disabled={busy}
             class="font-mono text-[10px] px-2.5 py-0.5 rounded border border-accent text-accent bg-accent-soft hover:bg-accent hover:text-black disabled:opacity-40"
@@ -230,6 +268,21 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
           </button>
         </div>
       </header>
+      {showDials && (
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-3 py-1.5 border-b border-line-2 bg-surface-2/60">
+          <DialGroup label={tl('length')} options={LENGTHS} value={dials.length}
+            onPick={(key) => setDials(saveDials({ ...dials, length: key }))} />
+          <DialGroup label={tl('tone')} options={TONES} value={dials.tone}
+            onPick={(key) => setDials(saveDials({ ...dials, tone: key }))} />
+          <button
+            onClick={() => setDials(saveDials({ ...dials, disconfirm: !dials.disconfirm }))}
+            class={`font-mono text-[10px] px-2 py-0.5 rounded border ${
+              dials.disconfirm ? 'border-accent-2 text-accent-2 bg-accent-2-soft' : 'border-line text-muted hover:text-ink'}`}
+          >
+            {tl('disconfirm')}
+          </button>
+        </div>
+      )}
       {(text || error) && (
         <div ref={bodyRef} class="px-3 py-2 font-anth text-[13px] leading-relaxed select-text text-ink-2 max-h-[45vh] overflow-y-auto">
           {error ? <span class="font-mono text-[11px] text-down">{error}</span> : <MdLite text={text} />}
