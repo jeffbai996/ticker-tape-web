@@ -926,10 +926,11 @@ function TickerSearch({ filter, setFilter }) {
   }, [])
   return (
     <div ref={boxRef} class="relative min-w-0">
-      {/* folded, the glass owns the whole pill and centers dead-on; open, it
-          docks left as the input's affordance (Jeff 2026-08-06) */}
+      {/* folded on touch, the glass owns the whole pill and centers dead-on;
+          desktop keeps a readable "Search…" pill, so the glass docks left
+          (Jeff 2026-08-06) */}
       <span class={`absolute inset-y-0 text-muted pointer-events-none grid place-items-center ${
-        expanded ? 'left-2' : 'inset-x-0'}`}>
+        expanded ? 'left-2' : 'inset-x-0 sm:inset-x-auto sm:left-2'}`}>
         <svg viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7" cy="7" r="4.4" /><path d="m10.4 10.4 3 3" /></svg>
       </span>
       <input ref={inputRef} value={filter} onInput={(e) => setFilter(e.currentTarget.value)}
@@ -941,10 +942,11 @@ function TickerSearch({ filter, setFilter }) {
           setOpen(false)
           if (!filter.trim()) { setExpanded(false); e.currentTarget.blur() }
         }}
-        placeholder={expanded ? `${tl('Search')}…` : ''}
+        placeholder={`${tl('Search')}…`}
         aria-label={tl('Search')}
         class={`min-w-0 bg-surface-1 border border-line rounded-lg pl-6 py-1 font-anth text-[10px] text-ink outline-none focus:border-accent placeholder:text-muted transition-[width] duration-300 ease-out ${
-          expanded ? 'w-36 sm:w-44 pr-2' : 'w-[26px] pr-0 cursor-pointer'}`} />
+          expanded ? 'w-36 sm:w-44 pr-2'
+            : 'w-[26px] sm:w-[88px] pr-0 sm:pr-2 cursor-pointer max-sm:placeholder:text-transparent'}`} />
       {open && hits?.length > 0 && (
         <div class="absolute top-full left-0 mt-1 w-72 max-w-[80vw] z-40 bg-surface-1/95 backdrop-blur border border-line rounded-lg shadow-[0_8px_24px_rgba(0,0,0,0.6)] overflow-hidden">
           {hits.map((h) => (
@@ -1048,6 +1050,9 @@ export function Dashboard({ listId = null }) {
           in any view") — the strip scrolls, everything else shrinks */}
       <div class="dashboard-toolbar flex items-center gap-2 md:gap-4 px-1 pb-2 min-w-0">
         <div class="dashboard-controls flex items-center gap-2 min-w-0 shrink-0">
+          <BoardMenu sort={sort} setSort={setSort} setViewMode={setViewMode}
+            lists={namedWatchlists} listId={activeList?.id || null}
+            onSelectMode={() => setSelecting(true)} />
           {activeList && (
             <div class="min-w-0 mr-1">
               <div class="font-mono text-[8px] uppercase tracking-wider text-muted">{tl('Watchlist')}</div>
@@ -1091,9 +1096,6 @@ export function Dashboard({ listId = null }) {
           </div>
         ) : (
           <div class="flex items-center gap-2 min-w-0 flex-1 ml-auto">
-            <BoardMenu sort={sort} setSort={setSort} setViewMode={setViewMode}
-              lists={namedWatchlists} listId={activeList?.id || null}
-              onSelectMode={() => setSelecting(true)} />
             {/* Thesis strip: bucket averages at a glance. One swipeable line at
                 every width — it wrapped to four lines of prime real estate
                 (Jeff 2026-08-04: "keep it all on one line somehow"). */}
