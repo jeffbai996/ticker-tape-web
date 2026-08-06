@@ -2090,7 +2090,11 @@ export function Research({ route }) {
             {/* the name owns the middle slack; the quote cluster is one
                 right-aligned unit so it can't sit on top of the name
                 (Jeff 2026-08-05: "even Walmart gets occluded") */}
-            <span class="flex-1 min-w-0">
+            {/* the slack can shrink to zero at tight zooms, which crushed the
+                name to two letters ("Ap…", Jeff 2026-08-06). A readable floor
+                forces the quote cluster to wrap under instead — the header
+                already flex-wraps — and the marquee reveals anything longer. */}
+            <span class="flex-1 min-w-[16ch]">
               <Marquee text={q.name} class="w-full text-[12px] text-muted font-anth" />
             </span>
             <span class="ml-auto flex items-baseline gap-3 shrink-0 whitespace-nowrap">

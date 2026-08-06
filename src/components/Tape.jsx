@@ -152,7 +152,10 @@ export function Tape() {
                     <span class={`text-[9px] font-bold tracking-wider px-1 rounded-sm ${tapeBadge(e, watchset).cls}`}>
                       {tapeBadge(e, watchset).code}
                     </span>
-                    <span class="text-accent font-semibold max-w-[46ch] truncate">{e.headline}</span>
+                    {/* it's a SCROLLING tape — a longer headline costs nothing but scroll
+                        time, and 46ch cut stories off before the point landed (Jeff
+                        2026-08-06: "cant really get the point sometimes") */}
+                    <span class="text-accent font-semibold max-w-[110ch] truncate">{e.headline}</span>
                   </a>
                 )
               }
