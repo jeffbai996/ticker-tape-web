@@ -1,12 +1,17 @@
 import { useState } from 'preact/hooks'
 import { useNamedWatchlists, useQuotes, useWatchlist } from '../hooks.js'
 import {
-  createWatchlist, removeWatchlist, renameWatchlist,
+  addWatchlistSymbol, createWatchlist, removeWatchlist, removeWatchlistSymbol,
+  renameWatchlist,
 } from '../lib/watchlists.js'
+import { unwatch, watch } from '../lib/watchlist.js'
+import { useEarningsDays } from './dashboard.jsx'
 import { fmtPct } from '../lib/format.js'
 import { t as tt, tl } from '../lib/i18n.js'
 
-function ListSummary({ symbols, quotes }) {
+function ListSummary({ symbols, quotes, earnDays }) {
+  const ernSoon = symbols.filter((s) => earnDays?.[s] != null
+    && earnDays[s] >= 0 && earnDays[s] <= 14).length
   const moves = symbols
     .map((symbol) => quotes[symbol]?.quote?.pct)
     .filter((value) => Number.isFinite(value))
@@ -17,7 +22,7 @@ function ListSummary({ symbols, quotes }) {
   const declining = moves.filter((value) => value < 0).length
 
   return (
-    <div class="grid grid-cols-3 gap-1.5">
+    <div class="grid grid-cols-4 gap-1.5">
       <div class="rounded-lg border border-line bg-black/25 px-2 py-1.5">
         <div class="font-anth text-[8px] uppercase tracking-wider text-muted">{tl('average move')}</div>
         <div class={`pt-0.5 font-mono text-[11px] font-semibold ${average == null ? 'text-muted' : average >= 0 ? 'text-up' : 'text-down'}`}>
@@ -32,26 +37,39 @@ function ListSummary({ symbols, quotes }) {
         <div class="font-anth text-[8px] uppercase tracking-wider text-muted">{tl('declining')}</div>
         <div class="pt-0.5 font-mono text-[11px] font-semibold text-down">{declining}</div>
       </div>
+      <div class="rounded-lg border border-line bg-black/25 px-2 py-1.5">
+        <div class="font-anth text-[8px] uppercase tracking-wider text-muted">{tl('earnings 14d')}</div>
+        <div class={`pt-0.5 font-mono text-[11px] font-semibold ${ernSoon ? 'text-accent' : 'text-muted'}`}>{ernSoon}</div>
+      </div>
     </div>
   )
 }
 
-function SymbolPreview({ symbols, quotes }) {
-  const shown = symbols.slice(0, 8)
+function SymbolPreview({ symbols, quotes, managing, onSend, onRemove }) {
+  const shown = managing ? symbols : symbols.slice(0, 8)
   return (
     <div aria-label={tl('symbol chips')} class="min-h-14 flex flex-wrap content-start gap-1.5">
       {shown.map((symbol) => {
         const pct = quotes[symbol]?.quote?.pct
         return (
-          <span key={symbol} class="inline-flex items-center gap-1 rounded-md border border-line bg-surface-2 px-1.5 py-1 font-mono text-[9px] text-ink-2">
+          <span key={symbol} class={`inline-flex items-center gap-1 rounded-md border px-1.5 py-1 font-mono text-[9px] text-ink-2 ${
+            managing ? 'border-accent/40 bg-accent-soft/40' : 'border-line bg-surface-2'}`}>
             <span class="font-semibold text-ink">{symbol}</span>
             {Number.isFinite(pct) && (
               <span class={pct >= 0 ? 'text-up' : 'text-down'}>{fmtPct(pct)}</span>
             )}
+            {managing && (
+              <>
+                <button onClick={() => onSend(symbol)} title={tl('send to destination')}
+                  class="text-muted hover:text-accent px-0.5">→</button>
+                <button onClick={() => onRemove(symbol)} title={tl('remove')}
+                  class="text-muted hover:text-down">✕</button>
+              </>
+            )}
           </span>
         )
       })}
-      {symbols.length > shown.length && (
+      {!managing && symbols.length > shown.length && (
         <span class="px-1 py-1 font-mono text-[9px] text-muted">+{symbols.length - shown.length}</span>
       )}
       {!symbols.length && (
@@ -61,9 +79,25 @@ function SymbolPreview({ symbols, quotes }) {
   )
 }
 
-function WatchlistCard({ item, quotes, primary = false }) {
+function WatchlistCard({ item, quotes, earnDays, allLists, primary = false }) {
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(item.name)
+  const [managing, setManaging] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const others = allLists.filter((l) => l.id !== item.id)
+  const [dest, setDest] = useState('')
+  const destId = dest || others[0]?.id || ''
+  const addTo = (target, symbol) => target === 'main'
+    ? watch(symbol) : addWatchlistSymbol(target, symbol)
+  const dropFrom = (symbol) => item.id === 'main'
+    ? unwatch(symbol) : removeWatchlistSymbol(item.id, symbol)
+  const send = (symbol) => { if (destId) { addTo(destId, symbol); dropFrom(symbol) } }
+  const exportSymbols = () => {
+    navigator.clipboard?.writeText(item.symbols.join(' ')).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    }).catch(() => {})
+  }
   const href = primary ? '#/' : `#/watchlists/${item.id}`
   const submit = (event) => {
     event.preventDefault()
@@ -96,11 +130,29 @@ function WatchlistCard({ item, quotes, primary = false }) {
         </div>
       </div>
 
-      <ListSummary symbols={item.symbols} quotes={quotes} />
-      <SymbolPreview symbols={item.symbols} quotes={quotes} />
+      <ListSummary symbols={item.symbols} quotes={quotes} earnDays={earnDays} />
+      {managing && others.length > 0 && (
+        <div class="flex items-center gap-1.5 font-anth text-[10px] text-muted">
+          {tl('send symbols to')}
+          <select value={destId} onChange={(e) => setDest(e.currentTarget.value)}
+            class="bg-surface-2 border border-line rounded px-1.5 py-0.5 font-anth text-[10px] text-ink outline-none">
+            {others.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+          </select>
+          <span class="text-[9px]">{tl('→ moves · ✕ removes')}</span>
+        </div>
+      )}
+      <SymbolPreview symbols={item.symbols} quotes={quotes} managing={managing}
+        onSend={send} onRemove={dropFrom} />
 
       <div class="flex items-center gap-3 border-t border-line pt-2.5 font-anth text-[10px] font-semibold">
         <a href={href} class="text-accent hover:no-underline">{tl('Open dashboard →')}</a>
+        <button onClick={() => setManaging((v) => !v)}
+          class={managing ? 'text-accent-2' : 'text-muted hover:text-ink'}>
+          {managing ? tl('done') : `⇄ ${tl('manage')}`}
+        </button>
+        <button onClick={exportSymbols} class="text-muted hover:text-ink">
+          {copied ? tl('copied ✓') : tl('Export')}
+        </button>
         {!primary && (
           <>
             <button onClick={() => { setName(item.name); setEditing((value) => !value) }} class="ml-auto text-muted hover:text-ink">{tl('Rename')}</button>
@@ -119,13 +171,19 @@ export function WatchlistsPage() {
   const lists = useNamedWatchlists()
   const symbols = [...new Set([...main, ...lists.flatMap((item) => item.symbols)])]
   const quotes = useQuotes(symbols)
+  const earnDays = useEarningsDays(symbols)
   const [name, setName] = useState('')
+  const [seed, setSeed] = useState('')
   const [error, setError] = useState('')
+  const allLists = [{ id: 'main', name: tl('Main dashboard') }, ...lists]
   const submit = (event) => {
     event.preventDefault()
-    const created = createWatchlist(name)
+    // import path: paste "NVDA MU AVGO" (or CSV) and the list is born full
+    const seedSymbols = seed.split(/[\s,]+/).map((x) => x.trim().toUpperCase()).filter(Boolean)
+    const created = createWatchlist(name, seedSymbols)
     if (!created) return setError(tt('watchlists.unique_name'))
     setName('')
+    setSeed('')
     setError('')
     location.hash = `#/watchlists/${created.id}`
   }
@@ -142,15 +200,22 @@ export function WatchlistsPage() {
           <form onSubmit={submit} class="ml-auto flex items-center gap-2 rounded-xl border border-line bg-surface-1 p-1.5">
             <input value={name} onInput={(e) => { setName(e.currentTarget.value); setError('') }}
               aria-label={tl('Watchlist name')} placeholder={tl('Watchlist name')}
-              class="min-w-0 w-36 sm:w-44 bg-transparent px-2 py-1 font-anth text-[11px] text-ink outline-none placeholder:text-muted" />
+              class="min-w-0 w-32 sm:w-36 bg-transparent px-2 py-1 font-anth text-[11px] text-ink outline-none placeholder:text-muted" />
+            <input value={seed} onInput={(e) => setSeed(e.currentTarget.value)}
+              aria-label={tl('symbols (optional)')} placeholder={tl('symbols (optional)')}
+              class="min-w-0 w-32 sm:w-40 bg-transparent px-2 py-1 font-mono text-[10px] uppercase text-ink outline-none placeholder:text-muted placeholder:normal-case border-l border-line" />
             <button class="rounded-lg border border-accent/60 bg-accent-soft px-2.5 py-1.5 font-anth text-[10px] font-semibold text-accent hover:bg-accent/15">{tl('Create watchlist')}</button>
           </form>
         </header>
         {error && <div class="px-1 pt-2 font-anth text-[10px] text-down">{error}</div>}
 
         <div class="grid md:grid-cols-2 gap-3 pt-4">
-          <WatchlistCard item={{ id: 'main', name: tl('Main dashboard'), symbols: main }} quotes={quotes} primary />
-          {lists.map((item) => <WatchlistCard key={item.id} item={item} quotes={quotes} />)}
+          <WatchlistCard item={{ id: 'main', name: tl('Main dashboard'), symbols: main }}
+            quotes={quotes} earnDays={earnDays} allLists={allLists} primary />
+          {lists.map((item) => (
+            <WatchlistCard key={item.id} item={item} quotes={quotes}
+              earnDays={earnDays} allLists={allLists} />
+          ))}
         </div>
 
         {!lists.length && (
