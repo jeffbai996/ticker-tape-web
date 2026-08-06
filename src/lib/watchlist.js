@@ -16,15 +16,19 @@ export function onWatchlistChange(fn) {
   return () => listeners.delete(fn)
 }
 
+let cachedList = null
+
 export function getWatchlist() {
+  if (cachedList) return cachedList
   try {
     const saved = JSON.parse(localStorage.getItem(KEY))
-    if (Array.isArray(saved) && saved.length) return saved
+    if (Array.isArray(saved) && saved.length) return (cachedList = saved)
   } catch { /* fall through to default */ }
-  return [...DEFAULT_WATCHLIST]
+  return (cachedList = [...DEFAULT_WATCHLIST])
 }
 
 function save(list) {
+  cachedList = list
   try {
     localStorage.setItem(KEY, JSON.stringify(list))
   } catch { /* best-effort */ }
