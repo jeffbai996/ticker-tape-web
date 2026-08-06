@@ -66,6 +66,32 @@ export function rangePos(lo, hi, v) {
   return Math.min(1, Math.max(0, (v - lo) / (hi - lo)))
 }
 
+/** Geometry for the session meter on market rows: where price sits in the
+ *  day's range AND how much of that range the move off yesterday's close
+ *  covers. A bare position marker looked identical on every row (Jeff
+ *  2026-08-06: "the intraday bars don't provide any information") — the span
+ *  from prevClose to price is the part that differs name to name.
+ *
+ *  Returns fractions of the track: {pos, prevPos, from, to, up, gap}. `gap`
+ *  flags a previous close that sits outside today's range, where the bar is
+ *  clamped to the edge and the whole session is one-directional.
+ *  Null when there is no usable range. */
+export function sessionMeter(lo, hi, price, prevClose) {
+  const pos = rangePos(lo, hi, price)
+  if (pos == null) return null
+  if (prevClose == null) return { pos, prevPos: null, from: pos, to: pos, up: true, gap: false }
+  const prevPos = rangePos(lo, hi, prevClose)
+  const up = price >= prevClose
+  return {
+    pos,
+    prevPos,
+    from: Math.min(pos, prevPos),
+    to: Math.max(pos, prevPos),
+    up,
+    gap: prevClose < lo || prevClose > hi,
+  }
+}
+
 export function fmtVol(v) {
   if (v == null || Number.isNaN(v)) return DASH
   if (v >= 1e9) return `${(v / 1e9).toFixed(1)}B`
