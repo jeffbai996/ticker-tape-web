@@ -40,7 +40,13 @@ function baseSystem() {
     'exists. A typical market answer covers the print, the driver, the levels ' +
     'that matter, and what to watch next. Tight paragraphs or dash bullets. ' +
     'No filler, no disclaimers, no restating the question. Depth beats ' +
-    'brevity — a thin answer is worse than a long one. '
+    'brevity — a thin answer is worse than a long one. ' +
+    // the model kept guessing "metered API" about its own plumbing — state
+    // the actual wiring so infra questions get the truth (Jeff 2026-08-06)
+    'Infrastructure, if asked: on this private build your calls route ' +
+    'through the user\'s own local subscription router (Claude Code / agy ' +
+    'CLIs on their flat plans) — no metered API, no per-token billing. Do ' +
+    'not speculate beyond that. '
   const book = hasLiveBook()
     ? 'A LIVE PORTFOLIO block in your context is the user\'s real book — treat ' +
       'position and margin questions as real. '
@@ -752,9 +758,11 @@ export function Chat() {
     setNotice(null)
     setLiveAnswer('')
     turnStartedRef.current = Date.now()
+    // context assembly is table stakes, not a trace step worth narrating
+    // (Jeff 2026-08-06: "it says read live market context every single time")
     replaceActivity([{
-      key: 'context', kind: 'context', label: 'Reading live market context',
-      verb: 'Reading context', status: 'running', startedAt: turnStartedRef.current,
+      key: 'context', kind: 'context', label: 'Thinking…',
+      verb: 'Thinking…', status: 'running', startedAt: turnStartedRef.current,
     }])
 
     const base = [...historyRef.current, {
@@ -783,14 +791,12 @@ export function Chat() {
       system += '\n\n' + await buildChatContext(text)
     } catch { /* context is best-effort — a bare prompt still answers */ }
     const runLabel = models.find((candidate) => candidate.key === runModel)?.label || runModel
-    updateActivity((steps) => steps.map((step) => step.key === 'context'
-      ? { ...step, label: 'Read live market context', status: 'done', endedAt: Date.now() }
-      : step))
 
     const traceEvent = (event) => {
       const now = Date.now()
       if (event.type === 'model_start') {
-        updateActivity((steps) => [...steps, {
+        // the placeholder "Thinking…" step yields to the real model step
+        updateActivity((steps) => [...steps.filter((step) => step.key !== 'context'), {
           key: `model-${event.round}`, kind: 'model',
           label: `Thinking with ${runLabel}`, verb: `Thinking with ${runLabel}`,
           status: 'running', startedAt: now, detail: '',
