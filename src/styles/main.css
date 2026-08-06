@@ -225,15 +225,21 @@ body {
   opacity: 0;
   overflow: hidden;
   white-space: nowrap;
+  /* spacing lives HERE, not in a flex gap — a gap renders even beside a
+     zero-width sibling, which left the logo with a fat right shoulder at
+     rest (Jeff 2026-08-06) */
+  margin-left: 0;
   transform: translateX(-4px);
   transition:
     max-width .38s cubic-bezier(.16, 1, .3, 1),
+    margin-left .38s cubic-bezier(.16, 1, .3, 1),
     opacity .22s ease .06s,
     transform .38s cubic-bezier(.16, 1, .3, 1);
 }
 .brand-morph:hover .brand-word,
 .brand-morph:focus-visible .brand-word {
   max-width: 7.5rem;
+  margin-left: 6px;
   opacity: 1;
   transform: translateX(0);
 }
