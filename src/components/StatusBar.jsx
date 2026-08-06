@@ -8,12 +8,12 @@ import { hrefFor } from '../lib/route.js'
 import { fmtPrice, fmtPct } from '../lib/format.js'
 import { tl, getLocale, setLocale } from '../lib/i18n.js'
 
-// Session-state chip styling — mirrors the TUI's --open/--pre/--post/--closed
-// status classes. Post-market shares the purple used for AH quotes.
+// Session-state chip styling mirrors the extended-quote grammar: blue PM and
+// purple AH. Green/red remain reserved for open/closed state.
 const STATE_CHIP = {
   open: 'text-up border-up/50 bg-up/10',
-  pre: 'text-[#c864ff] border-[#c864ff]/50 bg-[#c864ff]/10',
-  post: 'text-[#5ba8d9] border-[#5ba8d9]/50 bg-[#5ba8d9]/10',
+  pre: 'text-[#5ba8d9] border-[#5ba8d9]/50 bg-[#5ba8d9]/10',
+  post: 'text-[#c084fc] border-[#c084fc]/50 bg-[#c084fc]/10',
   closed: 'text-down border-down/50 bg-down/10',
 }
 const COMPACT_STATE_LABEL = { open: 'O', pre: 'P', post: 'A', closed: 'C', holiday: 'H' }
@@ -124,7 +124,7 @@ function StripCell({ symbol, label, q }) {
   const isVix = symbol === '^VIX'
   return (
     <a href={hrefFor('research', symbol.toLowerCase())}
-       class="hl-row flex items-baseline gap-1.5 whitespace-nowrap leading-5 px-0.5 hover:no-underline">
+       class="hl-row flex items-baseline gap-[3px] whitespace-nowrap leading-5 px-1 hover:no-underline">
       <span class="text-muted/60 font-tick text-[10px]">{tl(label)}</span>
       <span class={`font-semibold ${isVix ? vixClass(q?.price) : 'text-ink-2'}`}>{q ? <FlashPrice price={q.price} fmt={fmtPrice} /> : '—'}</span>
       {q && !isVix && <span class={`text-[10px] ${up ? 'text-up' : 'text-down'}`}>{fmtPct(q.pct)}</span>}
@@ -147,7 +147,7 @@ export function StatusBar() {
   const strip = INDICES.map((i) =>
     state !== 'open' && FUTURES_SWAP[i.symbol] ? FUTURES_SWAP[i.symbol] : i)
   const quotes = useQuotes(strip.map((i) => i.symbol))
-  const chipLabel = holiday ? 'HOLIDAY' : state.toUpperCase()
+  const chipLabel = holiday ? 'HOLIDAY' : state === 'pre' ? 'PM' : state === 'post' ? 'AH' : state.toUpperCase()
   const compactChipLabel = COMPACT_STATE_LABEL[holiday ? 'holiday' : state]
   // "session closes in 2h 14m" on hover — ET boundary walk, DST via Intl
   const etParts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: 'numeric', hour12: false }).formatToParts(now)
@@ -184,7 +184,7 @@ export function StatusBar() {
       {/* one scrollable line, centred in the bar so it lines up with the
           wordmark: swipe it, drag it, or hover an edge to creep along. */}
       <div class="flex-1 min-w-0 flex items-center">
-        <div ref={stripRef} class="w-full flex items-baseline gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+        <div ref={stripRef} class="w-full flex items-baseline gap-0 overflow-x-auto no-scrollbar py-0.5">
           {strip.map(({ symbol, label }) => (
             <StripCell key={symbol} symbol={symbol} label={label} q={quotes[symbol]?.quote} />
           ))}

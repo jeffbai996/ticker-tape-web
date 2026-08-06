@@ -24,6 +24,7 @@ import { Histo } from '../components/Histo.jsx'
 import { Marquee } from '../components/Marquee.jsx'
 import { FlashMetric, FlashPrice } from '../components/Fig.jsx'
 import { tl } from '../lib/i18n.js'
+import { extendedLabelClass } from '../lib/extendedHours.js'
 
 const DAY = 86_400_000
 const ETF_SKIP = new Set(['SPY', 'QQQ', 'IWM', 'GLD', 'TLT'])
@@ -205,7 +206,7 @@ function TuiRow({ symbol, data, earnDays, onRemove }) {
                   right edge (Jeff 2026-08-04) */}
               {q?.extLabel && q.extPrice != null && (
                 <span class="whitespace-nowrap text-[12px] max-sm:text-[10px] w-auto shrink-0 max-sm:ml-auto">
-                  <span class="text-[#c084fc]">{q.extLabel}</span>{' '}
+                  <span class={extendedLabelClass(q.extLabel)}>{q.extLabel}</span>{' '}
                   <span class="text-ink-2"><FlashPrice price={q.extPrice} fmt={fmtPriceBare} /></span>{' '}
                   <span class={extUp ? 'text-up' : 'text-down'}>
                     {extUp ? '▲' : '▼'}{Math.abs(q.extPct ?? 0).toFixed(1)}%
