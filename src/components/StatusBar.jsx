@@ -44,42 +44,6 @@ function useOnline() {
   return online
 }
 
-/**
- * Edge-hover auto-scroll for a horizontally scrollable strip: the closer the
- * pointer sits to an edge, the faster it creeps that way. Trackpad and drag
- * scrolling keep working on their own; this is for mouse users with no
- * horizontal wheel.
- */
-function useEdgeScroll(ref, zone = 70, maxSpeed = 9) {
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    let raf = 0
-    let speed = 0
-    const step = () => {
-      raf = speed ? requestAnimationFrame(step) : 0
-      if (speed) el.scrollLeft += speed
-    }
-    const move = (e) => {
-      const r = el.getBoundingClientRect()
-      const fromRight = r.right - e.clientX
-      const fromLeft = e.clientX - r.left
-      if (fromRight < zone) speed = ((zone - fromRight) / zone) * maxSpeed
-      else if (fromLeft < zone) speed = -((zone - fromLeft) / zone) * maxSpeed
-      else speed = 0
-      if (speed && !raf) raf = requestAnimationFrame(step)
-    }
-    const stop = () => { speed = 0; cancelAnimationFrame(raf); raf = 0 }
-    el.addEventListener('mousemove', move)
-    el.addEventListener('mouseleave', stop)
-    return () => {
-      el.removeEventListener('mousemove', move)
-      el.removeEventListener('mouseleave', stop)
-      cancelAnimationFrame(raf)
-    }
-  }, [ref, zone, maxSpeed])
-}
-
 // amber rolodex clock with a click-to-cycle timezone (ET → HKT → PT).
 // IANA zone names mean DST is the platform's problem, not ours.
 function RollingClock() {
@@ -109,7 +73,10 @@ function RollingClock() {
   return (
     <button
       onClick={cycle}
-      class="flex items-baseline gap-1 whitespace-nowrap font-anth group px-1.5 py-0.5 rounded hover:bg-accent-soft hover:outline hover:outline-1 hover:outline-accent/50"
+      /* phones: the clock button's right padding stacked on the header gap,
+          so the online dot sat closer to "ET" than to the locale button —
+          dropping pr on mobile centres the dot between them (Jeff 2026-08-06) */
+      class="flex items-baseline gap-1 whitespace-nowrap font-anth group px-1.5 max-sm:pr-0 py-0.5 rounded hover:bg-accent-soft hover:outline hover:outline-1 hover:outline-accent/50"
       title={tl('cycle timezone')}
     >
       <span ref={desktopClock} class="max-md:hidden inline-flex items-baseline text-accent font-semibold text-[12px]" />
@@ -138,7 +105,8 @@ export function StatusBar() {
   const [now, setNow] = useState(() => new Date())
   const online = useOnline()
   const stripRef = useRef(null)
-  useEdgeScroll(stripRef)
+  // edge-scroll (creep toward the hovered side) removed outright — on touch a
+  // tap triggered it and it fought the native swipe (Jeff 2026-08-06)
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000)

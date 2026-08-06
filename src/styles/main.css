@@ -190,18 +190,22 @@ body {
   /* Only where the slot is too narrow to show ticker AND name at once. Above
      that the name rides inline, so fading the ticker on hover just deleted
      the ticker (Jeff 2026-08-05). */
+  /* …but never when the name is ALREADY on the row: during regular hours
+     the freed extended-print space shows it inline, and the tap/hover swap
+     would just replace the ticker with a name you can read anyway
+     (Jeff 2026-08-06) */
   @container (max-width: 544px) {
-    .tui-row.is-revealed .tui-company-symbol,
-    .tui-row:hover .tui-company-symbol,
-    .tui-row:focus-visible .tui-company-symbol,
-    .tui-row:focus-within .tui-company-symbol {
+    .tui-row.is-revealed:not(.has-inline-name) .tui-company-symbol,
+    .tui-row:hover:not(.has-inline-name) .tui-company-symbol,
+    .tui-row:focus-visible:not(.has-inline-name) .tui-company-symbol,
+    .tui-row:focus-within:not(.has-inline-name) .tui-company-symbol {
       opacity: 0;
       transform: translateY(-110%);
     }
-    .tui-row.is-revealed .tui-company-name-swap,
-    .tui-row:hover .tui-company-name-swap,
-    .tui-row:focus-visible .tui-company-name-swap,
-    .tui-row:focus-within .tui-company-name-swap {
+    .tui-row.is-revealed:not(.has-inline-name) .tui-company-name-swap,
+    .tui-row:hover:not(.has-inline-name) .tui-company-name-swap,
+    .tui-row:focus-visible:not(.has-inline-name) .tui-company-name-swap,
+    .tui-row:focus-within:not(.has-inline-name) .tui-company-name-swap {
       opacity: 1;
       transform: translateY(0);
     }

@@ -1820,10 +1820,13 @@ function SymbolPrompt() {
                 <button
                   key={n}
                   onClick={() => { const target = recents[0] || watchlist[0]; if (target) openSym(target, view) }}
-                  class="w-full text-left px-3 py-[5px] font-mono text-[11.5px] hover:bg-surface-3 flex gap-2 items-baseline"
+                  // grid, not flex+widths: tracks align by construction, so
+                  // mobile font inflation can't stagger the columns
+                  // (Jeff 2026-08-06: "align the content here into columns")
+                  class="w-full text-left px-3 py-[5px] font-mono text-[11.5px] hover:bg-surface-3 grid grid-cols-[1.4rem_5.6rem_minmax(0,1fr)] gap-2 items-baseline"
                 >
-                  <span class="text-accent w-5">{n})</span>
-                  <span class="text-ink w-20">{tl(name)}</span>
+                  <span class="text-accent">{n})</span>
+                  <span class="text-ink">{tl(name)}</span>
                   <span class="text-muted truncate">{tl(desc)}</span>
                 </button>
               ))}
