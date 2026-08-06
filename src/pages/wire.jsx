@@ -125,6 +125,26 @@ function ReadBody({ ev }) {
   )
 }
 
+/** Short source tag ("wsj", "reuters") for rows with no tagged symbol —
+ *  a column of dashes says nothing. Aggregator rows use the headline tail. */
+const SOURCE_ALIAS = {
+  prnewswire: 'prn', globenewswire: 'gnw', businesswire: 'bw',
+  seekingalpha: 'sa', marketwatch: 'mw', bloomberg: 'bbg', barrons: 'barrons',
+  investors: 'ibd', finance: 'yahoo',
+}
+
+function sourceTag(ev) {
+  try {
+    const host = new URL(ev.url).hostname.replace(/^www\./, '')
+    if (host === 'news.google.com') {
+      const m = ev.headline.match(/ [-–] ([^-–]{2,40})$/)
+      if (m) return m[1].trim().split(/\s+/)[0].toLowerCase().slice(0, 8)
+    }
+    const stem = host.split('.')[0]
+    return SOURCE_ALIAS[stem] || stem.slice(0, 8)
+  } catch { return ev.source ? String(ev.source).slice(0, 8) : '' }
+}
+
 function Row({ ev, hot, open, onToggle, tier = 0 }) {
   const lat = ev.ts_seen - ev.ts_event
   const latTxt = lat > 0.5 && lat < 600 ? `+${lat.toFixed(1)}s` : ''
@@ -141,9 +161,13 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
           truncated headline defeats the point of a wire. */}
       <div class="grid grid-cols-[64px_56px_36px_1fr_auto] max-sm:grid-cols-[64px_auto_auto_1fr] gap-x-2.5 items-baseline px-2.5 py-[3px] text-[12px] leading-[1.55]">
         <span class={hot ? '' : 'text-muted'}>{rowTime(ev.ts_event)}</span>
-        <span class={hot ? 'font-semibold' : 'text-accent font-medium'}>
-          {(ev.symbols || []).join(' ') || '—'}
-        </span>
+        {(ev.symbols || []).length ? (
+          <span class={`truncate ${hot ? 'font-semibold' : 'text-accent font-medium'}`}>
+            {ev.symbols.join(' ')}
+          </span>
+        ) : (
+          <span class={`truncate text-[10.5px] ${hot ? '' : 'text-muted'}`}>{sourceTag(ev)}</span>
+        )}
         <span class={`text-[10px] tracking-wider ${hot ? '' : CODE_TONE[ev.type] || 'text-muted'}`}>
           {TYPE_CODE[ev.type] || String(ev.type).slice(0, 3).toUpperCase()}
         </span>
