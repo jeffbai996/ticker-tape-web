@@ -60,6 +60,12 @@ const rowTime = (ts) => Date.now() / 1000 - ts < 86400
   : new Date(ts * 1000).toLocaleDateString(getLocale() === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric' })
 
 const countdown = (sec) => {
+  if (getLocale() === 'zh') {
+    if (sec <= 0) return '现在'
+    if (sec < 3600) return `${Math.round(sec / 60)}分钟后`
+    if (sec < 86400) return `${(sec / 3600).toFixed(1)}小时后`
+    return `${Math.round(sec / 86400)}天后`
+  }
   if (sec <= 0) return 'now'
   if (sec < 3600) return `in ${Math.round(sec / 60)}m`
   if (sec < 86400) return `in ${(sec / 3600).toFixed(1)}h`
@@ -355,12 +361,12 @@ function Rail({ today, now, events, watchset, onHide }) {
         ))}
       </Panel>
       {sessions.length > 0 && (
-        <Panel title={`sessions${live.length ? ` · ${live.length} live` : ''}`}>
+        <Panel title={`${tl('sessions')}${live.length ? ` · ${live.length} ${tl('live')}` : ''}`}>
           {sessions.slice(0, 6).map((s) => (
             <div key={s.id} class="flex items-baseline gap-2 py-[2.5px] font-mono text-[11px]">
-              <span class={`text-[9px] uppercase tracking-wider ${
+              <span class={`text-[9px] uppercase tracking-wider whitespace-nowrap ${
                 s.status === 'capturing' ? 'text-accent' : s.status === 'done' ? 'text-up' : 'text-muted'
-              }`}>{s.status}</span>
+              }`}>{tl(s.status)}</span>
               <span class="text-ink-2 truncate" title={s.label}>
                 {s.symbol}{s.label ? ` · ${s.label}` : ''}
               </span>
