@@ -5,7 +5,7 @@ import { marketState } from '../lib/marketState.js'
 import { paintRollingTime, CLOCK_ZONES } from '../lib/rollclock.js'
 import { FlashPrice } from './Fig.jsx'
 import { hrefFor } from '../lib/route.js'
-import { fmtPrice, fmtPriceBare, fmtPct } from '../lib/format.js'
+import { fmtPrice, fmtPct } from '../lib/format.js'
 import { tl, getLocale, setLocale } from '../lib/i18n.js'
 
 // Session-state chip styling mirrors the extended-quote grammar: blue PM and
@@ -109,12 +109,12 @@ function RollingClock() {
   return (
     <button
       onClick={cycle}
-      class="flex items-baseline gap-1 max-sm:gap-0 whitespace-nowrap font-anth group px-1.5 max-sm:px-0 py-0.5 rounded hover:bg-accent-soft hover:outline hover:outline-1 hover:outline-accent/50"
+      class="flex items-baseline gap-1 whitespace-nowrap font-anth group px-1.5 py-0.5 rounded hover:bg-accent-soft hover:outline hover:outline-1 hover:outline-accent/50"
       title={tl('cycle timezone')}
     >
       <span ref={desktopClock} class="max-md:hidden inline-flex items-baseline text-accent font-semibold text-[12px]" />
       <span ref={mobileClock} class="md:hidden inline-flex items-baseline text-accent font-semibold text-[12px]" />
-      <span class="max-sm:hidden text-[8.5px] tracking-wider text-muted group-hover:text-white hover:text-white transition-colors">
+      <span class="text-[8.5px] tracking-wider text-muted group-hover:text-white hover:text-white transition-colors">
         {CLOCK_ZONES[zi].label}
       </span>
     </button>
@@ -125,16 +125,10 @@ function StripCell({ symbol, label, q }) {
   const up = (q?.pct ?? 0) >= 0
   const isVix = symbol === '^VIX'
   return (
-    // phones: no comma in the price and tighter gaps — ES and NQ both have to
-    // land COMPLETE, percentage included, before the clock (Jeff 2026-08-06).
-    // Desktop keeps the separator and the roomier spacing.
     <a href={hrefFor('research', symbol.toLowerCase())}
-       class="hl-row flex items-baseline gap-1.5 max-sm:gap-1 whitespace-nowrap leading-5 px-1 max-sm:px-0.5 hover:no-underline">
+       class="hl-row flex items-baseline gap-1.5 whitespace-nowrap leading-5 px-1 hover:no-underline">
       <span class="text-muted/60 font-tick text-[10px]">{tl(label)}</span>
-      <span class={`font-semibold max-sm:text-[10.5px] ${isVix ? vixClass(q?.price) : 'text-ink-2'}`}>
-        <span class="max-sm:hidden">{q ? <FlashPrice price={q.price} fmt={fmtPrice} /> : '—'}</span>
-        <span class="sm:hidden">{q ? <FlashPrice price={q.price} fmt={fmtPriceBare} /> : '—'}</span>
-      </span>
+      <span class={`font-semibold ${isVix ? vixClass(q?.price) : 'text-ink-2'}`}>{q ? <FlashPrice price={q.price} fmt={fmtPrice} /> : '—'}</span>
       {q && !isVix && <span class={`text-[10px] ${up ? 'text-up' : 'text-down'}`}>{fmtPct(q.pct)}</span>}
     </a>
   )
@@ -169,17 +163,20 @@ export function StatusBar() {
     : 'next session monday'
 
   return (
-    <header class="flex items-center gap-3 max-md:gap-1.5 max-sm:gap-[3px] px-3 max-md:px-2 max-sm:px-1 h-8 shrink-0 bg-black border-b border-line font-mono text-[11px] select-none">
+    <header class="flex items-center gap-3 max-md:gap-1.5 px-3 max-md:px-2 h-8 shrink-0 bg-black border-b border-line font-mono text-[11px] select-none">
       {/* the wordmark is a link home and never looked like one — it now lights
           up (amber wash + rule) under the pointer (Jeff 2026-08-04) */}
+      {/* the logo is the resting brand; the wordmark unfolds from behind it
+          on hover and everything to its right (the status chip first) glides
+          over as the width animates (Jeff 2026-08-06) */}
       <a
         href="#/"
         title={tl('Dashboard')}
-        class="font-bold text-accent tracking-tight text-[13px] -mx-1 px-1 max-sm:px-0 max-sm:mx-0 py-0.5 rounded border border-transparent
-               hover:no-underline hover:bg-accent-soft hover:border-accent/40 hover:text-accent transition-colors"
+        class="brand-morph flex items-center gap-1.5 -mx-1 px-1 py-0.5 rounded border border-transparent
+               hover:no-underline hover:bg-accent-soft hover:border-accent/40 transition-colors"
       >
-        <img src={`${import.meta.env.BASE_URL}ticker-tape-mark.svg`} alt="" class="md:hidden w-5 h-5 max-sm:w-[18px] max-sm:h-[18px]" />
-        <span class="max-md:hidden">ticker-tape</span>
+        <img src={`${import.meta.env.BASE_URL}ticker-tape-mark.svg`} alt="ticker-tape" class="w-5 h-5 shrink-0" />
+        <span class="brand-word max-md:hidden font-bold text-accent tracking-tight text-[13px]">ticker-tape</span>
       </a>
 
       <span
@@ -193,7 +190,7 @@ export function StatusBar() {
       {/* one scrollable line, centred in the bar so it lines up with the
           wordmark: swipe it, drag it, or hover an edge to creep along. */}
       <div class="flex-1 min-w-0 flex items-center">
-        <div ref={stripRef} class="w-full flex items-baseline gap-2.5 max-sm:gap-2 overflow-x-auto no-scrollbar py-0.5">
+        <div ref={stripRef} class="w-full flex items-baseline gap-2.5 overflow-x-auto no-scrollbar py-0.5">
           {strip.map(({ symbol, label }) => (
             <StripCell key={symbol} symbol={symbol} label={label} q={quotes[symbol]?.quote} />
           ))}
@@ -202,12 +199,12 @@ export function StatusBar() {
 
       <RollingClock />
       <span
-        class={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${online ? 'bg-up' : 'bg-down'}`}
+        class={`inline-block w-1.5 h-1.5 rounded-full ${online ? 'bg-up' : 'bg-down'}`}
         title={online ? 'online' : 'offline'}
       />
       <button
         onClick={() => setLocale(getLocale() === 'en' ? 'zh' : 'en')}
-        class="px-1.5 max-sm:px-[3px] py-0.5 rounded border border-line text-muted hover:text-ink hover:border-line-2"
+        class="px-1.5 py-0.5 rounded border border-line text-muted hover:text-ink hover:border-line-2"
         title="EN / 中文"
       >
         {getLocale() === 'en' ? '中' : 'EN'}

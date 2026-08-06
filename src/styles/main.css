@@ -212,6 +212,31 @@ body {
   }
 }
 
+
+/* Brand morph: the nav rests on the logo mark; hovering unfolds the wordmark
+   out of it. max-width (not transform) so the flex row reflows every frame —
+   that's what makes the status chip glide right instead of jumping. */
+.brand-word {
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  transform: translateX(-4px);
+  transition:
+    max-width .38s cubic-bezier(.16, 1, .3, 1),
+    opacity .22s ease .06s,
+    transform .38s cubic-bezier(.16, 1, .3, 1);
+}
+.brand-morph:hover .brand-word,
+.brand-morph:focus-visible .brand-word {
+  max-width: 7.5rem;
+  opacity: 1;
+  transform: translateX(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .brand-word { transition: none !important; }
+}
+
 /* Tape marquee: JS measures one cycle and renders enough copies to keep even
    a one-symbol mobile watchlist filled while this moves exactly one cycle. */
 .tape-scroll {

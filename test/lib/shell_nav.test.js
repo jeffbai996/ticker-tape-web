@@ -70,11 +70,12 @@ describe('compact mobile status bar', () => {
   // Jeff, 2026-08-05: the tight pass ran the quotes together — entries need
   // air between them, and the extended-session label needs as much room on
   // its left as on its right (the % glyph's side bearing eats the difference).
-  // 2026-08-06: phones tighten further so ES and NQ both land complete before
-  // the clock — the roomy spacing is now the desktop half of the pair.
+  // 2026-08-06: a second tight pass tried to fit NQ on phones and Jeff called
+  // it microscopic — the original scale is the contract again; the strip
+  // simply scrolls.
   it('keeps both quote strips readable, not jammed', () => {
     expect(status).toContain('class="w-full flex items-baseline gap-2.5')
-    expect(status).toContain('gap-1.5 max-sm:gap-1 whitespace-nowrap leading-5 px-1')
+    expect(status).toContain('gap-1.5 whitespace-nowrap leading-5 px-1')
     expect(tape).toContain('class="tape-cycle flex items-center h-full gap-3 pr-3"')
     expect(tape).toContain('gap-1.5 whitespace-nowrap hover:no-underline px-1 py-0.5')
     expect(tape).toContain('gap-1.5 text-[10px] pl-[3px]')
