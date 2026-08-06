@@ -56,8 +56,12 @@ describe('compact dashboard company name', () => {
     expect(dashboard).toContain('hidden @min-[545px]:flex @min-[730px]:hidden')
     expect(dashboard).toContain('text-down/80 w-11 text-right')
     expect(dashboard).toContain('text-up/80 w-11')
-    expect(dashboard).toContain('{!q?.extLabel && (')
-    expect(dashboard).toContain('<CompactDayRange lo={q?.dayLow} hi={q?.dayHigh} v={q?.price} />')
+    // 2026-08-06: the slot is now ALWAYS present and ghosts when an extended
+    // print has taken the range down to the badge row — skipping the element
+    // shortened the meter line and slid AVG left of the VOL above it
+    expect(dashboard).toContain('<CompactDayRange lo={q?.extLabel ? null : q?.dayLow}')
+    expect(dashboard).toContain('<CompactDayRange lo={null} hi={null} v={null} />')
+    expect(dashboard).not.toContain('{!q?.extLabel && (')
   })
 
   it('sizes the sparkline continuously instead of jumping at range breakpoints', () => {
@@ -103,7 +107,9 @@ describe('compact dashboard company name', () => {
   })
 
   it('shows raw bid-ask spread without a basis-point suffix', () => {
-    expect(dashboard).toContain('<span class="text-accent/60 text-[9px]">SPR</span>')
+    // the label now sits in its own fixed cell so VOL/AVG land on one x —
+    // what this test guards is the RAW spread render, not the box around it
+    expect(dashboard).toMatch(/class="text-accent\/60 text-\[9px\][^"]*">\{q && quoteSpread\(q\) != null \? 'SPR' : ''\}/)
     expect(dashboard).toContain('fmtSpread(quoteSpread(q))')
     expect(dashboard).not.toMatch(/SPR[^\n]*(?:bp|bps)/)
   })
