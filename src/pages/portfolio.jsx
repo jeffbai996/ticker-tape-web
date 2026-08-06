@@ -44,8 +44,11 @@ const pnlCls = (v) => (v == null ? 'text-muted' : v >= 0 ? 'text-up' : 'text-dow
 function BookSummary({ rows, margin, fallbackNlv }) {
   const sum = (key) => rows.every((row) => row[key] != null)
     ? rows.reduce((total, row) => total + row[key], 0) : null
-  const gross = sum('mktValue')
-  const equity = margin?.equity ?? fallbackNlv ?? null
+  // leverage the way the broker states it: gross position value over NLV.
+  // The broker's own GPV wins when present; the row-sum (already in base
+  // currency) is the fallback for the demo book.
+  const gross = margin?.gross_position_value ?? sum('mktValue')
+  const equity = margin?.nlv ?? margin?.equity ?? fallbackNlv ?? null
   const leverage = gross != null && equity ? gross / equity : null
   const dayPnl = sum('dayPnl')
   const unreal = sum('unrealPnl')
@@ -1009,6 +1012,10 @@ function useLiveBook(account) {
               // 2026-08-05); the broker already knows the truth.
               livePrice: x.market_price ?? null,
               liveValue: x.market_value ?? null,
+              // account-base-currency value — the ONLY thing safe to sum:
+              // raw CAD legs inflated gross and understated Dan's leverage
+              // (1.73x shown vs 2.22x true, Jeff 2026-08-06)
+              liveBase: x.market_value_base ?? null,
               liveUnreal: x.unrealized_pnl ?? null,
               currency: x.currency || 'USD',
               account: x.account || out.account || '',
