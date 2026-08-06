@@ -363,7 +363,7 @@ const LABELS = {
   'CSV format': 'CSV 格式',
   // Remaining chrome discovered by the full Chinese route sweep.
   '% held': '持仓比例', '52wk pos': '52周位置', Ahead: '前瞻', Archive: '归档', Avg: '平均',
-  'Beta / D-E': 'Beta / 负债权益比', Business: '业务', Description: '简介', Website: '网站',
+  'Beta / D-E': 'Beta / 负债权益比', Business: '业务', Description: '简介', Website: '网站', Phone: '电话', 'Mkt cap': '市值',
   Financials: '财务', Ownership: '持仓结构', Quarterly: '季度', Annual: '年度',
   'Corporate actions': '公司行动', 'Relative value': '相对估值',
   'Gross margin': '毛利率', 'Rev growth': '营收增速', 'off high': '距高点',
