@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  DEMO_POSITIONS, DEMO_CASH, positionRows, accountSummary,
+  DEMO_POSITIONS, DEMO_CASH, positionRows, accountSummary, mergeLegs,
   sizeForWeight, carryAt, stressGrid, nlvWalk,
 } from '../../src/lib/demo.js'
 
@@ -134,5 +134,54 @@ describe('nlvWalk', () => {
 
   it('changes with the seed', () => {
     expect(nlvWalk('x', 50, 50_000)).not.toEqual(nlvWalk('y', 50, 50_000))
+  })
+})
+
+describe('mergeLegs', () => {
+  const leg = (over) => ({
+    symbol: 'AAA', currency: 'USD', shares: 100, avgCost: 50,
+    livePrice: 80, liveValue: 8000, liveBase: 11200, liveUnreal: 3000,
+    accountLabel: 'A', ...over,
+  })
+
+  it('same contract across accounts becomes one line at blended avg cost', () => {
+    const merged = mergeLegs([
+      leg({ shares: 100, avgCost: 40, liveValue: 8000, liveBase: 11200, liveUnreal: 4000 }),
+      leg({ shares: 50, avgCost: 60, liveValue: 4000, liveBase: 5600, liveUnreal: 1000, accountLabel: 'B' }),
+    ])
+    expect(merged).toHaveLength(1)
+    const m = merged[0]
+    expect(m.shares).toBe(150)
+    // (100*40 + 50*60) / 150
+    expect(m.avgCost).toBeCloseTo(46.6667, 3)
+    expect(m.liveValue).toBe(12000)
+    expect(m.liveBase).toBe(16800)
+    expect(m.liveUnreal).toBe(5000)
+    expect(m.accountLabel).toBe('A + B')
+  })
+
+  it('blended P&L% through positionRows matches the broker card, not either leg', () => {
+    // the real shape of the bug: leg A +167%, leg B +113%, book +155%
+    const merged = mergeLegs([
+      leg({ shares: 7714, avgCost: 332.55, livePrice: 887.6,
+        liveValue: 6846946, liveBase: 9596440, liveUnreal: 4281646 }),
+      leg({ shares: 1688, avgCost: 417.08, livePrice: 887.6,
+        liveValue: 1498267, liveBase: 2099831, liveUnreal: 794198, accountLabel: 'B' }),
+    ])
+    const [row] = positionRows(merged, {})
+    expect(row.unrealPct).toBeGreaterThan(150)
+    expect(row.unrealPct).toBeLessThan(160)
+  })
+
+  it('US and CDR lines of the same symbol stay separate', () => {
+    const merged = mergeLegs([
+      leg({ currency: 'USD' }),
+      leg({ currency: 'CAD', accountLabel: 'B' }),
+    ])
+    expect(merged).toHaveLength(2)
+  })
+
+  it('same-account label does not double up', () => {
+    expect(mergeLegs([leg(), leg()])[0].accountLabel).toBe('A')
   })
 })

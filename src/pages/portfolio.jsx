@@ -4,7 +4,7 @@ import { boundedTimeScale } from '../lib/chartview.js'
 import { useQuotes } from '../hooks.js'
 import {
   DEMO_POSITIONS, DEMO_CASH, DEMO_BETAS, DEMO_ACCOUNT_ID, DEMO_MARGIN_RATE,
-  positionRows, accountSummary, sizeForWeight, carryAt, stressGrid, nlvWalk,
+  positionRows, accountSummary, mergeLegs, sizeForWeight, carryAt, stressGrid, nlvWalk,
 } from '../lib/demo.js'
 import { fmtPrice, fmtPct, fmtChange, fmtRatio } from '../lib/format.js'
 import { getLocale, tl, t as tt } from '../lib/i18n.js'
@@ -150,9 +150,12 @@ function BookPulse({ rows }) {
 }
 
 function Positions({ priceMap, positions, margin, accountId }) {
-  const rows = positionRows(positions, priceMap)
-  const fallback = accountSummary(positions, priceMap)
   const combined = accountId === BOTH_ACCOUNTS
+  // Both = the broker's consolidated card: same contract across accounts is
+  // ONE line at blended avg cost, so P&L% matches the ibkr readout
+  const legs = combined ? mergeLegs(positions) : positions
+  const rows = positionRows(legs, priceMap)
+  const fallback = accountSummary(legs, priceMap)
   const tot = (k) => (rows.every((r) => r[k] != null) ? rows.reduce((s, r) => s + r[k], 0) : null)
   // aggregate by symbol for the weight ladder — CDR + US lines merge
   const bySym = new Map()

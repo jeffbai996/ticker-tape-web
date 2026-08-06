@@ -28,6 +28,30 @@ export const DEMO_BETAS = {
   AAPL: 1.2, NVDA: 1.8, JPM: 1.1, LLY: 0.4, XOM: 0.6, WMT: 0.5, GLD: 0.1, SPY: 1.0,
 }
 
+/** Merge matching contracts across accounts while preserving each currency. */
+export function mergeLegs(positions) {
+  const byKey = new Map()
+  for (const p of positions) {
+    const key = `${p.symbol}:${p.currency || ''}`
+    const cur = byKey.get(key)
+    if (!cur) { byKey.set(key, { ...p }); continue }
+    const shares = cur.shares + p.shares
+    const addOpt = (a, b) => (a == null && b == null ? null : (a ?? 0) + (b ?? 0))
+    byKey.set(key, {
+      ...cur,
+      shares,
+      avgCost: shares ? (cur.avgCost * cur.shares + p.avgCost * p.shares) / shares : cur.avgCost,
+      livePrice: cur.livePrice ?? p.livePrice,
+      liveValue: addOpt(cur.liveValue, p.liveValue),
+      liveBase: addOpt(cur.liveBase, p.liveBase),
+      liveUnreal: addOpt(cur.liveUnreal, p.liveUnreal),
+      accountLabel: cur.accountLabel && p.accountLabel && cur.accountLabel !== p.accountLabel
+        ? `${cur.accountLabel} + ${p.accountLabel}` : (cur.accountLabel || p.accountLabel),
+    })
+  }
+  return [...byKey.values()]
+}
+
 /** Per-position derived row; price-dependent fields null without a quote. */
 export function positionRows(positions, priceMap) {
   const rows = positions.map((p) => {

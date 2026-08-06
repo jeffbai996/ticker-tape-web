@@ -68,6 +68,15 @@ body {
   }
 }
 
+/* The app is a fixed h-dvh shell; only inner containers scroll. Without this
+   iOS Safari chains an inner scroller's end onto the BODY and drags the whole
+   app past its own bottom nav into blank page (Jeff 2026-08-06). */
+html, body {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 /* Terminal-dark scrollbars everywhere. */
 * {
   scrollbar-width: thin;
@@ -320,10 +329,9 @@ button:hover .burger path:nth-child(2) { transform: scaleX(.55); }
   .time-wheel-face, .time-wheel-old, .time-wheel-new { transition: none !important; }
 }
 
-/* Anthropic Sans (Jeff 2026-08-03). The woff2 lives in gitignored
-   private/fonts/ and is copied into dist-tailnet by build:tailnet — the
-   public build 404s the file and falls back to Jakarta, which is exactly
-   the licensing line: never redistributed, real on the tailnet. */
+/* Anthropic Sans (Jeff 2026-08-03). Shipped in public/fonts/ for BOTH builds
+   since 2026-08-06 (Jeff: "put anth sans on the github, i can drop it later")
+   — dropping it later removes the file but not its git history. */
 @font-face {
   font-family: "Anthropic Sans";
   font-style: normal;
