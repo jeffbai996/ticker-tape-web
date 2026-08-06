@@ -324,6 +324,19 @@ export const COMMODITY_GROUPS = [
 ]
 
 // 2026 dates: FOMC decisions, CPI/NFP releases, advance GDP, PCE.
+
+/** The names whose reports move the tape whether you hold them or not — the
+ *  megacaps plus the heavyweights of the NDX-100/S&P top-100. The earnings
+ *  widget and page merge these with the watchlist (Jeff 2026-08-06). */
+export const EARNINGS_UNIVERSE = [
+  'AAPL', 'MSFT', 'NVDA', 'GOOG', 'AMZN', 'META', 'TSLA', 'MSFT',
+  'BRK-B', 'LLY', 'JPM', 'V', 'UNH', 'XOM', 'MA', 'COST', 'HD', 'PG',
+  'JNJ', 'ABBV', 'WMT', 'NFLX', 'CRM', 'BAC', 'ORCL', 'KO', 'CVX',
+  'AMD', 'MRK', 'PEP', 'ADBE', 'TMO', 'MU', 'GOOGL', 'AMAT', 'QCOM',
+  'TXN', 'INTC', 'INTU', 'CAT', 'GE', 'GS', 'MS', 'PLTR', 'TSM',
+  'ASML', 'NOW', 'ISRG', 'BKNG', 'AXP',
+]
+
 export const ECON_EVENTS = [
   ...['2026-01-28', '2026-03-18', '2026-05-06', '2026-06-17', '2026-07-29', '2026-09-16', '2026-11-04', '2026-12-16']
     .map((date) => ({ date, type: 'FOMC', label: 'FOMC Rate Decision' })),
@@ -335,6 +348,15 @@ export const ECON_EVENTS = [
     .map((date) => ({ date, type: 'GDP', label: 'GDP (Advance)' })),
   ...['2026-01-30', '2026-02-27', '2026-03-27', '2026-04-30', '2026-05-29', '2026-06-26', '2026-07-31', '2026-08-28', '2026-09-25', '2026-10-30', '2026-11-25', '2026-12-23']
     .map((date) => ({ date, type: 'PCE', label: 'Core PCE' })),
+  // second tier, still tape-movers — kept short on purpose (Jeff 2026-08-06:
+  // "slightly more important events, not too many")
+  ...['2026-01-15', '2026-02-12', '2026-03-12', '2026-04-15', '2026-05-13', '2026-06-11', '2026-07-15', '2026-08-13', '2026-09-14', '2026-10-14', '2026-11-13', '2026-12-11']
+    .map((date) => ({ date, type: 'PPI', label: 'PPI Release' })),
+  ...['2026-01-16', '2026-02-17', '2026-03-17', '2026-04-16', '2026-05-15', '2026-06-16', '2026-07-16', '2026-08-14', '2026-09-16', '2026-10-16', '2026-11-17', '2026-12-16']
+    .map((date) => ({ date, type: 'RET', label: 'Retail Sales' })),
+  ...['2026-03-20', '2026-06-19', '2026-09-18', '2026-12-18']
+    .map((date) => ({ date, type: 'OPEX', label: 'Quad Witching' })),
+  { date: '2026-08-27', type: 'FED', label: 'Jackson Hole Symposium' },
 ].sort((a, b) => a.date.localeCompare(b.date))
 
 /** Days from `today` (YYYY-MM-DD) to the event date; negative = past. */
