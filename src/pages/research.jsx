@@ -999,22 +999,35 @@ function ProfileView({ symbol }) {
   if (!p) return <div class="px-1 font-mono text-[11px] text-muted">no profile for {symbol}</div>
   return (
     <div class="grid gap-3 items-start xl:grid-cols-2">
-      <div class="flex flex-col gap-3 min-w-0">
-      <SectionCard title={tl('Company')}>
-        <div class="p-4 pt-3 font-mono text-[12px] flex flex-wrap gap-x-6 gap-y-1">
-          <span><span class="text-muted">{tl('Sector')}</span> <span class="text-ink">{p.sector || '—'}</span></span>
-          <span><span class="text-muted">{tl('Industry')}</span> <span class="text-ink-2">{p.industry || '—'}</span></span>
-          <span><span class="text-muted">{tl('Employees')}</span> <span class="text-ink-2">{p.employees ? p.employees.toLocaleString() : '—'}</span></span>
-          <span><span class="text-muted">{tl('HQ')}</span> <span class="text-ink-2">{[p.city, p.state, p.country].filter(Boolean).join(', ') || '—'}</span></span>
-          {p.website && <a class="text-accent" href={p.website} target="_blank" rel="noopener">{p.website.replace(/^https?:\/\//, '')}</a>}
+      {/* one DES card, bloomberg-style: prose column + facts rail beside it —
+          two stacked cards left a dead column right of the text
+          (Jeff 2026-08-05) */}
+      <SectionCard title={tl('Description')}>
+        <div class="p-4 pt-3 flex gap-6 max-md:flex-col">
+          {p.summary && (
+            <p class="font-anth text-[11.5px] leading-relaxed text-ink-2 flex-1 min-w-0">{p.summary}</p>
+          )}
+          <dl class="shrink-0 w-52 max-md:w-full font-mono text-[11px] flex flex-col gap-1.5 border-l border-line pl-4 max-md:border-l-0 max-md:pl-0 max-md:pt-3 max-md:border-t">
+            {[
+              [tl('Sector'), p.sector, 'text-ink'],
+              [tl('Industry'), p.industry, 'text-ink-2'],
+              [tl('Employees'), p.employees ? p.employees.toLocaleString() : null, 'text-ink-2'],
+              [tl('HQ'), [p.city, p.state, p.country].filter(Boolean).join(', ') || null, 'text-ink-2'],
+            ].map(([label, value, toneCls]) => (
+              <div key={label} class="flex flex-col">
+                <dt class="text-[8.5px] uppercase tracking-wider text-muted">{label}</dt>
+                <dd class={toneCls}>{value || '—'}</dd>
+              </div>
+            ))}
+            {p.website && (
+              <div class="flex flex-col">
+                <dt class="text-[8.5px] uppercase tracking-wider text-muted">{tl('Website')}</dt>
+                <dd><a class="text-accent hover:underline" href={p.website} target="_blank" rel="noopener">{p.website.replace(/^https?:\/\//, '')}</a></dd>
+              </div>
+            )}
+          </dl>
         </div>
       </SectionCard>
-      {p.summary && (
-        <SectionCard title={tl('Description')}>
-          <p class="p-4 pt-3 font-anth text-[11.5px] leading-relaxed text-ink-2 max-w-[74ch]">{p.summary}</p>
-        </SectionCard>
-      )}
-      </div>
       {p.officers.length > 0 && (
         <SectionCard title={tl('Officers')}>
           <table class="w-full border-collapse font-mono text-[11px]">
