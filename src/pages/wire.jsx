@@ -607,12 +607,12 @@ export function Wire({ route }) {
           </button>
         )}
         {/* Private build has exactly one wire and it's auto-configured —
-            the connect affordance only exists for public BYO viewers. */}
+            the connect affordance only exists for public demo viewers. */}
         {!IS_PRIVATE_BUILD && (
           <form class="flex gap-2 ml-auto" onSubmit={applyEndpoint}>
             <input
               class="bg-surface-2 border border-line rounded-md px-2 py-1 font-mono text-[11.5px] text-ink outline-none focus:border-accent w-64"
-              placeholder={tl('wire URL (blank = demo)')}
+              placeholder={tl('your wire URL (optional)')}
               value={draft}
               onInput={(e) => setDraft(e.currentTarget.value)}
             />
