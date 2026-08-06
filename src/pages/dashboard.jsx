@@ -988,7 +988,11 @@ export function Dashboard({ listId = null }) {
   const [widgets, setWidgets] = useState(getWidgets)
   const [groupPrefs, setGroupPrefs] = useState(getGroupPrefs)
   const [viewMode, setViewModeState] = useState(() => localStorage.getItem('dashboard_view_mode_v1') || 'grouped')
-  const [sort, setSortState] = useState(() => localStorage.getItem('dashboard_sort_v1') || 'manual')
+  // sort is remembered PER LIST — a momentum list can live sorted by %
+  // while the main board stays manual (Jeff's fable-run pick #5)
+  const sortKey = listId ? `dashboard_sort_v1:${listId}` : 'dashboard_sort_v1'
+  const [sort, setSortState] = useState(() => localStorage.getItem(sortKey) || 'manual')
+  useEffect(() => { setSortState(localStorage.getItem(sortKey) || 'manual') }, [sortKey])
   const [filter, setFilter] = useState('')
   const setViewMode = (mode) => {
     setViewModeState(mode)
@@ -996,7 +1000,7 @@ export function Dashboard({ listId = null }) {
   }
   const setSort = (value) => {
     setSortState(value)
-    localStorage.setItem('dashboard_sort_v1', value)
+    localStorage.setItem(sortKey, value)
   }
   useEffect(() => onGroupsChange(setGroupPrefs), [])
   const [, bumpGroups] = useState(0)
