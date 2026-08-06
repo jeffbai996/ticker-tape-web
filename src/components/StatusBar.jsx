@@ -172,7 +172,7 @@ export function StatusBar() {
       <a
         href="#/"
         title={tl('Dashboard')}
-        class="brand-morph flex items-center gap-1.5 -mx-1 px-1 py-0.5 rounded border border-transparent
+        class="brand-morph flex items-center -mx-1 px-1 py-0.5 rounded border border-transparent
                hover:no-underline hover:bg-accent-soft hover:border-accent/40 transition-colors"
       >
         <img src={`${import.meta.env.BASE_URL}ticker-tape-mark.svg`} alt="ticker-tape" class="w-5 h-5 shrink-0" />
