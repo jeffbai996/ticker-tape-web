@@ -16,7 +16,9 @@ export function parseSymbolSearch(data) {
 }
 
 export async function searchSymbols(q, { signal } = {}) {
-  const url = `${proxyBase()}/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=8&newsCount=0`
+  // 12 fetched so five suggestions usually survive the EQUITY/ETF filter —
+  // at 8 a name-heavy query could thin out below the 5 the dropdown shows
+  const url = `${proxyBase()}/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=12&newsCount=0`
   const resp = await fetch(url, { signal: signal ?? AbortSignal.timeout(10_000) })
   if (!resp.ok) throw new Error(`search: HTTP ${resp.status}`)
   return parseSymbolSearch(await resp.json())

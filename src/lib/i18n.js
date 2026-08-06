@@ -419,6 +419,7 @@ const LABELS = {
   'nothing at its extremes': '暂无触及极值', 'hit': '已触发', 'heat': '热度', 'alerts': '预警',
   'range': '区间',
   'remove from board': '从自选移除', 'remove from list': '从列表移除', 'add to this list': '加入此列表',
+  'add to current watchlist': '加入当前自选', 'remove from current watchlist': '移出当前自选',
   'Dashboard': '仪表盘',
   Financials: '财务', Ownership: '持仓结构', Quarterly: '季度', Annual: '年度',
   'Corporate actions': '公司行动', 'Relative value': '相对估值',
