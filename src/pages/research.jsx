@@ -1150,11 +1150,12 @@ function AnalystsView({ symbol }) {
   )
 }
 
-function SectionCard({ title, children }) {
+function SectionCard({ title, actions, children }) {
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
-      <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
+      <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2 flex items-center gap-2">
         <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{title}</h2>
+        {actions && <div class="ml-auto flex items-center gap-1 overflow-x-auto no-scrollbar">{actions}</div>}
       </header>
       {children}
     </section>
@@ -1443,6 +1444,7 @@ function NewsReadBody({ ev, base }) {
 
 function SymbolNewsView({ symbol, name }) {
   const [openId, setOpenId] = useState(null)
+  const [wireType, setWireType] = useState('all')
   const [yahoo, setYahoo] = useState(null)
   const [wireRows, setWireRows] = useState(null)
   const base = wireUrl()
@@ -1489,17 +1491,38 @@ function SymbolNewsView({ symbol, name }) {
 
   const CODE = { earnings_release: 'ERN', filing: 'FIL', headline: 'NWS',
     macro_print: 'ECO', price_move: 'PX', digest: 'DIG' }
+  // simple per-type filters ride the card's title row (Jeff 2026-08-06)
+  const wireTypes = [...new Set((wireRows || []).map((e) => e.type).filter(Boolean))]
+  const shownWire = wireType === 'all' ? wireRows : (wireRows || []).filter((e) => e.type === wireType)
   return (
     <div class="flex flex-col gap-3 max-w-6xl">
       {base && (
-        <SectionCard title={`${tl('On the wire')} · ${symbol}`}>
+        <SectionCard title={`FRAGWIRE · ${symbol}`}
+          actions={wireTypes.length > 1 && (
+            <>
+              {['all', ...wireTypes].map((t) => (
+                <button key={t}
+                  onClick={() => setWireType(t === wireType ? 'all' : t)}
+                  class={`font-mono text-[9px] px-1.5 py-px rounded border tracking-wider shrink-0 ${
+                    wireType === t
+                      ? 'border-accent-2 text-accent-2 bg-accent-2-soft'
+                      : 'border-line-2 text-muted hover:text-ink'
+                  }`}>
+                  {t === 'all' ? tl('All') : (CODE[t] || t.slice(0, 3).toUpperCase())}
+                </button>
+              ))}
+            </>
+          )}>
           {wireRows === null ? (
             <div class="px-3 py-2 font-mono text-[11px] text-muted">{tt('common.loading')}</div>
           ) : !wireRows.length ? (
             <div class="px-3 py-2 font-mono text-[11px] text-muted">{tt('research.nothing_on_wire', { symbol })}</div>
           ) : (
             <div class="font-mono text-[11.5px]">
-              {wireRows.map((e) => (
+              {!shownWire.length && (
+                <div class="px-3 py-2 text-muted">{tt('research.nothing_on_wire', { symbol })}</div>
+              )}
+              {shownWire.map((e) => (
                 <div key={e.id}
                   class={`border-t border-line first:border-0 cursor-pointer ${openId === e.id ? 'bg-surface-2/60' : 'hover:bg-surface-3'}`}
                   onClick={() => setOpenId(openId === e.id ? null : e.id)}>
@@ -1587,7 +1610,7 @@ function SymbolWireView({ symbol }) {
     transcript_chunk: 'LIV', brief: 'BRF' }
   return (
     <div class="flex flex-col gap-3 max-w-6xl">
-      <SectionCard title={`${tl('On the wire')} · ${symbol}`}>
+      <SectionCard title={`FRAGWIRE · ${symbol}`}>
         <div class="font-mono text-[11.5px]">
           {rows.map((e) => (
             <div key={e.id} class="grid grid-cols-[86px_36px_1fr] gap-x-2.5 items-baseline px-3 py-[3px] border-t border-line first:border-0 hover:bg-surface-3">
@@ -1872,7 +1895,7 @@ function WireMini({ symbol }) {
   return (
     <div class="border-t border-line">
       <div class="flex items-baseline gap-2 px-3 pt-1.5 pb-0.5">
-        <span class="font-mono font-bold text-[10px] tracking-wider text-accent uppercase">{tl('On the wire')}</span>
+        <span class="font-mono font-bold text-[10px] tracking-wider text-accent uppercase">FRAGWIRE</span>
         <a href={`#/research/${symbol.toLowerCase()}/wire`} class="font-mono text-[9.5px] text-muted hover:text-ink">0) {tl('all')} →</a>
       </div>
       <div class="font-mono text-[11px] pb-1">
@@ -2056,10 +2079,10 @@ export function Research({ route }) {
               <Marquee text={q.name} class="w-full text-[12px] text-muted font-anth" />
             </span>
             <span class="ml-auto flex items-baseline gap-3 shrink-0 whitespace-nowrap">
-              <span class="font-mono text-lg text-ink"><FlashPrice price={q.price} fmt={fmtPrice} /></span>
-              <span class={`font-mono font-semibold text-[15px] ${up ? 'text-up' : 'text-down'}`}>
-                <FlashMetric value={q.change} fmt={fmtChange} />{' '}
-                <FlashMetric value={q.pct} fmt={fmtPct} />
+              <span class="font-mono font-bold text-lg text-ink"><FlashPrice price={q.price} fmt={fmtPrice} /></span>
+              <span class={`font-mono text-[15px] ${up ? 'text-up' : 'text-down'}`}>
+                <span class="font-semibold"><FlashMetric value={q.change} fmt={fmtChange} /></span>{' '}
+                <span class="font-normal"><FlashMetric value={q.pct} fmt={fmtPct} /></span>
               </span>
               {q.volume != null && (
                 <span class="font-mono text-[11px] text-muted">vol {fmtVol(q.volume)}</span>
@@ -2086,7 +2109,7 @@ export function Research({ route }) {
               class={`font-mono text-[10px] px-2 py-1 rounded-md border whitespace-nowrap shrink-0 ${
                 rangeKey === r.key
                   ? 'border-accent-2 text-accent-2 bg-accent-2-soft'
-                  : 'border-line text-muted hover:text-ink hover:bg-surface-3'
+                  : 'border-accent/30 text-muted hover:text-ink hover:bg-surface-3'
               }`}
             >
               {r.key.toLowerCase()}
@@ -2114,7 +2137,7 @@ export function Research({ route }) {
             class={`font-mono text-[9px] px-2.5 py-1 rounded-md border hover:no-underline whitespace-nowrap shrink-0 ${
               route.view === tab.id
                 ? 'border-accent-2 text-accent-2 bg-accent-2-soft'
-                : 'border-line text-muted hover:text-ink hover:bg-surface-3'
+                : 'border-white/25 text-muted hover:text-ink hover:bg-surface-3'
             }`}
           >
             <span class="text-accent">{(ti + 1) % 10})</span> {tab.label}
