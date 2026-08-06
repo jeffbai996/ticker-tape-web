@@ -30,7 +30,7 @@ import { fetchEarningsDate } from '../lib/fundamentals.js'
 import { memoPrompt, BRIEFING_SYSTEM } from '../lib/briefing.js'
 import { AiReport, MdLite } from '../components/AiReport.jsx'
 import { ChartSuite } from '../components/ChartSuite.jsx'
-import { emaSeries, macdSeries } from '../lib/chartmath.js'
+import { emaSeries, macdSeries, trimToWindow, warmedBars } from '../lib/chartmath.js'
 import { boundedTimeScale } from '../lib/chartview.js'
 import { extendedLabelClass } from '../lib/extendedHours.js'
 
@@ -112,7 +112,7 @@ function rollingSma(bars, n) {
   return out
 }
 
-function Candles({ bars, intraday }) {
+function Candles({ bars, warmPad, intraday }) {
   const el = useRef(null)
   const chartRef = useRef(null)
   const legendRef = useRef(null)
@@ -175,6 +175,10 @@ function Candles({ bars, intraday }) {
   useEffect(() => {
     const c = chartRef.current
     if (!c || !bars) return
+    // oscillators run on window + warm-up prefix, then get trimmed back to the
+    // window — otherwise RSI starts 14 bars in and MACD 34, which reads as the
+    // indicator "not going back as far as the candles" (Jeff 2026-08-06)
+    const warmed = warmedBars(bars, warmPad)
     c.series.setData(bars)
     c.chart.priceScale('right').applyOptions({ mode: ov.log ? 1 : 0 })
     c.extra.forEach((sr) => { try { c.chart.removeSeries(sr) } catch { /* gone */ } })
@@ -185,7 +189,7 @@ function Candles({ bars, intraday }) {
         color: SMA_COLORS[n], lineWidth: 1,
         priceLineVisible: false, lastValueVisible: false,
       })
-      line.setData(rollingSma(bars, n))
+      line.setData(trimToWindow(rollingSma(warmed, n), bars))
       c.extra.push(line)
     }
     if (ov.ema21 && bars.length >= 21) {
@@ -193,12 +197,14 @@ function Candles({ bars, intraday }) {
         color: '#e7ecf3', lineWidth: 1, lineStyle: 2,
         priceLineVisible: false, lastValueVisible: false,
       })
-      line.setData(emaSeries(bars, 21))
+      line.setData(trimToWindow(emaSeries(warmed, 21), bars))
       c.extra.push(line)
     }
     if (ov.bb && bars.length >= 20) {
-      const { up, mid, lo } = rollingBB(bars, 20, 2)
-      for (const [data, style] of [[up, 0], [mid, 2], [lo, 0]]) {
+      const { up, mid, lo } = rollingBB(warmed, 20, 2)
+      for (const [data, style] of [[trimToWindow(up, bars), 0],
+                                   [trimToWindow(mid, bars), 2],
+                                   [trimToWindow(lo, bars), 0]]) {
         const line = c.chart.addSeries(LineSeries, {
           color: BB_COLOR, lineWidth: 1, lineStyle: style,
           priceLineVisible: false, lastValueVisible: false,
@@ -237,14 +243,14 @@ function Candles({ bars, intraday }) {
         color: '#3ecbe8', lineWidth: 1,
         priceLineVisible: false, lastValueVisible: true,
       }, paneIdx)
-      rsiLine.setData(rollingRsi(bars, 14))
+      rsiLine.setData(trimToWindow(rollingRsi(warmed, 14), bars))
       rsiLine.createPriceLine({ price: 70, color: 'rgba(248,81,73,.4)', lineWidth: 1, lineStyle: 3, axisLabelVisible: false })
       rsiLine.createPriceLine({ price: 30, color: 'rgba(63,185,80,.4)', lineWidth: 1, lineStyle: 3, axisLabelVisible: false })
       c.extra.push(rsiLine)
       paneIdx++
     }
     if (ov.macd && bars.length >= 40) {
-      const m = macdSeries(bars)
+      const m = macdSeries(warmed)
       const hist = c.chart.addSeries(HistogramSeries, {
         priceLineVisible: false, lastValueVisible: false,
       }, paneIdx)
@@ -254,7 +260,9 @@ function Candles({ bars, intraday }) {
       const signal = c.chart.addSeries(LineSeries, {
         color: '#f59e0b', lineWidth: 1, priceLineVisible: false,
       }, paneIdx)
-      hist.setData(m.hist); macdLine.setData(m.macd); signal.setData(m.signal)
+      hist.setData(trimToWindow(m.hist, bars))
+      macdLine.setData(trimToWindow(m.macd, bars))
+      signal.setData(trimToWindow(m.signal, bars))
       c.extra.push(hist, macdLine, signal)
       paneIdx++
     }
@@ -263,7 +271,7 @@ function Candles({ bars, intraday }) {
       for (let i = 1; i < panes.length; i++) panes[i].setHeight(84)
     } catch { /* pane sizing is garnish */ }
     c.chart.timeScale().fitContent()
-  }, [bars, ov])
+  }, [bars, warmPad, ov])
 
   return (
     <div>
@@ -2011,6 +2019,7 @@ export function Research({ route }) {
     return () => window.removeEventListener('tape:chart-range', onRange)
   }, [])
   const [hist, setHist] = useState(null)
+  const [warmPad, setWarmPad] = useState(null)
   const [err, setErr] = useState(null)
   // Header quote comes from the live 1D feed — a multi-month chart fetch
   // reports change vs the range START (chartPreviousClose), not yesterday.
@@ -2023,6 +2032,12 @@ export function Research({ route }) {
     fetchHistory(symbol, rangeKey)
       .then(setHist)
       .catch((e) => setErr(String(e.message || e)))
+    // warm-up bars for the oscillators; failure is silent — indicators just
+    // start where they used to
+    setWarmPad(null)
+    fetchHistory(symbol, rangeKey, { warm: true })
+      .then((h) => setWarmPad(h.bars))
+      .catch(() => {})
   }, [symbol, rangeKey])
 
   // bloomberg speed keys: the tab numbers are commands — press 3, land on
@@ -2176,7 +2191,7 @@ export function Research({ route }) {
           <section class="bg-surface-1 border border-line rounded-xl min-w-0 overflow-hidden flex flex-col self-stretch">
             <div class="p-2 pb-0">
             {hist ? (
-              <Candles bars={hist.bars} intraday={hist.intraday} />
+              <Candles bars={hist.bars} warmPad={warmPad} intraday={hist.intraday} />
             ) : (
               <div class="h-[380px] flex items-center justify-center font-mono text-[11px] text-muted">
                 {err ? 'no chart' : 'loading…'}
