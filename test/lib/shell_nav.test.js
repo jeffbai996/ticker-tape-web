@@ -67,15 +67,19 @@ describe('compact mobile status bar', () => {
     expect(tape).toContain("'--tape-cycle-width'")
   })
 
-  it('keeps both quote strips tightly spaced', () => {
-    expect(status).toContain('class="w-full flex items-baseline gap-0')
-    expect(status).toContain('gap-[3px] whitespace-nowrap leading-5 px-1')
-    expect(status).not.toContain('items-baseline gap-4 overflow-x-auto')
-    expect(tape).toContain('class="tape-cycle flex items-center h-full gap-0 pr-1"')
-    expect(tape).toContain('gap-[3px] whitespace-nowrap hover:no-underline px-1 py-0.5')
+  // Jeff, 2026-08-05: the tight pass ran the quotes together — entries need
+  // air between them, and the extended-session label needs as much room on
+  // its left as on its right (the % glyph's side bearing eats the difference).
+  it('keeps both quote strips readable, not jammed', () => {
+    expect(status).toContain('class="w-full flex items-baseline gap-2.5')
+    expect(status).toContain('gap-1.5 whitespace-nowrap leading-5 px-1')
+    expect(tape).toContain('class="tape-cycle flex items-center h-full gap-3 pr-3"')
+    expect(tape).toContain('gap-1.5 whitespace-nowrap hover:no-underline px-1 py-0.5')
+    expect(tape).toContain('gap-1.5 text-[10px] pl-[3px]')
+    // …but the fixed-width quote columns stay gone: they padded every row to
+    // the widest print and left holes mid-tape
     expect(tape).not.toContain('min-w-[3.75rem]')
     expect(tape).not.toContain('min-w-[3.25rem]')
-    expect(tape).not.toContain('h-full gap-4 pr-4')
   })
 
   it('color-codes the extended-session quote beside the regular print', () => {
