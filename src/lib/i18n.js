@@ -323,6 +323,8 @@ const LABELS = {
   top: '置顶', remove: '移除', Manual: '手动',
   'Main board': '主看板', 'board menu': '看板菜单',
   sessions: '会话', live: '直播', capturing: '录制中', armed: '待命', queued: '排队中',
+  positions: '持仓', 'margin ladder': '保证金梯度', 'filter by symbol': '按代码筛选',
+  'upcoming dividends': '即将派息',
   'drag rows or use the arrows': '拖动行或使用箭头调整顺序',
   'move up': '上移', 'move down': '下移',
   'not a symbol': '代码无效',

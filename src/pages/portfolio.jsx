@@ -787,7 +787,7 @@ function IbkrMd({ url, empty }) {
   )
 }
 
-function WhatIf({ accountId }) {
+function WhatIf({ accountId, positions }) {
   const [action, setAction] = useState('SELL')
   const [symbol, setSymbol] = useState('')
   const [qty, setQty] = useState('')
@@ -801,8 +801,26 @@ function WhatIf({ accountId }) {
     if (!sym || !n) return
     setUrl(`${wireBase()}/api/ibkr/what-if?action=${action}&symbol=${encodeURIComponent(sym)}&quantity=${n}&account=${encodeURIComponent(accountId || '')}`)
   }
+  // one tap loads a held name; the fraction chips then speak in position
+  // language (¼ / ½ / all of what you actually hold), not raw share counts
+  const held = (positions || []).filter((p) => p.shares > 0)
+  const active = held.find((p) => p.symbol === symbol.trim().toUpperCase())
   return (
     <div class="flex flex-col gap-2 max-w-3xl">
+      {held.length > 0 && (
+        <div class="flex items-center gap-1 flex-wrap font-mono text-[10px]">
+          <span class="text-muted uppercase tracking-wider text-[9px] mr-1">{tl('positions')}</span>
+          {held.map((p) => (
+            <button key={`${p.symbol}-${p.currency}`} type="button"
+              onClick={() => { setSymbol(p.symbol); if (!qty) setQty(String(Math.max(1, Math.round(p.shares / 4)))) }}
+              class={`px-1.5 py-px rounded-full border ${p.symbol === active?.symbol
+                ? 'border-accent text-accent bg-accent-soft'
+                : 'border-line text-ink-2 hover:border-accent/50 hover:text-accent'}`}>
+              {p.symbol} <span class="text-muted">{Math.round(p.shares)}</span>
+            </button>
+          ))}
+        </div>
+      )}
       <form onSubmit={run} class="flex items-center gap-2 flex-wrap font-mono text-[11.5px]">
         <div class="flex gap-0.5 bg-surface-2 border border-line rounded-lg p-0.5">
           {['BUY', 'SELL'].map((a) => (
@@ -816,30 +834,87 @@ function WhatIf({ accountId }) {
           class="w-20 bg-surface-2 border border-line rounded-lg px-2 py-1 text-ink outline-none focus:border-accent" />
         <input value={symbol} onInput={(e) => setSymbol(e.currentTarget.value)} placeholder="SYM"
           class="w-24 bg-surface-2 border border-line rounded-lg px-2 py-1 text-ink uppercase outline-none focus:border-accent" />
+        {active && (
+          <span class="flex gap-1">
+            {[['¼', 0.25], ['½', 0.5], [tl('all'), 1]].map(([label, f]) => (
+              <button key={label} type="button"
+                onClick={() => setQty(String(Math.max(1, Math.round(active.shares * f))))}
+                class="px-1.5 py-0.5 rounded border border-line-2 text-muted hover:text-accent hover:border-accent/50 text-[10px]">
+                {label}
+              </button>
+            ))}
+          </span>
+        )}
         <button class="border border-accent text-accent bg-accent-soft rounded-lg px-3 py-1 font-semibold hover:bg-accent hover:text-black">
           run what-if
         </button>
         <span class="text-[10px] text-muted">{tt('portfolio.margin_preview')}</span>
       </form>
       {url && <IbkrMd url={url} />}
+      {/* buying-room context lives on the same page as the question it
+          answers — the ladder shows headroom per name before you what-if.
+          Fetch only on open: it's a real gateway round-trip. */}
+      <LadderFold accountId={accountId} />
+    </div>
+  )
+}
+
+function LadderFold({ accountId }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div class="max-w-3xl">
+      <button type="button" onClick={() => setOpen((v) => !v)}
+        class="font-mono text-[10px] uppercase tracking-wider text-muted hover:text-accent px-1 py-1">
+        {open ? '▾' : '▸'} {tl('margin ladder')}
+      </button>
+      {open && <IbkrMd url={`${wireBase()}/api/ibkr/margin-ladder?account=${encodeURIComponent(accountId || '')}`} />}
     </div>
   )
 }
 
 function Trades({ accountId }) {
   const [view, setView] = useState('fills')
+  const [filter, setFilter] = useState('')
+  const [applied, setApplied] = useState('')
   if (!wireBase()) return <NeedsWire />
   if (accountId === BOTH_ACCOUNTS) return <div class="px-1 font-anth text-[11.5px] text-muted">{tt('portfolio.pick_one_account')}</div>
+  const qs = `view=${view}&account=${encodeURIComponent(accountId || '')}`
+    + (applied ? `&symbol_filter=${encodeURIComponent(applied)}` : '')
   return (
     <div class="flex flex-col gap-2 max-w-3xl">
-      <div class="flex gap-1 font-mono text-[11px]">
+      <div class="flex items-center gap-1 flex-wrap font-mono text-[11px]">
         {['fills', 'orders'].map((v) => (
           <button key={v} onClick={() => setView(v)}
             class={`border rounded-md px-2.5 py-0.5 font-semibold ${view === v
               ? 'bg-accent border-accent text-black' : 'border-line text-ink-2 hover:text-ink'}`}>{v}</button>
         ))}
+        <form class="ml-2 flex items-center gap-1"
+          onSubmit={(e) => { e.preventDefault(); setApplied(filter.trim().toUpperCase()) }}>
+          <input value={filter} onInput={(e) => setFilter(e.currentTarget.value)}
+            placeholder="SYM" title={tl('filter by symbol')}
+            class="w-20 bg-surface-2 border border-line rounded-md px-2 py-0.5 text-ink uppercase outline-none focus:border-accent placeholder:text-muted" />
+          {applied && (
+            <button type="button" onClick={() => { setFilter(''); setApplied('') }}
+              class="text-muted hover:text-down text-[10px]">✕ {applied}</button>
+          )}
+        </form>
       </div>
-      <IbkrMd url={`${wireBase()}/api/ibkr/trades?view=${view}&account=${encodeURIComponent(accountId || '')}`} empty="no executions this session" />
+      <IbkrMd url={`${wireBase()}/api/ibkr/trades?${qs}`} empty="no executions this session" />
+      {/* cash coming to the book rides along with what left it */}
+      <DividendsFold accountId={accountId} />
+    </div>
+  )
+}
+
+function DividendsFold({ accountId }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div class="max-w-3xl">
+      <button type="button" onClick={() => setOpen((v) => !v)}
+        class="font-mono text-[10px] uppercase tracking-wider text-muted hover:text-accent px-1 py-1">
+        {open ? '▾' : '▸'} {tl('upcoming dividends')}
+      </button>
+      {open && <IbkrMd url={`${wireBase()}/api/ibkr/dividends?scope=calendar&account=${encodeURIComponent(accountId || '')}`} />}
     </div>
   )
 }
