@@ -14,6 +14,10 @@ export const MARKET_GROUPS = [
       { symbol: '^MID', label: 'S&P MidCap 400' },
       { symbol: '^OEX', label: 'S&P 100' },
       { symbol: '^SP500EW', label: 'S&P 500 Equal Weight' },
+      { symbol: '^NYA', label: 'NYSE Composite' },
+      { symbol: '^XAX', label: 'NYSE American' },
+      { symbol: '^DJT', label: 'Dow Transports' },
+      { symbol: '^DJU', label: 'Dow Utilities' },
     ],
   },
   {
@@ -25,6 +29,9 @@ export const MARKET_GROUPS = [
       { symbol: 'RTY=F', label: 'Russell Future' },
       { symbol: 'ZN=F', label: '10Y Note Future' },
       { symbol: 'ZB=F', label: '30Y Bond Future' },
+      { symbol: 'ZF=F', label: '5Y Note Future' },
+      { symbol: 'ZT=F', label: '2Y Note Future' },
+      { symbol: 'EMD=F', label: 'MidCap Future' },
     ],
   },
   {
@@ -38,6 +45,10 @@ export const MARKET_GROUPS = [
       { symbol: 'MCHI', label: 'China ETF' },
       { symbol: 'RSP', label: 'S&P 500 Equal Weight ETF' },
       { symbol: 'SPY', label: 'S&P 500 ETF' },
+      { symbol: 'INDA', label: 'India ETF' },
+      { symbol: 'EWZ', label: 'Brazil ETF' },
+      { symbol: 'EWY', label: 'Korea ETF' },
+      { symbol: 'EWT', label: 'Taiwan ETF' },
     ],
   },
   {
@@ -45,6 +56,10 @@ export const MARKET_GROUPS = [
     items: [
       { symbol: '^GSPTSE', label: 'S&P/TSX Composite' },
       { symbol: 'XIU.TO', label: 'TSX 60 ETF' },
+      { symbol: 'XEG.TO', label: 'TSX Energy' },
+      { symbol: 'XFN.TO', label: 'TSX Financials' },
+      { symbol: 'XGD.TO', label: 'TSX Gold' },
+      { symbol: 'CADUSD=X', label: 'CAD/USD' },
     ],
   },
   {
@@ -85,6 +100,10 @@ export const MARKET_GROUPS = [
       { symbol: 'TLT', label: 'Long Treasuries' },
       { symbol: 'SHY', label: 'Short Treasuries' },
       { symbol: 'TIP', label: 'Inflation-linked bonds' },
+      { symbol: 'JNK', label: 'High yield (JNK)' },
+      { symbol: 'BKLN', label: 'Senior loans' },
+      { symbol: 'MUB', label: 'Municipals' },
+      { symbol: 'IEF', label: '7-10Y Treasuries' },
     ],
   },
   {
@@ -99,6 +118,8 @@ export const MARKET_GROUPS = [
       { symbol: '^TYX', label: '30Y Yield' },
       { label: '10Y − 3M', spread: ['^TNX', '^IRX'], hint: 'curve' },
       { label: '30Y − 5Y', spread: ['^TYX', '^FVX'], hint: 'long end' },
+      { label: '10Y − 5Y', spread: ['^TNX', '^FVX'], hint: 'belly' },
+      { label: '30Y − 10Y', spread: ['^TYX', '^TNX'], hint: 'term premium' },
     ],
   },
   {
@@ -129,6 +150,51 @@ export const MARKET_GROUPS = [
       { symbol: 'USDINR=X', label: 'USD/INR' },
       { symbol: 'USDMXN=X', label: 'USD/MXN' },
       { symbol: 'NZDUSD=X', label: 'NZD/USD' },
+    ],
+  },
+  {
+    // The eleven GICS sectors as tradeable proxies — sector rotation is the
+    // whole game for a concentrated book, and reading it off index levels
+    // alone doesn't work.
+    name: 'US Sectors',
+    items: [
+      { symbol: 'XLK', label: 'Technology' },
+      { symbol: 'XLF', label: 'Financials' },
+      { symbol: 'XLE', label: 'Energy' },
+      { symbol: 'XLV', label: 'Health Care' },
+      { symbol: 'XLI', label: 'Industrials' },
+      { symbol: 'XLY', label: 'Cons. Discretionary' },
+      { symbol: 'XLP', label: 'Cons. Staples' },
+      { symbol: 'XLU', label: 'Utilities' },
+      { symbol: 'XLB', label: 'Materials' },
+      { symbol: 'XLRE', label: 'Real Estate' },
+      { symbol: 'XLC', label: 'Communication Svcs' },
+    ],
+  },
+  {
+    name: 'Factors & Style',
+    items: [
+      { symbol: 'IWF', label: 'Large Growth' },
+      { symbol: 'IWD', label: 'Large Value' },
+      { symbol: 'MTUM', label: 'Momentum' },
+      { symbol: 'QUAL', label: 'Quality' },
+      { symbol: 'USMV', label: 'Min Volatility' },
+      { symbol: 'SPHB', label: 'High Beta' },
+      { symbol: 'IWM', label: 'Small Cap' },
+      { symbol: 'SPLV', label: 'Low Volatility' },
+    ],
+  },
+  {
+    name: 'AI & Semis',
+    items: [
+      { symbol: 'SOXX', label: 'Semis (SOXX)' },
+      { symbol: 'SMH', label: 'Semis (SMH)' },
+      { symbol: 'QQQ', label: 'Nasdaq 100 ETF' },
+      { symbol: 'IGV', label: 'Software' },
+      { symbol: 'SKYY', label: 'Cloud' },
+      { symbol: 'BOTZ', label: 'Robotics & AI' },
+      { symbol: 'XLU', label: 'Utilities (AI power)' },
+      { symbol: 'URA', label: 'Uranium' },
     ],
   },
   {
@@ -185,6 +251,11 @@ export const RELATIVE_SIGNALS = [
   { label: 'High yield / IG', a: 'HYG', b: 'LQD' },
   { label: 'Gold / Silver', a: 'GC=F', b: 'SI=F' },
   { label: 'Bitcoin / Gold', a: 'BTC-USD', b: 'GC=F' },
+  { label: 'Growth / Value', a: 'IWF', b: 'IWD' },
+  { label: 'Small / Large', a: 'IWM', b: 'SPY' },
+  { label: 'Discretionary / Staples', a: 'XLY', b: 'XLP' },
+  { label: 'Copper / Gold', a: 'HG=F', b: 'GC=F' },
+  { label: 'Long bonds / Stocks', a: 'TLT', b: 'SPY' },
 ]
 
 export const COMMODITY_GROUPS = [

@@ -182,7 +182,11 @@ function Overview() {
   return (
     <div>
       <MarketJumpBar />
-      <div class="grid gap-2 md:grid-cols-2 xl:grid-cols-3 min-[1800px]:grid-cols-4 items-start">
+      {/* CSS columns, not a grid: a grid row is as tall as its tallest card,
+          so a 2-row Canada beside a 10-row Asia-Pacific left a slab of black
+          under it. Columns pack each card against the one above (Jeff
+          2026-08-06: "no need to align the boxes like that"). */}
+      <div class="columns-1 md:columns-2 xl:columns-3 min-[1800px]:columns-4 gap-2 [&>*]:mb-2 [&>*]:break-inside-avoid">
         {MARKET_GROUPS.map((g) => (
           <GroupCard key={g.name} name={g.name} items={g.items} quotes={quotes} />
         ))}
@@ -261,7 +265,7 @@ function Sectors() {
   const maxAbs = Math.max(0.01, ...rows.map((r) => Math.abs(r.q?.pct ?? 0)))
 
   return (
-    <div class="grid gap-2 xl:grid-cols-2 items-start">
+    <div class="columns-1 xl:columns-2 gap-2 [&>*]:mb-2 [&>*]:break-inside-avoid">
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
       <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
         <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">
@@ -305,7 +309,7 @@ function Commodities() {
   const symbols = COMMODITY_GROUPS.flatMap((g) => g.items.map((i) => i.symbol))
   const quotes = useQuotes(symbols)
   return (
-    <div class="grid gap-2 lg:grid-cols-2 2xl:grid-cols-3">
+    <div class="columns-1 lg:columns-2 2xl:columns-3 gap-2 [&>*]:mb-2 [&>*]:break-inside-avoid">
       {COMMODITY_GROUPS.map((g) => (
         <GroupCard key={g.name} name={g.name} items={g.items} quotes={quotes} withUnits />
       ))}
