@@ -231,16 +231,19 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
   )
 }
 
-function Panel({ title, children }) {
+function Panel({ title, children, action = null }) {
   return (
     <section class="border border-line rounded-lg bg-surface overflow-hidden">
-      <h3 class="px-2.5 py-1 border-b border-line font-mono text-[9.5px] uppercase tracking-[.12em] text-muted">{title}</h3>
+      <h3 class="flex items-center px-2.5 py-1 border-b border-line font-mono text-[9.5px] uppercase tracking-[.12em] text-muted">
+        {title}
+        {action && <span class="ml-auto">{action}</span>}
+      </h3>
       <div class="px-2.5 py-1.5">{children}</div>
     </section>
   )
 }
 
-function Rail({ today, now, events, watchset }) {
+function Rail({ today, now, events, watchset, onHide }) {
   const sessions = (today?.sessions || []).filter((s) => s.status !== 'failed')
   const live = sessions.filter((s) => ['armed', 'capturing'].includes(s.status))
 
@@ -264,7 +267,12 @@ function Rail({ today, now, events, watchset }) {
 
   return (
     <aside class="flex flex-col gap-2 w-[290px] shrink-0 max-lg:w-full">
-      <Panel title={tl('tape')}>
+      <Panel title={tl('tape')} action={
+        <button onClick={onHide} title={tl('hide the side panels')}
+          class="text-muted hover:text-accent leading-none px-1 -mr-1 font-mono text-[11px]">
+          »
+        </button>
+      }>
         <div class="grid grid-cols-3 gap-1 py-0.5 font-mono text-center">
           <div><div class="text-[15px] font-semibold text-ink">{events.length}</div>
             <div class="text-[8.5px] uppercase tracking-wider text-muted">{tl('buffered')}</div></div>
@@ -569,19 +577,6 @@ export function Wire({ route }) {
             {tl(f.label)}
           </button>
         ))}
-        <button
-          class={`ml-auto border rounded-md px-2.5 py-0.5 text-[11px] font-semibold ${
-            rail ? 'border-line text-ink-2 hover:text-ink' : 'bg-accent border-accent text-black'
-          }`}
-          title={tl(rail ? 'hide the side panels' : 'show the side panels')}
-          onClick={() => {
-            const next = !rail
-            setRail(next)
-            localStorage.setItem('tape-wire-rail', next ? '1' : '0')
-          }}
-        >
-          {rail ? tl('rail ⨯') : tl('rail')}
-        </button>
       </div>
       <div class="flex gap-2 items-start max-lg:flex-col">
         <div class="flex-1 min-w-0 border border-line rounded-lg overflow-hidden bg-surface">
@@ -597,7 +592,19 @@ export function Wire({ route }) {
             )
           })}
         </div>
-        {rail && <Rail today={today} now={now} events={events} watchset={watchset} />}
+        {rail ? (
+          <Rail today={today} now={now} events={events} watchset={watchset}
+            onHide={() => { setRail(false); localStorage.setItem('tape-wire-rail', '0') }} />
+        ) : (
+          <button
+            onClick={() => { setRail(true); localStorage.setItem('tape-wire-rail', '1') }}
+            title={tl('show the side panels')}
+            class="max-lg:hidden self-stretch w-4 shrink-0 rounded-lg border border-line text-muted
+                   hover:text-accent hover:border-accent/50 font-mono text-[11px] leading-none"
+          >
+            «
+          </button>
+        )}
       </div>
       {!IS_PRIVATE_BUILD && (
         <p class="font-mono text-[10.5px] text-muted max-w-[74ch]">
