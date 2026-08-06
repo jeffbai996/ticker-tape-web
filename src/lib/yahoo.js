@@ -37,12 +37,12 @@ export function quoteFromV7(row) {
   // Extended hours: post-market after the close, pre-market before the open.
   let ext = {}
   if (row?.preMarketPrice != null && (row?.marketState === 'PRE' || row?.marketState === 'PREPRE')) {
-    ext = { extLabel: 'PRE', extPrice: row.preMarketPrice, extPct: row.preMarketChangePercent ?? null }
+    ext = { extLabel: 'PM', extPrice: row.preMarketPrice, extPct: row.preMarketChangePercent ?? null }
   // PREPRE is the dead zone between the 8pm ET after-hours close and the 4am
   // pre-market open: Yahoo has already flipped the state but preMarketPrice is
   // still null, so without PREPRE here every AH print vanished overnight
   // (Jeff 2026-08-04, 00:07 ET). The last after-hours trade is still the right
-  // number to show; the PRE branch above takes over the moment 4am fills it in.
+  // number to show; the PM branch above takes over the moment 4am fills it in.
   } else if (row?.postMarketPrice != null && (row?.marketState === 'POST' || row?.marketState === 'POSTPOST' || row?.marketState === 'CLOSED' || row?.marketState === 'PREPRE')) {
     ext = { extLabel: 'AH', extPrice: row.postMarketPrice, extPct: row.postMarketChangePercent ?? null }
   }
@@ -76,13 +76,13 @@ export function quoteFromStream(tick, previous = {}) {
   }
 
   // 0 PRE, 1 REGULAR, 2 POST, 3 EXTENDED, 4 OVERNIGHT. Non-regular ticks are
-  // measured from the cash close, so they belong in the purple secondary
-  // quote, not in the regular-price column. Yahoo's live stream currently
-  // emits Blue Ocean overnight equity prints as 4; keep 3 as generic AH.
+  // measured from the cash close, so they belong in the secondary quote, not
+  // in the regular-price column. Yahoo's live stream currently emits Blue
+  // Ocean overnight equity prints as 4; keep 3 as generic AH.
   if ([0, 2, 3, 4].includes(tick.marketHours)) {
     return {
       ...base,
-      extLabel: tick.marketHours === 0 ? 'PRE' : tick.marketHours === 4 ? 'OVT' : 'AH',
+      extLabel: tick.marketHours === 0 ? 'PM' : tick.marketHours === 4 ? 'ON' : 'AH',
       extPrice: tick.price,
       extPct: tick.changePercent ?? previous.extPct ?? null,
       extChange: tick.change ?? previous.extChange ?? null,
@@ -90,7 +90,7 @@ export function quoteFromStream(tick, previous = {}) {
     }
   }
 
-  // A regular print makes any persisted PRE/AH adornment stale.
+  // A regular print makes any persisted extended-session adornment stale.
   const { extLabel, extPrice, extPct, extChange, extMarketTime, ...regular } = base
   return {
     ...regular,

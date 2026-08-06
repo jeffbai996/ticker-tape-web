@@ -29,6 +29,7 @@ import { AiReport, MdLite } from '../components/AiReport.jsx'
 import { ChartSuite } from '../components/ChartSuite.jsx'
 import { emaSeries, macdSeries } from '../lib/chartmath.js'
 import { boundedTimeScale } from '../lib/chartview.js'
+import { extendedLabelClass } from '../lib/extendedHours.js'
 
 /** Read-and-clear a command-bar ride-along (chart range, options expiry). */
 function consumePrefill(key) {
@@ -1616,7 +1617,7 @@ export function Research({ route }) {
               )}
               {q.extLabel && q.extPrice != null && (
                 <span class="font-mono text-[12px] whitespace-nowrap">
-                  <span class="text-[#c084fc]">{q.extLabel}</span>{' '}
+                  <span class={extendedLabelClass(q.extLabel)}>{q.extLabel}</span>{' '}
                   <span class="text-ink-2"><FlashPrice price={q.extPrice} fmt={fmtPrice} /></span>
                   {q.extPct != null && (
                     <span class={`ml-1.5 ${extUp ? 'text-up' : 'text-down'}`}>

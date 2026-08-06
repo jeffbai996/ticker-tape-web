@@ -17,6 +17,7 @@ import { Histo } from '../components/Histo.jsx'
 import { FlashMetric, FlashPrice } from '../components/Fig.jsx'
 import { hrefFor } from '../lib/route.js'
 import { rangePos } from '../lib/format.js'
+import { extendedLabelClass } from '../lib/extendedHours.js'
 
 /** Where the last trade sits inside today's range — the dashboard's meter,
  *  shrunk to fit a table cell. */
@@ -373,7 +374,7 @@ function HeatTiles({ tiles }) {
           </div>
           {q?.extLabel && q.extPct != null && (
             <div class="font-mono text-[9.5px] text-ink-2">
-              <span class="text-[#c084fc]">{q.extLabel}</span> {fmtPct(q.extPct)}
+              <span class={extendedLabelClass(q.extLabel)}>{q.extLabel}</span> {fmtPct(q.extPct)}
             </div>
           )}
         </a>

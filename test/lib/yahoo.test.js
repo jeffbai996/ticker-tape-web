@@ -117,7 +117,7 @@ describe('quoteFromV7', () => {
       preMarketPrice: 101, preMarketChangePercent: 1,
       postMarketPrice: 99, postMarketChangePercent: -1,
     })
-    expect(q).toMatchObject({ extLabel: 'PRE', extPrice: 101, extPct: 1 })
+    expect(q).toMatchObject({ extLabel: 'PM', extPrice: 101, extPct: 1 })
   })
 
   it('uses the after-hours quote during POST', async () => {
@@ -172,7 +172,7 @@ describe('quoteFromStream', () => {
     const pre = quoteFromStream({
       symbol: 'AAPL', price: 101, changePercent: 2, time: 101_000, marketHours: 0,
     }, previous)
-    expect(pre).toMatchObject({ price: 100, extLabel: 'PRE', extPrice: 101, extPct: 2 })
+    expect(pre).toMatchObject({ price: 100, extLabel: 'PM', extPrice: 101, extPct: 2 })
 
     const post = quoteFromStream({
       symbol: 'AAPL', price: 98, changePercent: -1, time: 102_000, marketHours: 2,
@@ -184,7 +184,7 @@ describe('quoteFromStream', () => {
     const overnight = quoteFromStream({
       symbol: 'AAPL', price: 100.5, changePercent: 0.5, time: 103_000, marketHours: 4,
     }, previous)
-    expect(overnight).toMatchObject({ price: 100, extLabel: 'OVT', extPrice: 100.5, extPct: 0.5 })
+    expect(overnight).toMatchObject({ price: 100, extLabel: 'ON', extPrice: 100.5, extPct: 0.5 })
   })
 })
 
