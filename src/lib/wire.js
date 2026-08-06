@@ -1,4 +1,4 @@
-// Wire panel data layer — BYO endpoint. This site is public and static; it
+// Wire panel data layer — optional viewer-supplied endpoint. This site is public and static; it
 // ships NO wire URL and NO symbols. A viewer points the panel at their own
 // fragwire-compatible service (see its API.md: GET /api/events, SSE
 // /api/stream, additive-only), and events render entirely client-side in
@@ -65,29 +65,77 @@ export async function fetchEvents(base, { sinceId = 0, limit = 100, newest = fal
   return resp.json()
 }
 
-// ── synthetic demo wire ── generic tickers only, obviously fake numbers.
-const DEMO_SYMBOLS = ['AAPL', 'MSFT', 'NVDA', 'GOOG', 'AMZN', 'TSLA']
-const DEMO_SHAPES = [
-  { type: 'earnings_release', headline: (s) => `${s} reports results (8-K 2.02)` },
-  { type: 'filing', headline: (s) => `${s} files 8-K - Current report` },
-  { type: 'headline', headline: (s) => `${s} announces expanded strategic partnership` },
-  { type: 'macro_print', headline: () => 'CPI m/m +0.2% vs +0.3% expected (demo print)' },
-  { type: 'fed_speech', headline: () => 'Fed speaker: policy remains data dependent' },
-  { type: 'digest', headline: (s) => `${s} call digest: margins above guidance, raises FY outlook` },
+// ── demo wire ─────────────────────────────────────────────────────────────
+// A written session rather than a template generator. The old version cycled
+// six shapes over six tickers, so every sixth row repeated with a new symbol —
+// it read as filler and made the page look unfinished.
+//
+// These are invented but internally consistent: the AAPL beat develops across
+// three rows (release -> call digest -> reaction), the CPI print lines up with
+// the Fed speaker after it. Generic large-caps on purpose — this page is
+// public, so it must never echo a real book.
+//
+// Every row carries `demo: true`; the UI badges off that, so nothing here can
+// be mistaken for a live print.
+const DEMO_FEED = [
+  { type: 'earnings_release', symbols: ['AAPL'], mins: 4,
+    headline: 'AAPL Q3 EPS $2.31 vs $2.10 est · revenue $99.2B vs $96.4B est' },
+  { type: 'digest', symbols: ['AAPL'], mins: 9,
+    headline: 'AAPL call digest: services margin 74.1%, FY guide raised to $412-418B' },
+  { type: 'headline', symbols: ['AAPL'], mins: 17,
+    headline: 'Apple lifted to Buy at three desks after services beat' },
+  { type: 'macro_print', symbols: [], mins: 26,
+    headline: 'CPI m/m +0.2% vs +0.3% est · core +0.19%, third cool print' },
+  { type: 'fed_speech', symbols: [], mins: 34,
+    headline: 'Fed: "disinflation broadening, but we are not done" — no cut signalled' },
+  { type: 'headline', symbols: ['NVDA'], mins: 41,
+    headline: 'NVDA said to have secured additional CoWoS capacity for 2027' },
+  { type: 'filing', symbols: ['MSFT'], mins: 52,
+    headline: 'MSFT files 8-K — $60B buyback authorisation, dividend +10%' },
+  { type: 'earnings_release', symbols: ['GOOG'], mins: 63,
+    headline: 'GOOG Q3 EPS $2.87 vs $2.71 est · cloud revenue +31% y/y' },
+  { type: 'digest', symbols: ['GOOG'], mins: 68,
+    headline: 'GOOG call digest: capex guide raised to $93B, "demand exceeds supply"' },
+  { type: 'headline', symbols: ['AMD', 'NVDA'], mins: 77,
+    headline: 'AMD MI400 sampling ahead of schedule; NVDA unmoved on the print' },
+  { type: 'macro_print', symbols: [], mins: 88,
+    headline: 'Initial claims 214k vs 220k est · 4-week average lowest since March' },
+  { type: 'filing', symbols: ['TSLA'], mins: 96,
+    headline: 'TSLA files 8-K — CFO transition effective Q1, no change to guidance' },
+  { type: 'headline', symbols: ['XOM'], mins: 108,
+    headline: 'XOM in advanced talks for Permian bolt-on, said to be ~$4B' },
+  { type: 'earnings_release', symbols: ['JPM'], mins: 121,
+    headline: 'JPM Q3 EPS $4.92 vs $4.61 est · NII guide raised, credit costs flat' },
+  { type: 'fed_speech', symbols: [], mins: 134,
+    headline: 'Fed speaker: balance-sheet runoff to slow "in coming months"' },
+  { type: 'headline', symbols: ['LLY'], mins: 147,
+    headline: 'LLY obesity trial hits primary endpoint at 52 weeks' },
+  { type: 'digest', symbols: ['JPM'], mins: 156,
+    headline: 'JPM call digest: buyback pace steady, reserve build "precautionary"' },
+  { type: 'macro_print', symbols: [], mins: 172,
+    headline: 'Retail sales +0.4% m/m vs +0.2% est · control group +0.6%' },
+  { type: 'headline', symbols: ['META'], mins: 188,
+    headline: 'META said to be trimming Reality Labs headcount, refocus on ads AI' },
+  { type: 'filing', symbols: ['WMT'], mins: 204,
+    headline: 'WMT files 8-K — completes $2.3B logistics acquisition' },
 ]
 
-// Deterministic-ish demo feed: id seeds the shape so re-renders are stable.
+/** One demo row. `id` indexes the written feed and wraps, so an infinite
+ *  scroll keeps working without repeating the same sentence back-to-back the
+ *  way the old template generator did. */
 export function demoEvent(id, now = Date.now() / 1000) {
-  const shape = DEMO_SHAPES[id % DEMO_SHAPES.length]
-  const symbol = DEMO_SYMBOLS[id % DEMO_SYMBOLS.length]
-  const macro = shape.type === 'macro_print' || shape.type === 'fed_speech'
+  const row = DEMO_FEED[(id - 1) % DEMO_FEED.length]
+  // Rows older than one pass through the feed get pushed further back, so a
+  // long scroll reads as history rather than the same timestamps repeating.
+  const cycle = Math.floor((id - 1) / DEMO_FEED.length)
+  const ago = (row.mins + cycle * 240) * 60
   return {
     id,
-    type: shape.type,
-    symbols: macro ? [] : [symbol],
-    headline: shape.headline(symbol),
-    ts_event: now - (40 - (id % 40)) * 137,
-    ts_seen: now - (40 - (id % 40)) * 137 + 2,
+    type: row.type,
+    symbols: row.symbols,
+    headline: row.headline,
+    ts_event: now - ago,
+    ts_seen: now - ago + 2,
     url: '',
     demo: true,
   }

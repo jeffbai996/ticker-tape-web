@@ -53,7 +53,7 @@ export const NAV = [
     ],
   },
   { id: 'alerts', label: 'Alerts', subs: [] },
-  { id: 'wire', label: 'Wire', badge: 'BYO', subs: [] },
+  { id: 'wire', label: 'Wire', badge: 'DEMO', subs: [] },
 ]
 
 if (PRIVATE_BUILD) NAV.push(CHAT_SECTION)

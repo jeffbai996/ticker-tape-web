@@ -134,7 +134,7 @@ const STRINGS = {
   'wire.sync_ok': { en: 'synced {count} symbols → wire', zh: '已同步 {count} 只股票 → 快讯' },
   'wire.sync_failed': { en: 'sync failed', zh: '同步失败' },
   'wire.byo_note': {
-    en: 'BYO wire: this page ships no endpoint and no data — point it at any fragwire-compatible service and everything renders in your browser only. Blank endpoint runs a synthetic demo feed.',
+    en: 'Demo wire — a sample session of earnings, filings, Fed and macro events. Nothing here is a live print. Point it at a fragwire-compatible endpoint to see your own, rendered in your browser only.',
     zh: '自带快讯源：此页不内置地址或数据。连接任意兼容 Fragwire 的服务后，内容只会在浏览器中渲染；地址留空则使用模拟数据。',
   },
   'wire.story_outlets': { en: '{count} outlets on this story', zh: '{count} 家媒体报道此事件' },
@@ -476,7 +476,7 @@ const LABELS = {
   'full workbench — overlays, RSI/MACD panes, compare mode': '完整图表 — 叠加指标、RSI/MACD窗格与对比模式',
   'chain with greeks': '期权链与希腊值', 'years of prints, surprises, price reactions': '历年财报、超预期幅度与股价反应',
   'rec trend, price targets, rating changes': '评级趋势、目标价与近期调整', 'insider transactions': '内部人士交易',
-  top: '精选', wire: '时间线', 'demo wire — synthetic events': '模拟快讯 — 合成事件', connecting: '连接中', error: '错误',
+  top: '精选', wire: '时间线', 'demo wire — synthetic events': '模拟快讯 — 合成事件', 'your wire URL (optional)': '你的 wire 地址（可选）', connecting: '连接中', error: '错误',
   'push watchlist → wire': '同步自选股 → 快讯', connect: '连接', all: '全部',
   rail: '侧栏', 'rail ⨯': '侧栏 ⨯', 'wire connection': '快讯连接',
   board: '看板', week: '周历', stats: '统计', demo: '演示',
