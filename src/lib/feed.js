@@ -5,6 +5,9 @@
 import {
   barsFromChart, mergeSnapshotQuote, quoteFromStream, quoteFromV7,
 } from './yahoo.js'
+import { isOvernight } from './marketState.js'
+import { applyOvernightFill } from './overnightFill.js'
+import { wireUrl } from './wire.js'
 import { createYahooStream } from './yahooStream.js'
 import { techBadges, histoBars } from './badges.js'
 import { createPCache } from './pcache.js'
@@ -205,6 +208,32 @@ async function runBatch() {
 
 const tracked = new Set()
 
+/** Overnight, the wire's IBKR-backed /api/quotes fills the thin-stream gap:
+ *  Yahoo's REST print freezes at 20:00 ET and the websocket only ticks names
+ *  that happen to trade, while the sidecar always has the OVERNIGHT book.
+ *  Wired builds only — without an endpoint this never fires. */
+async function overnightSweep() {
+  const base = wireUrl()
+  if (!base || !isOvernight() || !tracked.size) return
+  try {
+    const syms = [...tracked].filter((s) => /^[A-Z0-9.-]{1,10}$/.test(s)).slice(0, 60)
+    const resp = await fetch(
+      `${base.replace(/\/$/, '')}/api/quotes?symbols=${syms.join(',')}`,
+      { signal: AbortSignal.timeout(12_000) })
+    if (!resp.ok) return
+    const out = await resp.json()
+    const nowSec = Date.now() / 1000
+    for (const [sym, row] of Object.entries(out.quotes || {})) {
+      const hit = cache.get(sym)
+      if (!hit?.quote) continue
+      const merged = applyOvernightFill(hit.quote, row, nowSec)
+      if (merged === hit.quote) continue
+      cache.set(sym, { ...hit, quote: merged })
+      emit(sym)
+    }
+  } catch { /* the stream and v7 batch still carry the page */ }
+}
+
 /** Track symbols: serve the persisted snapshot immediately, fetch only what's
  *  stale, then refresh everything on the sweep cadence. Requested symbols jump
  *  to the front of the queue — the page being looked at fills first, instead
@@ -232,8 +261,12 @@ export function track(symbols) {
     // prices twice as often as charts: the v7 batch is one cheap request,
     // and pre/after-hours reads freeze visibly at a 60s cadence
     let beat = 0
+    // the fill runs AFTER each v7 batch lands: the batch's frozen 20:00
+    // print would otherwise overwrite the live overnight number it just wrote
+    setTimeout(overnightSweep, 5_000)
     sweepTimer = setInterval(() => {
       scheduleBatch([...tracked])
+      setTimeout(overnightSweep, 5_000)
       beat += 1
       if (beat % 2 === 0) {
         queue.push(...tracked)
