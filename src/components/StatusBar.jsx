@@ -124,7 +124,7 @@ function StripCell({ symbol, label, q }) {
   const isVix = symbol === '^VIX'
   return (
     <a href={hrefFor('research', symbol.toLowerCase())}
-       class="hl-row flex items-baseline gap-[3px] whitespace-nowrap leading-5 px-1 hover:no-underline">
+       class="hl-row flex items-baseline gap-1.5 whitespace-nowrap leading-5 px-1 hover:no-underline">
       <span class="text-muted/60 font-tick text-[10px]">{tl(label)}</span>
       <span class={`font-semibold ${isVix ? vixClass(q?.price) : 'text-ink-2'}`}>{q ? <FlashPrice price={q.price} fmt={fmtPrice} /> : '—'}</span>
       {q && !isVix && <span class={`text-[10px] ${up ? 'text-up' : 'text-down'}`}>{fmtPct(q.pct)}</span>}
@@ -184,7 +184,7 @@ export function StatusBar() {
       {/* one scrollable line, centred in the bar so it lines up with the
           wordmark: swipe it, drag it, or hover an edge to creep along. */}
       <div class="flex-1 min-w-0 flex items-center">
-        <div ref={stripRef} class="w-full flex items-baseline gap-0 overflow-x-auto no-scrollbar py-0.5">
+        <div ref={stripRef} class="w-full flex items-baseline gap-2.5 overflow-x-auto no-scrollbar py-0.5">
           {strip.map(({ symbol, label }) => (
             <StripCell key={symbol} symbol={symbol} label={label} q={quotes[symbol]?.quote} />
           ))}

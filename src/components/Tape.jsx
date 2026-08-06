@@ -146,7 +146,7 @@ export function Tape() {
         } : undefined}
       >
         {Array.from({ length: marquee.copies }, (_, copy) => (
-          <div ref={copy === 0 ? firstCycle : undefined} key={copy} class="tape-cycle flex items-center h-full gap-0 pr-1">
+          <div ref={copy === 0 ? firstCycle : undefined} key={copy} class="tape-cycle flex items-center h-full gap-3 pr-3">
             {entries.map(({ kind, data }, i) => {
               if (kind === 'headline') {
                 const e = data
@@ -173,15 +173,18 @@ export function Tape() {
                   key={`q-${symbol}-${i}`}
                   data-tape-item
                   href={hrefFor('research', symbol.toLowerCase())}
-                  class="flex items-baseline gap-[3px] whitespace-nowrap hover:no-underline px-1 py-0.5"
+                  class="flex items-baseline gap-1.5 whitespace-nowrap hover:no-underline px-1 py-0.5"
                 >
                   <span class="text-ink font-bold font-tick text-[10px]">{symbol}</span>
                   <span class="text-ink-2 font-semibold">{q ? fmtPrice(q.price) : '—'}</span>
                   <span class={`text-[10px] ${q ? (up ? 'text-up' : 'text-down') : 'text-muted'}`}>
                     {q ? fmtPct(q.pct) : '—'}
                   </span>
+                  {/* the % glyph carries almost no right side bearing, so an
+                      equal gap reads tighter on the label's left than its
+                      right — the extra padding buys back the difference */}
                   {q?.extLabel && q.extPrice != null && (
-                    <span class="inline-flex items-baseline gap-[3px] text-[10px]">
+                    <span class="inline-flex items-baseline gap-1.5 text-[10px] pl-[3px]">
                       <span class={`${extendedLabelClass(q.extLabel)} font-bold`}>{q.extLabel}</span>
                       <span class="text-ink-2 font-semibold">{fmtPrice(q.extPrice)}</span>
                     </span>
