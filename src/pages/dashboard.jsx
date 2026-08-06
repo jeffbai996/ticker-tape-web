@@ -141,6 +141,20 @@ function CompactDayRange({ lo, hi, v, cls = '' }) {
 
 function TuiRow({ symbol, data, earnDays, onRemove }) {
   const q = data?.quote
+  // Touch has no hover, so a tap on the ticker used to jump straight to the
+  // symbol page and the name was unreachable (Jeff 2026-08-05). First tap
+  // reveals it, second follows the link — and only where the name isn't
+  // already sitting inline.
+  const [revealed, setRevealed] = useState(false)
+  const identityRef = useRef(null)
+  const onIdentityTap = (e) => {
+    if (revealed || !matchMedia('(hover: none)').matches) return
+    const inline = identityRef.current?.querySelector('[data-inline-name]')
+    if (inline && inline.offsetParent !== null) return
+    e.preventDefault()
+    e.stopPropagation()
+    setRevealed(true)
+  }
   const up = (q?.pct ?? 0) >= 0
   const extUp = (q?.extPct ?? 0) >= 0
   const heavy = (data?.tech?.volRatio ?? 0) >= 1.5
@@ -151,7 +165,7 @@ function TuiRow({ symbol, data, earnDays, onRemove }) {
   return (
     <a
       href={`#/research/${symbol.toLowerCase()}`}
-      class="tui-row group/row relative block px-3 py-[3px] border-b border-line last:border-0 hover:bg-white/[0.035] hover:no-underline"
+      class={`tui-row group/row relative block px-3 py-[3px] border-b border-line last:border-0 hover:bg-white/[0.035] hover:no-underline${revealed ? ' is-revealed' : ''}`}
       title={q?.name ? `${symbol} — ${q.name}` : symbol}
     >
       {/* favorites are managed where they live: hover a row, tap the star
@@ -168,14 +182,15 @@ function TuiRow({ symbol, data, earnDays, onRemove }) {
       <div class="flex gap-6 max-sm:gap-2 min-w-0">
         <div class="flex-1 min-w-0 overflow-hidden">
           <div class="flex items-baseline gap-1.5 max-sm:gap-1 font-mono text-[13px] max-sm:text-[12px] flex-nowrap max-sm:flex-wrap min-w-0">
-            <span class="tui-company-identity relative flex items-baseline gap-1.5 flex-1 min-w-0 @min-[820px]:flex-none @min-[820px]:w-14 text-ink font-[650] font-tick text-[12px]">
+            <span ref={identityRef} onClick={onIdentityTap}
+              class="tui-company-identity relative flex items-baseline gap-1.5 flex-1 min-w-0 @min-[820px]:flex-none @min-[820px]:w-14 text-ink font-[650] font-tick text-[12px]">
               <span class="tui-company-symbol shrink-0">{symbol}</span>
               {/* The elastic slot used to sit empty next to a short ticker and
                   only show the name on hover (Jeff 2026-08-05: "don't let it
                   go to waste"). Now the name rides inline wherever the slot
                   has room, truncating into whatever is left. */}
               {q?.name && (
-                <span class="hidden @min-[545px]:block @min-[820px]:hidden min-w-0 truncate text-[10.5px] text-muted font-normal font-anth">
+                <span data-inline-name class="hidden @min-[545px]:block @min-[820px]:hidden min-w-0 truncate text-[10.5px] text-muted font-normal font-anth">
                   {q.name}
                 </span>
               )}

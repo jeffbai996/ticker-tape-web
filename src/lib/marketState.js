@@ -51,3 +51,19 @@ export function marketState(date = new Date()) {
   if (mins < 1200) return { state: 'post', holiday: null }
   return { state: 'closed', holiday: null }
 }
+
+/**
+ * Blue Ocean's overnight equity session: Sunday 20:00 ET → Friday 20:00 ET,
+ * i.e. the hours between the 20:00 after-hours close and the 04:00 pre-market
+ * open. Yahoo's v7 batch has no overnight field — its postMarketPrice freezes
+ * at the 20:00 print — so the clock, not the payload, is what tells us which
+ * session a stale extended print belongs to.
+ */
+export function isOvernight(date = new Date()) {
+  const { day, hh, mm } = etParts(date)
+  const mins = hh * 60 + mm
+  if (day === 6) return false                    // Saturday: shut all day
+  if (day === 0) return mins >= 1200             // Sunday: reopens 20:00
+  if (day === 5) return mins < 240               // Friday: closes at 20:00
+  return mins >= 1200 || mins < 240
+}

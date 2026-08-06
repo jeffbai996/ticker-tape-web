@@ -7,7 +7,7 @@ const css = readFileSync(resolve(process.cwd(), 'src/styles/main.css'), 'utf8')
 
 describe('compact dashboard company name', () => {
   it('swaps the ticker for the company name in the same fixed slot', () => {
-    expect(dashboard).toContain('class="tui-row group/row')
+    expect(dashboard).toContain('class={`tui-row group/row')
     expect(dashboard).toContain('class="tui-company-identity relative flex items-baseline gap-1.5 flex-1 min-w-0')
     expect(dashboard).toContain('class="tui-company-symbol shrink-0"')
     // the swap only covers widths too narrow to show both strings at once;
@@ -24,6 +24,16 @@ describe('compact dashboard company name', () => {
     expect(dashboard).toContain('class="tui-quote-cluster flex items-baseline gap-1.5 max-sm:gap-1 shrink-0"')
     expect(dashboard).toMatch(/tui-quote-cluster[\s\S]*q\.extLabel[\s\S]*q\.extPrice/)
     expect(css).toMatch(/prefers-reduced-motion:[\s\S]*\.tui-company-name-swap/)
+  })
+
+  // touch has no hover: first tap on the ticker reveals, second navigates
+  it('reveals the name on a first tap where the slot cannot show both', () => {
+    expect(dashboard).toContain("matchMedia('(hover: none)').matches")
+    expect(dashboard).toContain('data-inline-name')
+    expect(dashboard).toContain('setRevealed(true)')
+    expect(dashboard).toContain("revealed ? ' is-revealed' : ''")
+    expect(css).toContain('.tui-row.is-revealed .tui-company-name-swap')
+    expect(css).toContain('@container (max-width: 544px)')
   })
 
   it('flashes the regular print as ticker-by-ticker updates land', () => {
