@@ -1520,6 +1520,7 @@ function SymbolNewsView({ symbol, name }) {
                   </div>
                   {openId === e.id && (
                     <div class="px-3 pb-1.5">
+                      <h3 class="font-anth font-semibold text-[14px] leading-snug text-ink pt-1 pb-0.5 max-w-[74ch] mx-auto">{e.headline}</h3>
                       {e.body
                         ? <p class="text-[11.5px] leading-relaxed text-ink-2 font-anth max-w-[74ch] mx-auto py-2">{e.body}</p>
                         : <NewsReadBody ev={e} base={base} />}
