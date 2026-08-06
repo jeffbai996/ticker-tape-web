@@ -19,6 +19,8 @@ import {
 import { isWatched, moveSymbol, placeSymbol, unwatch, watch } from '../lib/watchlist.js'
 import { addWatchlistSymbol, moveWatchlistSymbol, removeWatchlistSymbol } from '../lib/watchlists.js'
 import { loadUserGroups, onUserGroupsChange } from '../lib/usergroups.js'
+import { groupHeat, rankAlerts, rangeExtremes } from '../lib/railstats.js'
+import { conditionText, loadAlerts, onAlertsChange } from '../lib/alerts.js'
 import { groupDashboardRows, quoteSpread, selectFlatRows } from '../lib/dashboardRows.js'
 import { searchSymbols } from '../lib/symbolSearch.js'
 import { fmtPrice, fmtPriceBare, fmtPct, fmtChange, fmtVol, rangePos } from '../lib/format.js'
@@ -715,6 +717,100 @@ function AddSymbolRow({ onAdd, isPresent, onReorder }) {
   )
 }
 
+
+/** Where the money moved today, by group. Ranked so the rotation reads off
+ *  the top row instead of out of thirty individual % cells. */
+function HeatPanel({ watchlist, quotes }) {
+  const [, bump] = useState(0)
+  useEffect(() => onUserGroupsChange(() => bump((n) => n + 1)), [])
+  const groups = groupDashboardRows(watchlist, loadUserGroups())
+  const rows = groupHeat(groups, quotes)
+  if (!rows.length) return null
+  const span = Math.max(...rows.map((r) => Math.abs(r.avg)), 0.5)
+  return (
+    <div class="py-1">
+      {rows.map((r) => (
+        // the bar is the row's BACKGROUND, not a column — the rail is ~200px
+        // wide and a dedicated bar cell got squeezed to nothing between the
+        // name and the number
+        <div key={r.name} class="relative px-3 py-[3px] flex items-center gap-2 overflow-hidden">
+          <span class={`absolute inset-y-[2px] left-0 rounded-r-sm ${r.avg >= 0 ? 'bg-up/15' : 'bg-down/15'}`}
+            style={`width:${Math.max(4, Math.min(100, (Math.abs(r.avg) / span) * 100))}%`} />
+          <span class="relative font-anth text-[10px] text-ink-2 truncate flex-1">{r.name}</span>
+          <span class="relative font-mono text-[9px] text-muted shrink-0">{r.up}/{r.count}</span>
+          <span class={`relative font-mono text-[10.5px] w-[3.4rem] text-right shrink-0 ${r.avg >= 0 ? 'text-up' : 'text-down'}`}>
+            {fmtPct(r.avg)}
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/** Armed alerts, nearest to firing first — the rail's job is to say "this one
+ *  is 0.4% away", not to make you open the alerts page to find out. */
+function AlertsPanel({ quotes }) {
+  const [, bump] = useState(0)
+  useEffect(() => onAlertsChange(() => bump((n) => n + 1)), [])
+  const priceMap = {}
+  for (const [sym, entry] of Object.entries(quotes || {})) {
+    const p = entry?.quote?.price
+    if (Number.isFinite(p)) priceMap[sym] = p
+  }
+  const ranked = rankAlerts(loadAlerts(), priceMap).slice(0, 6)
+  if (!ranked.length) {
+    return <div class="px-3 py-3 font-anth text-[10px] text-muted">{tl('no alerts armed')}</div>
+  }
+  return (
+    <div class="py-1">
+      {ranked.map(({ alert, gap }) => (
+        <a key={alert.id} href="#/alerts"
+          class="flex items-center gap-2 px-3 py-[3px] font-mono text-[10.5px] hover:bg-surface-3 hover:no-underline">
+          <span class="text-ink font-bold w-[3.2rem] shrink-0">{alert.symbol}</span>
+          <span class="text-muted truncate flex-1">
+            {conditionText(alert).replace(new RegExp(`^${alert.symbol}\\s+`), '')}
+          </span>
+          {alert.triggered ? (
+            <span class="text-accent-2 shrink-0">{tl('hit')}</span>
+          ) : gap == null ? (
+            <span class="text-muted shrink-0">—</span>
+          ) : (
+            <span class={`shrink-0 ${gap >= 0 ? 'text-up' : 'text-ink-2'}`}>{fmtPct(gap)}</span>
+          )}
+        </a>
+      ))}
+    </div>
+  )
+}
+
+/** Names pinned to the top or bottom of their own session range — breakouts
+ *  and breakdowns announce themselves here before the % column notices. */
+function RangePanel({ quotes }) {
+  const { highs, lows } = rangeExtremes(quotes)
+  if (!highs.length && !lows.length) {
+    return <div class="px-3 py-3 font-anth text-[10px] text-muted">{tl('nothing at its extremes')}</div>
+  }
+  // the marker says WHERE in the day's range it's printing; the colour stays
+  // tied to the day's move, so "up on the day but pinned to the low" — the
+  // fade that matters — is legible in one glance instead of two conventions
+  const row = (r, mark, markCls) => (
+    <a key={r.symbol} href={`#/research/${r.symbol.toLowerCase()}`}
+      class="flex items-center gap-2 px-3 py-[3px] font-mono text-[10.5px] hover:bg-surface-3 hover:no-underline">
+      <span class={`shrink-0 ${markCls}`}>{mark}</span>
+      <span class="text-ink font-bold flex-1">{r.symbol}</span>
+      <span class="text-muted text-[9px] shrink-0">{Math.round(r.pos * 100)}%</span>
+      <span class={`w-[3.4rem] text-right shrink-0 ${r.pct >= 0 ? 'text-up' : 'text-down'}`}>{fmtPct(r.pct)}</span>
+    </a>
+  )
+  return (
+    <div class="py-1">
+      {highs.map((r) => row(r, '▲', 'text-up'))}
+      {highs.length > 0 && lows.length > 0 && <div class="my-1 border-t border-line/70" />}
+      {lows.map((r) => row(r, '▼', 'text-down'))}
+    </div>
+  )
+}
+
 /** Watchlist split into bucket groups (TUI's `── group ──` separators).
  *  User groups (`group semis NVDA …` in the command bar) come first and claim
  *  their symbols away from the built-in buckets. */
@@ -723,7 +819,11 @@ function RailWidget({ w, all, watchlist, earnDays, quotes }) {
   if (w.type === 'markets') return <MarketDeckPanel />
   if (w.type === 'earnings') return <EarningsPanel symbols={watchlist} days={earnDays} quotes={quotes} />
   if (w.type === 'calendar') return <MacroCalPanel />
-  const title = w.type === 'movers' ? tl('Movers') : null
+  const title = w.type === 'movers' ? tl('Movers')
+    : w.type === 'heat' ? tl('Group heat')
+    : w.type === 'alerts' ? tl('Alerts')
+    : w.type === 'range' ? tl('At the extremes')
+    : null
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
       {title && (
@@ -732,6 +832,9 @@ function RailWidget({ w, all, watchlist, earnDays, quotes }) {
         </header>
       )}
       {w.type === 'movers' && <MoversPanel quotes={all} />}
+      {w.type === 'heat' && <HeatPanel watchlist={watchlist} quotes={quotes} />}
+      {w.type === 'alerts' && <AlertsPanel quotes={quotes} />}
+      {w.type === 'range' && <RangePanel quotes={all} />}
       {w.type === 'chart' && <ChartWidget symbol={w.symbol} />}
     </section>
   )

@@ -5,7 +5,8 @@ const KEY = 'dash_widgets_v1'
 const MARKET_MIGRATION_KEY = 'dash_widgets_market_v1'
 const SYMBOL_RE = /^[A-Za-z0-9.^=-]{1,12}$/
 
-export const WIDGET_TYPES = ['pulse', 'markets', 'earnings', 'calendar', 'movers', 'chart']
+export const WIDGET_TYPES = ['pulse', 'markets', 'earnings', 'calendar', 'movers',
+                             'heat', 'alerts', 'range', 'chart']
 
 export const DEFAULT_WIDGETS = [
   { id: 1, type: 'pulse' },
