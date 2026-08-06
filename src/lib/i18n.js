@@ -328,6 +328,8 @@ const LABELS = {
   'snapshot store live — the curve draws itself as daily history accrues':
     '快照存储已启用 — 每日数据累积后曲线自动生成',
   'broker snapshot': '券商快照',
+  'describe a change — add, rewrite, forget…': '描述改动 — 新增、改写、忘记…',
+  apply: '应用', 'changes applied': '项已应用', 'no changes needed': '无需改动',
   'drag rows or use the arrows': '拖动行或使用箭头调整顺序',
   'move up': '上移', 'move down': '下移',
   'not a symbol': '代码无效',

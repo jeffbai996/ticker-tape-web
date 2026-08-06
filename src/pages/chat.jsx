@@ -167,13 +167,79 @@ function NoteRow({ id, text, meta, onSave, onDelete }) {
       <span class="text-accent shrink-0">#{id}</span>
       <span class="text-ink-2 flex-1 min-w-0 font-anth text-[12px] leading-snug">{text}</span>
       {meta && <span class="text-muted text-[9px] shrink-0">{meta}</span>}
+      {/* touch has no hover — the controls stay visible on coarse pointers,
+          which is why "no way to delete" read as true on the phone */}
       {onSave && (
         <button onClick={() => setEditing(true)} title={tl('edit')}
-          class="opacity-0 group-hover:opacity-100 text-muted hover:text-accent shrink-0">✎</button>
+          class="opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100 text-muted hover:text-accent shrink-0">✎</button>
       )}
       <button onClick={onDelete} title={tl('delete')}
-        class="opacity-0 group-hover:opacity-100 text-muted hover:text-down shrink-0">✕</button>
+        class="opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100 text-muted hover:text-down shrink-0">✕</button>
     </div>
+  )
+}
+
+/** claude.ai-style memory composer: type what should change in plain words
+ *  ("forget the SGOV note", "merge #2 and #5") — a one-shot model call turns
+ *  it into add/edit/delete ops applied through the normal memory mutators. */
+function MemoryComposer({ memories, onApplied }) {
+  const [v, setV] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [note, setNote] = useState(null)
+  const run = async (e) => {
+    e.preventDefault()
+    const ask = v.trim()
+    if (!ask || busy) return
+    setBusy(true)
+    setNote(null)
+    try {
+      const listing = memories.map((m) => `#${m.id}: ${m.text}`).join('\n') || '(none)'
+      const system = 'You maintain a short list of persistent assistant memories. '
+        + 'Reply with ONLY a JSON array of operations — no prose, no code fence. '
+        + 'Allowed ops: {"op":"add","text":"..."}, {"op":"edit","id":N,"text":"..."}, '
+        + '{"op":"delete","id":N}. Apply the smallest set of changes that satisfies '
+        + 'the request; reply [] if nothing applies.'
+      const resp = await fetch(`${wireUrl().replace(/\/$/, '')}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'auto', system,
+          messages: [{ role: 'user', content: `Current memories:\n${listing}\n\nRequest: ${ask}` }] }),
+        signal: AbortSignal.timeout(90_000),
+      })
+      const out = await resp.json()
+      if (!out.ok) throw new Error(out.error || `chat ${resp.status}`)
+      const match = (out.text || '').match(/\[[\s\S]*\]/)
+      const ops = JSON.parse(match ? match[0] : '[]')
+      let applied = 0
+      for (const op of ops) {
+        if (op.op === 'add' && op.text) { if (addMemory(op.text)) applied += 1 }
+        else if (op.op === 'edit' && op.id != null && op.text) { if (editMemory(op.id, op.text)) applied += 1 }
+        else if (op.op === 'delete' && op.id != null) { if (removeMemory(op.id)) applied += 1 }
+      }
+      setNote(applied ? `${applied} ${tl('changes applied')}` : tl('no changes needed'))
+      if (applied) setV('')
+      onApplied()
+    } catch (err) {
+      setNote(String(err.message || err))
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <form onSubmit={run} class="pt-2 pb-1 border-b border-line">
+      <div class="flex items-end gap-2">
+        <textarea value={v} rows={1}
+          onInput={(e) => { setV(e.currentTarget.value); autoGrow(e.currentTarget) }}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); run(e) } }}
+          placeholder={`${tl('describe a change — add, rewrite, forget…')}`}
+          class="flex-1 bg-surface-2 border border-line rounded-lg px-2.5 py-1.5 font-anth text-[12px] text-ink outline-none focus:border-accent/60 placeholder:text-muted resize-none" />
+        <button type="submit" disabled={busy || !v.trim()}
+          class="font-mono text-[10px] px-2.5 py-1.5 rounded-lg border border-accent text-accent bg-accent-soft hover:bg-accent hover:text-black font-semibold disabled:opacity-40 disabled:pointer-events-none">
+          {busy ? '…' : tl('apply')}
+        </button>
+      </div>
+      {note && <div class="font-anth text-[10.5px] text-muted pt-1">{note}</div>}
+    </form>
   )
 }
 
@@ -1157,6 +1223,7 @@ export function Chat() {
               <div class="font-anth text-[11px] text-muted">{tl('Details the assistant should remember in future chats.')}</div></div>
             <button class="ml-auto text-muted hover:text-ink" onClick={() => setDrawer(null)} aria-label={tl('close')}>✕</button>
           </div>
+          <MemoryComposer memories={memories} onApplied={() => setMemories(loadMemories())} />
           {memories.length === 0 && (
             <div class="font-anth text-[12px] text-muted py-1">{tl('nothing saved yet')}</div>
           )}
