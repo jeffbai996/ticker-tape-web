@@ -54,11 +54,18 @@ function BookSummary({ rows, margin, fallbackNlv }) {
   // cushion — the one picture that says how far the book is from trouble.
   const maint = margin?.maintenance
   const runway = maint != null && equity ? Math.max(0, Math.min(1, (equity - maint) / equity)) : null
-  const chip = (v, suffix = '') =>
+  // day % against yesterday's NLV (equity minus today's move); unreal %
+  // against cost basis (gross minus the open gain) — the standard bases
+  const dayBase = equity != null && dayPnl != null ? equity - dayPnl : null
+  const dayPct = dayBase ? (dayPnl / dayBase) * 100 : null
+  const costBase = gross != null && unreal != null ? gross - unreal : null
+  const unrealPct = costBase ? (unreal / costBase) * 100 : null
+  const withPct = (pct) => pct == null ? '' : ` (${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%)`
+  const chip = (v, pct) =>
     v == null ? null : (
       <span class={`font-anth text-[12px] font-semibold px-2 py-0.5 rounded-md border ${
         v >= 0 ? 'text-up border-up/30 bg-up/10' : 'text-down border-down/30 bg-down/10'}`}>
-        {signedMoney(v)}{suffix}
+        {signedMoney(v)}{withPct(pct)}
       </span>
     )
   return (
@@ -68,10 +75,10 @@ function BookSummary({ rows, margin, fallbackNlv }) {
           <div class="font-anth text-[9px] uppercase tracking-[.14em] text-muted">NLV</div>
           <div class="font-anth text-[30px] leading-tight font-semibold tracking-tight text-ink">{dollars(equity ?? gross)}</div>
           <div class="flex items-center gap-2 pt-1.5">
-            {chip(dayPnl)}
+            {chip(dayPnl, dayPct)}
             {unreal != null && (
               <span class="font-anth text-[10.5px] text-muted">{tl('unreal')}{' '}
-                <span class={pnlCls(unreal)}>{signedMoney(unreal)}</span></span>
+                <span class={pnlCls(unreal)}>{signedMoney(unreal)}{withPct(unrealPct)}</span></span>
             )}
           </div>
         </div>
