@@ -55,6 +55,13 @@ describe('parseHash', () => {
     expect(parseHash('#/research/nvda/bogus')).toEqual({ section: 'research', sub: 'NVDA', view: null })
   })
 
+  // a tape headline deep-links at its own story
+  it('carries a wire event id as the wire sub', () => {
+    expect(parseHash('#/wire/8172')).toEqual({ section: 'wire', sub: '8172' })
+    expect(parseHash('#/wire')).toEqual({ section: 'wire', sub: null })
+    expect(parseHash('#/wire/../etc')).toEqual({ section: 'wire', sub: null })
+  })
+
   it('rejects junk research symbols', () => {
     expect(parseHash('#/research/<script>')).toEqual({ section: 'research', sub: null, view: null })
   })

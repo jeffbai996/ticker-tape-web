@@ -57,7 +57,7 @@ export function Page({ route }) {
   if (route.section === 'research') return <Research route={route} />
   if (route.section === 'screen') return <Screen route={route} />
   if (route.section === 'alerts') return <Alerts />
-  if (route.section === 'wire') return <Wire />
+  if (route.section === 'wire') return <Wire route={route} />
   if (route.section === 'portfolio') return <Portfolio route={route} />
   // Public build has no assistant: the route is dead, not just hidden.
   if (route.section === 'chat') {

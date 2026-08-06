@@ -82,6 +82,16 @@ describe('compact mobile status bar', () => {
     expect(tape).not.toContain('min-w-[3.25rem]')
   })
 
+  it('links a tape headline at its own story, not the wire index', () => {
+    expect(tape).toContain('href={`#/wire/${e.id}`}')
+    const wire = readFileSync(resolve(process.cwd(), 'src/pages/wire.jsx'), 'utf8')
+    expect(wire).toContain('const targetId = route?.sub ? Number(route.sub) : null')
+    expect(wire).toContain('id={`ev-${ev.id}`}')
+    expect(wire).toContain("scrollIntoView({ block: 'center', behavior: 'smooth' })")
+    // landing must be one-shot: the SSE feed re-renders constantly
+    expect(wire).toContain('landedRef.current === targetId')
+  })
+
   it('color-codes the extended-session quote beside the regular print', () => {
     expect(tape).toContain('q.extLabel')
     expect(tape).toContain('q.extPrice')
