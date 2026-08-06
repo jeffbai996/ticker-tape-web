@@ -66,7 +66,7 @@ function QuoteRow({ label, symbol, data, unit }) {
       class="border-b border-line last:border-0 hover:bg-white/[0.035] cursor-pointer"
       onClick={() => { if (symbol) location.hash = hrefFor('research', symbol.toLowerCase()) }}
     >
-      <td class="px-3 py-[3px] text-[12px] text-ink whitespace-nowrap font-anth">{label}</td>
+      <td class="px-3 py-[3px] text-[12px] text-ink whitespace-nowrap max-sm:whitespace-normal font-anth">{label}</td>
       {unit !== undefined && <td class="px-2 py-[3px] font-tick text-[10px] text-muted">{unit}</td>}
       <td class="px-2 py-[3px] font-mono font-semibold text-[12px] text-ink text-right w-24">
         {q ? <FlashPrice price={q.price} fmt={fmtPrice} /> : '—'}
@@ -186,7 +186,7 @@ function Overview() {
           so a 2-row Canada beside a 10-row Asia-Pacific left a slab of black
           under it. Columns pack each card against the one above (Jeff
           2026-08-06: "no need to align the boxes like that"). */}
-      <div class="columns-1 md:columns-2 xl:columns-3 min-[1800px]:columns-4 gap-2 [&>*]:mb-2 [&>*]:break-inside-avoid">
+      <div class="md:columns-2 xl:columns-3 min-[1800px]:columns-4 gap-2 [&>*]:mb-2 md:[&>*]:break-inside-avoid">
         {MARKET_GROUPS.map((g) => (
           <GroupCard key={g.name} name={g.name} items={g.items} quotes={quotes} />
         ))}
@@ -265,7 +265,7 @@ function Sectors() {
   const maxAbs = Math.max(0.01, ...rows.map((r) => Math.abs(r.q?.pct ?? 0)))
 
   return (
-    <div class="columns-1 xl:columns-2 gap-2 [&>*]:mb-2 [&>*]:break-inside-avoid">
+    <div class="xl:columns-2 gap-2 [&>*]:mb-2 xl:[&>*]:break-inside-avoid">
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
       <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
         <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">
@@ -309,7 +309,7 @@ function Commodities() {
   const symbols = COMMODITY_GROUPS.flatMap((g) => g.items.map((i) => i.symbol))
   const quotes = useQuotes(symbols)
   return (
-    <div class="columns-1 lg:columns-2 2xl:columns-3 gap-2 [&>*]:mb-2 [&>*]:break-inside-avoid">
+    <div class="lg:columns-2 2xl:columns-3 gap-2 [&>*]:mb-2 lg:[&>*]:break-inside-avoid">
       {COMMODITY_GROUPS.map((g) => (
         <GroupCard key={g.name} name={g.name} items={g.items} quotes={quotes} withUnits />
       ))}
@@ -614,8 +614,11 @@ function Calendar() {
 
 export function Markets({ route }) {
   const view = route.sub || 'overview'
+  // min-w-0: a flex child sizes to min-content without it, and the widest
+  // nowrap table blew the whole page out to ~880px on a phone
+  // (Jeff 2026-08-06: "markets view borked on mobile")
   return (
-    <div class="flex-1 p-3 select-text markets-page font-anth">
+    <div class="flex-1 min-w-0 p-3 select-text markets-page font-anth">
       {view === 'overview' && <Overview />}
       {view === 'movers' && <Movers />}
       {view === 'sectors' && <Sectors />}

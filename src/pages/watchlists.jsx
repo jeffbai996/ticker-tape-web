@@ -10,8 +10,10 @@ import { fmtPct } from '../lib/format.js'
 import { t as tt, tl } from '../lib/i18n.js'
 
 function ListSummary({ symbols, quotes, earnDays }) {
+  // 7d, not 14: the two-week window flagged half the board every season and
+  // stopped meaning anything (Jeff 2026-08-06)
   const ernSoon = symbols.filter((s) => earnDays?.[s] != null
-    && earnDays[s] >= 0 && earnDays[s] <= 14).length
+    && earnDays[s] >= 0 && earnDays[s] <= 7).length
   const moves = symbols
     .map((symbol) => quotes[symbol]?.quote?.pct)
     .filter((value) => Number.isFinite(value))
@@ -24,22 +26,22 @@ function ListSummary({ symbols, quotes, earnDays }) {
   return (
     <div class="grid grid-cols-4 gap-1.5">
       <div class="rounded-lg border border-line bg-black/25 px-2 py-1.5">
-        <div class="font-anth text-[8px] uppercase tracking-wider text-muted">{tl('average move')}</div>
-        <div class={`pt-0.5 font-mono text-[11px] font-semibold ${average == null ? 'text-muted' : average >= 0 ? 'text-up' : 'text-down'}`}>
+        <div class="font-anth text-[8px] uppercase tracking-wider text-muted whitespace-nowrap truncate">{tl('average move')}</div>
+        <div class={`pt-0.5 font-mono text-[15px] max-sm:text-[16px] font-semibold ${average == null ? 'text-muted' : average >= 0 ? 'text-up' : 'text-down'}`}>
           {average == null ? '—' : fmtPct(average)}
         </div>
       </div>
       <div class="rounded-lg border border-line bg-black/25 px-2 py-1.5">
-        <div class="font-anth text-[8px] uppercase tracking-wider text-muted">{tl('advancing')}</div>
-        <div class="pt-0.5 font-mono text-[11px] font-semibold text-up">{advancing}</div>
+        <div class="font-anth text-[8px] uppercase tracking-wider text-muted whitespace-nowrap truncate">{tl('advancing')}</div>
+        <div class="pt-0.5 font-mono text-[15px] max-sm:text-[16px] font-semibold text-up">{advancing}</div>
       </div>
       <div class="rounded-lg border border-line bg-black/25 px-2 py-1.5">
-        <div class="font-anth text-[8px] uppercase tracking-wider text-muted">{tl('declining')}</div>
-        <div class="pt-0.5 font-mono text-[11px] font-semibold text-down">{declining}</div>
+        <div class="font-anth text-[8px] uppercase tracking-wider text-muted whitespace-nowrap truncate">{tl('declining')}</div>
+        <div class="pt-0.5 font-mono text-[15px] max-sm:text-[16px] font-semibold text-down">{declining}</div>
       </div>
       <div class="rounded-lg border border-line bg-black/25 px-2 py-1.5">
-        <div class="font-anth text-[8px] uppercase tracking-wider text-muted">{tl('earnings 14d')}</div>
-        <div class={`pt-0.5 font-mono text-[11px] font-semibold ${ernSoon ? 'text-accent' : 'text-muted'}`}>{ernSoon}</div>
+        <div class="font-anth text-[8px] uppercase tracking-wider text-muted whitespace-nowrap truncate">{tl('earnings 7d')}</div>
+        <div class={`pt-0.5 font-mono text-[15px] max-sm:text-[16px] font-semibold ${ernSoon ? 'text-accent' : 'text-muted'}`}>{ernSoon}</div>
       </div>
     </div>
   )
@@ -216,14 +218,17 @@ export function WatchlistsPage() {
             <h1 class="font-anth font-bold text-xl text-ink">{tl('Watchlists')}</h1>
             <p class="pt-1 font-anth text-[10px] text-muted">{tt('watchlists.subtitle')}</p>
           </div>
-          <form onSubmit={submit} class="ml-auto flex items-center gap-2 rounded-xl border border-line bg-surface-1 p-1.5">
+          {/* one slim line at every width — the fields flex instead of owning
+              fixed widths, and the button never wraps its label
+              (Jeff 2026-08-06: "way too fat") */}
+          <form onSubmit={submit} class="ml-auto w-full sm:w-auto flex items-center flex-nowrap gap-1.5 rounded-lg border border-line bg-surface-1 p-1">
             <input value={name} onInput={(e) => { setName(e.currentTarget.value); setError('') }}
               aria-label={tl('Watchlist name')} placeholder={tl('Watchlist name')}
-              class="min-w-0 w-32 sm:w-36 bg-transparent px-2 py-1 font-anth text-[11px] text-ink outline-none placeholder:text-muted" />
+              class="min-w-0 flex-1 sm:flex-none sm:w-36 bg-transparent px-2 py-0.5 font-anth text-[11px] text-ink outline-none placeholder:text-muted" />
             <input value={seed} onInput={(e) => setSeed(e.currentTarget.value)}
               aria-label={tl('symbols (optional)')} placeholder={tl('symbols (optional)')}
-              class="min-w-0 w-32 sm:w-40 bg-transparent px-2 py-1 font-mono text-[10px] uppercase text-ink outline-none placeholder:text-muted placeholder:normal-case border-l border-line" />
-            <button class="rounded-lg border border-accent/60 bg-accent-soft px-2.5 py-1.5 font-anth text-[10px] font-semibold text-accent hover:bg-accent/15">{tl('Create watchlist')}</button>
+              class="min-w-0 flex-1 sm:flex-none sm:w-40 bg-transparent px-2 py-0.5 font-mono text-[10px] uppercase text-ink outline-none placeholder:text-muted placeholder:normal-case border-l border-line" />
+            <button class="shrink-0 whitespace-nowrap rounded-md border border-accent/60 bg-accent-soft px-2.5 py-1 font-anth text-[10px] font-semibold text-accent hover:bg-accent/15">{tl('Create')}</button>
           </form>
         </header>
         {error && <div class="px-1 pt-2 font-anth text-[10px] text-down">{error}</div>}
