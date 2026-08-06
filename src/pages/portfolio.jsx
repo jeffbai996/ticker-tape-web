@@ -60,12 +60,14 @@ function BookSummary({ rows, margin, fallbackNlv }) {
   const dayPct = dayBase ? (dayPnl / dayBase) * 100 : null
   const costBase = gross != null && unreal != null ? gross - unreal : null
   const unrealPct = costBase ? (unreal / costBase) * 100 : null
-  const withPct = (pct) => pct == null ? '' : ` (${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%)`
+  const pctSpan = (pct, cls) => pct == null ? null : (
+    <span class={cls}>{' '}({pct >= 0 ? '+' : ''}{pct.toFixed(2)}%)</span>
+  )
   const chip = (v, pct) =>
     v == null ? null : (
       <span class={`font-anth text-[12px] font-semibold px-2 py-0.5 rounded-md border ${
         v >= 0 ? 'text-up border-up/30 bg-up/10' : 'text-down border-down/30 bg-down/10'}`}>
-        {signedMoney(v)}{withPct(pct)}
+        {signedMoney(v)}{pctSpan(pct, 'text-[10px] font-normal')}
       </span>
     )
   return (
@@ -78,7 +80,7 @@ function BookSummary({ rows, margin, fallbackNlv }) {
             {chip(dayPnl, dayPct)}
             {unreal != null && (
               <span class="font-anth text-[10.5px] text-muted">{tl('unreal')}{' '}
-                <span class={pnlCls(unreal)}>{signedMoney(unreal)}{withPct(unrealPct)}</span></span>
+                <span class={`font-semibold ${pnlCls(unreal)}`}>{signedMoney(unreal)}{pctSpan(unrealPct, 'text-[9.5px] font-normal')}</span></span>
             )}
           </div>
         </div>

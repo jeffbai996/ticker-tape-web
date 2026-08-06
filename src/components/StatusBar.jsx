@@ -17,6 +17,8 @@ const STATE_CHIP = {
   closed: 'text-down border-down/50 bg-down/10',
 }
 const COMPACT_STATE_LABEL = { open: 'O', pre: 'P', post: 'A', closed: 'C', holiday: 'H' }
+// single-character session states for the zh reader (Jeff 2026-08-05)
+const COMPACT_STATE_LABEL_ZH = { open: '开', pre: '前', post: '后', closed: '休', holiday: '休' }
 
 // Outside regular hours the cash indices freeze — swap in the 24h futures
 // contracts, exactly like the TUI status bar does.
@@ -148,7 +150,7 @@ export function StatusBar() {
     state !== 'open' && FUTURES_SWAP[i.symbol] ? FUTURES_SWAP[i.symbol] : i)
   const quotes = useQuotes(strip.map((i) => i.symbol))
   const chipLabel = holiday ? 'HOLIDAY' : state === 'pre' ? 'PM' : state === 'post' ? 'AH' : state.toUpperCase()
-  const compactChipLabel = COMPACT_STATE_LABEL[holiday ? 'holiday' : state]
+  const compactChipLabel = (getLocale() === 'zh' ? COMPACT_STATE_LABEL_ZH : COMPACT_STATE_LABEL)[holiday ? 'holiday' : state]
   // "session closes in 2h 14m" on hover — ET boundary walk, DST via Intl
   const etParts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: 'numeric', hour12: false }).formatToParts(now)
   const etMins = Number(etParts.find((p) => p.type === 'hour').value) % 24 * 60
