@@ -15,12 +15,15 @@ describe('compact dashboard company name', () => {
     expect(dashboard).toContain('class="tui-company-name-swap @min-[545px]:hidden"')
     // 2026-08-06: the mid-band name hover-scrolls instead of hard-truncating,
     // so the reader can see the rest of a long name at that zoom
-    expect(dashboard).toContain('data-inline-name class="hidden @min-[545px]:block @min-[820px]:hidden min-w-0"')
+    // open hours free the extended-print space on phones — the name rides
+    // there inline, and only pre/post rows keep the tap-to-reveal swap
+    expect(dashboard).toContain("${q?.extLabel ? 'hidden @min-[545px]:block' : 'block'} @min-[820px]:hidden min-w-0")
+    expect(dashboard).toContain('has-inline-name')
     expect(dashboard).toMatch(/data-inline-name[\s\S]{0,200}<Marquee text=\{q\.name\}/)
     expect(dashboard).toContain('aria-hidden="true"')
     expect(dashboard).toContain('class="tui-company-name-wide hidden @min-[820px]:block')
-    expect(css).toContain('.tui-row:hover .tui-company-symbol')
-    expect(css).toContain('.tui-row:focus-visible .tui-company-name-swap')
+    expect(css).toContain('.tui-row:hover:not(.has-inline-name) .tui-company-symbol')
+    expect(css).toContain('.tui-row:focus-visible:not(.has-inline-name) .tui-company-name-swap')
     expect(css).toMatch(/\.tui-company-name-swap\s*\{[\s\S]*position: absolute;[\s\S]*inset: 0;/)
     expect(css).toMatch(/\.tui-company-identity\s*\{[\s\S]*overflow: hidden;/)
     expect(css).toMatch(/\.tui-company-name-swap\s*\{[\s\S]*padding-right: 2px;/)
@@ -35,7 +38,7 @@ describe('compact dashboard company name', () => {
     expect(dashboard).toContain('data-inline-name')
     expect(dashboard).toContain('setRevealed(true)')
     expect(dashboard).toContain("revealed ? ' is-revealed' : ''")
-    expect(css).toContain('.tui-row.is-revealed .tui-company-name-swap')
+    expect(css).toContain('.tui-row.is-revealed:not(.has-inline-name) .tui-company-name-swap')
     expect(css).toContain('@container (max-width: 544px)')
   })
 

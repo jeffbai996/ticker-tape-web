@@ -195,7 +195,8 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
       href={`#/research/${symbol.toLowerCase()}`}
       onClick={(e) => { if (selecting) { e.preventDefault(); e.stopPropagation(); onToggleSelect(symbol) } }}
       class={`tui-row group/row relative block px-3 py-[3px] border-b border-line last:border-0 hover:no-underline${
-        selecting ? ' pl-9 cursor-pointer' : ''}${selected ? ' bg-accent-soft' : ' hover:bg-white/[0.035]'}${revealed ? ' is-revealed' : ''}`}
+        selecting ? ' pl-9 cursor-pointer' : ''}${selected ? ' bg-accent-soft' : ' hover:bg-white/[0.035]'}${revealed ? ' is-revealed' : ''}${
+        q?.name && !q?.extLabel ? ' has-inline-name' : ''}`}
       title={q?.name ? `${symbol} — ${q.name}` : symbol}
     >
       {/* select mode: rows become toggles — the box replaces navigation, so
@@ -229,8 +230,11 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
                   has room, truncating into whatever is left. */}
               {q?.name && (
                 /* the mid band truncated the name with no way to read the rest
-                   — same hover-scroll the wide band uses (Jeff 2026-08-06) */
-                <span data-inline-name class="hidden @min-[545px]:block @min-[820px]:hidden min-w-0">
+                   — same hover-scroll the wide band uses (Jeff 2026-08-06).
+                   During regular hours there is no PRE/AH print on a phone
+                   row, and that spare width shows the company name instead of
+                   sitting empty (Jeff, same day). */
+                <span data-inline-name class={`${q?.extLabel ? 'hidden @min-[545px]:block' : 'block'} @min-[820px]:hidden min-w-0`}>
                   <Marquee text={q.name} title={`${symbol} — ${q.name}`}
                     class="block min-w-0 text-[10.5px] text-muted font-normal font-anth" />
                 </span>
