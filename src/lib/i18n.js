@@ -208,7 +208,7 @@ const LABELS = {
   Technicals: '技术指标', Fundamentals: '基本面', News: '新闻',
   Calls: '看涨', Puts: '看跌',
   // Status bar
-  OPEN: '盘中', CLOSED: '休市', PRE: '盘前', POST: '盘后', HOLIDAY: '休市日',
+  OPEN: '盘中', CLOSED: '休市', PRE: '盘前', POST: '盘后', AH: '盘后', HOLIDAY: '休市日',
   Watchlist: '自选股', Breadth: '广度',
   // Table headers
   Quarter: '季度', Reported: '发布日', 'EPS est': '预期EPS', 'EPS act': '实际EPS',

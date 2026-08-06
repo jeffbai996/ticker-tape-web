@@ -78,9 +78,11 @@ describe('compact dashboard company name', () => {
     expect(dashboard).toContain("setViewMode('flat')")
     expect(dashboard).toContain("{tl('Sectors')}")
     expect(dashboard).toContain("{tl('All')}")
-    // search rests folded to the mag glass and animates open on click
-    expect(dashboard).toContain("placeholder={expanded ? `${tl('Search')}…` : ''}")
+    // search rests folded (desktop keeps a readable Search… pill) and
+    // animates open on click
+    expect(dashboard).toContain("placeholder={`${tl('Search')}…`}")
     expect(dashboard).toContain('transition-[width]')
+    expect(dashboard).toContain('max-sm:placeholder:text-transparent')
     // sort, select mode and the watchlist picker fold into the board menu
     expect(dashboard).toContain('function BoardMenu')
     expect(dashboard).toContain("['spread', tl('Spread')]")
