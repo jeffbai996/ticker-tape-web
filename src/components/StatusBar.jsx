@@ -129,13 +129,13 @@ function StripCell({ symbol, label, q }) {
     // land COMPLETE, percentage included, before the clock (Jeff 2026-08-06).
     // Desktop keeps the separator and the roomier spacing.
     <a href={hrefFor('research', symbol.toLowerCase())}
-       class="hl-row flex items-baseline gap-1.5 max-sm:gap-[3px] whitespace-nowrap leading-5 px-1 max-sm:px-0 hover:no-underline">
-      <span class="text-muted/60 font-tick text-[10px] max-sm:text-[9.5px]">{tl(label)}</span>
-      <span class={`font-semibold max-sm:text-[10px] ${isVix ? vixClass(q?.price) : 'text-ink-2'}`}>
+       class="hl-row flex items-baseline gap-1.5 max-sm:gap-1 whitespace-nowrap leading-5 px-1 max-sm:px-0.5 hover:no-underline">
+      <span class="text-muted/60 font-tick text-[10px]">{tl(label)}</span>
+      <span class={`font-semibold max-sm:text-[10.5px] ${isVix ? vixClass(q?.price) : 'text-ink-2'}`}>
         <span class="max-sm:hidden">{q ? <FlashPrice price={q.price} fmt={fmtPrice} /> : '—'}</span>
         <span class="sm:hidden">{q ? <FlashPrice price={q.price} fmt={fmtPriceBare} /> : '—'}</span>
       </span>
-      {q && !isVix && <span class={`text-[10px] max-sm:text-[9.5px] ${up ? 'text-up' : 'text-down'}`}>{fmtPct(q.pct)}</span>}
+      {q && !isVix && <span class={`text-[10px] ${up ? 'text-up' : 'text-down'}`}>{fmtPct(q.pct)}</span>}
     </a>
   )
 }
@@ -193,7 +193,7 @@ export function StatusBar() {
       {/* one scrollable line, centred in the bar so it lines up with the
           wordmark: swipe it, drag it, or hover an edge to creep along. */}
       <div class="flex-1 min-w-0 flex items-center">
-        <div ref={stripRef} class="w-full flex items-baseline gap-2.5 max-sm:gap-[5px] overflow-x-auto no-scrollbar py-0.5">
+        <div ref={stripRef} class="w-full flex items-baseline gap-2.5 max-sm:gap-2 overflow-x-auto no-scrollbar py-0.5">
           {strip.map(({ symbol, label }) => (
             <StripCell key={symbol} symbol={symbol} label={label} q={quotes[symbol]?.quote} />
           ))}
