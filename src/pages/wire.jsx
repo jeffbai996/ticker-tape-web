@@ -231,6 +231,10 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
   )
 }
 
+const FragwireLogo = () => (
+  <svg class="w-[26px] h-[20px]" viewBox="0 0 82 64" aria-hidden="true"><g fill="#f59e0b"><circle cx="52.78" cy="44.00" r="2.6"/><circle cx="48.97" cy="48.97" r="2.6"/><circle cx="44.00" cy="52.78" r="2.6"/><circle cx="38.21" cy="55.18" r="2.6"/><circle cx="32.00" cy="56.00" r="2.6"/><circle cx="25.79" cy="55.18" r="2.6"/><circle cx="20.00" cy="52.78" r="2.6"/><circle cx="15.03" cy="48.97" r="2.6"/><circle cx="11.22" cy="44.00" r="2.6"/><circle cx="8.82" cy="38.21" r="2.6"/><circle cx="8.00" cy="32.00" r="2.6"/><circle cx="8.82" cy="25.79" r="2.6"/><circle cx="11.22" cy="20.00" r="2.6"/><circle cx="15.03" cy="15.03" r="2.6"/><circle cx="20.00" cy="11.22" r="2.6"/><circle cx="25.79" cy="8.82" r="2.6"/><circle cx="32.00" cy="8.00" r="2.6"/><circle cx="38.21" cy="8.82" r="2.6"/><circle cx="44.00" cy="11.22" r="2.6"/><circle cx="48.97" cy="15.03" r="2.6"/><circle cx="52.78" cy="20.00" r="2.6"/><circle cx="62" cy="32" r="2.6"/><circle cx="70" cy="32" r="2.1"/><circle cx="77" cy="32" r="1.6"/><circle cx="32" cy="32" r="4.2"/></g></svg>
+)
+
 function Panel({ title, children, action = null }) {
   return (
     <section class="border border-line rounded-lg bg-surface overflow-hidden">
@@ -495,42 +499,63 @@ export function Wire({ route }) {
   const stateTone = { demo: 'text-muted', connecting: 'text-muted', live: 'text-accent', error: 'text-down' }
   const wireHome = fragwireHome()      // re-reads on endpoint change via `endpoint` state
 
+  const connState = state === 'live' ? 'live' : state === 'error' ? 'down'
+    : state === 'connecting' ? 'connecting' : 'demo'
+  const CONN_TONE = {
+    live: 'text-up', connecting: 'text-accent', down: 'text-down', demo: 'text-muted',
+  }
+  const CONN_DOT = {
+    live: 'bg-up shadow-[0_0_6px_var(--color-up)]',
+    connecting: 'bg-accent shadow-[0_0_5px_var(--color-accent)]',
+    down: 'bg-down shadow-[0_0_5px_var(--color-down)]',
+    demo: 'bg-muted',
+  }
+
   return (
-    <div class="flex flex-col gap-2 flex-1 min-w-0 p-3">
-      <div class="flex items-center gap-3 flex-wrap">
-        <div class="flex gap-1">
+    <div class="flex flex-col gap-2 flex-1 min-w-0 p-3 pt-0">
+      {/* fragwire's own brow, ported: brand, segmented top|wire, conn dot,
+          board links — one bar, not a row of floating chips (Jeff 2026-08-05) */}
+      <div class="flex items-center gap-[18px] h-[52px] shrink-0 -mx-3 px-[18px] border-b border-line bg-surface-1 min-w-0 overflow-x-auto no-scrollbar">
+        <a href={wireHome || '#/wire'} target={wireHome ? '_blank' : undefined} rel="noopener"
+           class="inline-flex items-center gap-2.5 shrink-0 hover:no-underline group/brand">
+          <FragwireLogo />
+          <span class="font-sans font-bold text-[18px] tracking-[-0.02em] text-ink group-hover/brand:text-accent transition-colors">fragwire</span>
+        </a>
+        <nav class="inline-flex border border-line rounded-lg overflow-hidden shrink-0">
           {['top', 'wire'].map((m) => (
             <button
               key={m}
-              class={`border rounded-md px-2.5 py-0.5 font-mono text-[11px] font-semibold ${
-                mode === m ? 'bg-accent border-accent text-black' : 'border-line text-ink-2 hover:text-ink'
-              }`}
+              class={`px-3.5 py-1 font-sans font-semibold text-[12px] whitespace-nowrap transition-colors ${
+                mode === m
+                  ? m === 'wire' ? 'bg-[#30d158] text-black' : 'bg-accent text-black'
+                  : 'text-ink-2 hover:text-ink'
+              } ${m === 'wire' ? 'border-l border-line' : ''}`}
               onClick={() => setModePersist(m)}
             >
               {tl(m)}
             </button>
           ))}
-        </div>
-        <span class={`font-mono text-[11px] uppercase tracking-widest ${stateTone[state]}`}>
-          {tl(state === 'demo' ? 'demo wire — synthetic events' : state)}
+        </nav>
+        <span class={`inline-flex items-center gap-1.5 shrink-0 font-sans font-semibold text-[10.5px] uppercase tracking-[.1em] ${CONN_TONE[connState]}`}
+              title={tl('wire connection')}>
+          <i class={`w-1.5 h-1.5 rounded-full ${CONN_DOT[connState]}`} />
+          {tl(state === 'demo' ? 'demo' : state)}
         </span>
-        {/* Straight through to the board this tape is mirroring — this page is
-            a reader, the wire's own UI has the tuning, alerts and reader. */}
         {wireHome && (
-          <a
-            href={wireHome}
-            target="_blank"
-            rel="noopener"
-            class="font-mono text-[11px] text-ink-2 hover:text-accent hover:no-underline border border-line rounded-md px-2 py-0.5"
-            title={tl('open the wire board')}
-          >
-            fragwire ↗
-          </a>
+          <nav class="inline-flex gap-1 shrink-0">
+            {[['board', ''], ['calendar', '/today'], ['week', '/week'], ['stats', '/stats']].map(([label, path]) => (
+              <a key={label} href={`${wireHome}${path}`} target="_blank" rel="noopener"
+                 class="px-2.5 py-1 rounded-[7px] font-sans font-semibold text-[12px] text-ink-2 hover:text-ink hover:bg-surface-2 hover:no-underline">
+                {tl(label)}
+              </a>
+            ))}
+          </nav>
         )}
-        {error && <span class="font-mono text-[11px] text-down">{error}</span>}
+        {error && <span class="font-mono text-[11px] text-down truncate">{error}</span>}
+        <span class="ml-auto" />
         {endpoint && (
           <button
-            class="border border-line rounded-md px-2.5 py-1 text-[11.5px] font-semibold text-ink-2 hover:text-ink hover:border-ink-2"
+            class="shrink-0 px-2.5 py-1 rounded-[7px] font-sans font-semibold text-[12px] text-ink-2 hover:text-ink hover:bg-surface-2"
             title={tl('sync watchlist to wire')}
             onClick={() => {
               const syms = getWatchlist()
