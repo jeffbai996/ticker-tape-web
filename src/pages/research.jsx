@@ -293,6 +293,18 @@ function Candles({ bars, intraday }) {
   )
 }
 
+/** Analyst-consensus tone: conviction green → amber → red, matching the
+ *  P&L grammar (strong buy is not the same signal as hold). */
+export function ratingTone(key) {
+  const k = String(key || '').toLowerCase().replace(/[\s_-]+/g, '_')
+  if (k === 'strong_buy') return 'text-up font-semibold'
+  if (k === 'buy' || k === 'overweight' || k === 'outperform') return 'text-up'
+  if (k === 'hold' || k === 'neutral' || k === 'equal_weight') return 'text-accent'
+  if (k === 'underperform' || k === 'underweight' || k === 'reduce') return 'text-down'
+  if (k === 'sell' || k === 'strong_sell') return 'text-down font-semibold'
+  return 'text-ink'
+}
+
 function Stat({ label, value, cls = 'text-ink' }) {
   return (
     <div class="flex justify-between gap-3 px-3 py-[4px] border-b border-line last:border-0">
@@ -360,7 +372,7 @@ function Fundamentals({ symbol }) {
       <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2 flex items-baseline gap-2">
         <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Fundamentals')}</h2>
         {f?.recommendationKey && (
-          <span class="font-mono text-[10px] text-ink-2 uppercase">{f.recommendationKey.replace('_', ' ')}</span>
+          <span class={`font-mono text-[10px] uppercase ${ratingTone(f.recommendationKey)}`}>{f.recommendationKey.replace('_', ' ')}</span>
         )}
       </header>
       {!f && <div class="px-3 py-3 text-[11px] text-muted font-mono">{tt('common.loading')}</div>}
@@ -1107,7 +1119,57 @@ function FilingsView({ symbol }) {
   )
 }
 
+function NewsReadBody({ ev, base }) {
+  const [state, setState] = useState({ status: 'loading', paras: [] })
+  useEffect(() => {
+    let dead = false
+    if (!base || !ev.url) { setState({ status: 'empty', paras: [] }); return }
+    fetch(`${base.replace(/\/$/, '')}/api/read?id=${ev.id}&fast=1`,
+      { signal: AbortSignal.timeout(20_000) })
+      .then((r) => r.json())
+      .then((out) => {
+        if (dead) return
+        const text = out.ok ? (out.text || out.summary || '') : ''
+        const paras = String(text).split(/\n{2,}/).map((x) => x.trim()).filter(Boolean)
+        setState({ status: paras.length ? 'ok' : 'empty', paras })
+      })
+      .catch(() => !dead && setState({ status: 'empty', paras: [] }))
+    return () => { dead = true }
+  }, [ev.id])
+  if (state.status === 'loading') {
+    return <p class="text-[10.5px] font-mono text-muted animate-pulse py-1.5">{tl('pulling the story…')}</p>
+  }
+  if (state.status === 'empty') {
+    return (
+      <p class="text-[10.5px] font-mono text-muted py-1.5">
+        {tl("source wouldn't give up its text —")}{' '}
+        <a href={ev.url} target="_blank" rel="noopener"
+           class="text-accent hover:underline" onClick={(e) => e.stopPropagation()}>
+          {tl('open the page ↗')}
+        </a>
+      </p>
+    )
+  }
+  return (
+    <div class="flex flex-col gap-1.5 py-2 max-w-[74ch] mx-auto">
+      {state.paras.slice(0, 12).map((para, i) => (
+        <p key={i} class="text-[11.5px] leading-relaxed text-ink-2 font-anth">{para}</p>
+      ))}
+      {state.paras.length > 12 && (
+        <p class="text-[10px] font-mono text-muted">
+          …{' '}
+          <a href={ev.url} target="_blank" rel="noopener"
+             class="text-accent hover:underline" onClick={(e) => e.stopPropagation()}>
+            {tl('full text at the source ↗')}
+          </a>
+        </p>
+      )}
+    </div>
+  )
+}
+
 function SymbolNewsView({ symbol, name }) {
+  const [openId, setOpenId] = useState(null)
   const [yahoo, setYahoo] = useState(null)
   const [wireRows, setWireRows] = useState(null)
   const base = wireUrl()
@@ -1165,18 +1227,31 @@ function SymbolNewsView({ symbol, name }) {
           ) : (
             <div class="font-mono text-[11.5px]">
               {wireRows.map((e) => (
-                <div key={e.id} class="grid grid-cols-[86px_36px_1fr] gap-x-2.5 items-baseline px-3 py-[3px] border-t border-line first:border-0 hover:bg-surface-3">
-                  <span class="text-muted whitespace-nowrap">
-                    {new Date(e.ts_event * 1000).toLocaleDateString(getLocale() === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric' }).toLowerCase()}
-                    {' '}
-                    {new Date(e.ts_event * 1000).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', timeZone: 'America/New_York' })}
-                  </span>
-                  <span class={`text-[10px] tracking-wider ${e.type === 'earnings_release' || e.type === 'price_move' ? 'text-accent font-semibold' : 'text-muted'}`}>
-                    {CODE[e.type] || (e.type || '').slice(0, 3).toUpperCase()}
-                  </span>
-                  {e.url
-                    ? <a class="text-ink-2 hover:text-accent truncate" href={e.url} target="_blank" rel="noopener">{e.headline}</a>
-                    : <span class="text-ink-2 truncate">{e.headline}</span>}
+                <div key={e.id}
+                  class={`border-t border-line first:border-0 cursor-pointer ${openId === e.id ? 'bg-surface-2/60' : 'hover:bg-surface-3'}`}
+                  onClick={() => setOpenId(openId === e.id ? null : e.id)}>
+                  <div class="grid grid-cols-[86px_36px_1fr_auto] gap-x-2.5 items-baseline px-3 py-[3px]">
+                    <span class="text-muted whitespace-nowrap">
+                      {new Date(e.ts_event * 1000).toLocaleDateString(getLocale() === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric' }).toLowerCase()}
+                      {' '}
+                      {new Date(e.ts_event * 1000).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', timeZone: 'America/New_York' })}
+                    </span>
+                    <span class={`text-[10px] tracking-wider ${e.type === 'earnings_release' || e.type === 'price_move' ? 'text-accent font-semibold' : 'text-muted'}`}>
+                      {CODE[e.type] || (e.type || '').slice(0, 3).toUpperCase()}
+                    </span>
+                    <span class={`truncate ${openId === e.id ? 'text-ink' : 'text-ink-2'}`}>{e.headline}</span>
+                    {e.url && (
+                      <a href={e.url} target="_blank" rel="noopener" onClick={(ev2) => ev2.stopPropagation()}
+                         class="text-muted hover:text-accent text-[10px] border border-line-2 rounded px-1 leading-[1.5]">↗</a>
+                    )}
+                  </div>
+                  {openId === e.id && (
+                    <div class="px-3 pb-1.5">
+                      {e.body
+                        ? <p class="text-[11.5px] leading-relaxed text-ink-2 font-anth max-w-[74ch] mx-auto py-2">{e.body}</p>
+                        : <NewsReadBody ev={e} base={base} />}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -1335,7 +1410,8 @@ function DesBand({ symbol, bars }) {
         value={f?.targetMeanPrice != null ? `${fmtPrice(f.targetMeanPrice)}${price ? ` ${fmtPct(((f.targetMeanPrice / price) - 1) * 100)}` : ''}` : null}
         tone={f?.targetMeanPrice != null && price ? (f.targetMeanPrice >= price ? 'text-up' : 'text-down') : null} />
       <DesCell n={10} label={tl('Consensus')}
-        value={f?.recommendationKey ? f.recommendationKey.replace('_', ' ').toUpperCase() : null} />
+        value={f?.recommendationKey ? f.recommendationKey.replace('_', ' ').toUpperCase() : null}
+        tone={f?.recommendationKey ? ratingTone(f.recommendationKey) : null} />
       <DesCell n={11} label={tl('Short % flt')}
         value={f?.shortPercentOfFloat != null ? fmtFracPct(f.shortPercentOfFloat) : null} />
       <DesCell n={12} label={tl('Beta / D-E')}
