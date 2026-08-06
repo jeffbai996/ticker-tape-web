@@ -1,8 +1,14 @@
 const DASH = '—'
 
+// KRW/JPY-denominated listings print six-to-seven figure prices — cents on
+// a ₩1,495,000 quote are noise that overflows fixed columns into the next
+// field (SK hynix, Jeff 2026-08-06). Five figures and up drop the decimals.
+const BIG_PRICE = 10_000
+
 export function fmtPrice(v) {
   if (v == null || Number.isNaN(v)) return DASH
-  return v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const digits = Math.abs(v) >= BIG_PRICE ? 0 : 2
+  return v.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits })
 }
 
 /**
@@ -12,6 +18,7 @@ export function fmtPrice(v) {
  */
 export function fmtPriceBare(v) {
   if (v == null || Number.isNaN(v)) return DASH
+  if (Math.abs(v) >= BIG_PRICE) return v.toLocaleString('en-US', { maximumFractionDigits: 0 })
   return v.toFixed(2)
 }
 
@@ -22,7 +29,9 @@ export function fmtPct(v) {
 
 export function fmtChange(v) {
   if (v == null || Number.isNaN(v)) return DASH
-  return `${v >= 0 ? '+' : '-'}${Math.abs(v).toFixed(2)}`
+  const abs = Math.abs(v)
+  if (abs >= BIG_PRICE) return `${v >= 0 ? '+' : '-'}${abs.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
+  return `${v >= 0 ? '+' : '-'}${abs.toFixed(2)}`
 }
 
 /** Large money amounts: market cap, enterprise value, FCF. */

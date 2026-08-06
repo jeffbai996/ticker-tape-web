@@ -1072,11 +1072,51 @@ export function Chat() {
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
           </button>
         </div>
-        <div class="flex items-center gap-3 px-2 pt-1 font-mono text-[9.5px] text-muted">
-          <span><kbd class="text-ink-2">⏎</kbd> {tl('send')}</span>
-          <span><kbd class="text-ink-2">⇧⏎</kbd> {tl('newline')}</span>
-          {queued.length > 0 && <span class="text-accent">{queued.length} queued</span>}
-          {!onWire && <SpendMeter spend={spend} />}
+        {/* OWUI-style: the model rides the composer, not page chrome */}
+        <div class="flex items-center gap-2 px-2 pt-1 font-mono text-[9.5px] text-muted flex-wrap">
+          <select
+            value={model}
+            onChange={(e) => chooseModel(e.currentTarget.value)}
+            title={tl('model')}
+            class="bg-surface-2 border border-line rounded-md px-1.5 py-0.5 font-anth text-[10.5px] text-ink-2 outline-none cursor-pointer hover:border-line-2 focus:border-accent/70"
+          >
+            {(models.length ? models : [{ key: model, label: model }]).map((m) => (
+              <option key={m.key} value={m.key}>{m.label}</option>
+            ))}
+          </select>
+          {effortLevels.length > 0 && (
+            <span class="flex items-center gap-0.5 bg-surface-2 border border-line rounded-md px-0.5 py-px" title={tl('thinking effort')}>
+              {effortLevels.map((lv) => (
+                <button
+                  key={lv}
+                  type="button"
+                  onClick={() => {
+                    setEffort(lv)
+                    localStorage.setItem('chat_effort', lv)
+                  }}
+                  class={`px-1.5 py-px font-anth text-[10px] rounded transition-colors ${
+                    effort === lv
+                      ? 'bg-accent text-black font-bold'
+                      : 'text-muted hover:text-ink hover:bg-surface-3'
+                  }`}
+                >
+                  {tl(lv)}
+                </button>
+              ))}
+            </span>
+          )}
+          {onWire && selectedModel?.fixed_effort && (
+            <span class="font-mono text-[9px] text-muted border border-line rounded-md px-1.5 py-px"
+                  title={tl('fixed thinking tier')}>
+              {selectedModel.fixed_effort}
+            </span>
+          )}
+          <span class="ml-auto flex items-center gap-3">
+            <span><kbd class="text-ink-2">⏎</kbd> {tl('send')}</span>
+            <span><kbd class="text-ink-2">⇧⏎</kbd> {tl('newline')}</span>
+            {queued.length > 0 && <span class="text-accent">{queued.length} queued</span>}
+            {!onWire && <SpendMeter spend={spend} />}
+          </span>
         </div>
       </form>
   )
@@ -1093,53 +1133,17 @@ export function Chat() {
 
   return (
     <div class="flex-1 flex min-h-0 min-w-0">
-    <div class="flex-1 flex flex-col p-3 min-h-0 min-w-0 select-text">
-      {/* One control height across the row — the title, the wire pill, the
-          model housing, the effort pills and the icon rail all centre on the
-          same axis (Jeff 2026-08-04: "aren't vertically aligned"). */}
-      <div class="max-w-[56rem] w-full mx-auto flex items-center gap-2 px-1 pb-2 mb-1 border-b border-line flex-wrap">
-        <h1 class="font-bold text-lg leading-none text-ink" style="font-family: 'Plus Jakarta Sans', sans-serif">{tl('AI Chat')}</h1>
-        <span class={`w-1.5 h-1.5 rounded-full mr-1 ${onWire ? 'bg-up' : 'bg-accent'}`}
+    <div class="relative flex-1 flex flex-col p-3 pt-8 min-h-0 min-w-0 select-text">
+      {/* The header row is gone — the dialog owns its vertical space. The
+          wordmark tucks into the far top-left corner and the tool rail into
+          the top-right, both floating transparent (Jeff 2026-08-06). Model
+          and effort moved onto the composer, OWUI-style. */}
+      <div class="absolute top-1.5 left-2 z-30 flex items-center gap-1.5">
+        <h1 class="font-bold text-[13px] leading-none text-ink" style="font-family: 'Plus Jakarta Sans', sans-serif">{tl('AI Chat')}</h1>
+        <span class={`w-1.5 h-1.5 rounded-full ${onWire ? 'bg-up' : 'bg-accent'}`}
               title={tl(onWire ? 'online — private wire' : 'online — public proxy')} />
-        <label class="h-7 flex items-center gap-1.5 bg-surface-2 border border-line rounded-lg pl-2.5 pr-1 focus-within:border-accent/70 hover:border-line-2 transition-colors">
-          <span class="font-mono text-[9px] uppercase tracking-wider text-muted">{tl('model')}</span>
-          <select
-            value={model}
-            onChange={(e) => chooseModel(e.currentTarget.value)}
-            class="bg-transparent font-anth text-[12px] text-ink outline-none pr-1 cursor-pointer"
-          >
-            {(models.length ? models : [{ key: model, label: model }]).map((m) => (
-              <option key={m.key} value={m.key}>{m.label}</option>
-            ))}
-          </select>
-        </label>
-        {effortLevels.length > 0 && (
-          <div class="h-7 flex items-center gap-0.5 bg-surface-2 border border-line rounded-lg px-0.5" title={tl('thinking effort')}>
-            {effortLevels.map((lv) => (
-              <button
-                key={lv}
-                onClick={() => {
-                  setEffort(lv)
-                  localStorage.setItem('chat_effort', lv)
-                }}
-                class={`px-2 h-[22px] font-anth text-[11px] rounded-md transition-colors ${
-                  effort === lv
-                    ? 'bg-accent text-black font-bold'
-                    : 'text-muted hover:text-ink hover:bg-surface-3'
-                }`}
-              >
-                {tl(lv)}
-              </button>
-            ))}
-          </div>
-        )}
-        {onWire && selectedModel?.fixed_effort && (
-          <span class="h-7 inline-flex items-center font-mono text-[10px] text-muted border border-line rounded-lg px-2"
-                title={tl('fixed thinking tier')}>
-            {selectedModel.fixed_effort}
-          </span>
-        )}
-        <div class="ml-auto h-7 flex items-center gap-0.5 border border-line rounded-lg px-0.5">
+      </div>
+        <div class="absolute top-1.5 right-2 z-30 h-7 flex items-center gap-0.5 rounded-lg px-0.5">
           <button
             onClick={() => setDrawer(drawer === 'sessions' ? null : 'sessions')}
             class={`relative w-6 h-6 grid place-items-center rounded-md ${drawer === 'sessions' ? 'text-accent bg-accent-soft' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
@@ -1188,7 +1192,6 @@ export function Chat() {
             </button>
           )}
         </div>
-      </div>
 
       {drawer === 'sessions' && (
         <div class="fixed inset-0 z-50 bg-black/55 grid place-items-center p-4" onClick={() => setDrawer(null)}>

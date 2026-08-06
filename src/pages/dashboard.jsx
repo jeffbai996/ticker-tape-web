@@ -225,7 +225,9 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
             {/* The quote cluster is indivisible. The identity slot gets the
                 row's spare width, but must yield before PRE/AH is clipped. */}
             <span class="tui-quote-cluster flex items-baseline gap-1.5 max-sm:gap-1 shrink-0">
-              <span class="text-ink font-semibold w-[4.4rem] max-sm:w-[4.1rem] text-right shrink-0">
+              {/* min-w, not w: a ₩1,495,000 print needs room to grow left
+                  instead of spilling into the change box (Jeff 2026-08-06) */}
+              <span class="text-ink font-semibold min-w-[4.4rem] max-sm:min-w-[4.1rem] text-right shrink-0 whitespace-nowrap">
                 {q ? <FlashPrice price={q.price} fmt={fmtPrice} /> : '—'}
               </span>
               {/* min-width, not width: a wide print (▼ 15.22 (-4.05%)) used to
