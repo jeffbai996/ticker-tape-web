@@ -46,6 +46,19 @@ export function fetchHistory(symbol, rangeKey) {
 }
 
 /** Dividend payouts, newest first, via v8 chart events (no crumb needed). */
+export function fetchSplits(symbol) {
+  return cached(`sp:${symbol}`, NEWS_TTL * 24, async () => {
+    const url = `${proxyBase()}/v8/finance/chart/${encodeURIComponent(symbol)}?range=10y&interval=3mo&events=split`
+    const resp = await fetch(url, { signal: AbortSignal.timeout(12_000) })
+    if (!resp.ok) throw new Error(`splits ${symbol}: HTTP ${resp.status}`)
+    const data = await resp.json()
+    const ev = data?.chart?.result?.[0]?.events?.splits || {}
+    return Object.values(ev)
+      .map((s) => ({ date: s.date, ratio: `${s.numerator}:${s.denominator}` }))
+      .sort((a, b) => b.date - a.date)
+  })
+}
+
 export function fetchDividends(symbol) {
   return cached(`d:${symbol}`, 6 * 60 * 60_000, async () => {
     const url = `${proxyBase()}/v8/finance/chart/${encodeURIComponent(symbol)}?range=5y&interval=1mo&events=div`
