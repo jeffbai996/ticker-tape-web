@@ -105,6 +105,15 @@ async function fetchSymbol(symbol) {
   if (symbol === RS_BENCH) benchCloses = closes
 
   let quote = cache.get(symbol)?.quote
+  if (quote && !quote.name) {
+    // A stream tick (or a batch miss) can seed the cache nameless; the chart
+    // meta in hand has the full name, so backfill instead of shrugging.
+    const nm = result.meta?.longName || result.meta?.shortName || ''
+    if (nm) {
+      quote = { ...quote, name: nm }
+      cache.get(symbol).quote = quote
+    }
+  }
   if (!quote) {
     // Batch hasn't landed (or failed): derive an honest day quote from the
     // daily series — last close vs the one before it.

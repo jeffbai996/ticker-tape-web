@@ -64,8 +64,15 @@ export function CommandBar() {
     const v = parseInt(localStorage.getItem('console_h') || '', 10)
     return v >= 120 ? v : 288
   })
+  // Two postures: rapid-fire keyboard commands keep a ~6-line peek; a
+  // deliberate tap on the console (or "console ▴", or a drag) unlocks the
+  // full stored height (Jeff 2026-08-06). Esc resets to the peek.
+  const COMPACT_H = 110
+  const [expanded, setExpanded] = useState(false)
+  const closeConsole = () => { setOpen(false); setExpanded(false) }
   const startDrag = (e) => {
     e.preventDefault()
+    setExpanded(true)
     const grip = e.currentTarget
     grip.setPointerCapture(e.pointerId)
     const startY = e.clientY
@@ -174,7 +181,7 @@ export function CommandBar() {
       print(cmd, plan.text)
     } else if (plan.type === 'clear') {
       setLog([])
-      setOpen(false)
+      closeConsole()
     } else if (plan.type === 'lang') {
       const next = plan.locale || (getLocale() === 'en' ? 'zh' : 'en')
       setLocale(next)
@@ -320,7 +327,7 @@ export function CommandBar() {
     }
     if (e.key === 'Escape') {
       setHot(false)
-      setOpen(false)
+      closeConsole()
     } else if (e.key === 'ArrowUp' && h.length) {
       e.preventDefault()
       const idx = histIdx < 0 ? h.length - 1 : Math.max(0, histIdx - 1)
@@ -343,23 +350,26 @@ export function CommandBar() {
     <div class="max-md:hidden relative shrink-0">
       {open && log.length > 0 && (
         <div class="absolute bottom-full left-0 right-0 z-40 bg-surface-1/95 backdrop-blur border-t border-line shadow-[0_-8px_24px_rgba(0,0,0,0.5)]">
+          {/* one brow, not a grip strip stacked on a header — the word sat
+              low in a tall band (Jeff 2026-08-06: "equal height margins
+              top/bottom"). The whole header is the resize handle now. */}
           <div onPointerDown={startDrag}
-            class="h-2.5 cursor-ns-resize touch-none flex items-center justify-center group/grip"
+            class="relative flex items-center px-3 py-1 border-b border-line-2 cursor-ns-resize touch-none group/grip"
             title={tl('drag to resize')}>
-            <div class="w-10 h-[3px] rounded bg-line group-hover/grip:bg-accent group-active/grip:bg-accent" />
-          </div>
-          <div class="flex items-center px-3 py-1 border-b border-line-2">
             <span class="font-mono text-[9px] tracking-wider text-muted uppercase">{tl('console')}</span>
+            <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-[3px] rounded bg-line group-hover/grip:bg-accent group-active/grip:bg-accent" />
             <button
-              onClick={() => setOpen(false)}
-              class="ml-auto font-mono text-[11px] text-muted hover:text-ink px-1"
+              onClick={closeConsole}
+              onPointerDown={(e) => e.stopPropagation()}
+              class="ml-auto font-mono text-[11px] text-muted hover:text-ink px-1 cursor-pointer"
               title="Esc"
             >
               ✕
             </button>
           </div>
-          <div ref={scrollRef} style={{ maxHeight: `${consoleH}px` }}
-            class="overflow-y-auto px-3 py-1.5 font-mono text-[11px] leading-relaxed select-text">
+          <div ref={scrollRef} onClick={() => setExpanded(true)}
+            style={{ maxHeight: `${expanded ? consoleH : Math.min(consoleH, COMPACT_H)}px` }}
+            class="overflow-y-auto px-3 py-1.5 font-mono text-[11px] leading-relaxed select-text transition-[max-height] duration-200">
             {log.map((entry) => (
               <div key={entry.id} class="pb-1">
                 <div class="text-muted">
@@ -417,7 +427,7 @@ export function CommandBar() {
         {log.length > 0 && !open && (
           <button
             type="button"
-            onClick={() => setOpen(true)}
+            onClick={() => { setOpen(true); setExpanded(true) }}
             class="text-muted hover:text-ink text-[10px] shrink-0"
           >
             console ▴

@@ -124,6 +124,10 @@ function BriefData({ s }) {
         {movers.length ? movers.map((m) => (
           <div key={m.symbol} class={rowCls}>
             <a href={`#/research/${m.symbol.toLowerCase()}`} class="font-[650] font-tick text-ink hover:no-underline">{m.symbol}</a>
+            {/* the dead middle of the row carries the full name in the quiet
+                shade (Jeff 2026-08-06: "put down the full name in smaller/
+                different shade text") */}
+            {m.name && <span class="min-w-0 flex-1 truncate font-anth text-[10px] text-muted">{m.name}</span>}
             <span class="ml-auto text-ink-2">{m.price.toFixed(2)}</span>
             <span class={`w-16 text-right ${upDown(m.pct)}`}>{fmtPct(m.pct)}</span>
           </div>
