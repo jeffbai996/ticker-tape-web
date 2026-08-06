@@ -8,6 +8,27 @@ import { unwatch, watch } from '../lib/watchlist.js'
 import { useEarningsDays } from './dashboard.jsx'
 import { fmtPct } from '../lib/format.js'
 import { t as tt, tl } from '../lib/i18n.js'
+import { onSyncStatus } from '../lib/cloudsave.js'
+import { useEffect } from 'preact/hooks'
+
+/** Cloud-save state, quietly: synced rev / syncing / offline. Hidden entirely
+ *  on builds with no wire endpoint. */
+function CloudChip() {
+  const [st, setSt] = useState({ state: 'off', rev: 0 })
+  useEffect(() => onSyncStatus(setSt), [])
+  if (st.state === 'off') return null
+  const label = st.state === 'synced' ? `${tl('cloud')} · r${st.rev}`
+    : st.state === 'syncing' ? `${tl('cloud')} · …`
+    : tl('cloud offline')
+  return (
+    <span class={`rounded border px-1.5 py-px font-anth text-[8px] font-bold tracking-wider uppercase ${
+      st.state === 'synced' ? 'border-up/40 text-up'
+      : st.state === 'syncing' ? 'border-line text-muted'
+      : 'border-down/40 text-down'}`}>
+      {label}
+    </span>
+  )
+}
 
 function ListSummary({ symbols, quotes, earnDays }) {
   // 7d, not 14: the two-week window flagged half the board every season and
@@ -215,7 +236,7 @@ export function WatchlistsPage() {
         <header class="flex flex-wrap items-end gap-3 px-1 pb-4 border-b border-line">
           <div class="min-w-0">
             <div class="font-anth text-[9px] uppercase tracking-[0.18em] text-accent">{tl('Market workspace')}</div>
-            <h1 class="font-anth font-bold text-xl text-ink">{tl('Watchlists')}</h1>
+            <h1 class="font-anth font-bold text-xl text-ink flex items-center gap-2">{tl('Watchlists')} <CloudChip /></h1>
             <p class="pt-1 font-anth text-[10px] text-muted">{tt('watchlists.subtitle')}</p>
           </div>
           {/* one slim line at every width — the fields flex instead of owning

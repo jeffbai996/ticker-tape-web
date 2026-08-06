@@ -40,6 +40,18 @@ export function isWatched(symbol) {
 }
 
 /** Add a symbol. Returns the new list, or null if invalid/duplicate/full. */
+/** Bulk replace from the cloud-sync merge — same validation as save(),
+ *  same change event, no per-symbol ceremony. */
+export function replaceWatchlist(list) {
+  const clean = [...new Set((list || [])
+    .map((s) => String(s || '').trim().toUpperCase())
+    .filter((s) => SYMBOL_RE.test(s)))].slice(0, MAX)
+  cachedList = clean
+  try { localStorage.setItem(KEY, JSON.stringify(clean)) } catch { /* best-effort */ }
+  for (const fn of listeners) fn(clean)
+  return clean
+}
+
 export function watch(symbol) {
   const sym = (symbol || '').trim().toUpperCase()
   if (!SYMBOL_RE.test(sym)) return null
