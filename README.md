@@ -1,6 +1,18 @@
 # ticker-tape-web
 
+![Demo](https://img.shields.io/badge/demo-live-3fb950?style=flat-square)
+![Frontend](https://img.shields.io/badge/frontend-Preact-673ab8?style=flat-square)
+![Styling](https://img.shields.io/badge/styling-Tailwind_v4-38bdf8?style=flat-square)
+![Build](https://img.shields.io/badge/build-Vite-f59e0b?style=flat-square)
+![Data](https://img.shields.io/badge/data-live%2C_client--side-208cff?style=flat-square)
+![PWA](https://img.shields.io/badge/PWA-installable-0f766e?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-500_passing-3fb950?style=flat-square)
+
 A Bloomberg-style market terminal in the browser — the web rebuild of a private CLI TUI. Preact + Vite + Tailwind v4, deployed on GitHub Pages, all data fetched live client-side through a Cloudflare Worker proxy.
+
+![ticker-tape dashboard](docs/images/hero.jpeg)
+
+<sub><em>The dashboard mid-session: streaming quotes with overnight prints, per-symbol technical badges, day/52-week ranges, and the pulse / global markets / earnings rail.</em></sub>
 
 **Live:** https://jeffbai996.github.io/ticker-tape-web/
 
