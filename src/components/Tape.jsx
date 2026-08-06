@@ -5,6 +5,7 @@ import { hrefFor } from '../lib/route.js'
 import { marqueeCopies } from '../lib/marquee.js'
 import { tapeEntries } from '../lib/tape.js'
 import { tapeworthy, wireUrl } from '../lib/wire.js'
+import { extendedLabelClass } from '../lib/extendedHours.js'
 
 // The namesake: a continuously scrolling quote marquee. The list is doubled
 // so the -50% keyframe loops seamlessly.
@@ -145,7 +146,7 @@ export function Tape() {
         } : undefined}
       >
         {Array.from({ length: marquee.copies }, (_, copy) => (
-          <div ref={copy === 0 ? firstCycle : undefined} key={copy} class="tape-cycle flex items-center h-full gap-1.5 pr-1.5">
+          <div ref={copy === 0 ? firstCycle : undefined} key={copy} class="tape-cycle flex items-center h-full gap-0 pr-1">
             {entries.map(({ kind, data }, i) => {
               if (kind === 'headline') {
                 const e = data
@@ -154,7 +155,7 @@ export function Tape() {
                     key={`h-${e.id}-${i}`}
                     data-tape-item
                     href={e.symbols?.[0] ? hrefFor('research', e.symbols[0].toLowerCase()) : '#/wire'}
-                    class="flex items-baseline gap-2 whitespace-nowrap hover:no-underline px-0.5 py-0.5"
+                    class="flex items-baseline gap-2 whitespace-nowrap hover:no-underline px-1 py-0.5"
                     title={e.headline}
                   >
                     <span class="text-[9px] font-bold tracking-wider text-black bg-accent px-1 rounded-sm">
@@ -172,16 +173,16 @@ export function Tape() {
                   key={`q-${symbol}-${i}`}
                   data-tape-item
                   href={hrefFor('research', symbol.toLowerCase())}
-                  class="flex items-baseline gap-1.5 whitespace-nowrap hover:no-underline px-0.5 py-0.5"
+                  class="flex items-baseline gap-[3px] whitespace-nowrap hover:no-underline px-1 py-0.5"
                 >
                   <span class="text-ink font-bold font-tick text-[10px]">{symbol}</span>
-                  <span class="text-ink-2 font-semibold min-w-[3.75rem]">{q ? fmtPrice(q.price) : '—'}</span>
-                  <span class={`text-[10px] min-w-[3.25rem] ${q ? (up ? 'text-up' : 'text-down') : 'text-muted'}`}>
+                  <span class="text-ink-2 font-semibold">{q ? fmtPrice(q.price) : '—'}</span>
+                  <span class={`text-[10px] ${q ? (up ? 'text-up' : 'text-down') : 'text-muted'}`}>
                     {q ? fmtPct(q.pct) : '—'}
                   </span>
                   {q?.extLabel && q.extPrice != null && (
-                    <span class="inline-flex items-baseline gap-1 text-[10px]">
-                      <span class="text-[#c084fc] font-bold">{q.extLabel}</span>
+                    <span class="inline-flex items-baseline gap-[3px] text-[10px]">
+                      <span class={`${extendedLabelClass(q.extLabel)} font-bold`}>{q.extLabel}</span>
                       <span class="text-ink-2 font-semibold">{fmtPrice(q.extPrice)}</span>
                     </span>
                   )}

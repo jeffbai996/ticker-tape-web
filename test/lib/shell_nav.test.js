@@ -68,17 +68,21 @@ describe('compact mobile status bar', () => {
   })
 
   it('keeps both quote strips tightly spaced', () => {
-    expect(status).toContain('class="w-full flex items-baseline gap-1.5')
-    expect(status).toContain('leading-5 px-0.5')
+    expect(status).toContain('class="w-full flex items-baseline gap-0')
+    expect(status).toContain('gap-[3px] whitespace-nowrap leading-5 px-1')
     expect(status).not.toContain('items-baseline gap-4 overflow-x-auto')
-    expect(tape).toContain('class="tape-cycle flex items-center h-full gap-1.5 pr-1.5"')
-    expect(tape).toContain('hover:no-underline px-0.5 py-0.5')
+    expect(tape).toContain('class="tape-cycle flex items-center h-full gap-0 pr-1"')
+    expect(tape).toContain('gap-[3px] whitespace-nowrap hover:no-underline px-1 py-0.5')
+    expect(tape).not.toContain('min-w-[3.75rem]')
+    expect(tape).not.toContain('min-w-[3.25rem]')
     expect(tape).not.toContain('h-full gap-4 pr-4')
   })
 
-  it('shows the overnight quote beside the regular print in the tape', () => {
+  it('color-codes the extended-session quote beside the regular print', () => {
     expect(tape).toContain('q.extLabel')
     expect(tape).toContain('q.extPrice')
-    expect(tape).toContain('text-[#c084fc]')
+    expect(tape).toContain('extendedLabelClass(q.extLabel)')
+    expect(status).toContain("pre: 'text-[#5ba8d9]")
+    expect(status).toContain("post: 'text-[#c084fc]")
   })
 })
