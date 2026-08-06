@@ -7,7 +7,7 @@ import {
   positionRows, accountSummary, sizeForWeight, carryAt, stressGrid, nlvWalk,
 } from '../lib/demo.js'
 import { fmtPrice, fmtPct, fmtChange, fmtRatio } from '../lib/format.js'
-import { tl, t as tt } from '../lib/i18n.js'
+import { getLocale, tl, t as tt } from '../lib/i18n.js'
 import { FlashPrice } from '../components/Fig.jsx'
 import {
   parseFillsCsv, assembleBacktest, convertFills, convertBars, needsFx, symbolCurrency,
@@ -47,22 +47,61 @@ function BookSummary({ rows, margin, fallbackNlv }) {
   const gross = sum('mktValue')
   const equity = margin?.equity ?? fallbackNlv ?? null
   const leverage = gross != null && equity ? gross / equity : null
-  const items = [
-    ['NLV', dollars(equity ?? gross)],
-    [tl('Day P&L'), signedMoney(sum('dayPnl')), pnlCls(sum('dayPnl'))],
-    [tl('Gross exposure'), dollars(gross)],
-    [tl('Leverage'), leverage == null ? '—' : `${leverage.toFixed(2)}x`],
-    [tl('Excess liquidity'), dollars(margin?.above_maintenance)],
-    [tl('Cushion'), margin?.cushion_pct == null ? '—' : `${margin.cushion_pct.toFixed(1)}%`, margin?.cushion_pct < 8 ? 'text-down' : 'text-up'],
-  ]
+  const dayPnl = sum('dayPnl')
+  const unreal = sum('unrealPnl')
+  const cushion = margin?.cushion_pct
+  // risk runway: maintenance → equity on one bar. The filled span IS the
+  // cushion — the one picture that says how far the book is from trouble.
+  const maint = margin?.maintenance
+  const runway = maint != null && equity ? Math.max(0, Math.min(1, (equity - maint) / equity)) : null
+  const chip = (v, suffix = '') =>
+    v == null ? null : (
+      <span class={`font-anth text-[12px] font-semibold px-2 py-0.5 rounded-md border ${
+        v >= 0 ? 'text-up border-up/30 bg-up/10' : 'text-down border-down/30 bg-down/10'}`}>
+        {signedMoney(v)}{suffix}
+      </span>
+    )
   return (
-    <section class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 border border-line rounded-xl overflow-hidden bg-surface-1">
-      {items.map(([label, value, cls = 'text-ink']) => (
-        <div key={label} class="px-3 py-2 border-r border-b border-line last:border-r-0 xl:border-b-0">
-          <div class="font-anth text-[8.5px] uppercase tracking-wider text-muted pb-0.5">{label}</div>
-          <div class={`font-mono text-[13px] font-semibold ${cls}`}>{value}</div>
+    <section class="border border-line rounded-xl overflow-hidden bg-surface-1">
+      <div class="flex flex-wrap items-stretch">
+        <div class="px-4 py-3 flex-1 min-w-[240px]">
+          <div class="font-anth text-[9px] uppercase tracking-[.14em] text-muted">NLV</div>
+          <div class="font-anth text-[30px] leading-tight font-semibold tracking-tight text-ink">{dollars(equity ?? gross)}</div>
+          <div class="flex items-center gap-2 pt-1.5">
+            {chip(dayPnl)}
+            {unreal != null && (
+              <span class="font-anth text-[10.5px] text-muted">{tl('unreal')}{' '}
+                <span class={pnlCls(unreal)}>{signedMoney(unreal)}</span></span>
+            )}
+          </div>
         </div>
-      ))}
+        <div class="px-4 py-3 flex-[1.4] min-w-[300px] border-l border-line max-sm:border-l-0 max-sm:border-t flex flex-col justify-center gap-2">
+          <div class="grid grid-cols-3 gap-3">
+            {[
+              [tl('Gross exposure'), dollars(gross)],
+              [tl('Leverage'), leverage == null ? '—' : `${leverage.toFixed(2)}x`],
+              [tl('Excess liquidity'), dollars(margin?.above_maintenance)],
+            ].map(([label, value]) => (
+              <div key={label}>
+                <div class="font-anth text-[8.5px] uppercase tracking-wider text-muted pb-0.5">{label}</div>
+                <div class="font-anth text-[15px] font-semibold text-ink">{value}</div>
+              </div>
+            ))}
+          </div>
+          {runway != null && (
+            <div>
+              <div class="flex justify-between font-anth text-[8.5px] uppercase tracking-wider text-muted pb-1">
+                <span>{tl('Maintenance')}</span>
+                <span class={cushion < 8 ? 'text-down' : 'text-up'}>{tl('Cushion')} {cushion?.toFixed(1)}%</span>
+              </div>
+              <div class="relative h-2 rounded-full bg-down/25 overflow-hidden">
+                <div class={`absolute inset-y-0 right-0 rounded-full ${cushion < 8 ? 'bg-down' : 'bg-up/70'}`}
+                  style={{ width: `${(runway * 100).toFixed(1)}%` }} />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </section>
   )
 }
@@ -113,7 +152,7 @@ function Positions({ priceMap, positions, margin, accountId }) {
   return (
     <div class="flex flex-col gap-2">
     <BookSummary rows={rows} margin={margin} fallbackNlv={fallback.nlv} />
-    <div class="grid gap-2 xl:grid-cols-[minmax(0,1fr)_280px] items-start">
+    <div class="flex flex-col gap-2">
     <section class="bg-surface-1 border border-line rounded-xl overflow-x-auto">
       <table class="w-full border-collapse font-mono text-[11px]">
         <thead>
@@ -159,7 +198,9 @@ function Positions({ priceMap, positions, margin, accountId }) {
       </table>
     </section>
 
-    <div class="flex flex-col gap-2 max-xl:hidden">
+    {/* the analytics used to live in a side rail hidden below xl — on an
+        iPad that meant a table over a black void (Jeff 2026-08-05) */}
+    <div class="grid gap-2 md:grid-cols-3 items-start">
       <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
         <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
           <h2 class="font-anth font-bold text-[10px] tracking-wider text-accent uppercase">{tl('Concentration')}</h2>
@@ -1044,8 +1085,12 @@ export function Portfolio({ route }) {
   const [account, setAccount] = useState(() => localStorage.getItem('portfolio_account_v1') || '')
   useEffect(() => {
     if (accounts?.length && account !== BOTH_ACCOUNTS && !accounts.some((a) => a.id === account)) {
-      setAccount(accounts[0].id)
-      localStorage.setItem('portfolio_account_v1', accounts[0].id)
+      // no stored pick yet: 蛋宝 reads this app in Chinese, so zh boots on
+      // her account (the second gateway); an explicit choice always wins
+      const fallback = (getLocale() === 'zh' && accounts.length > 1)
+        ? accounts[accounts.length - 1].id : accounts[0].id
+      setAccount(fallback)
+      localStorage.setItem('portfolio_account_v1', fallback)
     }
   }, [accounts, account])
   const onAccountChange = (next) => {
