@@ -436,12 +436,29 @@ function Cockpit({ priceMap, positions }) {
   )
 }
 
-function Timeline({ priceMap, positions }) {
+function Timeline({ priceMap, positions, accountId }) {
   const el = useRef(null)
   const s = accountSummary(positions, priceMap)
+  // real accrued NLV rows from fragwire's snapshot store — the curve is
+  // honest: it starts the day the store went live and grows forward
+  const [days, setDays] = useState(null)
+  const wired = !!wireBase()
+  useEffect(() => {
+    if (!wired || !accountId || accountId === BOTH_ACCOUNTS) { setDays([]); return }
+    let dead = false
+    fetch(`${wireBase()}/api/portfolio/history?account=${encodeURIComponent(accountId)}`,
+      { signal: AbortSignal.timeout(10_000) })
+      .then((r) => r.json())
+      .then((out) => { if (!dead) setDays(out.ok ? (out.days || []).filter((d) => d.nlv != null) : []) })
+      .catch(() => { if (!dead) setDays([]) })
+    return () => { dead = true }
+  }, [accountId])
+  const real = wired && Array.isArray(days) && days.length >= 2
 
   useEffect(() => {
-    if (!el.current || s.nlv == null) return
+    if (!el.current) return
+    if (wired && !real) return          // never draw the fake walk on the wire build
+    if (!real && s.nlv == null) return
     const chart = createChart(el.current, {
       autoSize: true,
       layout: {
@@ -463,17 +480,23 @@ function Timeline({ priceMap, positions }) {
       bottomColor: 'rgba(245, 158, 11, 0.0)',
       lineWidth: 1.5,
     })
-    series.setData(nlvWalk('ttw-demo-nlv', 252, s.nlv))
+    series.setData(real
+      ? days.map((d) => ({ time: d.date, value: d.nlv }))
+      : nlvWalk('ttw-demo-nlv', 252, s.nlv))
     chart.timeScale().fitContent()
     return () => chart.remove()
-  }, [s.nlv])
+  }, [s.nlv, real, days])
 
   return (
     <section class="bg-surface-1 border border-line rounded-xl p-2 max-w-4xl min-w-0">
       <div class="px-2 pb-1 font-mono text-[11px] text-muted">
-        {tt('demo.timeline_note')}
+        {real
+          ? `NLV · ${tl('snapshots since')} ${days[0].date} · ${days.length} ${tl('days')}`
+          : wired
+            ? `${tl('snapshot store live — the curve draws itself as daily history accrues')}${days?.length ? ` (${days.length}/2)` : ''}`
+            : tt('demo.timeline_note')}
       </div>
-      <div ref={el} class="h-[380px] w-full" />
+      {(real || !wired) && <div ref={el} class="h-[380px] w-full" />}
     </section>
   )
 }
@@ -975,14 +998,41 @@ function Thesis() {
   )
 }
 
-function TimeTravel({ priceMap }) {
+function TimeTravel({ priceMap, accountId }) {
   const [date, setDate] = useState('')
   const [rows, setRows] = useState(null)
+  const [snapInfo, setSnapInfo] = useState(null)
   const csv = loadFillsCsv() || demoFillsCsv()
   const run = async (e) => {
     e.preventDefault()
     if (!date) return
     setRows('loading')
+    setSnapInfo(null)
+    // the real thing first: fragwire's booklog holds actual broker snapshots
+    // (positions + marks as they were), so a covered date replays the true
+    // book instead of a fills-CSV reconstruction
+    if (wireBase() && accountId && accountId !== BOTH_ACCOUNTS) {
+      try {
+        const resp = await fetch(
+          `${wireBase()}/api/portfolio/snapshot?account=${encodeURIComponent(accountId)}&date=${date}`,
+          { signal: AbortSignal.timeout(10_000) })
+        if (resp.ok) {
+          const out = await resp.json()
+          if (out.ok && out.positions?.length) {
+            setSnapInfo({ date: out.date, nlv: out.nlv })
+            setRows(out.positions.map((p) => ({
+              sym: p.symbol, qty: p.shares, avg: p.avg_cost ?? 0,
+              then: p.market_price ?? null,
+              // a CAD CDR marked against the US listing's USD quote prints
+              // +2500% garbage — cross-currency rows show "—" honestly
+              now: (p.currency || 'USD') === 'USD'
+                ? priceMap[p.symbol]?.price ?? null : null,
+            })))
+            return
+          }
+        }
+      } catch { /* store not there yet — fills replay below */ }
+    }
     const fills = parseFillsCsv(csv).filter((f) => f.date <= date)
     const bySym = new Map()
     for (const f of fills) {
@@ -1020,6 +1070,12 @@ function TimeTravel({ priceMap }) {
         <span class="text-[10px] text-muted">{tt('portfolio.time_note')}</span>
       </form>
       {rows === 'loading' && <div class="font-mono text-[11px] text-muted animate-pulse px-1">{tt('portfolio.pricing_past')}</div>}
+      {snapInfo && (
+        <div class="font-mono text-[10px] px-1 text-accent">
+          ● {tl('broker snapshot')} {snapInfo.date}
+          {snapInfo.nlv != null && <span class="text-muted"> · NLV {money(snapInfo.nlv)}</span>}
+        </div>
+      )}
       {Array.isArray(rows) && (rows.length ? (
         <section class="bg-surface-1 border border-line rounded-xl overflow-x-auto">
           <table class="w-full border-collapse font-mono text-[11px]">

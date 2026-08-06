@@ -90,9 +90,10 @@ describe('compact dashboard company name', () => {
   })
 
   it('merges desktop controls and the scrollable sector tape into one row', () => {
-    expect(dashboard).toContain('class="dashboard-toolbar md:flex md:items-center md:gap-4 md:px-1 md:pb-2 min-w-0"')
-    expect(dashboard).toContain('class="dashboard-controls flex items-center gap-2 px-1 pb-2 md:px-0 md:pb-0 min-w-0 shrink-0"')
-    expect(dashboard).toContain('class={`dashboard-sectors flex items-baseline gap-x-4 px-1 pb-2 md:px-0 md:pb-0 min-w-0')
+    // one row at every width — the strip scrolls, nothing wraps to a second row
+    expect(dashboard).toContain('class="dashboard-toolbar flex items-center gap-2 md:gap-4 px-1 pb-2 min-w-0"')
+    expect(dashboard).toContain('class="dashboard-controls flex items-center gap-2 min-w-0 shrink-0"')
+    expect(dashboard).toContain('class={`dashboard-sectors flex items-baseline gap-x-4 min-w-0')
     expect(dashboard).toContain('overflow-x-auto no-scrollbar')
     expect(dashboard).toContain('function SectorScroller')
     expect(dashboard).toContain('aria-label={tl(\'Scroll sectors right\')}')
