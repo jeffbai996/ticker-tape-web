@@ -11,6 +11,7 @@ import { getLocale, tl, t as tt } from '../lib/i18n.js'
 import { FlashPrice } from '../components/Fig.jsx'
 import {
   parseFillsCsv, assembleBacktest, convertFills, convertBars, needsFx, symbolCurrency,
+  serverFillsToLedger,
 } from '../lib/backtest.js'
 import { demoFillsCsv, loadFillsCsv, saveFillsCsv, closesByDateFromChart } from '../lib/backtestData.js'
 import { proxyBase } from '../lib/feed.js'
@@ -663,10 +664,30 @@ function BacktestStats({ result }) {
   )
 }
 
-function Backtest() {
+function Backtest({ accountId }) {
   const [savedCsv, setSavedCsv] = useState(() => loadFillsCsv())
   const isDemo = savedCsv == null
   const csv = savedCsv ?? demoFillsCsv()
+
+  // the broker's own executions, accrued in fragwire's fills ledger — the
+  // real trade history replaces the hand-typed CSV wherever it exists.
+  // sweep=1 pulls the last 7 days off ibkr-mcp first, so an open page is
+  // never staler than the broker.
+  const [serverFills, setServerFills] = useState(null)
+  const [source, setSourceState] = useState(() => localStorage.getItem('bt_source_v1') || 'broker')
+  const setSource = (v) => { setSourceState(v); localStorage.setItem('bt_source_v1', v) }
+  useEffect(() => {
+    if (!wireBase() || !accountId || accountId === BOTH_ACCOUNTS) { setServerFills([]); return }
+    let dead = false
+    fetch(`${wireBase()}/api/portfolio/fills?account=${encodeURIComponent(accountId)}&sweep=1`,
+      { signal: AbortSignal.timeout(30_000) })
+      .then((r) => r.json())
+      .then((out) => { if (!dead) setServerFills(out.ok ? serverFillsToLedger(out.fills) : []) })
+      .catch(() => { if (!dead) setServerFills([]) })
+    return () => { dead = true }
+  }, [accountId])
+  const brokerN = serverFills?.length || 0
+  const useBroker = source === 'broker' && brokerN > 0
 
   const [benchmarkInput, setBenchmarkInput] = useState('QQQ')
   const [reportCcy, setReportCcy] = useState('USD')
@@ -675,7 +696,9 @@ function Backtest() {
   const [loading, setLoading] = useState(false)
 
   const benchmark = benchmarkInput.trim().toUpperCase() || 'QQQ'
-  const fills = useMemo(() => parseFillsCsv(csv), [csv])
+  const fills = useMemo(
+    () => (useBroker ? serverFills : parseFillsCsv(csv)),
+    [useBroker, serverFills, csv])
 
   useEffect(() => {
     if (!fills.length) {
@@ -745,12 +768,31 @@ function Backtest() {
         </label>
       </div>
 
-      <FillsEditor
+      {wireBase() && accountId !== BOTH_ACCOUNTS && (
+        <div class="flex items-center gap-1 font-mono text-[10px]">
+          {[['broker', `${tl('broker ledger')}${brokerN ? ` · ${brokerN}` : ''}`],
+            ['manual', tl('manual csv')]].map(([v, label]) => (
+            <button key={v} onClick={() => setSource(v)}
+              disabled={v === 'broker' && !brokerN}
+              class={`px-2 py-0.5 rounded-md border ${source === v && (v !== 'broker' || brokerN)
+                ? 'border-accent-2 text-accent-2 bg-accent-2-soft'
+                : 'border-line text-muted hover:text-ink'} disabled:opacity-40`}>
+              {label}
+            </button>
+          ))}
+          {!brokerN && serverFills !== null && (
+            <span class="text-muted font-anth text-[10.5px]">
+              {tl('no broker fills accrued yet — the ledger fills in as you trade')}
+            </span>
+          )}
+        </div>
+      )}
+      {!useBroker && <FillsEditor
         csv={csv}
         isDemo={isDemo}
         onSave={(text) => { saveFillsCsv(text); setSavedCsv(text) }}
         onResetDemo={() => { saveFillsCsv(null); setSavedCsv(null) }}
-      />
+      />}
 
       {!fills.length && (
         <section class="bg-surface-1 border border-line rounded-xl p-4 font-mono text-[11px] text-muted flex flex-col gap-1.5">

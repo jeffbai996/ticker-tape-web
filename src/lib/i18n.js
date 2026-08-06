@@ -327,7 +327,9 @@ const LABELS = {
   'upcoming dividends': '即将派息', 'snapshots since': '快照始于', days: '天',
   'snapshot store live — the curve draws itself as daily history accrues':
     '快照存储已启用 — 每日数据累积后曲线自动生成',
-  'broker snapshot': '券商快照',
+  'broker snapshot': '券商快照', 'broker ledger': '券商成交', 'manual csv': '手动 CSV',
+  'no broker fills accrued yet — the ledger fills in as you trade':
+    '暂无券商成交记录 — 交易后会自动累积',
   'describe a change — add, rewrite, forget…': '描述改动 — 新增、改写、忘记…',
   apply: '应用', 'changes applied': '项已应用', 'no changes needed': '无需改动',
   'drag rows or use the arrows': '拖动行或使用箭头调整顺序',
