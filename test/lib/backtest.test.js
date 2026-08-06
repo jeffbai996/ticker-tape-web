@@ -153,3 +153,28 @@ describe('FX normalization', () => {
     expect(r.book[1]).toBeCloseTo(3100)
   })
 })
+
+describe('serverFillsToLedger', () => {
+  it('converts broker executions to the ledger shape, ET-dated', async () => {
+    const { serverFillsToLedger } = await import('../../src/lib/backtest.js')
+    // 2026-08-06 01:00 UTC = 2026-08-05 21:00 ET — the 5th's session
+    const rows = serverFillsToLedger([
+      { exec_id: 'e2', ts: 1785978000, symbol: 'MU', side: 'SELL',
+        qty: 50, price: 900.5, currency: 'USD' },
+      { exec_id: 'e1', ts: 1785942000, symbol: 'NVDA', side: 'BUY',
+        qty: 10, price: 219.2, currency: 'USD' },
+    ])
+    expect(rows).toEqual([
+      { date: '2026-08-05', symbol: 'NVDA', side: 'BUY', qty: 10, price: 219.2, currency: 'USD' },
+      { date: '2026-08-05', symbol: 'MU', side: 'SELL', qty: 50, price: 900.5, currency: 'USD' },
+    ])
+  })
+  it('drops malformed rows', async () => {
+    const { serverFillsToLedger } = await import('../../src/lib/backtest.js')
+    expect(serverFillsToLedger([
+      { ts: 1785942000, symbol: '', side: 'BUY', qty: 1, price: 1 },
+      { ts: 1785942000, symbol: 'MU', side: 'HOLD', qty: 1, price: 1 },
+      null,
+    ])).toEqual([])
+  })
+})
