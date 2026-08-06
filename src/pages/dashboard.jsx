@@ -114,12 +114,12 @@ function RangeBar({ label, lo, hi, v, cls = '' }) {
 
 /** The compact breakpoint keeps the same low → position → high grammar as the
  *  full range instead of turning the chart into an unlabeled mystery noodle. */
-function CompactDayRange({ lo, hi, v }) {
+function CompactDayRange({ lo, hi, v, cls = '' }) {
   const pos = rangePos(lo, hi, v)
   if (pos == null) return null
   return (
     <span
-      class="hidden @min-[545px]:flex @min-[730px]:hidden items-center gap-1 whitespace-nowrap font-mono text-[9.5px]"
+      class={`hidden @min-[545px]:flex @min-[730px]:hidden items-center gap-1 whitespace-nowrap font-mono text-[9.5px] ${cls}`}
       title={`DAY ${fmtPriceBare(lo)} – ${fmtPriceBare(hi)}`}
     >
       <span class="text-accent/60 font-normal text-[9px]">DAY</span>
@@ -163,17 +163,26 @@ function TuiRow({ symbol, data, earnDays, onRemove }) {
       >
         ★
       </button>
-      <div class="flex gap-1 min-w-0">
+      {/* the meters column needs air off the quote cluster — at mid widths
+          VOL was landing flush against the extended-hours percentage */}
+      <div class="flex gap-3 min-w-0">
         <div class="flex-1 min-w-0 overflow-hidden">
           <div class="flex items-baseline gap-1.5 max-sm:gap-1 font-mono text-[13px] max-sm:text-[12px] flex-nowrap max-sm:flex-wrap min-w-0">
-            <span class="tui-company-identity relative flex-1 min-w-0 @min-[820px]:flex-none @min-[820px]:w-14 text-ink font-[650] font-tick text-[12px]">
-              <span class="tui-company-symbol">{symbol}</span>
-              {/* Compact/high-zoom rows use one identity slot: hover swaps the
-                  ticker out and the company name into its exact footprint.
-                  The elastic slot consumes spare width up to the fixed quote
-                  columns, letting long names breathe without moving them. */}
+            <span class="tui-company-identity relative flex items-baseline gap-1.5 flex-1 min-w-0 @min-[820px]:flex-none @min-[820px]:w-14 text-ink font-[650] font-tick text-[12px]">
+              <span class="tui-company-symbol shrink-0">{symbol}</span>
+              {/* The elastic slot used to sit empty next to a short ticker and
+                  only show the name on hover (Jeff 2026-08-05: "don't let it
+                  go to waste"). Now the name rides inline wherever the slot
+                  has room, truncating into whatever is left. */}
               {q?.name && (
-                <span class="tui-company-name-swap @min-[820px]:hidden" aria-hidden="true">
+                <span class="hidden @min-[545px]:block @min-[820px]:hidden min-w-0 truncate text-[10.5px] text-muted font-normal font-anth">
+                  {q.name}
+                </span>
+              )}
+              {/* Below that the slot is too narrow for two strings, so the
+                  hover swap still trades the ticker for the name in place. */}
+              {q?.name && (
+                <span class="tui-company-name-swap @min-[545px]:hidden" aria-hidden="true">
                   {q.name}
                 </span>
               )}
@@ -222,6 +231,13 @@ function TuiRow({ symbol, data, earnDays, onRemove }) {
             <Histo bars={data?.histo} width={150} height={24}
               class="w-[clamp(76px,18cqw,168px)] h-6" />
             <Badges tech={data?.tech} earnDays={earnDays} />
+            {/* An extended-hours print evicts the day range from the meters
+                column at this width, which used to mean no intraday range at
+                all overnight. The badge line has the room, so it takes it. */}
+            {q?.extLabel && (
+              <CompactDayRange lo={q?.dayLow} hi={q?.dayHigh} v={q?.price}
+                cls="ml-auto shrink-0 pr-1" />
+            )}
           </div>
         </div>
         {/* Meters live in their own fixed column so DAY and 52W align by
