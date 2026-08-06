@@ -10,5 +10,7 @@ config.json
 node_modules/
 dist/
 .wrangler/
-dist-tailnet/
+dist-tailnet
+dist-tailnet.pre-atomic/
+dist-tailnet-releases/
 private/
