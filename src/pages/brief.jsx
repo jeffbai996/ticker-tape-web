@@ -28,7 +28,7 @@ function ArchivePanel() {
 
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
-      <header class="px-3 py-1.5 border-b border-line-2 bg-surface-2">
+      <header class="px-3 py-[3px] border-b border-line-2 bg-surface-2">
         <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">
           {tl('Archive')} <span class="text-muted normal-case tracking-normal">({reports.length})</span>
         </h2>
@@ -79,7 +79,7 @@ function ArchivePanel() {
 function Card({ title, children, aside }) {
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden min-w-0">
-      <header class="flex items-baseline gap-2 px-3 py-1.5 border-b border-line-2 bg-surface-2">
+      <header class="flex items-baseline gap-2 px-3 py-[3px] border-b border-line-2 bg-surface-2">
         <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{title}</h2>
         {aside && <span class="ml-auto font-mono text-[10px] text-muted">{aside}</span>}
       </header>

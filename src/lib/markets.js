@@ -328,14 +328,108 @@ export const COMMODITY_GROUPS = [
 /** The names whose reports move the tape whether you hold them or not — the
  *  megacaps plus the heavyweights of the NDX-100/S&P top-100. The earnings
  *  widget and page merge these with the watchlist (Jeff 2026-08-06). */
-export const EARNINGS_UNIVERSE = [
-  'AAPL', 'MSFT', 'NVDA', 'GOOG', 'AMZN', 'META', 'TSLA', 'AVGO',
-  'BRK-B', 'LLY', 'JPM', 'V', 'UNH', 'XOM', 'MA', 'COST', 'HD', 'PG',
-  'JNJ', 'ABBV', 'WMT', 'NFLX', 'CRM', 'BAC', 'ORCL', 'KO', 'CVX',
-  'AMD', 'MRK', 'PEP', 'ADBE', 'TMO', 'MU', 'LRCX', 'AMAT', 'QCOM',
-  'TXN', 'INTC', 'INTU', 'CAT', 'GE', 'GS', 'MS', 'PLTR', 'TSM',
-  'ASML', 'NOW', 'ISRG', 'BKNG', 'AXP',
-]
+/** Names for the universe above. A symbol only carries a company name when
+ *  the quote feed has fetched it, and the widget deliberately lists names you
+ *  DON'T hold — so half the rows sat nameless (Jeff 2026-08-06). This is the
+ *  fallback: static, no extra request, and company names don't move. */
+export const EARNINGS_NAMES = {
+  AAPL: 'Apple Inc.',
+  MSFT: 'Microsoft Corporation',
+  NVDA: 'NVIDIA Corporation',
+  GOOG: 'Alphabet Inc.',
+  AMZN: 'Amazon.com, Inc.',
+  META: 'Meta Platforms, Inc.',
+  TSLA: 'Tesla, Inc.',
+  AVGO: 'Broadcom Inc.',
+  'BRK-B': 'Berkshire Hathaway Inc.',
+  LLY: 'Eli Lilly and Company',
+  JPM: 'JPMorgan Chase & Co.',
+  V: 'Visa Inc.',
+  UNH: 'UnitedHealth Group Incorporated',
+  XOM: 'Exxon Mobil Corporation',
+  MA: 'Mastercard Incorporated',
+  COST: 'Costco Wholesale Corporation',
+  HD: 'The Home Depot, Inc.',
+  PG: 'The Procter & Gamble Company',
+  JNJ: 'Johnson & Johnson',
+  ABBV: 'AbbVie Inc.',
+  WMT: 'Walmart Inc.',
+  NFLX: 'Netflix, Inc.',
+  CRM: 'Salesforce, Inc.',
+  BAC: 'Bank of America Corporation',
+  ORCL: 'Oracle Corporation',
+  KO: 'The Coca-Cola Company',
+  CVX: 'Chevron Corporation',
+  AMD: 'Advanced Micro Devices, Inc.',
+  MRK: 'Merck & Co., Inc.',
+  PEP: 'PepsiCo, Inc.',
+  ADBE: 'Adobe Inc.',
+  TMO: 'Thermo Fisher Scientific Inc.',
+  MU: 'Micron Technology, Inc.',
+  LRCX: 'Lam Research Corporation',
+  AMAT: 'Applied Materials, Inc.',
+  QCOM: 'QUALCOMM Incorporated',
+  TXN: 'Texas Instruments Incorporated',
+  INTC: 'Intel Corporation',
+  INTU: 'Intuit Inc.',
+  CAT: 'Caterpillar Inc.',
+  GE: 'GE Aerospace',
+  GS: 'The Goldman Sachs Group, Inc.',
+  MS: 'Morgan Stanley',
+  PLTR: 'Palantir Technologies Inc.',
+  TSM: 'Taiwan Semiconductor Manufacturing Company Limited',
+  ASML: 'ASML Holding N.V.',
+  NOW: 'ServiceNow, Inc.',
+  ISRG: 'Intuitive Surgical, Inc.',
+  BKNG: 'Booking Holdings Inc.',
+  AXP: 'American Express Company',
+}
+
+export const EARNINGS_UNIVERSE = Object.keys(EARNINGS_NAMES)
+
+// 2026 US federal holidays (Independence Day observed Friday Jul 3). Data
+// agencies follow this calendar, NOT the NYSE one in marketState.js — Good
+// Friday closes the exchange but BLS/ISM still publish that morning.
+const FED_HOLIDAYS_2026 = new Set([
+  '2026-01-01', '2026-01-19', '2026-02-16', '2026-05-25', '2026-06-19',
+  '2026-07-03', '2026-09-07', '2026-10-12', '2026-11-11', '2026-11-26',
+  '2026-12-25',
+])
+
+const iso = (d) => d.toISOString().slice(0, 10)
+
+/** ISO date `n` days after an ISO date. */
+export function shiftDays(date, n) {
+  const d = new Date(`${date}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + n)
+  return iso(d)
+}
+
+/** The `n`-th business day of a month, skipping weekends and federal
+ *  holidays — ISM publishes on the 1st (manufacturing) and 3rd (services). */
+export function nthBusinessDay(year, month, n, holidays = FED_HOLIDAYS_2026) {
+  const d = new Date(Date.UTC(year, month - 1, 1))
+  let count = 0
+  for (;;) {
+    const day = d.getUTCDay()
+    if (day !== 0 && day !== 6 && !holidays.has(iso(d))) count += 1
+    if (count === n) return iso(d)
+    d.setUTCDate(d.getUTCDate() + 1)
+  }
+}
+
+/** The `n`-th given weekday of a month (0 = Sunday), e.g. the second Friday
+ *  that carries UMich's preliminary sentiment read. */
+export function nthWeekdayOfMonth(year, month, weekday, n) {
+  const d = new Date(Date.UTC(year, month - 1, 1))
+  const shift = (weekday - d.getUTCDay() + 7) % 7
+  d.setUTCDate(1 + shift + (n - 1) * 7)
+  return iso(d)
+}
+
+const MONTHS_2026 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+const FOMC_2026 = ['2026-01-28', '2026-03-18', '2026-05-06', '2026-06-17',
+                   '2026-07-29', '2026-09-16', '2026-11-04', '2026-12-16']
 
 export const ECON_EVENTS = [
   ...['2026-01-28', '2026-03-18', '2026-05-06', '2026-06-17', '2026-07-29', '2026-09-16', '2026-11-04', '2026-12-16']
@@ -357,6 +451,22 @@ export const ECON_EVENTS = [
   ...['2026-03-20', '2026-06-19', '2026-09-18', '2026-12-18']
     .map((date) => ({ date, type: 'OPEX', label: 'Quad Witching' })),
   { date: '2026-08-27', type: 'FED', label: 'Jackson Hole Symposium' },
+  // third tier, rule-derived rather than scraped (Jeff 2026-08-06: "expand it
+  // just slightly"): ISM on the 1st/3rd business day, FOMC minutes three weeks
+  // after the decision, UMich prelim on the second Friday. Planning-grade —
+  // an agency can still shift a release a day.
+  ...MONTHS_2026.map((m) => ({
+    date: nthBusinessDay(2026, m, 1), type: 'ISM', label: 'ISM Manufacturing',
+  })),
+  ...MONTHS_2026.map((m) => ({
+    date: nthBusinessDay(2026, m, 3), type: 'ISMS', label: 'ISM Services',
+  })),
+  ...FOMC_2026.map((date) => ({
+    date: shiftDays(date, 21), type: 'MINS', label: 'FOMC Minutes',
+  })),
+  ...MONTHS_2026.map((m) => ({
+    date: nthWeekdayOfMonth(2026, m, 5, 2), type: 'UMCH', label: 'UMich Sentiment',
+  })),
 ].sort((a, b) => a.date.localeCompare(b.date))
 
 /** Days from `today` (YYYY-MM-DD) to the event date; negative = past. */
