@@ -2021,6 +2021,19 @@ export function Research({ route }) {
   const [hist, setHist] = useState(null)
   const [warmPad, setWarmPad] = useState(null)
   const [err, setErr] = useState(null)
+  // intraday tick override (1D: 1m/2m/5m/15m, 5D: 5m…1h) — the default 5m
+  // was the ONLY resolution and that's no way to read an open (Jeff
+  // 2026-08-06). Persisted per range so 1D can live on 1m while 5D stays 15m.
+  const [ticks, setTicks] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('research_ticks_v1')) || {} } catch { return {} }
+  })
+  const activeRange = RANGES.find((x) => x.key === rangeKey)
+  const tick = activeRange?.ticks?.includes(ticks[rangeKey]) ? ticks[rangeKey] : null
+  const setTick = (value) => {
+    const next = { ...ticks, [rangeKey]: value }
+    setTicks(next)
+    try { localStorage.setItem('research_ticks_v1', JSON.stringify(next)) } catch { /* best-effort */ }
+  }
   // Header quote comes from the live 1D feed — a multi-month chart fetch
   // reports change vs the range START (chartPreviousClose), not yesterday.
   const live = useQuotes(symbol ? [symbol] : [])
@@ -2029,16 +2042,16 @@ export function Research({ route }) {
     if (!symbol) return
     setHist(null)
     setErr(null)
-    fetchHistory(symbol, rangeKey)
+    fetchHistory(symbol, rangeKey, { interval: tick })
       .then(setHist)
       .catch((e) => setErr(String(e.message || e)))
     // warm-up bars for the oscillators; failure is silent — indicators just
     // start where they used to
     setWarmPad(null)
-    fetchHistory(symbol, rangeKey, { warm: true })
+    fetchHistory(symbol, rangeKey, { warm: true, interval: tick })
       .then((h) => setWarmPad(h.bars))
       .catch(() => {})
-  }, [symbol, rangeKey])
+  }, [symbol, rangeKey, tick])
 
   // bloomberg speed keys: the tab numbers are commands — press 3, land on
   // Options. 0 = the tenth tab. Inputs keep their digits.
@@ -2119,6 +2132,19 @@ export function Research({ route }) {
               )}
             </span>
           </>
+        )}
+        {activeRange?.ticks && (
+          <div class="flex items-center gap-1 shrink-0">
+            {activeRange.ticks.map((v) => (
+              <button key={v} onClick={() => setTick(v === (tick || activeRange.interval) ? v : v)}
+                class={`font-mono text-[10px] px-1.5 py-1 rounded-md border whitespace-nowrap ${
+                  (tick || activeRange.interval) === v
+                    ? 'border-accent-2/60 text-accent-2 bg-accent-2-soft'
+                    : 'border-line/60 text-muted hover:text-ink hover:border-line-2'}`}>
+                {v}
+              </button>
+            ))}
+          </div>
         )}
         <div class="flex gap-1 flex-nowrap overflow-x-auto no-scrollbar shrink-0 max-w-full">
           {RANGES.map((r) => (

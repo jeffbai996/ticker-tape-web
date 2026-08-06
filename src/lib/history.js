@@ -9,8 +9,8 @@ import { createPCache } from './pcache.js'
 // before the window starts (see chartmath.warmedBars). MACD needs 34 prior
 // bars, so every daily range asks for the next size up; MAX has nothing older.
 export const RANGES = [
-  { key: '1D', range: '1d', interval: '5m', intraday: true, ttl: 60_000, warm: '5d' },
-  { key: '5D', range: '5d', interval: '15m', intraday: true, ttl: 5 * 60_000, warm: '1mo' },
+  { key: '1D', range: '1d', interval: '5m', intraday: true, ttl: 60_000, warm: '5d', ticks: ['1m', '2m', '5m', '15m'] },
+  { key: '5D', range: '5d', interval: '15m', intraday: true, ttl: 5 * 60_000, warm: '1mo', ticks: ['5m', '15m', '30m', '1h'] },
   { key: '1M', range: '1mo', interval: '1d', ttl: 10 * 60_000, warm: '3mo' },
   { key: '3M', range: '3mo', interval: '1d', ttl: 10 * 60_000, warm: '6mo' },
   { key: '6M', range: '6mo', interval: '1d', ttl: 10 * 60_000, warm: '1y' },
@@ -35,18 +35,41 @@ async function cached(key, ttl, fn) {
   return value
 }
 
-export function fetchHistory(symbol, rangeKey, { warm = false } = {}) {
+/** Bars that belong to the newest session present in an intraday set —
+ *  Yahoo's 1d window intermittently answers with a quote and ZERO bars
+ *  while 5d still carries today's prints (2026-08-06, blank 1D chart). */
+export function lastSessionBars(bars) {
+  if (!bars?.length) return []
+  const day = (t) => new Date(t * 1000).toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+  const last = day(bars[bars.length - 1].time)
+  return bars.filter((b) => day(b.time) === last)
+}
+
+async function fetchChart(symbol, range, interval) {
+  const url = `${proxyBase()}/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}`
+  const resp = await fetch(url, { signal: AbortSignal.timeout(12_000) })
+  if (!resp.ok) throw new Error(`history ${symbol}: HTTP ${resp.status}`)
+  const result = (await resp.json())?.chart?.result?.[0]
+  if (!result) throw new Error(`history ${symbol}: empty`)
+  return result
+}
+
+export function fetchHistory(symbol, rangeKey, { warm = false, interval = null } = {}) {
   const r = RANGES.find((x) => x.key === rangeKey) || RANGES[2]
   if (warm && !r.warm) return Promise.resolve({ bars: [] })
   const range = warm ? r.warm : r.range
-  return cached(`h:${symbol}:${r.key}${warm ? ':warm' : ''}`, r.ttl, async () => {
-    const url = `${proxyBase()}/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${r.interval}`
-    const resp = await fetch(url, { signal: AbortSignal.timeout(12_000) })
-    if (!resp.ok) throw new Error(`history ${symbol}: HTTP ${resp.status}`)
-    const data = await resp.json()
-    const result = data?.chart?.result?.[0]
-    if (!result) throw new Error(`history ${symbol}: empty`)
-    return { quote: quoteFromChart(result), bars: barsFromChart(result), intraday: !!r.intraday }
+  const iv = interval || r.interval
+  return cached(`h:${symbol}:${r.key}${iv !== r.interval ? `:${iv}` : ''}${warm ? ':warm' : ''}`, r.ttl, async () => {
+    const result = await fetchChart(symbol, range, iv)
+    let bars = barsFromChart(result)
+    // an empty intraday answer is a Yahoo hiccup, not a market holiday —
+    // pull the wider window and keep only the newest session
+    if (!bars.length && !warm && r.intraday && r.warm) {
+      const wide = await fetchChart(symbol, r.warm, iv).catch(() => null)
+      if (wide) bars = lastSessionBars(barsFromChart(wide))
+      if (!bars.length) throw new Error(`history ${symbol}: no bars`)
+    }
+    return { quote: quoteFromChart(result), bars, intraday: !!r.intraday }
   })
 }
 
