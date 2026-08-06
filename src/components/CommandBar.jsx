@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'preact/hooks'
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { parseCommand } from '../lib/commands.js'
 import { applyCompletion, completions } from '../lib/complete.js'
 import { getWatchlist } from '../lib/watchlist.js'
@@ -305,9 +305,11 @@ export function CommandBar() {
     return () => removeEventListener('keydown', onDoc)
   }, [])
 
-  const suggestions = value.trim()
+  // memoized per input value — recomputing (and re-rendering the strip) on
+  // unrelated renders made the first keystrokes visibly stutter
+  const suggestions = useMemo(() => value.trim()
     ? completions(value, getWatchlist()).slice(0, 8)
-    : []
+    : [], [value])
 
   const onKey = (e) => {
     const h = history.current
