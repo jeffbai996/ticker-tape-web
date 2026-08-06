@@ -133,6 +133,10 @@ body {
     overflow: hidden;
     white-space: nowrap;
     vertical-align: bottom;
+  }
+  /* fade = "there is more" — Marquee stamps is-clipped from a real overflow
+     measurement, so a name that fits keeps its crisp tail (Jeff 2026-08-06) */
+  .mq.is-clipped {
     -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent);
     mask-image: linear-gradient(90deg, #000 88%, transparent);
   }
