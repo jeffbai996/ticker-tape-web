@@ -133,7 +133,7 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
       id={`ev-${ev.id}`}
       class={`border-b border-line/30 border-l-2 font-mono transition-colors duration-1000 cursor-pointer ${
         hot ? 'bg-accent text-black border-l-transparent'
-          : `${TIER_EDGE[tier] || 'border-l-transparent'} ${open ? 'bg-surface-1' : 'hover:bg-white/[0.035]'}`
+          : `${TIER_EDGE[tier] || 'border-l-transparent'} ${open ? 'bg-surface-1' : 'hover:bg-accent-soft'}`
       }`}
       onClick={onToggle}
     >
@@ -232,7 +232,7 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
 }
 
 const FragwireLogo = () => (
-  <svg class="w-[26px] h-[20px]" viewBox="0 0 82 64" aria-hidden="true"><g fill="#f59e0b"><circle cx="52.78" cy="44.00" r="2.6"/><circle cx="48.97" cy="48.97" r="2.6"/><circle cx="44.00" cy="52.78" r="2.6"/><circle cx="38.21" cy="55.18" r="2.6"/><circle cx="32.00" cy="56.00" r="2.6"/><circle cx="25.79" cy="55.18" r="2.6"/><circle cx="20.00" cy="52.78" r="2.6"/><circle cx="15.03" cy="48.97" r="2.6"/><circle cx="11.22" cy="44.00" r="2.6"/><circle cx="8.82" cy="38.21" r="2.6"/><circle cx="8.00" cy="32.00" r="2.6"/><circle cx="8.82" cy="25.79" r="2.6"/><circle cx="11.22" cy="20.00" r="2.6"/><circle cx="15.03" cy="15.03" r="2.6"/><circle cx="20.00" cy="11.22" r="2.6"/><circle cx="25.79" cy="8.82" r="2.6"/><circle cx="32.00" cy="8.00" r="2.6"/><circle cx="38.21" cy="8.82" r="2.6"/><circle cx="44.00" cy="11.22" r="2.6"/><circle cx="48.97" cy="15.03" r="2.6"/><circle cx="52.78" cy="20.00" r="2.6"/><circle cx="62" cy="32" r="2.6"/><circle cx="70" cy="32" r="2.1"/><circle cx="77" cy="32" r="1.6"/><circle cx="32" cy="32" r="4.2"/></g></svg>
+  <svg class="w-[20px] h-[15px]" viewBox="0 0 82 64" aria-hidden="true"><g fill="#f59e0b"><circle cx="52.78" cy="44.00" r="2.6"/><circle cx="48.97" cy="48.97" r="2.6"/><circle cx="44.00" cy="52.78" r="2.6"/><circle cx="38.21" cy="55.18" r="2.6"/><circle cx="32.00" cy="56.00" r="2.6"/><circle cx="25.79" cy="55.18" r="2.6"/><circle cx="20.00" cy="52.78" r="2.6"/><circle cx="15.03" cy="48.97" r="2.6"/><circle cx="11.22" cy="44.00" r="2.6"/><circle cx="8.82" cy="38.21" r="2.6"/><circle cx="8.00" cy="32.00" r="2.6"/><circle cx="8.82" cy="25.79" r="2.6"/><circle cx="11.22" cy="20.00" r="2.6"/><circle cx="15.03" cy="15.03" r="2.6"/><circle cx="20.00" cy="11.22" r="2.6"/><circle cx="25.79" cy="8.82" r="2.6"/><circle cx="32.00" cy="8.00" r="2.6"/><circle cx="38.21" cy="8.82" r="2.6"/><circle cx="44.00" cy="11.22" r="2.6"/><circle cx="48.97" cy="15.03" r="2.6"/><circle cx="52.78" cy="20.00" r="2.6"/><circle cx="62" cy="32" r="2.6"/><circle cx="70" cy="32" r="2.1"/><circle cx="77" cy="32" r="1.6"/><circle cx="32" cy="32" r="4.2"/></g></svg>
 )
 
 function Panel({ title, children, action = null }) {
@@ -515,17 +515,17 @@ export function Wire({ route }) {
     <div class="flex flex-col gap-2 flex-1 min-w-0 p-3 pt-0">
       {/* fragwire's own brow, ported: brand, segmented top|wire, conn dot,
           board links — one bar, not a row of floating chips (Jeff 2026-08-05) */}
-      <div class="flex items-center gap-[18px] h-[52px] shrink-0 -mx-3 px-[18px] border-b border-line bg-surface-1 min-w-0 overflow-x-auto no-scrollbar">
+      <div class="flex items-center gap-3 h-9 shrink-0 -mx-3 px-3 border-b border-line bg-surface-1 min-w-0 overflow-x-auto no-scrollbar">
         <a href={wireHome || '#/wire'} target={wireHome ? '_blank' : undefined} rel="noopener"
            class="inline-flex items-center gap-2.5 shrink-0 hover:no-underline group/brand">
           <FragwireLogo />
-          <span class="font-sans font-bold text-[18px] tracking-[-0.02em] text-ink group-hover/brand:text-accent transition-colors">fragwire</span>
+          <span class="font-sans font-bold text-[14px] tracking-[-0.02em] text-ink group-hover/brand:text-accent transition-colors">fragwire</span>
         </a>
         <nav class="inline-flex border border-line rounded-lg overflow-hidden shrink-0">
           {['top', 'wire'].map((m) => (
             <button
               key={m}
-              class={`px-3.5 py-1 font-sans font-semibold text-[12px] whitespace-nowrap transition-colors ${
+              class={`px-2.5 py-0.5 font-sans font-semibold text-[11px] whitespace-nowrap transition-colors ${
                 mode === m
                   ? m === 'wire' ? 'bg-[#30d158] text-black' : 'bg-accent text-black'
                   : 'text-ink-2 hover:text-ink'
@@ -545,7 +545,7 @@ export function Wire({ route }) {
           <nav class="inline-flex gap-1 shrink-0">
             {[['board', ''], ['calendar', '/today'], ['week', '/week'], ['stats', '/stats']].map(([label, path]) => (
               <a key={label} href={`${wireHome}${path}`} target="_blank" rel="noopener"
-                 class="px-2.5 py-1 rounded-[7px] font-sans font-semibold text-[12px] text-ink-2 hover:text-ink hover:bg-surface-2 hover:no-underline">
+                 class="px-2 py-0.5 rounded-md font-sans font-semibold text-[11px] text-ink-2 hover:text-ink hover:bg-surface-2 hover:no-underline">
                 {tl(label)}
               </a>
             ))}
@@ -555,7 +555,7 @@ export function Wire({ route }) {
         <span class="ml-auto" />
         {endpoint && (
           <button
-            class="shrink-0 px-2.5 py-1 rounded-[7px] font-sans font-semibold text-[12px] text-ink-2 hover:text-ink hover:bg-surface-2"
+            class="shrink-0 px-2 py-0.5 rounded-md font-sans font-semibold text-[11px] text-ink-2 hover:text-ink hover:bg-surface-2"
             title={tl('sync watchlist to wire')}
             onClick={() => {
               const syms = getWatchlist()

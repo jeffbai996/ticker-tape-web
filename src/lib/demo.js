@@ -38,9 +38,14 @@ export function positionRows(positions, priceMap) {
     // value/P&L win whenever present. Yahoo only contributes the day-% (a
     // ratio, currency-safe) for the day-P&L estimate.
     if (p.livePrice != null) {
-      const mktValue = p.liveValue ?? p.livePrice * p.shares
-      const costBasis = p.avgCost * p.shares
-      const unrealPnl = p.liveUnreal ?? mktValue - costBasis
+      const native = p.liveValue ?? p.livePrice * p.shares
+      // aggregate math runs in the account's base currency; a raw CAD leg
+      // summed against USD legs poisons gross, weights and leverage. The
+      // per-leg fx ratio also converts the broker's native unreal P&L.
+      const fx = p.liveBase != null && native ? p.liveBase / native : 1
+      const mktValue = p.liveBase ?? native
+      const costBasis = p.avgCost * p.shares * fx
+      const unrealPnl = p.liveUnreal != null ? p.liveUnreal * fx : mktValue - costBasis
       const dayPct = q?.pct ?? null
       return {
         ...p,
