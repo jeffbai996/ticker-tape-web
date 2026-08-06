@@ -72,8 +72,11 @@ describe('fmtPriceBare', () => {
     expect(fmtPriceBare(303.42)).toBe('303.42')
   })
 
-  it('handles millions without commas', () => {
-    expect(fmtPriceBare(1234567.5)).toBe('1234567.50')
+  it('drops decimals and restores commas at KRW scale', () => {
+    // the no-comma rule exists for 4-digit column alignment; a 7-digit
+    // KRW print needs separators and no cents (SK hynix, 2026-08-06)
+    expect(fmtPriceBare(1234567.5)).toBe('1,234,568')
+    expect(fmtPriceBare(9999.99)).toBe('9999.99')
   })
 
   it('matches fmtPrice except for the separator', () => {
@@ -83,5 +86,16 @@ describe('fmtPriceBare', () => {
   it('passes through missing values', () => {
     expect(fmtPriceBare(null)).toBe(fmtPrice(null))
     expect(fmtPriceBare(NaN)).toBe(fmtPrice(NaN))
+  })
+})
+
+describe('KRW-scale prices', () => {
+  it('fmtPrice drops decimals at five figures and up', () => {
+    expect(fmtPrice(1495000)).toBe('1,495,000')
+    expect(fmtPrice(9999.99)).toBe('9,999.99')
+  })
+  it('fmtChange keeps its sign and drops decimals at scale', () => {
+    expect(fmtChange(-173000)).toBe('-173,000')
+    expect(fmtChange(77.12)).toBe('+77.12')
   })
 })
