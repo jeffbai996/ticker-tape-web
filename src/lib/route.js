@@ -37,6 +37,12 @@ export function parseHash(hash) {
     return { section, sub: sym, view }
   }
 
+  // A tape headline links straight at its story: #/wire/<event id>. The wire
+  // has no registered subs, so the id would otherwise be dropped on the floor.
+  if (section === 'wire') {
+    return { section, sub: /^\d{1,12}$/.test(parts[1] || '') ? parts[1] : null }
+  }
+
   const subs = findSection(section)?.subs || []
   const sub = subs.some((s) => s.id === parts[1]) ? parts[1] : null
   return { section, sub }

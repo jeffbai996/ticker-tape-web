@@ -114,6 +114,7 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
   const latTxt = lat > 0.5 && lat < 600 ? `+${lat.toFixed(1)}s` : ''
   return (
     <div
+      id={`ev-${ev.id}`}
       class={`border-b border-line/30 border-l-2 font-mono transition-colors duration-1000 cursor-pointer ${
         hot ? 'bg-accent text-black border-l-transparent'
           : `${TIER_EDGE[tier] || 'border-l-transparent'} ${open ? 'bg-surface-1' : 'hover:bg-white/[0.035]'}`
@@ -323,7 +324,7 @@ function Rail({ today, now, events, watchset }) {
   )
 }
 
-export function Wire() {
+export function Wire({ route }) {
   const [endpoint, setEndpoint] = useState(() => wireUrl())
   const [draft, setDraft] = useState(() => wireUrl())
   const [events, setEvents] = useState([])
@@ -337,6 +338,9 @@ export function Wire() {
   const [watchset, setWatchset] = useState(new Set())
   const [now, setNow] = useState(Date.now() / 1000)
   const esRef = useRef(null)
+  // #/wire/<id> — a tape headline links at its own story, not the page
+  const targetId = route?.sub ? Number(route.sub) : null
+  const landedRef = useRef(null)
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now() / 1000), 30_000)
@@ -378,7 +382,7 @@ export function Wire() {
     fetchMeta(endpoint)
       .then((out) => !cancelled && setWatchset(new Set(out.watchlist || [])))
       .catch(() => {})
-    fetchEvents(endpoint, { limit: 300 })
+    fetchEvents(endpoint, { limit: 300, newest: true })
       .then((out) => {
         if (cancelled) return
         setEvents(out.events || [])
@@ -429,6 +433,22 @@ export function Wire() {
     next.has(id) ? next.delete(id) : next.add(id)
     return next
   })
+
+  // Land on the linked story: unfilter so it can't be hidden, expand it, and
+  // scroll it into view. Once per id — re-renders from the SSE feed must not
+  // yank the page back after the reader has scrolled away.
+  useEffect(() => {
+    if (targetId == null || landedRef.current === targetId) return
+    if (!events.some((ev) => ev.id === targetId)) return
+    landedRef.current = targetId
+    setFilter('')
+    setMode('all')
+    setOpenIds((cur) => new Set(cur).add(targetId))
+    requestAnimationFrame(() => {
+      document.getElementById(`ev-${targetId}`)
+        ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    })
+  }, [targetId, events])
 
   const setModePersist = (m) => {
     setMode(m)
