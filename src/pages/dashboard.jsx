@@ -6,7 +6,7 @@ import { marketState } from '../lib/marketState.js'
 import { BUCKETS } from '../lib/symbols.js'
 import { pulseStats } from '../lib/pulse.js'
 import { fetchEarningsDate } from '../lib/fundamentals.js'
-import { EARNINGS_UNIVERSE, ECON_EVENTS, MARKET_DECK, upcomingEvents } from '../lib/markets.js'
+import { EARNINGS_UNIVERSE, EARNINGS_NAMES, ECON_EVENTS, MARKET_DECK, upcomingEvents } from '../lib/markets.js'
 import { loadCatalysts, onCatalystsChange, mergedEvents } from '../lib/catalysts.js'
 import { fetchHistory } from '../lib/history.js'
 import {
@@ -278,9 +278,12 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
                   right edge (Jeff 2026-08-04) */}
               {q?.extLabel && q.extPrice != null ? (
                 <span class="whitespace-nowrap text-[11px] max-sm:text-[10px] shrink-0 max-sm:ml-auto @min-[545px]:min-w-[8.8rem] @min-[545px]:text-right">
+                  {/* the whole extended print sits a weight tier under the
+                      regular quote — only the session tag stays bold as the
+                      anchor (Jeff 2026-08-06: "drop the AH % font weight") */}
                   <span class={`font-semibold ${extendedLabelClass(q.extLabel)}`}>{q.extLabel}</span>{' '}
-                  <span class="text-ink-2 font-semibold"><FlashPrice price={q.extPrice} fmt={fmtPriceBare} /></span>{' '}
-                  <span class={`font-normal ${extUp ? 'text-up' : 'text-down'}`}>
+                  <span class="text-ink-2 font-normal"><FlashPrice price={q.extPrice} fmt={fmtPriceBare} /></span>{' '}
+                  <span class={`font-light ${extUp ? 'text-up' : 'text-down'}`}>
                     {extUp ? '▲' : '▼'}{Math.abs(q.extPct ?? 0).toFixed(1)}%
                   </span>
                 </span>
@@ -377,7 +380,7 @@ function PulsePanel({ quotes }) {
   const tone = (v) => (v >= 0 ? 'text-up' : 'text-down')
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden flex flex-col max-h-[42vh]">
-      <header class="px-3 py-1.5 border-b border-line-2 bg-surface-2">
+      <header class="px-3 py-[3px] border-b border-line-2 bg-surface-2">
         <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Pulse')}</h2>
       </header>
       <div class="overflow-y-auto min-h-0">
@@ -405,12 +408,16 @@ function PulsePanel({ quotes }) {
 const ECON_COLORS = {
   FOMC: 'text-down', CPI: 'text-accent', NFP: 'text-accent',
   GDP: 'text-[#00c8ff]', PCE: 'text-[#c084fc]',
+  // second/third tier keep a quieter shade so the rate-and-inflation prints
+  // still win the row at a glance
+  MINS: 'text-[#c084fc]', ISM: 'text-[#5ba8d9]', ISMS: 'text-[#5ba8d9]',
+  UMCH: 'text-ink-2', PPI: 'text-ink-2', RET: 'text-ink-2',
 }
 
 function MacroCalPanel() {
   const [cats, setCats] = useState(loadCatalysts)
   useEffect(() => onCatalystsChange(setCats), [])
-  const events = mergedEvents(ECON_EVENTS, cats, new Date().toISOString().slice(0, 10), 60).slice(0, 8)
+  const events = mergedEvents(ECON_EVENTS, cats, new Date().toISOString().slice(0, 10), 60).slice(0, 12)
   if (!events.length) return null
   const dayCls = (d) =>
     d <= 0 ? 'text-imminent font-bold'
@@ -418,11 +425,11 @@ function MacroCalPanel() {
       : d <= 30 ? 'text-accent' : 'text-muted'
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden flex flex-col max-h-[42vh]">
-      <header class="flex items-center px-3 py-1.5 border-b border-line-2 bg-surface-2">
+      <header class="flex items-center px-3 py-[3px] border-b border-line-2 bg-surface-2">
         <a href="#/markets/calendar" class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase hover:no-underline">
           {tl('Calendar')}
         </a>
-        <a href="#/markets/calendar" aria-label={tl('Open calendar')} class="ml-auto text-muted hover:text-accent hover:no-underline">→</a>
+        <a href="#/markets/calendar" aria-label={tl('Open calendar')} class="ml-auto text-[12px] leading-none text-muted hover:text-accent hover:no-underline">→</a>
       </header>
       <div class="overflow-y-auto min-h-0">
       <div class="py-1">
@@ -452,11 +459,11 @@ function MarketDeckPanel() {
   const quotes = useQuotes(MARKET_DECK.map((item) => item.symbol))
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden flex flex-col">
-      <header class="flex items-center px-3 py-1.5 border-b border-line-2 bg-surface-2">
+      <header class="flex items-center px-3 py-[3px] border-b border-line-2 bg-surface-2">
         <a href="#/markets" class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase hover:no-underline">
           {tl('Global markets')}
         </a>
-        <a href="#/markets" aria-label={tl('Open markets')} class="ml-auto text-muted hover:text-accent hover:no-underline">→</a>
+        <a href="#/markets" aria-label={tl('Open markets')} class="ml-auto text-[12px] leading-none text-muted hover:text-accent hover:no-underline">→</a>
       </header>
       <div class="grid grid-cols-2 py-1">
         {MARKET_DECK.map((item) => {
@@ -494,18 +501,20 @@ function EarningsPanel({ symbols, quotes = {} }) {
   if (!upcoming.length) return null
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden flex flex-col max-h-[42vh]">
-      <header class="flex items-center px-3 py-1.5 border-b border-line-2 bg-surface-2">
+      <header class="flex items-center px-3 py-[3px] border-b border-line-2 bg-surface-2">
         <a href="#/markets/earnings" class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase hover:no-underline">
           {tl('Earnings')}
         </a>
-        <a href="#/markets/earnings" aria-label={tl('Open earnings')} class="ml-auto text-muted hover:text-accent hover:no-underline">→</a>
+        <a href="#/markets/earnings" aria-label={tl('Open earnings')} class="ml-auto text-[12px] leading-none text-muted hover:text-accent hover:no-underline">→</a>
       </header>
       <div class="overflow-y-auto min-h-0">
       <div class="py-1">
         {upcoming.map(({ symbol, d }) => {
           // the quote feed already carries shortName — no extra fetch;
           // universe-only names have no quote here and just show the ticker
-          const name = quotes[symbol]?.quote?.name || ''
+          // quote feed first (it's live), static universe map second — the
+          // widget lists names you don't hold, which have no quote at all
+          const name = quotes[symbol]?.quote?.name || EARNINGS_NAMES[symbol] || ''
           const mine = held.has(symbol)
           return (
             <a key={symbol} href={`#/research/${symbol.toLowerCase()}/earnings`}
@@ -715,9 +724,52 @@ function AddSymbolRow({ onAdd, isPresent, onReorder }) {
   const [open, setOpen] = useState(false)
   const [sym, setSym] = useState('')
   const [err, setErr] = useState('')
+  // same company-name lookup the toolbar search runs, so "hynix" resolves to
+  // a ticker down here too (Jeff 2026-08-06) — the box itself is untouched,
+  // the hits hang ABOVE it because this row sits at the bottom of the list
+  const [hits, setHits] = useState(null)
+  const [active, setActive] = useState(-1)
   const input = useRef(null)
+  const boxRef = useRef(null)
   useEffect(() => { if (open) input.current?.focus() }, [open])
-  const close = () => { setOpen(false); setSym(''); setErr('') }
+  // a dropdown left hanging over the rows after the user clicks away reads as
+  // a stuck overlay — same outside-pointerdown dismissal the toolbar uses
+  useEffect(() => {
+    const away = (e) => { if (!boxRef.current?.contains(e.target)) { setHits(null); setActive(-1) } }
+    addEventListener('pointerdown', away)
+    return () => removeEventListener('pointerdown', away)
+  }, [])
+  useEffect(() => {
+    const q = sym.trim()
+    if (!open || q.length < 2) { setHits(null); setActive(-1); return }
+    const ctl = new AbortController()
+    const t = setTimeout(() => {
+      searchSymbols(q, { signal: ctl.signal })
+        .then((rows) => { setHits(rows.slice(0, 5)); setActive(-1) })
+        .catch(() => {})
+    }, 280)
+    return () => { clearTimeout(t); ctl.abort() }
+  }, [sym, open])
+  const close = () => { setOpen(false); setSym(''); setErr(''); setHits(null); setActive(-1) }
+  const commit = (raw) => {
+    const v = String(raw || '').trim().toUpperCase()
+    if (!v) return close()
+    if (onAdd(v)) return close()
+    setErr(isPresent(v) ? `${v} ${tl('already on the list')}` : `${tl('not a symbol')}: ${v}`)
+  }
+  // ↑/↓ walk the dropdown, Enter takes the highlighted hit — with nothing
+  // highlighted Enter still submits whatever was typed, so a known ticker
+  // never has to wait for the network
+  const onKey = (e) => {
+    if (e.key === 'Escape') {
+      if (hits?.length) { setHits(null); setActive(-1) } else close()
+      return
+    }
+    if (!hits?.length) return
+    if (e.key === 'ArrowDown') { e.preventDefault(); setActive((i) => (i + 1) % hits.length) }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setActive((i) => (i <= 0 ? hits.length : i) - 1) }
+    else if (e.key === 'Enter' && active >= 0) { e.preventDefault(); commit(hits[active].symbol) }
+  }
   const submit = (e) => {
     e.preventDefault()
     const v = sym.trim().toUpperCase()
@@ -746,12 +798,27 @@ function AddSymbolRow({ onAdd, isPresent, onReorder }) {
     )
   }
   return (
-    <form onSubmit={submit} class="flex items-center gap-2 border-t border-line px-3 py-1.5">
+    <form ref={boxRef} onSubmit={submit} class="relative flex items-center gap-2 border-t border-line px-3 py-1.5">
+      {hits?.length > 0 && (
+        <div class="absolute bottom-full left-2 mb-1 w-[26rem] max-w-[88vw] z-40 bg-surface-1/95 backdrop-blur border border-line rounded-lg shadow-[0_-8px_24px_rgba(0,0,0,0.6)] overflow-hidden">
+          {hits.map((h, i) => (
+            <button key={h.symbol} type="button"
+              onMouseEnter={() => setActive(i)}
+              onClick={() => commit(h.symbol)}
+              class={`w-full flex items-baseline gap-2 px-2.5 py-1.5 border-t border-line/60 first:border-0 text-left ${
+                i === active ? 'bg-accent-soft' : 'hover:bg-accent-soft'}`}>
+              <span class="font-mono font-bold text-[11px] text-accent shrink-0">{h.symbol}</span>
+              <span class="font-anth text-[10.5px] text-ink-2 truncate">{h.name}</span>
+              <span class="ml-auto font-mono text-[8.5px] uppercase tracking-wider text-muted shrink-0">{h.exch}</span>
+            </button>
+          ))}
+        </div>
+      )}
       <input
         ref={input}
         value={sym}
         onInput={(e) => { setSym(e.currentTarget.value); setErr('') }}
-        onKeyDown={(e) => e.key === 'Escape' && close()}
+        onKeyDown={onKey}
         placeholder="SYM"
         class="w-24 bg-transparent border border-line rounded px-1.5 py-0.5 font-mono text-[11px] text-ink uppercase outline-none focus:border-accent placeholder:text-muted"
       />
@@ -923,7 +990,7 @@ function RailWidget({ w, all, watchlist, earnDays, quotes }) {
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
       {title && (
-        <header class="px-3 py-1.5 border-b border-line-2 bg-surface-2">
+        <header class="px-3 py-[3px] border-b border-line-2 bg-surface-2">
           <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{title}</h2>
         </header>
       )}

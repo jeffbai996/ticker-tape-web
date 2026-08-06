@@ -16,19 +16,37 @@ import { fmtPrice, fmtPct, fmtChange, fmtVol } from '../lib/format.js'
 import { Histo } from '../components/Histo.jsx'
 import { FlashMetric, FlashPrice } from '../components/Fig.jsx'
 import { hrefFor } from '../lib/route.js'
-import { rangePos } from '../lib/format.js'
+import { sessionMeter } from '../lib/format.js'
 import { extendedLabelClass } from '../lib/extendedHours.js'
 
-/** Where the last trade sits inside today's range — the dashboard's meter,
- *  shrunk to fit a table cell. */
+/** The day's session on one 56px track: the grey rail is today's range, the
+ *  coloured span is the distance travelled from yesterday's close to the last
+ *  trade, the hairline is that close and the bright tick is price now.
+ *
+ *  The old version drew only the position marker, which sat mid-track on
+ *  virtually every index and told you nothing (Jeff 2026-08-06, task #48).
+ *  Direction now reads as colour, conviction as span length, and where the
+ *  tape closed the day out as marker position. */
 function DayMeter({ q }) {
-  const pos = rangePos(q?.dayLow, q?.dayHigh, q?.price)
-  if (pos == null) return null
+  const m = sessionMeter(q?.dayLow, q?.dayHigh, q?.price, q?.prevClose)
+  if (m == null) return null
+  const pct = (v) => `${(v * 100).toFixed(1)}%`
+  const tone = m.up ? 'bg-up' : 'bg-down'
+  const title = `${fmtPrice(q.dayLow)} – ${fmtPrice(q.dayHigh)}`
+    + (q.prevClose != null ? ` · ${tl('prev close')} ${fmtPrice(q.prevClose)}` : '')
+    + (m.gap ? ` · ${tl('gap')}` : '')
   return (
-    <span class="relative block w-12 h-[3px] bg-line rounded-full"
-          title={`${fmtPrice(q.dayLow)} – ${fmtPrice(q.dayHigh)}`}>
-      <span class="absolute top-1/2 -translate-y-1/2 w-[3px] h-[7px] bg-accent-2 rounded-sm"
-            style={{ left: `calc(${(pos * 100).toFixed(1)}% - 1.5px)` }} />
+    <span class="relative block w-14 h-[7px]" title={title}>
+      <span class="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[3px] bg-line rounded-full" />
+      {/* travelled span — zero-width on a flat tape, so a dead row looks dead */}
+      <span class={`absolute top-1/2 -translate-y-1/2 h-[3px] rounded-full ${tone} opacity-70`}
+            style={{ left: pct(m.from), width: pct(Math.max(0, m.to - m.from)) }} />
+      {m.prevPos != null && (
+        <span class="absolute top-1/2 -translate-y-1/2 w-px h-[5px] bg-muted/70"
+              style={{ left: pct(m.prevPos) }} />
+      )}
+      <span class={`absolute top-1/2 -translate-y-1/2 w-[3px] h-[7px] rounded-sm ${tone}`}
+            style={{ left: `calc(${pct(m.pos)} - 1.5px)` }} />
     </span>
   )
 }

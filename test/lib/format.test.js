@@ -1,5 +1,46 @@
 import { describe, it, expect } from 'vitest'
-import { fmtPrice, fmtPct, fmtChange, fmtVol, rangePos, fmtPriceBare } from '../../src/lib/format.js'
+import { fmtPrice, fmtPct, fmtChange, fmtVol, rangePos, fmtPriceBare, sessionMeter } from '../../src/lib/format.js'
+
+describe('sessionMeter', () => {
+  it('spans from yesterday\'s close to the last trade', () => {
+    const m = sessionMeter(100, 200, 180, 120)
+    expect(m.from).toBeCloseTo(0.2)
+    expect(m.to).toBeCloseTo(0.8)
+    expect(m.pos).toBeCloseTo(0.8)
+    expect(m.prevPos).toBeCloseTo(0.2)
+    expect(m.up).toBe(true)
+    expect(m.gap).toBe(false)
+  })
+  it('orders the span the same way on a down day', () => {
+    const m = sessionMeter(100, 200, 120, 180)
+    expect(m.from).toBeCloseTo(0.2)
+    expect(m.to).toBeCloseTo(0.8)
+    expect(m.pos).toBeCloseTo(0.2)
+    expect(m.up).toBe(false)
+  })
+  it('flags a gap and clamps a previous close outside the range', () => {
+    const up = sessionMeter(100, 200, 150, 80)
+    expect(up.prevPos).toBe(0)
+    expect(up.gap).toBe(true)
+    expect(up.up).toBe(true)
+    const down = sessionMeter(100, 200, 150, 260)
+    expect(down.prevPos).toBe(1)
+    expect(down.gap).toBe(true)
+    expect(down.up).toBe(false)
+  })
+  it('degenerates to a bare marker without a previous close', () => {
+    const m = sessionMeter(100, 200, 150, null)
+    expect(m.pos).toBeCloseTo(0.5)
+    expect(m.prevPos).toBeNull()
+    expect(m.from).toBeCloseTo(0.5)
+    expect(m.to).toBeCloseTo(0.5)
+  })
+  it('returns null when the day range is missing or degenerate', () => {
+    expect(sessionMeter(null, 200, 150, 120)).toBeNull()
+    expect(sessionMeter(100, 100, 100, 90)).toBeNull()
+    expect(sessionMeter(100, 200, null, 120)).toBeNull()
+  })
+})
 
 describe('rangePos', () => {
   it('places a value proportionally between lo and hi', () => {
