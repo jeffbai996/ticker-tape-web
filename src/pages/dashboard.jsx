@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { createChart, AreaSeries } from 'lightweight-charts'
 import { boundedTimeScale } from '../lib/chartview.js'
 import { useNamedWatchlists, useQuotes, useWatchlist } from '../hooks.js'
+import { marketState } from '../lib/marketState.js'
 import { BUCKETS } from '../lib/symbols.js'
 import { pulseStats } from '../lib/pulse.js'
 import { fetchEarningsDate } from '../lib/fundamentals.js'
@@ -242,7 +243,7 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
               {/* extended hours reads a tier below the regular quote — on a
                   phone it was the same size as the print and clipped off the
                   right edge (Jeff 2026-08-04) */}
-              {q?.extLabel && q.extPrice != null && (
+              {q?.extLabel && q.extPrice != null ? (
                 <span class="whitespace-nowrap text-[11px] max-sm:text-[10px] w-auto shrink-0 max-sm:ml-auto">
                   <span class={`font-semibold ${extendedLabelClass(q.extLabel)}`}>{q.extLabel}</span>{' '}
                   <span class="text-ink-2 font-semibold"><FlashPrice price={q.extPrice} fmt={fmtPriceBare} /></span>{' '}
@@ -250,7 +251,14 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
                     {extUp ? '▲' : '▼'}{Math.abs(q.extPct ?? 0).toFixed(1)}%
                   </span>
                 </span>
-              )}
+              ) : marketState(new Date()).state !== 'open' ? (
+                /* ghost slot: a row whose extended print hasn't loaded used to
+                   let the name gutter grow and right-shift the whole quote
+                   cluster off the column grid (Jeff 2026-08-06) */
+                <span class="whitespace-nowrap text-[11px] max-sm:hidden shrink-0 invisible" aria-hidden="true">
+                  PM 000.00 ▼0.0%
+                </span>
+              ) : null}
             </span>
           </div>
           {/* Phone width: badges scroll sideways instead of clipping mid-badge. */}
