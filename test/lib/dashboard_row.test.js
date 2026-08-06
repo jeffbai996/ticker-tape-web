@@ -56,11 +56,12 @@ describe('compact dashboard company name', () => {
     expect(dashboard).toContain('hidden @min-[545px]:flex @min-[730px]:hidden')
     expect(dashboard).toContain('text-down/80 w-11 text-right')
     expect(dashboard).toContain('text-up/80 w-11')
-    // 2026-08-06: the slot is now ALWAYS present and ghosts when an extended
-    // print has taken the range down to the badge row — skipping the element
-    // shortened the meter line and slid AVG left of the VOL above it
-    expect(dashboard).toContain('<CompactDayRange lo={q?.extLabel ? null : q?.dayLow}')
-    expect(dashboard).toContain('<CompactDayRange lo={null} hi={null} v={null} />')
+    // 2026-08-06: at this width the compact range rides the BADGE line for
+    // every row. Keeping it in the meter column made the two meter lines
+    // different widths (AVG 169px left of VOL), and ghosting a matching slot
+    // widened the row until the identity column collapsed off screen.
+    expect(dashboard).toContain('<CompactDayRange lo={q?.dayLow} hi={q?.dayHigh} v={q?.price}')
+    expect(dashboard).toContain("cls=\"ml-auto shrink-0 pr-1\"")
     expect(dashboard).not.toContain('{!q?.extLabel && (')
   })
 

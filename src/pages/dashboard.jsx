@@ -270,7 +270,7 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
                   phone it was the same size as the print and clipped off the
                   right edge (Jeff 2026-08-04) */}
               {q?.extLabel && q.extPrice != null ? (
-                <span class="whitespace-nowrap text-[11px] max-sm:text-[10px] shrink-0 max-sm:ml-auto @min-[545px]:w-[9.6rem] @min-[545px]:text-right">
+                <span class="whitespace-nowrap text-[11px] max-sm:text-[10px] shrink-0 max-sm:ml-auto @min-[545px]:min-w-[8.8rem] @min-[545px]:text-right">
                   <span class={`font-semibold ${extendedLabelClass(q.extLabel)}`}>{q.extLabel}</span>{' '}
                   <span class="text-ink-2 font-semibold"><FlashPrice price={q.extPrice} fmt={fmtPriceBare} /></span>{' '}
                   <span class={`font-normal ${extUp ? 'text-up' : 'text-down'}`}>
@@ -281,7 +281,7 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
                 /* ghost slot: a row whose extended print hasn't loaded used to
                    let the name gutter grow and right-shift the whole quote
                    cluster off the column grid (Jeff 2026-08-06) */
-                <span class="whitespace-nowrap text-[11px] max-sm:hidden shrink-0 invisible @min-[545px]:w-[9.6rem] @min-[545px]:text-right" aria-hidden="true">
+                <span class="whitespace-nowrap text-[11px] max-sm:hidden shrink-0 invisible @min-[545px]:min-w-[8.8rem] @min-[545px]:text-right" aria-hidden="true">
                   PM 0000.00 ▼0.0%
                 </span>
               ) : null}
@@ -302,10 +302,8 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
             {/* An extended-hours print evicts the day range from the meters
                 column at this width, which used to mean no intraday range at
                 all overnight. The badge line has the room, so it takes it. */}
-            {q?.extLabel && (
-              <CompactDayRange lo={q?.dayLow} hi={q?.dayHigh} v={q?.price}
-                cls="ml-auto shrink-0 pr-1" />
-            )}
+            <CompactDayRange lo={q?.dayLow} hi={q?.dayHigh} v={q?.price}
+              cls="ml-auto shrink-0 pr-1" />
           </div>
         </div>
         {/* Meters live in their own fixed column so DAY and 52W align by
@@ -313,13 +311,10 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
             once the row ran out of width (Jeff 2026-08-03). */}
         <div class="hidden @min-[545px]:flex shrink-0 flex-col justify-center gap-1 font-mono text-[11px]">
           <span class="flex items-baseline gap-1.5">
-            {/* both meter lines carry the same three slots — compact range,
-                wide range, values. Line two used to skip the compact slot,
-                so its AVG started 169px left of the VOL above it whenever a
-                row had a compact range at all (Jeff 2026-08-06). A null range
-                ghosts, so the structure holds either way. */}
-            <CompactDayRange lo={q?.extLabel ? null : q?.dayLow}
-              hi={q?.extLabel ? null : q?.dayHigh} v={q?.price} />
+            {/* the compact range lives on the badge line at this width for
+                EVERY row — keeping it here made the two meter lines different
+                widths (AVG landed 169px left of VOL) and adding a matching
+                ghost squeezed the identity slot off screen instead */}
             <RangeBar label="DAY" lo={q?.dayLow} hi={q?.dayHigh} v={q?.price} />
             <span class="flex items-baseline justify-end gap-1 w-[4.6rem] @min-[820px]:w-[9.2rem] whitespace-nowrap">
               <span class="hidden @min-[820px]:flex items-baseline gap-1 mr-1">
@@ -335,7 +330,6 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
             </span>
           </span>
           <span class="flex items-baseline gap-1.5">
-            <CompactDayRange lo={null} hi={null} v={null} />
             {/* always rendered: RangeBar ghosts its own width when the 52W
                 numbers haven't arrived, and skipping the element outright
                 collapsed the second meter line and slid AVG left */}
