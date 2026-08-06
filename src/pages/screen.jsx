@@ -9,6 +9,9 @@ import { dailyReturns, pearson, normalize } from '../lib/stats.js'
 import { fmtPrice, fmtPct, fmtBig, fmtRatio, fmtFracPct } from '../lib/format.js'
 import { tl, t as tt } from '../lib/i18n.js'
 import { FlashMetric, FlashPrice } from '../components/Fig.jsx'
+import { BUCKETS } from '../lib/symbols.js'
+import { isWatched, watch, unwatch } from '../lib/watchlist.js'
+import { loadScreens, saveScreen, deleteScreen, passesScreenFilters } from '../lib/screens.js'
 
 const DEFAULT_SYMBOLS = 'AAPL MSFT NVDA GOOG AMZN SPY'
 const LINE_COLORS = ['#f59e0b', '#22d3ee', '#3fb950', '#f85149', '#a78bfa', '#ec4899', '#e7ecf3', '#79828d']
@@ -65,6 +68,22 @@ function SymbolInput({ value, onChange }) {
   )
 }
 
+/** Star cell: screen result → watchlist in one tap, no page hop. */
+function WatchCell({ sym }) {
+  const [, bump] = useState(0)
+  const on = isWatched(sym)
+  return (
+    <td class="px-1 py-[3px] text-center" onClick={(e) => e.stopPropagation()}>
+      <button
+        onClick={() => { (on ? unwatch : watch)(sym); bump((n) => n + 1) }}
+        title={on ? tl('on the board') : tl('add to watchlist')}
+        class={`w-5 h-5 rounded ${on ? 'text-accent' : 'text-muted hover:text-accent'}`}>
+        {on ? '★' : '☆'}
+      </button>
+    </td>
+  )
+}
+
 function ScreenTable({ symbols, hist }) {
   // Live 1D quotes for price/day% — the 1Y history fetch reports change vs the
   // range start, not vs yesterday's close.
@@ -74,6 +93,7 @@ function ScreenTable({ symbols, hist }) {
       <table class="w-full border-collapse font-mono text-[12px]">
         <thead>
           <tr class="border-b border-line-2 bg-surface-2 text-[10px] text-muted uppercase tracking-wider">
+            <th class="px-1 py-2 w-7"></th>
             <th class="px-3 py-2 text-left">{tl('Sym')}</th>
             <th class="px-2 py-2 text-right">{tl('Price')}</th>
             <th class="px-2 py-2 text-right">{tl('Day %')}</th>
@@ -89,6 +109,7 @@ function ScreenTable({ symbols, hist }) {
             if (h?.error) {
               return (
                 <tr key={sym} class="border-b border-line last:border-0">
+                  <WatchCell sym={sym} />
                   <td class="px-3 py-[3px] font-bold text-accent">{sym}</td>
                   <td colSpan={6} class="px-2 py-[3px] text-down text-[11px]">{tl('no data')}</td>
                 </tr>
@@ -111,6 +132,7 @@ function ScreenTable({ symbols, hist }) {
                 class="border-b border-line last:border-0 hover:bg-surface-3 cursor-pointer"
                 onClick={() => (location.hash = `#/research/${sym.toLowerCase()}`)}
               >
+                <WatchCell sym={sym} />
                 <td class="px-3 py-[3px] font-bold text-accent">{sym}</td>
                 <td class="px-2 py-[3px] text-right text-ink">{q ? <FlashPrice price={price} fmt={fmtPrice} /> : '…'}</td>
                 <td class={`px-2 py-[3px] text-right ${dayUp ? 'text-up' : 'text-down'}`}>
@@ -257,6 +279,16 @@ const VAL_ROWS = [
 
 function Valuation({ symbols }) {
   const [funds, setFunds] = useState({})
+  // fundamental bands: pass/fail wash over the columns, not a hidden cull —
+  // with an 8-name set you want to SEE what missed and by how much
+  const [bands, setBandsState] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('screen_bands_v1')) || {} } catch { return {} }
+  })
+  const setBand = (k, v) => {
+    const next = { ...bands, [k]: v }
+    setBandsState(next)
+    localStorage.setItem('screen_bands_v1', JSON.stringify(next))
+  }
 
   useEffect(() => {
     let alive = true
@@ -270,8 +302,29 @@ function Valuation({ symbols }) {
   }, [symbols.join(',')])
 
   const ready = symbols.filter((s) => funds[s] && !funds[s].error)
+  const verdicts = Object.fromEntries(ready.map((s) => [s, passesScreenFilters(funds[s], bands)]))
+  const active = ['peMax', 'growthMin', 'marginMin'].some((k) => bands[k] != null && bands[k] !== '')
+  const passN = ready.filter((s) => verdicts[s] === true).length
+
+  const bandField = (key, label) => (
+    <label class="flex items-center gap-1">
+      <span class="text-[9px] uppercase tracking-wider text-muted">{label}</span>
+      <input value={bands[key] ?? ''} inputMode="decimal"
+        onInput={(e) => setBand(key, e.currentTarget.value)}
+        class="w-14 bg-surface-2 border border-line rounded px-1.5 py-0.5 text-ink text-right outline-none focus:border-accent" />
+    </label>
+  )
 
   return (
+    <>
+    <div class="flex items-center gap-3 flex-wrap px-1 pb-2 font-mono text-[10px]">
+      {bandField('peMax', `${tl('fwd P/E')} ≤`)}
+      {bandField('growthMin', `${tl('rev growth')} ≥ %`)}
+      {bandField('marginMin', `${tl('net margin')} ≥ %`)}
+      {active && (
+        <span class="text-ink-2">{passN}/{ready.length} {tl('pass')}</span>
+      )}
+    </div>
     <section class="bg-surface-1 border border-line rounded-xl overflow-x-auto max-w-4xl">
       <table class="border-collapse font-mono text-[11px] w-full">
         <thead>
@@ -280,7 +333,13 @@ function Valuation({ symbols }) {
             {ready.map((s) => (
               <th
                 key={s}
-                class="px-3 py-2 text-right text-accent cursor-pointer hover:underline"
+                class={`px-3 py-2 text-right cursor-pointer hover:underline ${
+                  !active ? 'text-accent'
+                    : verdicts[s] === true ? 'text-up'
+                    : verdicts[s] === false ? 'text-down/70 line-through decoration-1'
+                    : 'text-muted'}`}
+                title={!active ? undefined : verdicts[s] === true ? tl('pass')
+                  : verdicts[s] === false ? tl('fails a band') : tl('missing data')}
                 onClick={() => (location.hash = `#/research/${s.toLowerCase()}`)}
               >
                 {s}
@@ -305,6 +364,7 @@ function Valuation({ symbols }) {
         </div>
       )}
     </section>
+    </>
   )
 }
 
@@ -403,6 +463,54 @@ function TechScreen({ symbols, hist }) {
   )
 }
 
+/** Saved screens + sector presets: one tap loads a named symbol set. */
+function PresetRow({ current, onLoad }) {
+  const [screens, setScreens] = useState(loadScreens)
+  const [naming, setNaming] = useState(false)
+  const [name, setName] = useState('')
+  const save = (e) => {
+    e.preventDefault()
+    if (!name.trim()) { setNaming(false); return }
+    saveScreen(name, current)
+    setScreens(loadScreens())
+    setNaming(false)
+    setName('')
+  }
+  return (
+    <div class="flex items-center gap-1.5 flex-wrap px-1 pb-2 font-mono text-[10px]">
+      {screens.map((s) => (
+        <span key={s.name} class="group inline-flex items-center gap-1 border border-accent/40 rounded-full pl-2 pr-1 py-px">
+          <button onClick={() => onLoad(s.symbols)} class="text-accent hover:brightness-125">{s.name}</button>
+          <button onClick={() => { deleteScreen(s.name); setScreens(loadScreens()) }}
+            title={tl('delete')}
+            class="opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100 text-muted hover:text-down">✕</button>
+        </span>
+      ))}
+      {naming ? (
+        <form onSubmit={save} class="inline-flex">
+          <input autoFocus value={name} onInput={(e) => setName(e.currentTarget.value)}
+            onKeyDown={(e) => e.key === 'Escape' && setNaming(false)}
+            onBlur={() => { if (!name.trim()) setNaming(false) }}
+            placeholder={tl('screen name')}
+            class="w-24 bg-surface-2 border border-accent/60 rounded-full px-2 py-px text-ink outline-none placeholder:text-muted" />
+        </form>
+      ) : (
+        <button onClick={() => setNaming(true)}
+          class="border border-dashed border-line-2 rounded-full px-2 py-px text-muted hover:text-accent hover:border-accent/60">
+          + {tl('save screen')}
+        </button>
+      )}
+      <span class="w-px h-3.5 bg-line-2 mx-1" />
+      {BUCKETS.map((b) => (
+        <button key={b.name} onClick={() => onLoad(b.symbols.join(' '))}
+          class="border border-line rounded-full px-2 py-px text-ink-2 hover:text-accent-2 hover:border-accent-2/50 uppercase tracking-wider text-[9px]">
+          {tl(b.name)}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export function Screen({ route }) {
   const view = route.sub || 'screen'
   const [raw, setRaw] = useState(() => localStorage.getItem('screen_symbols') || DEFAULT_SYMBOLS)
@@ -417,6 +525,7 @@ export function Screen({ route }) {
   return (
     <div class="flex-1 p-3 select-text min-w-0">
       <SymbolInput value={raw} onChange={update} />
+      <PresetRow current={raw} onLoad={update} />
       {view === 'screen' && <ScreenTable symbols={symbols} hist={hist} />}
       {view === 'compare' && <Compare symbols={symbols} hist={hist} />}
       {view === 'technicals' && <TechScreen symbols={symbols} hist={hist} />}
