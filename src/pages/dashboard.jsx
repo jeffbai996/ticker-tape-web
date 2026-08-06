@@ -15,10 +15,11 @@ import {
   getGroupPrefs, isCollapsed, moveGroup, onGroupsChange, orderGroups,
   toggleCollapsed,
 } from '../lib/catgroups.js'
-import { moveSymbol, placeSymbol, unwatch, watch } from '../lib/watchlist.js'
+import { isWatched, moveSymbol, placeSymbol, unwatch, watch } from '../lib/watchlist.js'
 import { addWatchlistSymbol, moveWatchlistSymbol, removeWatchlistSymbol } from '../lib/watchlists.js'
 import { loadUserGroups, onUserGroupsChange } from '../lib/usergroups.js'
 import { groupDashboardRows, quoteSpread, selectFlatRows } from '../lib/dashboardRows.js'
+import { searchSymbols } from '../lib/symbolSearch.js'
 import { fmtPrice, fmtPriceBare, fmtPct, fmtChange, fmtVol, rangePos } from '../lib/format.js'
 import { Histo } from '../components/Histo.jsx'
 import { Marquee } from '../components/Marquee.jsx'
@@ -797,6 +798,62 @@ function QuickAdd({ onAdd }) {
   )
 }
 
+/** The board's search box doubles as a global ticker lookup: type a company
+ *  name ("Hynix") and every venue Yahoo knows drops down — the local rows
+ *  keep filtering underneath, terminal not required (Jeff 2026-08-06). */
+function TickerSearch({ filter, setFilter }) {
+  const [hits, setHits] = useState(null)
+  const [open, setOpen] = useState(false)
+  const boxRef = useRef(null)
+  useEffect(() => {
+    const q = filter.trim()
+    if (q.length < 2) { setHits(null); return }
+    const ctl = new AbortController()
+    const t = setTimeout(() => {
+      searchSymbols(q, { signal: ctl.signal })
+        .then((rows) => { setHits(rows); setOpen(true) })
+        .catch(() => {})
+    }, 280)
+    return () => { clearTimeout(t); ctl.abort() }
+  }, [filter])
+  useEffect(() => {
+    const close = (e) => { if (!boxRef.current?.contains(e.target)) setOpen(false) }
+    addEventListener('pointerdown', close)
+    return () => removeEventListener('pointerdown', close)
+  }, [])
+  return (
+    <div ref={boxRef} class="relative min-w-0">
+      <span class="absolute left-2 top-1/2 -translate-y-1/2 text-muted pointer-events-none">
+        <svg viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7" cy="7" r="4.4" /><path d="m10.4 10.4 3 3" /></svg>
+      </span>
+      <input value={filter} onInput={(e) => setFilter(e.currentTarget.value)}
+        onFocus={() => hits?.length && setOpen(true)}
+        onKeyDown={(e) => e.key === 'Escape' && setOpen(false)}
+        placeholder={`${tl('Search')}…`}
+        class="min-w-0 w-36 sm:w-44 bg-surface-1 border border-line rounded-lg pl-6 pr-2 py-1 font-anth text-[10px] text-ink outline-none focus:border-accent placeholder:text-muted" />
+      {open && hits?.length > 0 && (
+        <div class="absolute top-full left-0 mt-1 w-72 max-w-[80vw] z-40 bg-surface-1/95 backdrop-blur border border-line rounded-lg shadow-[0_8px_24px_rgba(0,0,0,0.6)] overflow-hidden">
+          {hits.map((h) => (
+            <div key={h.symbol}
+              class="flex items-baseline gap-2 px-2.5 py-1.5 border-t border-line/60 first:border-0 hover:bg-accent-soft cursor-pointer"
+              onClick={() => { setOpen(false); setFilter(''); location.hash = `#/research/${h.symbol.toLowerCase()}` }}>
+              <span class="font-mono font-bold text-[11px] text-accent shrink-0">{h.symbol}</span>
+              <span class="font-anth text-[10.5px] text-ink-2 truncate">{h.name}</span>
+              <span class="ml-auto font-mono text-[8.5px] uppercase tracking-wider text-muted shrink-0">{h.exch}</span>
+              <button
+                title={isWatched(h.symbol) ? tl('on the board') : tl('add to watchlist')}
+                onClick={(e) => { e.stopPropagation(); watch(h.symbol) }}
+                class={`shrink-0 w-5 h-5 grid place-items-center rounded ${isWatched(h.symbol) ? 'text-accent' : 'text-muted hover:text-accent'}`}>
+                {isWatched(h.symbol) ? '★' : '☆'}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function Dashboard({ listId = null }) {
   const mainWatchlist = useWatchlist()
   const namedWatchlists = useNamedWatchlists()
@@ -871,9 +928,7 @@ export function Dashboard({ listId = null }) {
               {tl('All')}
             </button>
           </div>
-          <input value={filter} onInput={(e) => setFilter(e.currentTarget.value)}
-            placeholder={`${tl('Search')}…`}
-            class="min-w-0 w-32 sm:w-40 bg-surface-1 border border-line rounded-lg px-2 py-1 font-anth text-[10px] text-ink outline-none focus:border-accent placeholder:text-muted" />
+          <TickerSearch filter={filter} setFilter={setFilter} />
           {viewMode === 'flat' && (
             <select value={sort} onChange={(e) => setSort(e.currentTarget.value)}
               class="bg-surface-1 border border-line rounded-lg px-2 py-1 font-anth text-[10px] text-ink-2 outline-none focus:border-accent">
