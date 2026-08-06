@@ -17,7 +17,8 @@ function CloudChip() {
   const [st, setSt] = useState({ state: 'off', rev: 0 })
   useEffect(() => onSyncStatus(setSt), [])
   if (st.state === 'off') return null
-  const label = st.state === 'synced' ? `${tl('cloud')} · r${st.rev}`
+  // no rev counter — "r51" meant nothing to anyone (Jeff 2026-08-06)
+  const label = st.state === 'synced' ? tl('cloud')
     : st.state === 'syncing' ? `${tl('cloud')} · …`
     : tl('cloud offline')
   return (

@@ -251,6 +251,17 @@ body {
   .brand-word { transition: none !important; }
 }
 
+/* Board-menu burger: the middle line tucks in on hover so the icon reads as
+   "this opens something" instead of static furniture (Jeff 2026-08-06). */
+.burger path {
+  transition: transform .28s cubic-bezier(.16, 1, .3, 1);
+  transform-origin: 2.5px 8px;
+}
+button:hover .burger path:nth-child(2) { transform: scaleX(.55); }
+@media (prefers-reduced-motion: reduce) {
+  .burger path { transition: none !important; }
+}
+
 /* Tape marquee: JS measures one cycle and renders enough copies to keep even
    a one-symbol mobile watchlist filled while this moves exactly one cycle. */
 .tape-scroll {

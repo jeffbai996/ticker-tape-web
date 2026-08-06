@@ -97,7 +97,7 @@ describe('compact dashboard company name', () => {
     // sort, select mode and the watchlist picker fold into the board menu
     expect(dashboard).toContain('function BoardMenu')
     expect(dashboard).toContain("['spread', tl('Spread')]")
-    expect(dashboard).toContain("{item(tl('Main board'), !listId,")
+    expect(dashboard).toContain("{item(tl('Dashboard'), !listId,")
     expect(dashboard).not.toContain('<option value="manual"')
     expect(dashboard).not.toContain('manage lists')
   })
