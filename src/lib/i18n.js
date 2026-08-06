@@ -419,6 +419,8 @@ const LABELS = {
   'rec trend, price targets, rating changes': '评级趋势、目标价与近期调整', 'insider transactions': '内部人士交易',
   top: '精选', wire: '时间线', 'demo wire — synthetic events': '模拟快讯 — 合成事件', connecting: '连接中', error: '错误',
   'push watchlist → wire': '同步自选股 → 快讯', connect: '连接', all: '全部',
+  rail: '侧栏', 'rail ⨯': '侧栏 ⨯',
+  'hide the side panels': '隐藏侧栏', 'show the side panels': '显示侧栏',
   earnings: '财报', filings: '申报文件', headlines: '新闻', 'macro + fed': '宏观 + 美联储', 'live audio': '实时音频',
   'online — private wire': '在线 — 私有快讯', 'online — public proxy': '在线 — 公共代理',
   'my book': '我的持仓', 'the market': '市场',

@@ -359,6 +359,8 @@ export function Wire({ route }) {
   const [openIds, setOpenIds] = useState(new Set())
   const [filter, setFilter] = useState('')
   const [mode, setMode] = useState(() => localStorage.getItem('tape-wire-mode') || 'top')
+  // rail off = full-width reading; sticky, it's a layout preference
+  const [rail, setRail] = useState(() => localStorage.getItem('tape-wire-rail') !== '0')
   const [state, setState] = useState('demo')   // demo | connecting | live | error
   const [error, setError] = useState('')
   const [today, setToday] = useState(null)
@@ -553,7 +555,7 @@ export function Wire({ route }) {
           </form>
         )}
       </div>
-      <div class="flex gap-1.5 flex-wrap">
+      <div class="flex gap-1.5 flex-wrap items-center">
         {FILTERS.map((f) => (
           <button
             key={f.id}
@@ -567,6 +569,19 @@ export function Wire({ route }) {
             {tl(f.label)}
           </button>
         ))}
+        <button
+          class={`ml-auto border rounded-md px-2.5 py-0.5 text-[11px] font-semibold ${
+            rail ? 'border-line text-ink-2 hover:text-ink' : 'bg-accent border-accent text-black'
+          }`}
+          title={tl(rail ? 'hide the side panels' : 'show the side panels')}
+          onClick={() => {
+            const next = !rail
+            setRail(next)
+            localStorage.setItem('tape-wire-rail', next ? '1' : '0')
+          }}
+        >
+          {rail ? tl('rail ⨯') : tl('rail')}
+        </button>
       </div>
       <div class="flex gap-2 items-start max-lg:flex-col">
         <div class="flex-1 min-w-0 border border-line rounded-lg overflow-hidden bg-surface">
@@ -582,7 +597,7 @@ export function Wire({ route }) {
             )
           })}
         </div>
-        <Rail today={today} now={now} events={events} watchset={watchset} />
+        {rail && <Rail today={today} now={now} events={events} watchset={watchset} />}
       </div>
       {!IS_PRIVATE_BUILD && (
         <p class="font-mono text-[10.5px] text-muted max-w-[74ch]">
