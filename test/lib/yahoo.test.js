@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
-  mergeSnapshotQuote, quoteFromChart, quoteFromStream, sparkFromChart,
+  mergeSnapshotQuote, quoteFromChart, quoteFromStream, quoteFromV7 as v7,
+  sparkFromChart,
 } from '../../src/lib/yahoo.js'
 
 // Shape mirrors Yahoo v8 /finance/chart responses (result[0]).
@@ -126,7 +127,7 @@ describe('quoteFromV7', () => {
       symbol: 'AAPL', marketState: 'POST', regularMarketPrice: 100,
       preMarketPrice: 101, preMarketChangePercent: 1,
       postMarketPrice: 102, postMarketChangePercent: 2,
-    })
+    }, new Date('2026-08-05T17:30:00-04:00'))   // inside the AH window
     expect(q).toMatchObject({ extLabel: 'AH', extPrice: 102, extPct: 2 })
   })
 
@@ -204,5 +205,29 @@ describe('mergeSnapshotQuote', () => {
       marketTime: 101, dayHigh: 103, bid: 101.48, ask: 101.52,
     })
     expect(mergeSnapshotQuote(streamed, snapshot, false)).toEqual(snapshot)
+  })
+})
+
+describe('quoteFromV7 extended-session label', () => {
+  const quoteFromV7 = (...args) => v7(...args)
+  const row = {
+    symbol: 'AAPL', regularMarketPrice: 311, regularMarketPreviousClose: 309.38,
+    marketState: 'POSTPOST', postMarketPrice: 312.5, postMarketChangePercent: 0.48,
+  }
+
+  it('is AH inside the after-hours session', () => {
+    expect(quoteFromV7(row, new Date('2026-08-05T18:30:00-04:00')).extLabel).toBe('AH')
+  })
+
+  // v7 has no overnight field — postMarketPrice freezes at the 20:00 print, so
+  // the clock is what names the session and first paint stops churning
+  it('is ON once the overnight session has taken over', () => {
+    const q = quoteFromV7(row, new Date('2026-08-06T00:05:00-04:00'))
+    expect(q.extLabel).toBe('ON')
+    expect(q.extPrice).toBe(312.5)
+  })
+
+  it('is AH again over the weekend, when nothing trades overnight', () => {
+    expect(quoteFromV7(row, new Date('2026-08-08T02:00:00-04:00')).extLabel).toBe('AH')
   })
 })

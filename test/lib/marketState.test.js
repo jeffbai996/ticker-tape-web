@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { marketState, etParts, HOLIDAYS } from '../../src/lib/marketState.js'
+import { marketState, etParts, isOvernight, HOLIDAYS } from '../../src/lib/marketState.js'
 
 // All fixtures pin the UTC offset explicitly (EDT −4 in summer, EST −5 in
 // winter) so the tests are independent of the runner's local timezone.
@@ -65,5 +65,27 @@ describe('marketState', () => {
     // 2026-07-04 itself is a Saturday; the table holds the observed Friday.
     expect(HOLIDAYS['2026-07-03']).toBeTruthy()
     expect(HOLIDAYS['2026-07-04']).toBeUndefined()
+  })
+})
+
+describe('isOvernight', () => {
+  const at = (iso) => new Date(iso)
+
+  it('covers the Blue Ocean session, Sunday 20:00 ET through Friday 20:00 ET', () => {
+    expect(isOvernight(at('2026-08-05T23:30:00-04:00'))).toBe(true)   // Wed night
+    expect(isOvernight(at('2026-08-06T02:00:00-04:00'))).toBe(true)   // Thu 2am
+    expect(isOvernight(at('2026-08-09T21:00:00-04:00'))).toBe(true)   // Sun reopen
+  })
+
+  it('excludes the regular and after-hours sessions', () => {
+    expect(isOvernight(at('2026-08-05T11:00:00-04:00'))).toBe(false)  // open
+    expect(isOvernight(at('2026-08-05T18:30:00-04:00'))).toBe(false)  // AH
+    expect(isOvernight(at('2026-08-05T05:00:00-04:00'))).toBe(false)  // pre
+  })
+
+  it('stays shut for the weekend after Friday 20:00 ET', () => {
+    expect(isOvernight(at('2026-08-07T21:00:00-04:00'))).toBe(false)  // Fri night
+    expect(isOvernight(at('2026-08-08T02:00:00-04:00'))).toBe(false)  // Sat 2am
+    expect(isOvernight(at('2026-08-07T02:00:00-04:00'))).toBe(true)   // Fri 2am
   })
 })

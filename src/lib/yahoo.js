@@ -1,3 +1,5 @@
+import { isOvernight } from './marketState.js'
+
 // Pure transforms over Yahoo v8 /finance/chart results. One chart call per
 // symbol yields quote + sparkline + bars, and unlike v7/quote it needs no
 // crumb/cookie auth — which is what lets the whole app run through a dumb
@@ -28,7 +30,7 @@ export function quoteFromChart(result) {
  *  change/pct are re-derived from price vs previousClose: for yield indices
  *  (^TNX) the reported regularMarketChange fields are garbage (-50% on an
  *  unchanged price) while price/prevClose are consistent. */
-export function quoteFromV7(row) {
+export function quoteFromV7(row, now = new Date()) {
   const price = row?.regularMarketPrice ?? 0
   const prev = row?.regularMarketPreviousClose ?? null
   const change = prev != null && price ? price - prev : (row?.regularMarketChange ?? 0)
@@ -44,7 +46,14 @@ export function quoteFromV7(row) {
   // (Jeff 2026-08-04, 00:07 ET). The last after-hours trade is still the right
   // number to show; the PM branch above takes over the moment 4am fills it in.
   } else if (row?.postMarketPrice != null && (row?.marketState === 'POST' || row?.marketState === 'POSTPOST' || row?.marketState === 'CLOSED' || row?.marketState === 'PREPRE')) {
-    ext = { extLabel: 'AH', extPrice: row.postMarketPrice, extPct: row.postMarketChangePercent ?? null }
+    // Once the clock is past the 20:00 after-hours close, this frozen print is
+    // the overnight session's reference — labelling it AH and then letting the
+    // websocket flip each row to ON as that name happens to trade made first
+    // paint churn for minutes (Jeff 2026-08-05). The batch now names the
+    // session; live ticks only move the number.
+    ext = { extLabel: isOvernight(now) ? 'ON' : 'AH',
+            extPrice: row.postMarketPrice,
+            extPct: row.postMarketChangePercent ?? null }
   }
 
   return {
