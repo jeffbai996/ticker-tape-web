@@ -8,9 +8,12 @@ const css = readFileSync(resolve(process.cwd(), 'src/styles/main.css'), 'utf8')
 describe('compact dashboard company name', () => {
   it('swaps the ticker for the company name in the same fixed slot', () => {
     expect(dashboard).toContain('class="tui-row group/row')
-    expect(dashboard).toContain('class="tui-company-identity relative flex-1 min-w-0')
-    expect(dashboard).toContain('class="tui-company-symbol"')
-    expect(dashboard).toContain('class="tui-company-name-swap @min-[820px]:hidden"')
+    expect(dashboard).toContain('class="tui-company-identity relative flex items-baseline gap-1.5 flex-1 min-w-0')
+    expect(dashboard).toContain('class="tui-company-symbol shrink-0"')
+    // the swap only covers widths too narrow to show both strings at once;
+    // above that the name rides inline in the slot's spare width
+    expect(dashboard).toContain('class="tui-company-name-swap @min-[545px]:hidden"')
+    expect(dashboard).toContain('@min-[545px]:block @min-[820px]:hidden min-w-0 truncate')
     expect(dashboard).toContain('aria-hidden="true"')
     expect(dashboard).toContain('class="tui-company-name-wide hidden @min-[820px]:block')
     expect(css).toContain('.tui-row:hover .tui-company-symbol')
