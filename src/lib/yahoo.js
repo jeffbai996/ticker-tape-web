@@ -75,13 +75,14 @@ export function quoteFromStream(tick, previous = {}) {
     name: previous.name || tick.shortName || '',
   }
 
-  // 0 PRE, 1 REGULAR, 2 POST, 3 EXTENDED. Extended ticks are measured from
-  // the cash close, so they belong in the purple secondary quote, not in the
-  // regular price column.
-  if (tick.marketHours === 0 || tick.marketHours === 2 || tick.marketHours === 3) {
+  // 0 PRE, 1 REGULAR, 2 POST, 3 EXTENDED, 4 OVERNIGHT. Non-regular ticks are
+  // measured from the cash close, so they belong in the purple secondary
+  // quote, not in the regular-price column. Yahoo's live stream currently
+  // emits Blue Ocean overnight equity prints as 4; keep 3 as generic AH.
+  if ([0, 2, 3, 4].includes(tick.marketHours)) {
     return {
       ...base,
-      extLabel: tick.marketHours === 0 ? 'PRE' : 'AH',
+      extLabel: tick.marketHours === 0 ? 'PRE' : tick.marketHours === 4 ? 'OVT' : 'AH',
       extPrice: tick.price,
       extPct: tick.changePercent ?? previous.extPct ?? null,
       extChange: tick.change ?? previous.extChange ?? null,
