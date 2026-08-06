@@ -1,10 +1,11 @@
 const DASH = '—'
 
 // KRW/JPY-denominated listings print six-to-seven figure prices that no
-// fixed column survives (SK hynix ₩1,495,000, Jeff 2026-08-06). Five figures
-// and up collapse to K-notation — "1495K" holds the column grid, full commas
-// don't.
-const BIG_PRICE = 10_000
+// fixed column survives (SK hynix ₩1,495,000, Jeff 2026-08-06). Only truly
+// huge denominations collapse to K-notation — the first cut at 10k K-ified
+// NQ/DOW index prints too (Jeff, same day: "dont make NQ or anything else
+// like that"). 100k clears every US index/future while catching KRW names.
+const BIG_PRICE = 100_000
 const kNotation = (abs) =>
   `${abs >= 100_000 ? Math.round(abs / 1000) : (abs / 1000).toFixed(1)}K`
 

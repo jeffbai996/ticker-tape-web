@@ -72,9 +72,11 @@ describe('fmtPriceBare', () => {
     expect(fmtPriceBare(303.42)).toBe('303.42')
   })
 
-  it('collapses to K-notation at KRW scale', () => {
-    // full commas broke the fixed column grid — K holds it (2026-08-06)
+  it('collapses to K-notation only at true KRW scale', () => {
+    // full commas broke the fixed column grid — K holds it; the threshold
+    // must clear NQ/DOW-sized index prints untouched (2026-08-06)
     expect(fmtPriceBare(1234567.5)).toBe('1235K')
+    expect(fmtPriceBare(29537.25)).toBe('29537.25')
     expect(fmtPriceBare(9999.99)).toBe('9999.99')
   })
 
@@ -89,13 +91,14 @@ describe('fmtPriceBare', () => {
 })
 
 describe('KRW-scale prices', () => {
-  it('fmtPrice collapses to K at five figures and up', () => {
+  it('fmtPrice collapses to K only above 100k — indices stay full', () => {
     expect(fmtPrice(1495000)).toBe('1495K')
-    expect(fmtPrice(47500)).toBe('47.5K')
-    expect(fmtPrice(9999.99)).toBe('9,999.99')
+    expect(fmtPrice(54349.12)).toBe('54,349.12')
+    expect(fmtPrice(29537.25)).toBe('29,537.25')
   })
   it('fmtChange keeps its sign in K-notation at scale', () => {
     expect(fmtChange(-173000)).toBe('-173K')
+    expect(fmtChange(-465.83)).toBe('-465.83')
     expect(fmtChange(77.12)).toBe('+77.12')
   })
 })
