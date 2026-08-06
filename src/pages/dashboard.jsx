@@ -207,7 +207,7 @@ function TuiRow({ symbol, data, earnDays, onRemove }) {
                 give up width, so the fixed price/change/AH columns stay aligned
                 across rows AND never get pushed past the clip edge. Below
                 820px the text hides but the gutter stays, collapsing to 0. */}
-            <span class="tui-company-name-wide hidden @min-[820px]:block flex-1 min-w-0 max-w-[120px]">
+            <span class="tui-company-name-wide hidden @min-[820px]:block flex-1 min-w-0 max-w-[120px] @min-[1080px]:max-w-[240px]">
               <Marquee text={q?.name || ''} title={q?.name ? `${symbol} — ${q.name}` : symbol}
                 class="inline-block w-full text-[10.5px] text-muted font-normal font-anth" />
             </span>
@@ -221,7 +221,7 @@ function TuiRow({ symbol, data, earnDays, onRemove }) {
                   overflow the fixed box and land flush against the ON label,
                   while narrower ones still line up */}
               {q && (
-                <span class={`${up ? 'text-up' : 'text-down'} whitespace-nowrap min-w-[7.25rem] @max-[800px]:min-w-0 max-sm:min-w-0 shrink-0`}>
+                <span class={`${up ? 'text-up' : 'text-down'} whitespace-nowrap min-w-[7.7rem] max-sm:min-w-0 shrink-0`}>
                   {up ? '▲' : '▼'} <FlashMetric value={q.change} fmt={fmtAbsChange} kind="change" />{' '}
                   <span class="font-normal text-[11px] max-sm:text-[10px]">
                     (<FlashMetric value={q.pct} fmt={fmtPct} kind="change" />)
@@ -233,7 +233,7 @@ function TuiRow({ symbol, data, earnDays, onRemove }) {
                   right edge (Jeff 2026-08-04) */}
               {q?.extLabel && q.extPrice != null && (
                 <span class="whitespace-nowrap text-[11px] max-sm:text-[10px] w-auto shrink-0 max-sm:ml-auto">
-                  <span class={extendedLabelClass(q.extLabel)}>{q.extLabel}</span>{' '}
+                  <span class={`font-semibold ${extendedLabelClass(q.extLabel)}`}>{q.extLabel}</span>{' '}
                   <span class="text-ink-2 font-semibold"><FlashPrice price={q.extPrice} fmt={fmtPriceBare} /></span>{' '}
                   <span class={`font-normal ${extUp ? 'text-up' : 'text-down'}`}>
                     {extUp ? '▲' : '▼'}{Math.abs(q.extPct ?? 0).toFixed(1)}%
@@ -251,7 +251,7 @@ function TuiRow({ symbol, data, earnDays, onRemove }) {
             {/* badges yield first: they are chips you glance at, while a range
                 clipped mid-number (Jeff 2026-08-05: "RHS occluded") is worse
                 than a badge that isn't drawn */}
-            <div class="min-w-0 overflow-hidden max-sm:overflow-visible">
+            <div class="min-w-0 overflow-hidden max-sm:overflow-visible @min-[730px]:ml-auto">
               <Badges tech={data?.tech} earnDays={earnDays} />
             </div>
             {/* An extended-hours print evicts the day range from the meters
@@ -292,6 +292,14 @@ function TuiRow({ symbol, data, earnDays, onRemove }) {
               <RangeBar label="52W" lo={data.tech.low52} hi={data.tech.high52} v={q?.price} />
             )}
             <span class="w-[4.6rem] @min-[820px]:w-[9.2rem] text-right whitespace-nowrap">
+              {q?.dayHigh != null && q?.dayLow != null && q?.price > 0 && (
+                <span class="hidden @min-[820px]:inline mr-2">
+                  <span class="text-accent/60 text-[9px]">RNG</span>{' '}
+                  <span class="text-ink-2 font-normal">
+                    {(((q.dayHigh - q.dayLow) / q.price) * 100).toFixed(1)}%
+                  </span>
+                </span>
+              )}
               {avgVol != null && (
                 <>
                   <span class="text-accent/60 text-[9px]">AVG</span>{' '}
