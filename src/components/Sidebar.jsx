@@ -6,6 +6,7 @@ import { useNamedWatchlists, useQuotes, useWatchlist } from '../hooks.js'
 import { FlashPrice } from './Fig.jsx'
 import { watch, unwatch } from '../lib/watchlist.js'
 import { addWatchlistSymbol, removeWatchlistSymbol } from '../lib/watchlists.js'
+import { nextSort, sortSymbols } from '../lib/watchsort.js'
 import { fmtPriceBare, fmtPct } from '../lib/format.js'
 import { lastGoodTs } from '../lib/feed.js'
 
@@ -77,14 +78,41 @@ function UpdatedLine() {
   )
 }
 
+/** Sort control that doubles as the column header it sorts. */
+function SortHead({ label, col, sort, onSort, align = 'left' }) {
+  const on = sort?.key === col
+  return (
+    <button
+      onClick={() => onSort(nextSort(sort, col))}
+      title={`sort by ${label}`}
+      class={`flex-1 flex items-baseline gap-1 font-mono text-[9px] tracking-wider uppercase ${
+        align === 'right' ? 'justify-end' : ''
+      } ${on ? 'text-accent' : 'text-muted hover:text-ink-2'}`}
+    >
+      {label}
+      <span class={on ? '' : 'opacity-0'}>{sort?.dir === 'asc' ? '▲' : '▼'}</span>
+    </button>
+  )
+}
+
 export function Sidebar({ route }) {
   const mainWatchlist = useWatchlist()
   const namedWatchlists = useNamedWatchlists()
   const activeNamed = route.section === 'watchlists' && route.sub
     ? namedWatchlists.find((item) => item.id === route.sub)
     : null
-  const watchlist = activeNamed?.symbols || mainWatchlist
-  const quotes = useQuotes(watchlist)
+  const stored = activeNamed?.symbols || mainWatchlist
+  const quotes = useQuotes(stored)
+  // a view preference, not a rewrite of the list — the stored order survives
+  const [sort, setSort] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('watch_sort')) } catch { return null }
+  })
+  const applySort = (next) => {
+    setSort(next)
+    if (next) localStorage.setItem('watch_sort', JSON.stringify(next))
+    else localStorage.removeItem('watch_sort')
+  }
+  const watchlist = sortSymbols(stored, quotes, sort)
   const addSymbol = activeNamed
     ? (symbol) => addWatchlistSymbol(activeNamed.id, symbol)
     : watch
@@ -142,6 +170,10 @@ export function Sidebar({ route }) {
       <div class="px-3 pt-2 pb-1 border-t border-line font-mono text-[10px] tracking-wider text-muted flex items-baseline">
         {(activeNamed?.name || tl('Watchlist')).toUpperCase()}
         <AddSymbol onAdd={addSymbol} />
+      </div>
+      <div class="px-3 pb-1 flex items-baseline gap-2 border-b border-line/60">
+        <SortHead label="sym" col="sym" sort={sort} onSort={applySort} />
+        <SortHead label="%" col="pct" sort={sort} onSort={applySort} align="right" />
       </div>
       <div class="flex-1 overflow-y-auto min-h-0">
         {watchlist.map((s) => (
