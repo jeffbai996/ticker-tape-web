@@ -26,7 +26,8 @@ import { searchSymbols } from '../lib/symbolSearch.js'
 import { fmtPrice, fmtPriceBare, fmtPct, fmtChange, fmtVol, rangePos } from '../lib/format.js'
 import { Histo } from '../components/Histo.jsx'
 import { Spark } from '../components/Spark.jsx'
-import { SPARK_TYPES, DEFAULT_SPARK, isSparkType } from '../lib/sparks.js'
+import { SPARK_TYPES, DEFAULT_SPARK, isSparkType,
+  SPARK_WINDOWS, DEFAULT_WINDOW, isSparkWindow } from '../lib/sparks.js'
 import { Marquee } from '../components/Marquee.jsx'
 import { FlashMetric, FlashPrice } from '../components/Fig.jsx'
 import { tl } from '../lib/i18n.js'
@@ -169,7 +170,7 @@ function CompactDayRange({ lo, hi, v, cls = '' }) {
 }
 
 function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggleSelect,
-                  spark = DEFAULT_SPARK }) {
+                  spark = DEFAULT_SPARK, sparkWin = DEFAULT_WINDOW }) {
   const q = data?.quote
   // Touch has no hover, so a tap on the ticker used to jump straight to the
   // symbol page and the name was unreachable (Jeff 2026-08-05). First tap
@@ -267,9 +268,12 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
               </span>
               {/* min-width, not width: a wide print (▼ 15.22 (-4.05%)) used to
                   overflow the fixed box and land flush against the ON label,
-                  while narrower ones still line up */}
+                  while narrower ones still line up. Reserving it below 820px
+                  cost the company name ~40px it needed more (Jeff 2026-08-07:
+                  "the company names r cut off") — under that the columns size
+                  to content and hand the slack to the name gutter. */}
               {q && (
-                <span class={`${up ? 'text-up' : 'text-down'} whitespace-nowrap min-w-[7.7rem] max-sm:min-w-0 shrink-0`}>
+                <span class={`${up ? 'text-up' : 'text-down'} whitespace-nowrap @min-[820px]:min-w-[7.7rem] shrink-0`}>
                   {up ? '▲' : '▼'} <FlashMetric value={q.change} fmt={fmtAbsChange} kind="change" />{' '}
                   <span class="font-normal text-[11px] max-sm:text-[10px]">
                     (<FlashMetric value={q.pct} fmt={fmtPct} kind="change" />)
@@ -280,14 +284,14 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
                   phone it was the same size as the print and clipped off the
                   right edge (Jeff 2026-08-04) */}
               {q?.extLabel && q.extPrice != null ? (
-                <span class="whitespace-nowrap text-[11px] max-sm:text-[10px] shrink-0 max-sm:ml-auto @min-[545px]:min-w-[9.4rem] @min-[545px]:text-right">
+                <span class="whitespace-nowrap text-[11px] max-sm:text-[10px] shrink-0 max-sm:ml-auto @min-[820px]:min-w-[9.4rem] @min-[545px]:text-right">
                   {/* only the PERCENT drops a weight tier (Jeff 2026-08-06);
                       the extended price keeps its weight and runs a size
                       bigger than the tag beside it — it's the figure you read,
                       the tag and the % are its annotations */}
                   <span class={`font-semibold ${extendedLabelClass(q.extLabel)}`}>{q.extLabel}</span>{' '}
                   <span class="text-ink-2 font-semibold text-[12px] max-sm:text-[11px]"><FlashPrice price={q.extPrice} fmt={fmtPriceBare} /></span>{' '}
-                  <span class={`font-light ${extUp ? 'text-up' : 'text-down'}`}>
+                  <span class={`font-normal ${extUp ? 'text-up' : 'text-down'}`}>
                     {extUp ? '▲' : '▼'}{Math.abs(q.extPct ?? 0).toFixed(1)}%
                   </span>
                 </span>
@@ -295,13 +299,13 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
                 /* ghost slot: a row whose extended print hasn't loaded used to
                    let the name gutter grow and right-shift the whole quote
                    cluster off the column grid (Jeff 2026-08-06) */
-                <span class="whitespace-nowrap text-[11px] max-sm:hidden shrink-0 invisible @min-[545px]:min-w-[9.4rem] @min-[545px]:text-right" aria-hidden="true">
+                <span class="whitespace-nowrap text-[11px] max-sm:hidden shrink-0 invisible @min-[820px]:min-w-[9.4rem] @min-[545px]:text-right" aria-hidden="true">
                   {/* mirrors the real print part for part, including the
                       larger price — a ghost narrower than the thing it
                       reserves space for lets the column shift when data lands */}
                   <span class="font-semibold">PM</span>{' '}
                   <span class="font-semibold text-[12px]">0000.00</span>{' '}
-                  <span class="font-light">▼0.0%</span>
+                  <span class="font-normal">▼0.0%</span>
                 </span>
               ) : null}
             </span>
@@ -310,7 +314,7 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
           <div class="flex items-center gap-2.5 pt-[2px] pl-0 min-w-0 @min-[430px]:overflow-hidden max-sm:overflow-x-auto no-scrollbar">
             {/* Container-relative width changes continuously with zoom. A
                 breakpoint used to turn this from postage stamp to runway. */}
-            <Spark type={spark} bars={data?.histo} width={150} height={24}
+            <Spark type={spark} window={sparkWin} bars={data?.histo} width={150} height={24}
               class="w-[clamp(76px,18cqw,168px)] h-6 shrink-0" />
             {/* badges yield first: they are chips you glance at, while a range
                 clipped mid-number (Jeff 2026-08-05: "RHS occluded") is worse
@@ -1090,7 +1094,8 @@ function SectorScroller({ watchlist, quotes }) {
 /** Toolbar hamburger, left of the sector strip: sort, select mode and the
  *  watchlist picker fold into one menu instead of three standalone controls
  *  (Jeff 2026-08-06: "saves a ton of space"). */
-function BoardMenu({ sort, setSort, setViewMode, spark, setSpark, lists, listId, onSelectMode }) {
+function BoardMenu({ sort, setSort, setViewMode, spark, setSpark, sparkWin, setSparkWin,
+                     lists, listId, onSelectMode }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   useEffect(() => {
@@ -1147,6 +1152,23 @@ function BoardMenu({ sort, setSort, setViewMode, spark, setSpark, lists, listId,
             setOpen(false)
             setSpark(t.id)
           }))}
+          {/* window is a second axis on the same control, so it rides as one
+              pill row rather than four more full-width rows — and it's dead
+              weight when the column is off */}
+          {spark !== 'off' && (
+            <div class="flex items-center gap-1 px-2.5 pt-1 pb-0.5">
+              <span class="w-3 shrink-0" />
+              {SPARK_WINDOWS.map((w) => (
+                <button key={w.id} onClick={() => setSparkWin(w.id)}
+                  class={`flex-1 rounded border px-1 py-0.5 font-mono text-[9.5px] ${
+                    sparkWin === w.id
+                      ? 'border-accent/60 bg-accent-soft text-accent'
+                      : 'border-line text-muted hover:text-ink hover:border-line-2'}`}>
+                  {w.id}
+                </button>
+              ))}
+            </div>
+          )}
           <div class="my-1 border-t border-line/70" />
           {item(tl('Select rows'), false, () => { setOpen(false); onSelectMode() })}
         </div>
@@ -1270,6 +1292,10 @@ export function Dashboard({ listId = null }) {
     const saved = localStorage.getItem('dashboard_spark_v1')
     return isSparkType(saved) ? saved : DEFAULT_SPARK
   })
+  const [sparkWin, setSparkWinState] = useState(() => {
+    const saved = localStorage.getItem('dashboard_spark_window_v1')
+    return isSparkWindow(saved) ? saved : DEFAULT_WINDOW
+  })
   // sort is remembered PER LIST — a momentum list can live sorted by %
   // while the main board stays manual (Jeff's fable-run pick #5)
   const sortKey = listId ? `dashboard_sort_v1:${listId}` : 'dashboard_sort_v1'
@@ -1284,6 +1310,11 @@ export function Dashboard({ listId = null }) {
     if (!isSparkType(type)) return
     setSparkState(type)
     localStorage.setItem('dashboard_spark_v1', type)
+  }
+  const setSparkWin = (id) => {
+    if (!isSparkWindow(id)) return
+    setSparkWinState(id)
+    localStorage.setItem('dashboard_spark_window_v1', id)
   }
   const setSort = (value) => {
     setSortState(value)
@@ -1350,7 +1381,7 @@ export function Dashboard({ listId = null }) {
       <div class="dashboard-toolbar flex items-center gap-2 md:gap-4 px-1 pb-2 min-w-0">
         <div class="dashboard-controls flex items-center gap-2 min-w-0 shrink-0">
           <BoardMenu sort={sort} setSort={setSort} setViewMode={setViewMode}
-            spark={spark} setSpark={setSpark}
+            spark={spark} setSpark={setSpark} sparkWin={sparkWin} setSparkWin={setSparkWin}
             lists={namedWatchlists} listId={activeList?.id || null}
             onSelectMode={() => setSelecting(true)} />
           {activeList && (
@@ -1361,11 +1392,11 @@ export function Dashboard({ listId = null }) {
           )}
           <div class={`${activeList ? 'ml-auto' : ''} inline-flex rounded-lg border border-line bg-surface-1 p-0.5 shrink-0`}>
             <button onClick={() => setViewMode('grouped')}
-              class={`px-2 py-0.5 rounded-md font-anth text-[10px] transition-colors ${viewMode === 'grouped' ? 'bg-accent-2-soft text-accent-2' : 'text-muted hover:text-ink'}`}>
+              class={`px-2 py-0.5 rounded-md font-anth text-[10px] transition-colors ${viewMode === 'grouped' ? 'bg-accent-soft text-accent' : 'text-muted hover:text-ink'}`}>
               {tl('Sectors')}
             </button>
             <button onClick={() => setViewMode('flat')}
-              class={`px-2 py-0.5 rounded-md font-anth text-[10px] transition-colors ${viewMode === 'flat' ? 'bg-accent-2-soft text-accent-2' : 'text-muted hover:text-ink'}`}>
+              class={`px-2 py-0.5 rounded-md font-anth text-[10px] transition-colors ${viewMode === 'flat' ? 'bg-accent-soft text-accent' : 'text-muted hover:text-ink'}`}>
               {tl('All')}
             </button>
           </div>
@@ -1437,14 +1468,14 @@ export function Dashboard({ listId = null }) {
                 </div>
                 {!folded && g.symbols.map((s) => (
                   <TuiRow key={s} symbol={s} data={quotes[s]} earnDays={earnDays[s]}
-                    onRemove={removeSymbol} selecting={selecting} spark={spark}
+                    onRemove={removeSymbol} selecting={selecting} spark={spark} sparkWin={sparkWin}
                     selected={selected.has(s)} onToggleSelect={toggleSelect} />
                 ))}
               </div>
             )
           }) : flatRows.map(({ symbol }) => (
             <TuiRow key={symbol} symbol={symbol} data={quotes[symbol]} earnDays={earnDays[symbol]}
-              onRemove={removeSymbol} selecting={selecting} spark={spark}
+              onRemove={removeSymbol} selecting={selecting} spark={spark} sparkWin={sparkWin}
               selected={selected.has(symbol)} onToggleSelect={toggleSelect} />
           ))}
           {!watchlist.length && (

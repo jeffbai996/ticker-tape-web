@@ -7,7 +7,10 @@
 // the heights that carry the signal stay put.
 
 import { Histo } from './Histo.jsx'
-import { linePoints, changeBars, rangeBars } from '../lib/sparks.js'
+import {
+  linePoints, changeBars, rangeBars, sparkWindow, bucketBars,
+  DEFAULT_WINDOW, MAX_DRAWN_BARS,
+} from '../lib/sparks.js'
 
 const UP = '#3fb950'
 const DOWN = '#f85149'
@@ -79,11 +82,15 @@ function RangeSpark({ bars, width, height, class: cls }) {
   )
 }
 
-export function Spark({ type = 'vol', bars, width = 150, height = 24, class: cls = '' }) {
+export function Spark({ type = 'vol', window = DEFAULT_WINDOW, bars,
+                        width = 150, height = 24, class: cls = '' }) {
   if (type === 'off') return null
-  if (type === 'line') return <PriceSpark bars={bars} width={width} height={height} class={cls} />
-  if (type === 'area') return <PriceSpark bars={bars} width={width} height={height} class={cls} fill />
-  if (type === 'chg') return <ChangeSpark bars={bars} width={width} height={height} class={cls} />
-  if (type === 'range') return <RangeSpark bars={bars} width={width} height={height} class={cls} />
-  return <Histo bars={bars} width={width} height={height} class={cls} />
+  const win = sparkWindow(bars, window)
+  // a line can carry 252 points; bars can't — over ~60 they bucket into weeks
+  const drawn = type === 'line' || type === 'area' ? win : bucketBars(win, MAX_DRAWN_BARS)
+  if (type === 'line') return <PriceSpark bars={drawn} width={width} height={height} class={cls} />
+  if (type === 'area') return <PriceSpark bars={drawn} width={width} height={height} class={cls} fill />
+  if (type === 'chg') return <ChangeSpark bars={drawn} width={width} height={height} class={cls} />
+  if (type === 'range') return <RangeSpark bars={drawn} width={width} height={height} class={cls} />
+  return <Histo bars={drawn} width={width} height={height} class={cls} />
 }

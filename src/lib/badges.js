@@ -52,7 +52,7 @@ export function techBadges({ closes, volumes }, benchCloses = null) {
  *  draw — volume and direction for the histogram, close/high/low for the
  *  price, change and range shapes (Jeff 2026-08-07). One cached array feeds
  *  every spark type, so switching type costs no fetch. */
-export function histoBars(bars, n = 40) {
+export function histoBars(bars, n = 252) {
   const tail = (bars || []).slice(-n)
   return tail.map((b, i) => {
     const prev = i > 0 ? tail[i - 1].close : b.open ?? b.close
