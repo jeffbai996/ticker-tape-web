@@ -204,6 +204,15 @@ html, body {
      would just replace the ticker with a name you can read anyway
      (Jeff 2026-08-06) */
   @container (max-width: 544px) {
+    /* the slot clips its own swap by default; a revealed name is explicitly
+       allowed out of it, or the overlay above gets cut back to the ticker
+       width and none of this buys anything (Jeff 2026-08-07) */
+    .tui-row.is-revealed:not(.has-inline-name) .tui-company-identity,
+    .tui-row:hover:not(.has-inline-name) .tui-company-identity,
+    .tui-row:focus-visible:not(.has-inline-name) .tui-company-identity,
+    .tui-row:focus-within:not(.has-inline-name) .tui-company-identity {
+      overflow: visible;
+    }
     .tui-row.is-revealed:not(.has-inline-name) .tui-company-symbol,
     .tui-row:hover:not(.has-inline-name) .tui-company-symbol,
     .tui-row:focus-visible:not(.has-inline-name) .tui-company-symbol,
@@ -217,6 +226,21 @@ html, body {
     .tui-row:focus-within:not(.has-inline-name) .tui-company-name-swap {
       opacity: 1;
       transform: translateY(0);
+      /* The name was capped at the ticker slot — ~69px on a phone — so it
+         ellipsized with the rest of the row sitting empty beside it (Jeff
+         2026-08-07: "text not using the full width"). Revealed, it sizes to
+         its content and rides OVER the numbers on its own backdrop: nothing
+         reflows, the quote comes straight back on the second tap. The
+         column's own overflow clips anything genuinely too long. */
+      right: auto;
+      width: max-content;
+      max-width: 74vw;
+      z-index: 2;
+      padding-right: 1.1rem;
+      background: linear-gradient(90deg,
+        #000 0,
+        #000 calc(100% - 1.1rem),
+        rgb(0 0 0 / 0) 100%);
     }
   }
   

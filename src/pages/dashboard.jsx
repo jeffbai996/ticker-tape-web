@@ -170,13 +170,17 @@ function CompactDayRange({ lo, hi, v, cls = '' }) {
 }
 
 function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggleSelect,
-                  spark = DEFAULT_SPARK, sparkWin = DEFAULT_WINDOW }) {
+                  spark = DEFAULT_SPARK, sparkWin = DEFAULT_WINDOW,
+                  revealed = false, onReveal }) {
   const q = data?.quote
   // Touch has no hover, so a tap on the ticker used to jump straight to the
   // symbol page and the name was unreachable (Jeff 2026-08-05). First tap
   // reveals it, second follows the link — and only where the name isn't
   // already sitting inline.
-  const [revealed, setRevealed] = useState(false)
+  //
+  // The open row is BOARD state, not row state: per-row flags meant every
+  // name you ever tapped stayed open and the board slowly turned into a list
+  // of company names (Jeff 2026-08-07). One at a time, tap again to close.
   const identityRef = useRef(null)
   const onIdentityTap = (e) => {
     if (revealed || !matchMedia('(hover: none)').matches) return
@@ -184,7 +188,7 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
     if (inline && inline.offsetParent !== null) return
     e.preventDefault()
     e.stopPropagation()
-    setRevealed(true)
+    onReveal?.(symbol)
   }
   const up = (q?.pct ?? 0) >= 0
   const extUp = (q?.extPct ?? 0) >= 0
@@ -1339,6 +1343,8 @@ export function Dashboard({ listId = null }) {
     ? (symbol) => removeWatchlistSymbol(activeList.id, symbol)
     : unwatch
   const isPresent = (symbol) => watchlist.includes(String(symbol || '').trim().toUpperCase())
+  const [revealedSym, setRevealedSym] = useState(null)
+  const toggleReveal = (sym) => setRevealedSym((cur) => (cur === sym ? null : sym))
   const [reordering, setReordering] = useState(false)
   // batch mode: tick rows, act once — one-star-at-a-time was the only way to
   // clear several names off the board (Jeff 2026-08-06)
@@ -1469,6 +1475,7 @@ export function Dashboard({ listId = null }) {
                 {!folded && g.symbols.map((s) => (
                   <TuiRow key={s} symbol={s} data={quotes[s]} earnDays={earnDays[s]}
                     onRemove={removeSymbol} selecting={selecting} spark={spark} sparkWin={sparkWin}
+                    revealed={revealedSym === s} onReveal={toggleReveal}
                     selected={selected.has(s)} onToggleSelect={toggleSelect} />
                 ))}
               </div>
@@ -1476,6 +1483,7 @@ export function Dashboard({ listId = null }) {
           }) : flatRows.map(({ symbol }) => (
             <TuiRow key={symbol} symbol={symbol} data={quotes[symbol]} earnDays={earnDays[symbol]}
               onRemove={removeSymbol} selecting={selecting} spark={spark} sparkWin={sparkWin}
+              revealed={revealedSym === symbol} onReveal={toggleReveal}
               selected={selected.has(symbol)} onToggleSelect={toggleSelect} />
           ))}
           {!watchlist.length && (
