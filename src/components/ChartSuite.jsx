@@ -21,7 +21,7 @@ const SMA_COLORS = { sma20: '#f59e0b', sma50: '#22d3ee', sma200: '#c084fc' }
 const CMP_COLOR = '#22d3ee'
 
 const DEFAULTS = {
-  range: '6M', type: 'candles', log: false,
+  range: '6M', type: 'candles', log: false, ext: false,
   ov: { vol: true }, panes: {},
 }
 
@@ -59,6 +59,29 @@ export function ChartSuite({ symbol }) {
   const [bars, setBars] = useState(null)
   const [cmpBars, setCmpBars] = useState(null)
   const [intraday, setIntraday] = useState(false)
+  // A fixed 430px left a black void under the chart on tall windows and at
+  // low zoom (Jeff 2026-08-07). Measure the room actually left below the
+  // toolbars — off the SCROLL CONTAINER, not innerHeight, so the phone's
+  // bottom nav can't sit on top of the chart.
+  const [fillH, setFillH] = useState(430)
+  useEffect(() => {
+    const measure = () => {
+      const node = el.current
+      if (!node) return
+      const host = node.closest('.overflow-y-auto')
+      // the scroller's own bottom padding is the phone's nav strip — inside
+      // the box, but not room the chart may use
+      const padB = host ? parseFloat(getComputedStyle(host).paddingBottom) || 0 : 0
+      const bottom = host ? host.getBoundingClientRect().bottom - padB : innerHeight
+      const room = Math.round(bottom - node.getBoundingClientRect().top - 12)
+      setFillH(Math.max(280, Math.min(1100, room)))
+    }
+    measure()
+    addEventListener('resize', measure)
+    const ro = new ResizeObserver(measure)
+    if (el.current?.parentElement) ro.observe(el.current.parentElement)
+    return () => { removeEventListener('resize', measure); ro.disconnect() }
+  }, [state])
 
   const save = (next) => {
     setPrefs(next)
@@ -72,7 +95,7 @@ export function ChartSuite({ symbol }) {
     let dead = false
     setState('loading')
     setBars(null)
-    fetchHistory(symbol, prefs.range)
+    fetchHistory(symbol, prefs.range, { prepost: !!prefs.ext })
       .then((h) => {
         if (dead) return
         setBars(h.bars)
@@ -81,17 +104,17 @@ export function ChartSuite({ symbol }) {
       })
       .catch(() => { if (!dead) setState('error') })
     return () => { dead = true }
-  }, [symbol, prefs.range])
+  }, [symbol, prefs.range, prefs.ext])
 
   useEffect(() => {
     let dead = false
     setCmpBars(null)
     if (!cmp) return
-    fetchHistory(cmp, prefs.range)
+    fetchHistory(cmp, prefs.range, { prepost: !!prefs.ext })
       .then((h) => { if (!dead) setCmpBars(h.bars) })
       .catch(() => {})
     return () => { dead = true }
-  }, [cmp, prefs.range, symbol])
+  }, [cmp, prefs.range, prefs.ext, symbol])
 
   useEffect(() => {
     if (!el.current || !bars || !bars.length) return
@@ -238,6 +261,11 @@ export function ChartSuite({ symbol }) {
         {['candles', 'line', 'area'].map((t) =>
           chip(prefs.type === t && !cmp, t.toUpperCase(), () => setP({ type: t }), null, `draw as ${t}`))}
         {chip(prefs.log && !cmp, 'LOG', () => setP({ log: !prefs.log }), null, 'logarithmic price scale — equal % moves get equal height')}
+        {/* IBKR's extended-hours switch: 04:00–20:00 ET instead of the
+            regular session alone (Jeff 2026-08-07). Daily bars have no
+            session to split, so the chip only shows on intraday ranges. */}
+        {intraday && chip(!!prefs.ext, 'EXT', () => setP({ ext: !prefs.ext }), null,
+          'include pre-market and after-hours bars (04:00–20:00 ET)')}
       </div>
       <div class="flex flex-nowrap items-center gap-1 px-1 overflow-x-auto no-scrollbar">
         {chip(prefs.ov.sma20, 'SMA 20', () => toggleOv('sma20'), SMA_COLORS.sma20, '20-period simple moving average')}
@@ -269,12 +297,12 @@ export function ChartSuite({ symbol }) {
         <span ref={legendRef} class="ml-auto font-mono text-[10px] whitespace-nowrap" />
       </div>
       {state === 'loading' && (
-        <div class="h-[430px] flex items-center justify-center font-mono text-[11px] text-muted">{tl('loading…')}</div>
+        <div style={{ height: `${fillH}px` }} class="flex items-center justify-center font-mono text-[11px] text-muted">{tl('loading…')}</div>
       )}
       {state === 'error' && (
-        <div class="h-[430px] flex items-center justify-center font-mono text-[11px] text-down">{tl('chart unavailable')}</div>
+        <div style={{ height: `${fillH}px` }} class="flex items-center justify-center font-mono text-[11px] text-down">{tl('chart unavailable')}</div>
       )}
-      <div ref={el} class={`w-full ${state === 'ok' ? 'h-[430px]' : 'h-0'}`} />
+      <div ref={el} class="w-full" style={{ height: state === 'ok' ? `${fillH}px` : 0 }} />
     </div>
   )
 }
