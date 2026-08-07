@@ -25,6 +25,8 @@ import { groupDashboardRows, quoteSpread, selectFlatRows } from '../lib/dashboar
 import { searchSymbols } from '../lib/symbolSearch.js'
 import { fmtPrice, fmtPriceBare, fmtPct, fmtChange, fmtVol, rangePos } from '../lib/format.js'
 import { Histo } from '../components/Histo.jsx'
+import { Spark } from '../components/Spark.jsx'
+import { SPARK_TYPES, DEFAULT_SPARK, isSparkType } from '../lib/sparks.js'
 import { Marquee } from '../components/Marquee.jsx'
 import { FlashMetric, FlashPrice } from '../components/Fig.jsx'
 import { tl } from '../lib/i18n.js'
@@ -166,7 +168,8 @@ function CompactDayRange({ lo, hi, v, cls = '' }) {
   )
 }
 
-function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggleSelect }) {
+function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggleSelect,
+                  spark = DEFAULT_SPARK }) {
   const q = data?.quote
   // Touch has no hover, so a tap on the ticker used to jump straight to the
   // symbol page and the name was unreachable (Jeff 2026-08-05). First tap
@@ -307,7 +310,7 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
           <div class="flex items-center gap-2.5 pt-[2px] pl-0 min-w-0 @min-[430px]:overflow-hidden max-sm:overflow-x-auto no-scrollbar">
             {/* Container-relative width changes continuously with zoom. A
                 breakpoint used to turn this from postage stamp to runway. */}
-            <Histo bars={data?.histo} width={150} height={24}
+            <Spark type={spark} bars={data?.histo} width={150} height={24}
               class="w-[clamp(76px,18cqw,168px)] h-6 shrink-0" />
             {/* badges yield first: they are chips you glance at, while a range
                 clipped mid-number (Jeff 2026-08-05: "RHS occluded") is worse
@@ -1087,7 +1090,7 @@ function SectorScroller({ watchlist, quotes }) {
 /** Toolbar hamburger, left of the sector strip: sort, select mode and the
  *  watchlist picker fold into one menu instead of three standalone controls
  *  (Jeff 2026-08-06: "saves a ton of space"). */
-function BoardMenu({ sort, setSort, setViewMode, lists, listId, onSelectMode }) {
+function BoardMenu({ sort, setSort, setViewMode, spark, setSpark, lists, listId, onSelectMode }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   useEffect(() => {
@@ -1125,7 +1128,7 @@ function BoardMenu({ sort, setSort, setViewMode, lists, listId, onSelectMode }) 
         </svg>
       </button>
       {open && (
-        <div class="absolute top-full left-0 mt-1 w-52 z-40 bg-surface-1/95 backdrop-blur border border-line rounded-lg shadow-[0_8px_24px_rgba(0,0,0,0.6)] py-1">
+        <div class="absolute top-full left-0 mt-1 w-52 z-40 max-h-[72vh] overflow-y-auto bg-surface-1/95 backdrop-blur border border-line rounded-lg shadow-[0_8px_24px_rgba(0,0,0,0.6)] py-1">
           {head(tl('Watchlist'))}
           {item(tl('Dashboard'), !listId, () => { setOpen(false); location.hash = '#/' })}
           {lists.map((l) => item(l.name, listId === l.id,
@@ -1137,6 +1140,12 @@ function BoardMenu({ sort, setSort, setViewMode, lists, listId, onSelectMode }) 
             setSort(v)
             // any real sort implies the flat view — grouped rows don't reorder
             if (v !== 'manual') setViewMode('flat')
+          }))}
+          <div class="my-1 border-t border-line/70" />
+          {head(tl('Spark'))}
+          {SPARK_TYPES.map((t) => item(tl(t.label), spark === t.id, () => {
+            setOpen(false)
+            setSpark(t.id)
           }))}
           <div class="my-1 border-t border-line/70" />
           {item(tl('Select rows'), false, () => { setOpen(false); onSelectMode() })}
@@ -1255,6 +1264,12 @@ export function Dashboard({ listId = null }) {
   const [widgets, setWidgets] = useState(getWidgets)
   const [groupPrefs, setGroupPrefs] = useState(getGroupPrefs)
   const [viewMode, setViewModeState] = useState(() => localStorage.getItem('dashboard_view_mode_v1') || 'grouped')
+  // spark shape is a whole-board preference, not per-list: you're picking how
+  // to READ a row, and that shouldn't change when you switch watchlists
+  const [spark, setSparkState] = useState(() => {
+    const saved = localStorage.getItem('dashboard_spark_v1')
+    return isSparkType(saved) ? saved : DEFAULT_SPARK
+  })
   // sort is remembered PER LIST — a momentum list can live sorted by %
   // while the main board stays manual (Jeff's fable-run pick #5)
   const sortKey = listId ? `dashboard_sort_v1:${listId}` : 'dashboard_sort_v1'
@@ -1264,6 +1279,11 @@ export function Dashboard({ listId = null }) {
   const setViewMode = (mode) => {
     setViewModeState(mode)
     localStorage.setItem('dashboard_view_mode_v1', mode)
+  }
+  const setSpark = (type) => {
+    if (!isSparkType(type)) return
+    setSparkState(type)
+    localStorage.setItem('dashboard_spark_v1', type)
   }
   const setSort = (value) => {
     setSortState(value)
@@ -1330,6 +1350,7 @@ export function Dashboard({ listId = null }) {
       <div class="dashboard-toolbar flex items-center gap-2 md:gap-4 px-1 pb-2 min-w-0">
         <div class="dashboard-controls flex items-center gap-2 min-w-0 shrink-0">
           <BoardMenu sort={sort} setSort={setSort} setViewMode={setViewMode}
+            spark={spark} setSpark={setSpark}
             lists={namedWatchlists} listId={activeList?.id || null}
             onSelectMode={() => setSelecting(true)} />
           {activeList && (
@@ -1416,14 +1437,14 @@ export function Dashboard({ listId = null }) {
                 </div>
                 {!folded && g.symbols.map((s) => (
                   <TuiRow key={s} symbol={s} data={quotes[s]} earnDays={earnDays[s]}
-                    onRemove={removeSymbol} selecting={selecting}
+                    onRemove={removeSymbol} selecting={selecting} spark={spark}
                     selected={selected.has(s)} onToggleSelect={toggleSelect} />
                 ))}
               </div>
             )
           }) : flatRows.map(({ symbol }) => (
             <TuiRow key={symbol} symbol={symbol} data={quotes[symbol]} earnDays={earnDays[symbol]}
-              onRemove={removeSymbol} selecting={selecting}
+              onRemove={removeSymbol} selecting={selecting} spark={spark}
               selected={selected.has(symbol)} onToggleSelect={toggleSelect} />
           ))}
           {!watchlist.length && (
