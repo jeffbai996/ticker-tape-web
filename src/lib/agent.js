@@ -79,6 +79,7 @@ async function runAgenticOverWire({
           onThinking?.(delta)
           onTrace?.({ type: 'thinking', round, delta })
         },
+        onThinkingTokens: (tokens) => onTrace?.({ type: 'thinking_tokens', round, tokens }),
         signal,
       }))
     } catch (err) {

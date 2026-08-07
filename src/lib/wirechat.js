@@ -73,7 +73,8 @@ export function parseToolCall(text, defs = TOOL_DEFS) {
  * any output if the endpoint is missing so callers can fall back to
  * wireComplete.
  */
-export async function wireStream({ model, effort, system, messages, onDelta, onThinking, signal }) {
+export async function wireStream({ model, effort, system, messages, onDelta, onThinking,
+                                  onThinkingTokens, signal }) {
   const base = wireUrl().replace(/\/$/, '')
   const resp = await fetch(`${base}/api/chat/stream`, {
     method: 'POST',
@@ -108,6 +109,9 @@ export async function wireStream({ model, effort, system, messages, onDelta, onT
       if (event === 'delta') {
         if (payload.t === 'text') { text += payload.d; onDelta?.(payload.d) }
         else if (payload.t === 'thinking') onThinking?.(payload.d)
+        // Claude 5's adaptive thinking omits the text and reports depth only —
+        // the running token estimate is the honest stand-in (2026-08-07)
+        else if (payload.t === 'thinking_tokens') onThinkingTokens?.(Number(payload.d) || 0)
       } else if (event === 'done') {
         backend = payload.backend || ''
       } else if (event === 'error') {

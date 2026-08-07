@@ -394,6 +394,7 @@ const LABELS = {
   'VVIX': 'VVIX', '9D over 30D — term structure inverted': '9日高于30日 — 期限结构倒挂',
   'PPI Release': 'PPI公布', 'Retail Sales': '零售销售', 'Quad Witching': '四巫日',
   'Jackson Hole Symposium': '杰克逊霍尔年会',
+  'reasoned privately': '推理未公开', 'no reasoning returned for this step': '本步骤未返回推理',
   Spark: '走势图', Volume: '成交量', 'Price line': '价格线', 'Price area': '价格面积',
   'Daily change': '日涨跌', 'Daily range': '日振幅', Off: '关闭',
   'ISM Manufacturing': 'ISM制造业', 'ISM Services': 'ISM服务业',
