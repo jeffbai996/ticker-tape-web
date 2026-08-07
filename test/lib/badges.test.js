@@ -50,8 +50,18 @@ describe('histoBars', () => {
     const h = histoBars(bars, 40)
     expect(h).toHaveLength(3)
     expect(h[0].up).toBe(true)   // close ≥ open on first bar
-    expect(h[1]).toEqual({ v: 200, up: true })
-    expect(h[2]).toEqual({ v: 150, up: false })
+    expect(h[1]).toMatchObject({ v: 200, up: true })
+    expect(h[2]).toMatchObject({ v: 150, up: false })
+  })
+
+  it('carries close/high/low for the price and range sparks', () => {
+    const bars = [{ close: 10, high: 11, low: 9, open: 9, volume: 100 }]
+    expect(histoBars(bars, 40)[0]).toEqual({ v: 100, up: true, c: 10, h: 11, l: 9 })
+  })
+
+  it('falls back to the close when a bar has no high/low', () => {
+    const bars = [{ close: 10, open: 9, volume: 100 }]
+    expect(histoBars(bars, 40)[0]).toMatchObject({ c: 10, h: 10, l: 10 })
   })
 
   it('takes only the last n bars', () => {
