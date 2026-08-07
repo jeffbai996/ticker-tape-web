@@ -18,8 +18,60 @@ export const SPARK_TYPES = [
 
 export const DEFAULT_SPARK = 'vol'
 
+/** How far back the spark looks, in trading sessions (Jeff 2026-08-07). The
+ *  feed already caches a year of dailies, so every window is a free slice. */
+export const SPARK_WINDOWS = [
+  { id: '1M', sessions: 21 },
+  { id: '3M', sessions: 63 },
+  { id: '6M', sessions: 126 },
+  { id: '1Y', sessions: 252 },
+]
+
+export const DEFAULT_WINDOW = '3M'
+
+/** Bar-shaped sparks stop reading below ~2px a bar, so a long window buckets
+ *  into weeks instead of drawing 252 hairlines into 168px. */
+export const MAX_DRAWN_BARS = 60
+
 export function isSparkType(id) {
   return SPARK_TYPES.some((t) => t.id === id)
+}
+
+export function isSparkWindow(id) {
+  return SPARK_WINDOWS.some((w) => w.id === id)
+}
+
+/** The tail of the cached series for a window id; unknown ids fall back to the
+ *  default rather than showing everything. */
+export function sparkWindow(bars, id = DEFAULT_WINDOW) {
+  const win = SPARK_WINDOWS.find((w) => w.id === id)
+    || SPARK_WINDOWS.find((w) => w.id === DEFAULT_WINDOW)
+  return (bars || []).slice(-win.sessions)
+}
+
+/** Aggregate consecutive sessions into at most `maxBars` buckets: volume sums,
+ *  the range spans the bucket, and direction compares bucket close to the one
+ *  before it — the same read a weekly bar gives you. */
+export function bucketBars(bars, maxBars = MAX_DRAWN_BARS) {
+  const src = bars || []
+  if (src.length <= maxBars) return src
+  const size = Math.ceil(src.length / maxBars)
+  const out = []
+  for (let i = 0; i < src.length; i += size) {
+    const slice = src.slice(i, i + size)
+    const highs = slice.map((b) => b.h).filter((v) => v != null)
+    const lows = slice.map((b) => b.l).filter((v) => v != null)
+    const close = slice[slice.length - 1].c ?? null
+    const prev = out.length ? out[out.length - 1].c : slice[0].c
+    out.push({
+      v: slice.reduce((sum, b) => sum + (b.v || 0), 0),
+      c: close,
+      h: highs.length ? Math.max(...highs) : close,
+      l: lows.length ? Math.min(...lows) : close,
+      up: close != null && prev != null ? close >= prev : true,
+    })
+  }
+  return out
 }
 
 const closes = (bars) => bars.map((b) => b.c).filter((v) => v != null)
