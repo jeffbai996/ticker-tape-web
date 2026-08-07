@@ -2194,13 +2194,19 @@ export function Research({ route }) {
           <a
             key={tab.label}
             href={tab.href}
-            class={`font-mono font-medium text-[9.5px] px-2.5 py-1 rounded-md border hover:no-underline whitespace-nowrap shrink-0 ${
+            class={`font-mono text-[9.5px] px-2.5 py-1 rounded-md border hover:no-underline whitespace-nowrap shrink-0 ${
               route.view === tab.id
                 ? 'border-accent-2 text-accent-2 bg-accent-2-soft'
                 : 'border-white/25 text-muted hover:text-ink hover:bg-surface-3'
             }`}
           >
-            <span class="text-accent">{(ti + 1) % 10})</span> {tab.label}
+            {/* Weight lives on the WORD only. It used to sit on the anchor, so
+                the accent-coloured "1)" bolded along with it and the label never
+                looked any heavier than its own prefix (Jeff 2026-08-07). The
+                digit stays at 400 so the word reads as the label and the number
+                as the shortcut hint. */}
+            <span class="font-normal text-accent">{(ti + 1) % 10})</span>{' '}
+            <span class="font-semibold">{tab.label}</span>
           </a>
         ))}
       </div>
