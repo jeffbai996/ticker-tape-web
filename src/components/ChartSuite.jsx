@@ -22,6 +22,9 @@ const CMP_COLOR = '#22d3ee'
 
 const DEFAULTS = {
   range: '6M', type: 'candles', log: false, ext: false,
+  // Bar interval, keyed BY RANGE so 1D can sit on 1m while 6M stays daily —
+  // one shared value would be wrong for whichever window you left last.
+  ticks: {},
   ov: { vol: true }, panes: {},
 }
 
@@ -91,11 +94,20 @@ export function ChartSuite({ symbol }) {
   const toggleOv = (k) => setP({ ov: { ...prefs.ov, [k]: !prefs.ov[k] } })
   const togglePane = (k) => setP({ panes: { ...prefs.panes, [k]: !prefs.panes[k] } })
 
+  const activeRange = RANGES.find((r) => r.key === prefs.range)
+  // null means "the range's own default interval". Validated against the
+  // current range's list so a stored tick from another window can't leak
+  // through and ask Yahoo for a pair it rejects.
+  const tick = activeRange?.ticks?.includes(prefs.ticks?.[prefs.range])
+    ? prefs.ticks[prefs.range]
+    : null
+  const setTick = (v) => setP({ ticks: { ...prefs.ticks, [prefs.range]: v } })
+
   useEffect(() => {
     let dead = false
     setState('loading')
     setBars(null)
-    fetchHistory(symbol, prefs.range, { prepost: !!prefs.ext })
+    fetchHistory(symbol, prefs.range, { prepost: !!prefs.ext, interval: tick })
       .then((h) => {
         if (dead) return
         setBars(h.bars)
@@ -104,17 +116,18 @@ export function ChartSuite({ symbol }) {
       })
       .catch(() => { if (!dead) setState('error') })
     return () => { dead = true }
-  }, [symbol, prefs.range, prefs.ext])
+  }, [symbol, prefs.range, prefs.ext, tick])
 
   useEffect(() => {
     let dead = false
     setCmpBars(null)
     if (!cmp) return
-    fetchHistory(cmp, prefs.range, { prepost: !!prefs.ext })
+    // same interval as the primary series, or the two would not line up
+    fetchHistory(cmp, prefs.range, { prepost: !!prefs.ext, interval: tick })
       .then((h) => { if (!dead) setCmpBars(h.bars) })
       .catch(() => {})
     return () => { dead = true }
-  }, [cmp, prefs.range, prefs.ext, symbol])
+  }, [cmp, prefs.range, prefs.ext, tick, symbol])
 
   useEffect(() => {
     if (!el.current || !bars || !bars.length) return
@@ -253,10 +266,36 @@ export function ChartSuite({ symbol }) {
     </button>
   )
 
+  // Bar interval. Deliberately NOT the same control as the range chips above:
+  // they were being read as more timeframe buttons, so these are smaller,
+  // pill-shaped rather than square, and use the primary accent instead of
+  // accent-2 — three cues, since size alone wasn't enough (Jeff 2026-08-07).
+  const tickChip = (v) => {
+    const on = (tick || activeRange?.interval) === v
+    return (
+      <button
+        key={v}
+        onClick={() => setTick(v)}
+        title={`draw ${v} bars`}
+        class={`font-mono text-[8.5px] leading-none px-1 py-[3px] rounded-full border whitespace-nowrap shrink-0 ${
+          on ? 'border-accent/70 text-accent bg-accent-soft' : 'border-line/50 text-muted hover:text-ink'}`}
+      >
+        {v}
+      </button>
+    )
+  }
+
   return (
     <div class="flex flex-col gap-1.5 select-none">
       <div class="flex flex-nowrap items-center gap-1 px-1 overflow-x-auto no-scrollbar">
         {RANGES.map((r) => chip(prefs.range === r.key, r.key.toLowerCase(), () => setP({ range: r.key }), null, `${r.range} of ${r.interval} bars`))}
+        {activeRange?.ticks && (
+          <>
+            <span class="w-2" />
+            <span class="font-mono text-[8px] text-muted/70 tracking-widest shrink-0">BAR</span>
+            {activeRange.ticks.map(tickChip)}
+          </>
+        )}
         <span class="w-2" />
         {['candles', 'line', 'area'].map((t) =>
           chip(prefs.type === t && !cmp, t.toUpperCase(), () => setP({ type: t }), null, `draw as ${t}`))}
@@ -264,7 +303,11 @@ export function ChartSuite({ symbol }) {
         {/* IBKR's extended-hours switch: 04:00–20:00 ET instead of the
             regular session alone (Jeff 2026-08-07). Daily bars have no
             session to split, so the chip only shows on intraday ranges. */}
-        {intraday && chip(!!prefs.ext, 'EXT', () => setP({ ext: !prefs.ext }), null,
+        {/* Keyed on the RANGE, not the derived `intraday` flag: picking a
+            sub-daily bar on a daily window makes the axis intraday, but
+            fetchHistory only honours prepost when the range itself is
+            intraday, so keying on the flag would render a dead switch. */}
+        {activeRange?.intraday && chip(!!prefs.ext, 'EXT', () => setP({ ext: !prefs.ext }), null,
           'include pre-market and after-hours bars (04:00–20:00 ET)')}
       </div>
       <div class="flex flex-nowrap items-center gap-1 px-1 overflow-x-auto no-scrollbar">
