@@ -36,10 +36,22 @@ describe('compact dashboard company name', () => {
   it('reveals the name on a first tap where the slot cannot show both', () => {
     expect(dashboard).toContain("matchMedia('(hover: none)').matches")
     expect(dashboard).toContain('data-inline-name')
-    expect(dashboard).toContain('setRevealed(true)')
+    expect(dashboard).toContain('onReveal?.(symbol)')
     expect(dashboard).toContain("revealed ? ' is-revealed' : ''")
     expect(css).toContain('.tui-row.is-revealed:not(.has-inline-name) .tui-company-name-swap')
     expect(css).toContain('@container (max-width: 544px)')
+  })
+
+  // the open row belongs to the BOARD: tapping a second name moves the reveal
+  // instead of stacking, tapping the same one closes it (Jeff 2026-08-07)
+  it('keeps exactly one revealed name and lets it use the row', () => {
+    expect(dashboard).toContain('const [revealedSym, setRevealedSym] = useState(null)')
+    expect(dashboard).toContain('setRevealedSym((cur) => (cur === sym ? null : sym))')
+    expect(dashboard).toMatch(/revealed=\{revealedSym === s\}\s+onReveal=\{toggleReveal\}/)
+    expect(dashboard).toMatch(/revealed=\{revealedSym === symbol\}\s+onReveal=\{toggleReveal\}/)
+    // the swap escapes the ticker slot only while it's open
+    expect(css).toContain('.tui-row.is-revealed:not(.has-inline-name) .tui-company-identity')
+    expect(css).toMatch(/is-revealed[\s\S]*\.tui-company-name-swap[\s\S]*width: max-content;/)
   })
 
   it('flashes the regular print as ticker-by-ticker updates land', () => {
