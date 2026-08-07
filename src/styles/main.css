@@ -219,7 +219,42 @@ html, body {
       transform: translateY(0);
     }
   }
-  @media (prefers-reduced-motion: reduce) {
+  
+/* Brand spinner: the logo's dot ring, lit by a wave that runs around it.
+   Sized by the caller; the dots inherit the ring's colour from currentColor. */
+.brand-spinner circle { fill: currentColor; opacity: .18; }
+.brand-spinner.is-spinning circle { animation: brand-dot-wave 1.1s linear infinite; }
+@keyframes brand-dot-wave {
+  0% { opacity: 1; transform: scale(1.15); }
+  22% { opacity: .5; transform: scale(1); }
+  55%, 100% { opacity: .16; transform: scale(1); }
+}
+.brand-spinner circle { transform-origin: center; transform-box: fill-box; }
+
+/* Three dots that breathe under a running label — "Thinking" reads as live
+   without spelling out which model is doing it (Jeff 2026-08-07). */
+.chat-ellipsis { display: inline-flex; gap: 1px; margin-left: 1px; vertical-align: baseline; }
+.chat-ellipsis i { font-style: normal; animation: chat-ellipsis-blink 1.25s ease-in-out infinite; }
+.chat-ellipsis i:nth-child(2) { animation-delay: .18s; }
+.chat-ellipsis i:nth-child(3) { animation-delay: .36s; }
+@keyframes chat-ellipsis-blink { 0%, 65%, 100% { opacity: .25; } 30% { opacity: 1; } }
+
+/* Live chain-of-thought: the model's reasoning as it streams, pinned to the
+   newest line with the older text fading out of the top of the window
+   (Jeff 2026-08-07: "I want actual chain-of-thought material displayed"). */
+.chat-think {
+  margin: .1rem 0 .3rem 1.42rem; padding: .3rem .55rem; max-height: 7.4rem;
+  overflow: hidden auto; border-left: 1px solid var(--color-line-2);
+  background: rgba(255, 255, 255, .018); border-radius: 0 6px 6px 0;
+  color: var(--color-muted); scrollbar-width: none;
+  font: 450 10.5px/1.5 "Anthropic Sans", "Plus Jakarta Sans", system-ui, sans-serif;
+  white-space: pre-wrap; overflow-wrap: anywhere;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 1.6rem);
+  mask-image: linear-gradient(to bottom, transparent, #000 1.6rem);
+}
+.chat-think::-webkit-scrollbar { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
     .mq-inner,
     .tui-company-symbol,
     .tui-company-name-swap {
@@ -400,6 +435,10 @@ button:hover .burger path:nth-child(2) { transform: scaleX(.55); }
   display: grid; place-items: center;
 }
 .chat-trace-mark svg { width: 15px; height: 15px; overflow: visible; }
+/* the working state wears the brand spinner, which needs more room than the
+   15px tick that replaces it when the turn lands (Jeff 2026-08-07) */
+.chat-trace-mark.is-running { width: 19px; height: 19px; flex: 0 0 19px; color: var(--color-accent); }
+.chat-trace-mark svg.brand-spinner { width: 19px; height: 19px; }
 .chat-trace-mark svg path {
   fill: none; stroke: var(--color-ink-2); stroke-width: 1.45;
   stroke-linecap: round; transform-origin: center; transform-box: fill-box;
@@ -472,6 +511,7 @@ button:hover .burger path:nth-child(2) { transform: scaleX(.55); }
   .chat-message-enter, .chat-message-live, .chat-turn-enter, .chat-rail-section,
   .chat-trace, .chat-trace-step { animation: none !important; }
   .chat-trace-mark svg path, .chat-trace-step.is-running .chat-trace-node { animation: none !important; }
+  .brand-spinner circle, .chat-ellipsis i { animation: none !important; }
   .chat-trace-reveal, .chat-trace-caret { transition: none !important; }
 }
 

@@ -487,11 +487,44 @@ const TOOL_VERBS = {
   navigate: 'open',
 }
 
+/** What the assistant is DOING, in the present tense — the trace says
+ *  "Reading quotes AAPL" while it happens rather than naming the endpoint
+ *  (Jeff 2026-08-07: "like Searching, Reading, Browsing"). */
+const TOOL_GERUNDS = {
+  get_quotes: 'Reading quotes',
+  get_technicals: 'Reading technicals',
+  get_earnings: 'Reading earnings',
+  get_market_pulse: 'Reading the tape',
+  get_watchlist: 'Reading the watchlist',
+  watch: 'Adding to the watchlist',
+  unwatch: 'Removing from the watchlist',
+  set_alert: 'Arming an alert',
+  get_calendar: 'Reading the calendar',
+  add_catalyst: 'Adding a catalyst',
+  memory_add: 'Remembering',
+  memory_edit: 'Revising a memory',
+  memory_delete: 'Forgetting',
+  journal_add: 'Writing to the journal',
+  journal_search: 'Searching the journal',
+  navigate: 'Opening',
+}
+
+function toolArg(tc) {
+  const a = tc.args || {}
+  return a.symbols?.join?.(', ') ?? a.symbol ?? a.view ?? a.label ?? ''
+}
+
 /** Human-readable chip label for a tool call. Exported for the UI. */
 export function toolLabel(tc) {
-  const a = tc.args || {}
-  const arg = a.symbols?.join?.(', ') ?? a.symbol ?? a.view ?? a.label ?? ''
+  const arg = toolArg(tc)
   const verb = TOOL_VERBS[tc.name] || tc.name
+  return arg ? `${verb} ${arg}` : verb
+}
+
+/** Same call, phrased as the work in progress. */
+export function toolRunLabel(tc) {
+  const arg = toolArg(tc)
+  const verb = TOOL_GERUNDS[tc.name] || TOOL_VERBS[tc.name] || tc.name
   return arg ? `${verb} ${arg}` : verb
 }
 
