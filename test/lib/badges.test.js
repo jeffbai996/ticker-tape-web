@@ -96,7 +96,7 @@ describe('pulseStats', () => {
 
 describe('parseCommand', () => {
   it('routes bare symbols and per-symbol views', () => {
-    expect(parseCommand('nvda')).toEqual({ type: 'nav', hash: '#/research/nvda' })
+    expect(parseCommand('nvda')).toEqual({ type: 'nav', hash: '#/research/nvda', verify: 'NVDA' })
     expect(parseCommand('ta MSFT')).toEqual({ type: 'nav', hash: '#/research/msft' })
     expect(parseCommand('intra spy')).toEqual({ type: 'nav', hash: '#/research/spy/intraday' })
     expect(parseCommand('ei jpm')).toEqual({ type: 'nav', hash: '#/research/jpm/earnings' })

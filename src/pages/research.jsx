@@ -2194,7 +2194,7 @@ export function Research({ route }) {
           <a
             key={tab.label}
             href={tab.href}
-            class={`font-mono text-[9px] px-2.5 py-1 rounded-md border hover:no-underline whitespace-nowrap shrink-0 ${
+            class={`font-mono font-medium text-[9.5px] px-2.5 py-1 rounded-md border hover:no-underline whitespace-nowrap shrink-0 ${
               route.view === tab.id
                 ? 'border-accent-2 text-accent-2 bg-accent-2-soft'
                 : 'border-white/25 text-muted hover:text-ink hover:bg-surface-3'

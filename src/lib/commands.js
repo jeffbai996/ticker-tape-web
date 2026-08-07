@@ -274,8 +274,12 @@ export function parseCommand(input) {
     return { type: 'msg', text: "it's a browser — close the tab :)" }
   }
 
-  // bare symbol → research
-  if (parts.length === 1 && SYM.test(parts[0])) return research(parts[0])
+  // bare symbol → research. `verify` says the console must confirm the
+  // symbol exists before it moves: an unrecognised string is a typo, not a
+  // navigation (Jeff 2026-08-07).
+  if (parts.length === 1 && SYM.test(parts[0])) {
+    return { ...research(parts[0]), verify: parts[0].toUpperCase() }
+  }
 
   return null
 }

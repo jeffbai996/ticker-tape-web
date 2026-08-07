@@ -6,6 +6,7 @@ import { watch, unwatch } from '../lib/watchlist.js'
 import { addAlert, conditionText } from '../lib/alerts.js'
 import { addCatalyst, removeCatalyst, loadCatalysts } from '../lib/catalysts.js'
 import { getCached } from '../lib/feed.js'
+import { symbolExists } from '../lib/symbolSearch.js'
 import { loadUserGroups, saveUserGroup, removeUserGroup } from '../lib/usergroups.js'
 import { loadMemories, addMemory, editMemory, removeMemory } from '../lib/chatMemory.js'
 import {
@@ -128,6 +129,23 @@ export function CommandBar() {
     history.current.push(cmd)
     setHistIdx(-1)
     setValue('')
+
+    if (plan.type === 'nav' && plan.verify) {
+      // a symbol we can't confirm is a typo — say so and stay put rather than
+      // dumping the user on a dead research page (Jeff 2026-08-07)
+      print(cmd, `[#808080]looking up[/] ${plan.verify}…`)
+      symbolExists(plan.verify, { cached: (s) => getCached(s)?.quote })
+        .then((ok) => {
+          if (!ok) {
+            print(cmd, `[red]no such symbol:[/] ${plan.verify} [#808080]— you're still here[/]`)
+            return
+          }
+          location.hash = plan.hash
+          print(cmd, quoteEcho(plan.verify) || `→ ${plan.hash.replace('#/', '')}`)
+        })
+        .catch(() => print(cmd, `[red]couldn't check[/] ${plan.verify} [#808080]— stayed put, try again[/]`))
+      return
+    }
 
     if (plan.type === 'nav') {
       // chart range / options expiry ride-alongs: storage covers a view that

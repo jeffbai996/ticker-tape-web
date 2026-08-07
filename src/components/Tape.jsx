@@ -135,7 +135,7 @@ export function Tape() {
         } : undefined}
       >
         {Array.from({ length: marquee.copies }, (_, copy) => (
-          <div ref={copy === 0 ? firstCycle : undefined} key={copy} class="tape-cycle flex items-center h-full gap-3 pr-3">
+          <div ref={copy === 0 ? firstCycle : undefined} key={copy} class="tape-cycle flex items-center h-full gap-1.5 pr-3">
             {entries.map(({ kind, data }, i) => {
               if (kind === 'headline') {
                 const e = data

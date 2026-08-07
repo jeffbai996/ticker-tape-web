@@ -95,7 +95,7 @@ function StripCell({ symbol, label, q }) {
   const isVix = symbol === '^VIX'
   return (
     <a href={hrefFor('research', symbol.toLowerCase())}
-       class="hl-row flex items-baseline gap-1.5 whitespace-nowrap leading-5 px-1 hover:no-underline">
+       class="hl-row flex items-baseline gap-1.5 whitespace-nowrap leading-5 px-0.5 hover:no-underline">
       <span class="text-muted/60 font-tick text-[10px]">{tl(label)}</span>
       {/* no thousands separators in the strip — "29536.50" scans faster at a
           glance than "29,536.50" in a 10px ribbon (Jeff 2026-08-06); commas
@@ -164,7 +164,7 @@ export function StatusBar() {
       {/* one scrollable line, centred in the bar so it lines up with the
           wordmark: swipe it, drag it, or hover an edge to creep along. */}
       <div class="flex-1 min-w-0 flex items-center">
-        <div ref={stripRef} class="w-full flex items-baseline gap-2.5 overflow-x-auto no-scrollbar py-0.5">
+        <div ref={stripRef} class="w-full flex items-baseline gap-[5px] overflow-x-auto no-scrollbar py-0.5">
           {strip.map(({ symbol, label }) => (
             <StripCell key={symbol} symbol={symbol} label={label} q={quotes[symbol]?.quote} />
           ))}
