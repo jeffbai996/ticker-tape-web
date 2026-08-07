@@ -45,8 +45,11 @@ export function lastSessionBars(bars) {
   return bars.filter((b) => day(b.time) === last)
 }
 
-async function fetchChart(symbol, range, interval) {
+async function fetchChart(symbol, range, interval, prepost = false) {
+  // includePrePost widens an intraday window to 04:00–20:00 ET; daily and
+  // weekly bars are unaffected by it (Jeff 2026-08-07, IBKR parity)
   const url = `${proxyBase()}/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}`
+    + (prepost ? '&includePrePost=true' : '')
   const resp = await fetch(url, { signal: AbortSignal.timeout(12_000) })
   if (!resp.ok) throw new Error(`history ${symbol}: HTTP ${resp.status}`)
   const result = (await resp.json())?.chart?.result?.[0]
@@ -54,18 +57,20 @@ async function fetchChart(symbol, range, interval) {
   return result
 }
 
-export function fetchHistory(symbol, rangeKey, { warm = false, interval = null } = {}) {
+export function fetchHistory(symbol, rangeKey, { warm = false, interval = null, prepost = false } = {}) {
   const r = RANGES.find((x) => x.key === rangeKey) || RANGES[2]
   if (warm && !r.warm) return Promise.resolve({ bars: [] })
   const range = warm ? r.warm : r.range
   const iv = interval || r.interval
-  return cached(`h:${symbol}:${r.key}${iv !== r.interval ? `:${iv}` : ''}${warm ? ':warm' : ''}`, r.ttl, async () => {
-    const result = await fetchChart(symbol, range, iv)
+  // the extended session is a DIFFERENT series, so it gets its own cache key
+  const ext = prepost && r.intraday
+  return cached(`h:${symbol}:${r.key}${iv !== r.interval ? `:${iv}` : ''}${ext ? ':ext' : ''}${warm ? ':warm' : ''}`, r.ttl, async () => {
+    const result = await fetchChart(symbol, range, iv, ext)
     let bars = barsFromChart(result)
     // an empty intraday answer is a Yahoo hiccup, not a market holiday —
     // pull the wider window and keep only the newest session
     if (!bars.length && !warm && r.intraday && r.warm) {
-      const wide = await fetchChart(symbol, r.warm, iv).catch(() => null)
+      const wide = await fetchChart(symbol, r.warm, iv, ext).catch(() => null)
       if (wide) bars = lastSessionBars(barsFromChart(wide))
       if (!bars.length) throw new Error(`history ${symbol}: no bars`)
     }
