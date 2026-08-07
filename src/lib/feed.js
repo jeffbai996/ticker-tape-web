@@ -44,7 +44,9 @@ export function proxyBase() {
 // symbol -> { quote, histo, tech, ts } — persisted so a refresh paints
 // instantly from the last snapshot and only re-fetches what's actually stale.
 // v2: chart pump moved from intraday sparks to 1Y daily (histo + badges).
-const cache = createPCache('feed_cache_v2', { max: 150 })
+// v3: histo bars carry close/high/low so the spark column can draw price and
+// range shapes, not just volume — a v2 entry would render an empty line.
+const cache = createPCache('feed_cache_v3', { max: 150 })
 const listeners = new Set()
 let queue = []
 let pumping = false
