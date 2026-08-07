@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { fetchChatModels, fetchSpend } from '../lib/chatClient.js'
 import { runAgentic, trimHistory } from '../lib/agent.js'
-import { toolLabel } from '../lib/tools.js'
+import { toolLabel, toolRunLabel } from '../lib/tools.js'
+import { BrandSpinner } from '../components/BrandSpinner.jsx'
 import { MdLite } from '../components/AiReport.jsx'
 import { tl, t as tt } from '../lib/i18n.js'
 import { fetchWireChatModels, wireChatAvailable } from '../lib/wirechat.js'
@@ -326,6 +327,74 @@ function traceArgs(args) {
   return raw.length > 320 ? `${raw.slice(0, 319)}…` : raw
 }
 
+/** One row of the session list. Delete is always visible (hover-only meant it
+ *  didn't exist on touch, and Jeff couldn't find it at all — 2026-08-07), and
+ *  arming it flips the row into a confirm rather than firing on one tap. */
+function SessionRow({ thread, active, busy, onOpen, onDelete }) {
+  const [arming, setArming] = useState(false)
+  useEffect(() => {
+    if (!arming) return
+    const t = setTimeout(() => setArming(false), 4000)
+    return () => clearTimeout(t)
+  }, [arming])
+  return (
+    <div class={`flex items-center gap-2 rounded-lg px-2 py-1.5 ${active ? 'bg-accent-soft' : 'hover:bg-surface-2'}`}>
+      <button type="button" disabled={busy} onClick={onOpen} class="flex-1 min-w-0 text-left disabled:opacity-50">
+        <span class={`block truncate font-anth text-[12px] ${active ? 'text-accent' : 'text-ink-2'}`}>
+          {thread.title || tl('untitled')}
+        </span>
+        <span class="block font-mono text-[9px] text-muted">{tt('chat.session_messages', { n: thread.n })}</span>
+      </button>
+      {arming ? (
+        <span class="flex items-center gap-1 shrink-0">
+          <button type="button" disabled={busy} onClick={() => { setArming(false); onDelete() }}
+            class="font-anth text-[10px] px-1.5 py-0.5 rounded border border-down/50 text-down hover:bg-down/10 disabled:opacity-40">
+            {tl('delete')}
+          </button>
+          <button type="button" onClick={() => setArming(false)}
+            class="font-anth text-[10px] px-1.5 py-0.5 rounded border border-line text-muted hover:text-ink">
+            {tl('cancel')}
+          </button>
+        </span>
+      ) : (
+        <button type="button" disabled={busy} onClick={() => setArming(true)} title={tl('delete session')}
+          aria-label={tl('delete session')}
+          class="shrink-0 w-6 h-6 grid place-items-center rounded-md text-muted hover:text-down hover:bg-surface-2 disabled:opacity-30">
+          <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 4.5h10M6.5 4.5V3.2h3v1.3M4.4 4.5l.6 8.1h6l.6-8.1M6.6 7v3.4M9.4 7v3.4" />
+          </svg>
+        </button>
+      )}
+    </div>
+  )
+}
+
+/** "~1.2k tokens" — the depth read for a model that reasons behind a
+ *  curtain. Claude 5's adaptive thinking omits the text and reports only how
+ *  much of it there was (Jeff 2026-08-07: he wanted the reasoning itself; this
+ *  is what the backend actually exposes). */
+function thinkDepth(tokens) {
+  if (!tokens) return ''
+  return tokens >= 1000 ? `~${(tokens / 1000).toFixed(1)}k tokens` : `~${tokens} tokens`
+}
+
+/** Three dots that keep breathing while a step runs. */
+function Ellipsis() {
+  return <span class="chat-ellipsis" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span>
+}
+
+/** The model's reasoning as it streams. Pinned to the newest line — a pane
+ *  that doesn't follow the text is a pane you have to babysit. */
+function ThinkingPane({ text }) {
+  const ref = useRef(null)
+  useEffect(() => {
+    const el = ref.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [text])
+  if (!text) return null
+  return <div ref={ref} class="chat-think">{text}</div>
+}
+
 /** One complete provider/tool timeline. Live traces stay open; completed traces
  * fold into an Operator-style "Worked for" row without discarding the steps. */
 function ActivityTrace({ steps, busy = false, startedAt }) {
@@ -346,20 +415,28 @@ function ActivityTrace({ steps, busy = false, startedAt }) {
   const failed = steps.some((step) => step.status === 'error')
   const title = busy ? (running?.verb || running?.label || 'Working') : failed ? 'Stopped after' : 'Worked for'
   const elapsed = durationLabel(last - first)
+  // the reasoning of whichever model step is live — shown as it arrives
+  // rather than only inside the folded step list (Jeff 2026-08-07)
+  const liveThinking = busy && running?.kind === 'model' ? running.detail : ''
+  const liveDepth = busy && running?.kind === 'model' ? thinkDepth(running.thinkTokens) : ''
 
   return (
     <div class={`chat-trace w-full max-w-[92%] self-start text-muted ${busy ? 'is-live' : ''}`}>
       <button type="button" class="chat-trace-head" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
         <span class={`chat-trace-mark ${busy ? 'is-running' : failed ? 'is-error' : 'is-done'}`} aria-hidden="true">
-          {busy ? (
-            <svg viewBox="0 0 20 20"><path d="M4 10a6 6 0 0 1 10.2-4.2M16 10a6 6 0 0 1-10.2 4.2" /></svg>
-          ) : null}
+          {busy ? <BrandSpinner size={19} /> : null}
         </span>
-        <span class="chat-trace-title">{title}{busy ? '' : ` ${elapsed}`}</span>
+        <span class="chat-trace-title">{title}{busy ? <Ellipsis /> : ` ${elapsed}`}</span>
         {busy && <span class="font-mono text-[9px] tabular-nums text-muted">{elapsed}</span>}
+        {liveDepth && !liveThinking && (
+          <span class="font-mono text-[9px] tabular-nums text-muted/80">{liveDepth}</span>
+        )}
         <span class="chat-trace-count">{steps.length} {steps.length === 1 ? 'step' : 'steps'}</span>
         <span class={`chat-trace-caret ${open ? 'is-open' : ''}`} />
       </button>
+      {/* live reasoning rides ABOVE the step list: it's the part you actually
+          read while waiting, and it stays reachable per-step afterwards */}
+      {liveThinking && <ThinkingPane text={liveThinking} />}
       <div class={`chat-trace-reveal ${open ? 'is-open' : ''}`}>
         <div>
           <div class="chat-trace-body">
@@ -371,10 +448,20 @@ function ActivityTrace({ steps, busy = false, startedAt }) {
                   <span class="chat-trace-node" />
                   <div class="min-w-0 flex-1">
                     <div class="flex items-baseline gap-2">
-                      <span class="chat-trace-label">{step.label}</span>
+                      <span class="chat-trace-label">
+                        {step.label}{step.status === 'running' && <Ellipsis />}
+                      </span>
                       {stepElapsed && <span class="chat-trace-time">{stepElapsed}</span>}
                     </div>
-                    {step.detail && <div class={`chat-trace-detail ${step.kind === 'tool' ? 'is-tool' : ''}`}>{step.detail}</div>}
+                    {step.detail
+                      ? <div class={`chat-trace-detail ${step.kind === 'tool' ? 'is-tool' : ''}`}>{step.detail}</div>
+                      : step.kind === 'model' && (
+                        <div class="chat-trace-detail">
+                          {step.thinkTokens
+                            ? `${tl('reasoned privately')} · ${thinkDepth(step.thinkTokens)}`
+                            : tl('no reasoning returned for this step')}
+                        </div>
+                      )}
                   </div>
                 </div>
               )
@@ -395,7 +482,7 @@ function ActivityTrace({ steps, busy = false, startedAt }) {
  * page has a centre of gravity instead of a void under it.
  */
 function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
-                     threadLen, onResume, composer, memN, journalN, journal,
+                     threadLen, onResume, memN, journalN, journal,
                      onOpenMem, onOpenJournal }) {
   const book = hasLiveBook()
   const nextEvent = events[0] || null
@@ -540,8 +627,9 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
         </div>
       </div>
 
-      {composer}
-
+      {/* the composer used to sit here, mid-pad, which meant scrolling to
+          find it on a short viewport — it's docked at the bottom of the page
+          now (Jeff 2026-08-07) */}
       <div>
         <div class="flex items-baseline gap-3 pb-1.5">
           <span class="font-mono text-[9px] tracking-[0.16em] text-muted uppercase">{tl('start here')}</span>
@@ -761,8 +849,8 @@ export function Chat() {
     // context assembly is table stakes, not a trace step worth narrating
     // (Jeff 2026-08-06: "it says read live market context every single time")
     replaceActivity([{
-      key: 'context', kind: 'context', label: 'Thinking…',
-      verb: 'Thinking…', status: 'running', startedAt: turnStartedRef.current,
+      key: 'context', kind: 'context', label: 'Thinking',
+      verb: 'Thinking', status: 'running', startedAt: turnStartedRef.current,
     }])
 
     const base = [...historyRef.current, {
@@ -790,7 +878,6 @@ export function Chat() {
     try {
       system += '\n\n' + await buildChatContext(text)
     } catch { /* context is best-effort — a bare prompt still answers */ }
-    const runLabel = models.find((candidate) => candidate.key === runModel)?.label || runModel
 
     const traceEvent = (event) => {
       const now = Date.now()
@@ -798,7 +885,7 @@ export function Chat() {
         // the placeholder "Thinking…" step yields to the real model step
         updateActivity((steps) => [...steps.filter((step) => step.key !== 'context'), {
           key: `model-${event.round}`, kind: 'model',
-          label: `Thinking with ${runLabel}`, verb: `Thinking with ${runLabel}`,
+          label: 'Thinking', verb: 'Thinking',
           status: 'running', startedAt: now, detail: '',
         }])
         return
@@ -809,11 +896,17 @@ export function Chat() {
           : step))
         return
       }
+      if (event.type === 'thinking_tokens') {
+        updateActivity((steps) => steps.map((step) => step.key === `model-${event.round}`
+          ? { ...step, thinkTokens: event.tokens }
+          : step))
+        return
+      }
       if (event.type === 'model_done') {
         updateActivity((steps) => steps.map((step) => step.key === `model-${event.round}`
           ? {
               ...step,
-              label: event.outcome === 'answer' ? `Composed with ${runLabel}` : `Reasoned with ${runLabel}`,
+              label: event.outcome === 'answer' ? 'Answered' : 'Reasoned',
               status: 'done', endedAt: now,
             }
           : step))
@@ -822,8 +915,8 @@ export function Chat() {
       if (event.type === 'tool_start') {
         const call = { name: event.name, args: event.args }
         updateActivity((steps) => [...steps, {
-          key: `tool-${event.id}`, kind: 'tool', label: toolLabel(call),
-          verb: toolLabel(call), detail: traceArgs(event.args),
+          key: `tool-${event.id}`, kind: 'tool', label: toolRunLabel(call),
+          verb: toolRunLabel(call), detail: traceArgs(event.args),
           status: 'running', startedAt: now,
         }])
         return
@@ -1138,12 +1231,14 @@ export function Chat() {
           wordmark tucks into the far top-left corner and the tool rail into
           the top-right, both floating transparent (Jeff 2026-08-06). Model
           and effort moved onto the composer, OWUI-style. */}
-      <div class="absolute top-1.5 left-2 z-30 flex items-center gap-1.5">
-        <h1 class="font-bold text-[13px] leading-none text-ink" style="font-family: 'Plus Jakarta Sans', sans-serif">{tl('AI Chat')}</h1>
+      {/* the wordmark used to sit jammed into the corner at 13px; it now
+          shares the rail's 12px inset and reads at 15px (Jeff 2026-08-07) */}
+      <div class="absolute top-3 left-3 z-30 flex items-center gap-2">
+        <h1 class="font-bold text-[15px] leading-none text-ink" style="font-family: 'Plus Jakarta Sans', sans-serif">{tl('AI Chat')}</h1>
         <span class={`w-1.5 h-1.5 rounded-full ${onWire ? 'bg-up' : 'bg-accent'}`}
               title={tl(onWire ? 'online — private wire' : 'online — public proxy')} />
       </div>
-        <div class="absolute top-1.5 right-2 z-30 h-7 flex items-center gap-0.5 rounded-lg px-0.5">
+        <div class="absolute top-2.5 right-3 z-30 h-7 flex items-center gap-0.5 rounded-lg px-0.5">
           <button
             onClick={() => setDrawer(drawer === 'sessions' ? null : 'sessions')}
             class={`relative w-6 h-6 grid place-items-center rounded-md ${drawer === 'sessions' ? 'text-accent bg-accent-soft' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
@@ -1210,14 +1305,10 @@ export function Chat() {
           <div class="py-2 flex flex-col gap-1">
             {threads.length === 0 && <div class="font-anth text-[12px] text-muted py-1">{tl('no saved sessions yet')}</div>}
             {threads.map((thread) => (
-              <div key={thread.id} class={`group flex items-center gap-2 rounded-lg px-2 py-1.5 ${thread.id === currentThreadId() ? 'bg-accent-soft' : 'hover:bg-surface-2'}`}>
-                <button type="button" disabled={busy} onClick={() => switchThread(thread.id)} class="flex-1 min-w-0 text-left disabled:opacity-50">
-                  <span class={`block truncate font-anth text-[12px] ${thread.id === currentThreadId() ? 'text-accent' : 'text-ink-2'}`}>{thread.title || tl('untitled')}</span>
-                  <span class="block font-mono text-[9px] text-muted">{tt('chat.session_messages', { n: thread.n })}</span>
-                </button>
-                <button type="button" disabled={busy} onClick={() => deleteSession(thread.id)} title={tl('delete session')}
-                  class="opacity-0 group-hover:opacity-100 max-md:opacity-100 text-muted hover:text-down disabled:opacity-30 shrink-0 font-mono text-[11px]">✕</button>
-              </div>
+              <SessionRow key={thread.id} thread={thread} busy={busy}
+                active={thread.id === currentThreadId()}
+                onOpen={() => switchThread(thread.id)}
+                onDelete={() => deleteSession(thread.id)} />
             ))}
           </div>
         </div>
@@ -1279,6 +1370,7 @@ export function Chat() {
           when it outgrows the viewport (phone), because overflow only scrolls
           toward the end edge. */}
       {splash ? (
+        <>
         <div class="flex-1 min-h-0 overflow-y-auto flex flex-col [justify-content:safe_center]">
           <Launchpad
             onWire={onWire}
@@ -1289,7 +1381,6 @@ export function Chat() {
             threadLen={history.length}
             onResume={() => setAtHome(false)}
             onPick={(text) => { setInput(text); inputRef.current?.focus() }}
-            composer={composer}
             memN={memories.length}
             journalN={journal.length}
             journal={journal}
@@ -1297,6 +1388,8 @@ export function Chat() {
             onOpenJournal={() => { setJournal(loadJournal()); setDrawer('journal') }}
           />
         </div>
+        {composer}
+        </>
       ) : (
         <>
           <div
@@ -1441,8 +1534,8 @@ export function Chat() {
                 </button>
                 <span class="font-mono text-[8.5px] text-muted shrink-0">{t.n}</span>
                 <button onClick={() => deleteSession(t.id)} disabled={busy}
-                  title={tl('delete session')}
-                  class="opacity-0 group-hover:opacity-100 text-muted hover:text-down shrink-0 font-mono text-[10px]">✕</button>
+                  title={tl('delete session')} aria-label={tl('delete session')}
+                  class="text-muted/70 hover:text-down shrink-0 font-mono text-[10px]">✕</button>
               </div>
             ))}
           </div>
