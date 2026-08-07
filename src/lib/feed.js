@@ -46,7 +46,11 @@ export function proxyBase() {
 // v2: chart pump moved from intraday sparks to 1Y daily (histo + badges).
 // v3: histo bars carry close/high/low so the spark column can draw price and
 // range shapes, not just volume — a v2 entry would render an empty line.
-const cache = createPCache('feed_cache_v3', { max: 150 })
+// v4: a full year of bars per symbol so the spark WINDOW (1M…1Y) is a slice
+// rather than a fetch. That's ~14KB a symbol, so the cap drops to 60 entries
+// — a watchlist runs ~25, and blowing the localStorage quota silently kills
+// persistence for the whole cache, not just the overflow.
+const cache = createPCache('feed_cache_v4', { max: 60 })
 const listeners = new Set()
 let queue = []
 let pumping = false
