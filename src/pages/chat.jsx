@@ -1700,7 +1700,7 @@ export function Chat() {
 
     {/* Keep useful context on the right without turning the chat into a CRUD
         dashboard. Memory and journal live behind the compact Library row. */}
-    <aside class="hidden xl:flex w-[228px] shrink-0 flex-col gap-2 p-3 pl-0 overflow-y-auto min-h-0">
+    <aside class="chat-context-rail hidden min-[1160px]:flex w-[228px] shrink-0 flex-col gap-2 p-3 pl-0 overflow-y-auto min-h-0">
       <section class="chat-rail-section bg-surface-1 border border-line rounded-xl overflow-hidden shrink-0">
         <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
           <h2 class="font-anth font-bold text-[10px] tracking-wider text-accent uppercase">{tl('in view')}</h2>
