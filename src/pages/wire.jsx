@@ -3,7 +3,6 @@ import {
   wireUrl, setWireUrl, fragwireHome, fetchEvents, fetchToday, fetchMeta,
   demoBackfill, demoEvent, demoToday, rankEvents, collapseSessions, clusterStories, TYPE_CODE,
 } from '../lib/wire.js'
-import { getWatchlist } from '../lib/watchlist.js'
 import { IS_PRIVATE_BUILD } from '../lib/nav.js'
 import { getLocale, t as tt, tl } from '../lib/i18n.js'
 
@@ -593,25 +592,6 @@ export function Wire({ route }) {
         )}
         {error && <span class="font-mono text-[11px] text-down truncate">{error}</span>}
         <span class="ml-auto" />
-        {endpoint && (
-          <button
-            class="shrink-0 px-2 py-0.5 rounded-md font-sans font-semibold text-[11px] text-ink-2 hover:text-ink hover:bg-surface-2"
-            title={tl('sync watchlist to wire')}
-            onClick={() => {
-              const syms = getWatchlist()
-              if (!syms.length) return
-              fetch(`${endpoint}/api/watchlist`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ add: syms }),
-              }).then((r) => r.json())
-                .then((out) => setError(out.ok ? tt('wire.sync_ok', { count: syms.length }) : (out.error || tt('wire.sync_failed'))))
-                .catch(() => setError(tt('wire.sync_failed')))
-            }}
-          >
-            {tl('push watchlist → wire')}
-          </button>
-        )}
         {/* Private build has exactly one wire and it's auto-configured —
             the connect affordance only exists for public demo viewers. */}
         {!IS_PRIVATE_BUILD && (

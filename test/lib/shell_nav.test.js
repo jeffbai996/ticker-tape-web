@@ -33,8 +33,8 @@ describe('watchlists surface', () => {
     expect(page).toContain('symbol chips')
     // 2026-08-06: label shortened to 'Create' so the form holds one line
     expect(page).toContain("tl('Create')")
-    expect(page).toContain('Rename')
-    expect(page).toContain('Delete')
+    expect(page).toContain("tl('rename')")
+    expect(page).toContain("tl('delete')")
   })
 
   it('routes destructive and validation copy through i18n', () => {
