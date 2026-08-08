@@ -562,6 +562,7 @@ const LABELS = {
   'rec trend, price targets, rating changes': '评级趋势、目标价与近期调整', 'insider transactions': '内部人士交易',
   top: '精选', wire: '时间线', 'demo wire — synthetic events': '模拟快讯 — 合成事件', 'your wire URL (optional)': '你的 wire 地址（可选）', connecting: '连接中', error: '错误',
   'push watchlist → wire': '同步自选股 → 快讯', connect: '连接', all: '全部',
+  'exported ✓': '已导出 ✓', 'export failed': '导出失败', rename: '重命名',
   rail: '侧栏', 'rail ⨯': '侧栏 ⨯', 'wire connection': '快讯连接',
   board: '看板', week: '周历', stats: '统计', demo: '演示',
   'hide the side panels': '隐藏侧栏', 'show the side panels': '显示侧栏',
