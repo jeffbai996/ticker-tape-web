@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import {
   loadAlerts, addAlert, removeAlert, markTriggered, rearmAlert,
+  setAlertDelivery,
   evaluatePriceAlerts, evaluateTechnicalAlerts, conditionText,
 } from '../../src/lib/alerts.js'
 
@@ -42,6 +43,7 @@ describe('addAlert / removeAlert', () => {
 describe('trigger lifecycle', () => {
   it('marks triggered with the observed value and re-arms', () => {
     const a = addAlert({ symbol: 'A', type: 'price', operator: '>', value: 1 })
+    const deliveryId = a.deliveryId
     markTriggered(a.id, 1.5)
     let stored = loadAlerts()[0]
     expect(stored.triggered).toBeTruthy()
@@ -49,6 +51,14 @@ describe('trigger lifecycle', () => {
     rearmAlert(a.id)
     stored = loadAlerts()[0]
     expect(stored.triggered).toBeNull()
+    expect(stored.deliveryId).not.toBe(deliveryId)
+    expect(stored.deliveryStatus).toBeNull()
+  })
+
+  it('does not let delivery settings change after an alert fired', () => {
+    const a = addAlert({ symbol: 'A', type: 'price', operator: '>', value: 1 })
+    markTriggered(a.id, 1.5)
+    expect(setAlertDelivery(a.id, { enabled: true, destination: 'desk' })).toBe(false)
   })
 })
 

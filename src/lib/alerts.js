@@ -4,9 +4,27 @@
 // sma_cross stores the SMA *window* in value (50 = SMA50), matching the CLI.
 
 const KEY = 'alerts_v1'
+const DELIVERY_PREFS_KEY = 'alert_delivery_prefs_v1'
 const TYPES = new Set(['price', 'rsi', 'sma_cross', 'volume'])
+const DEFAULT_DELIVERY = { enabled: false, destination: '', maxPerHour: 6 }
 
 const listeners = new Set()
+
+function newDeliveryId(created, id) {
+  const uuid = globalThis.crypto?.randomUUID?.()
+  return uuid
+    ? `alert-${uuid}`
+    : `alert-${created}-${id}-${Math.random().toString(36).slice(2)}`
+}
+
+function normalizeDelivery(value = {}) {
+  const max = Number(value.maxPerHour)
+  return {
+    enabled: value.enabled === true,
+    destination: String(value.destination || '').trim(),
+    maxPerHour: Number.isInteger(max) ? Math.max(1, Math.min(60, max)) : 6,
+  }
+}
 
 /** Subscribe to any alert mutation (add/remove/trigger/rearm). */
 export function onAlertsChange(fn) {
@@ -26,6 +44,20 @@ export function loadAlerts() {
   }
 }
 
+export function getAlertDeliveryPrefs() {
+  try {
+    return normalizeDelivery(JSON.parse(localStorage.getItem(DELIVERY_PREFS_KEY)) || DEFAULT_DELIVERY)
+  } catch {
+    return { ...DEFAULT_DELIVERY }
+  }
+}
+
+export function setAlertDeliveryPrefs(value) {
+  const prefs = normalizeDelivery(value)
+  try { localStorage.setItem(DELIVERY_PREFS_KEY, JSON.stringify(prefs)) } catch { /* best-effort */ }
+  return prefs
+}
+
 function save(alerts) {
   try {
     localStorage.setItem(KEY, JSON.stringify(alerts))
@@ -33,7 +65,7 @@ function save(alerts) {
   emit()
 }
 
-export function addAlert({ symbol, type, operator, value }) {
+export function addAlert({ symbol, type, operator, value, delivery }) {
   const sym = (symbol || '').trim().toUpperCase()
   if (!sym) throw new Error('symbol required')
   if (!TYPES.has(type)) throw new Error(`unknown alert type: ${type}`)
@@ -45,15 +77,20 @@ export function addAlert({ symbol, type, operator, value }) {
   if (type === 'sma_cross' && (!Number.isInteger(v) || v < 2)) throw new Error('SMA window must be an integer ≥ 2')
 
   const alerts = loadAlerts()
+  const id = Math.max(0, ...alerts.map((a) => a.id)) + 1
+  const created = Date.now()
   const alert = {
-    id: Math.max(0, ...alerts.map((a) => a.id)) + 1,
+    id,
     symbol: sym,
     type,
     operator,
     value: v,
-    created: Date.now(),
+    created,
     triggered: null,
     current: null,
+    deliveryId: newDeliveryId(created, id),
+    delivery: normalizeDelivery(delivery || getAlertDeliveryPrefs()),
+    deliveryStatus: null,
   }
   save([...alerts, alert])
   return alert
@@ -71,8 +108,31 @@ export function markTriggered(id, current) {
   save(loadAlerts().map((a) => (a.id === id ? { ...a, triggered: Date.now(), current } : a)))
 }
 
+export function setAlertDelivery(id, patch) {
+  const alerts = loadAlerts()
+  const alert = alerts.find((item) => item.id === id)
+  if (!alert || alert.triggered) return false
+  const delivery = normalizeDelivery({ ...(alert.delivery || DEFAULT_DELIVERY), ...patch })
+  save(alerts.map((item) => (
+    item.id === id ? { ...item, delivery, deliveryStatus: null } : item
+  )))
+  return true
+}
+
+export function markDeliveryStatus(id, deliveryStatus) {
+  save(loadAlerts().map((a) => (
+    a.id === id ? { ...a, deliveryStatus } : a
+  )))
+}
+
 export function rearmAlert(id) {
-  save(loadAlerts().map((a) => (a.id === id ? { ...a, triggered: null, current: null } : a)))
+  save(loadAlerts().map((a) => (a.id === id ? {
+    ...a,
+    triggered: null,
+    current: null,
+    deliveryId: newDeliveryId(Date.now(), id),
+    deliveryStatus: null,
+  } : a)))
 }
 
 /** Armed price alerts against a {SYM: price} map. Returns hits with `current`. */
