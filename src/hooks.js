@@ -10,6 +10,7 @@ import { getLocale, onLocaleChange } from './lib/i18n.js'
 import { getWatchlist, onWatchlistChange } from './lib/watchlist.js'
 import { loadWatchlists, onWatchlistsChange } from './lib/watchlists.js'
 import { createQuoteRenderGate } from './lib/quoteRenderGate.js'
+import { queueAlertDelivery, retryPendingAlertDeliveries } from './lib/alertDelivery.js'
 
 /** Current locale; re-renders the caller when it changes. */
 export function useLocale() {
@@ -131,7 +132,10 @@ export function useAlertEngine() {
 
     const fire = (hits) => {
       if (!hits.length) return
-      for (const h of hits) markTriggered(h.id, h.current)
+      for (const h of hits) {
+        markTriggered(h.id, h.current)
+        void queueAlertDelivery(h)
+      }
       setToasts((ts) => [...ts, ...hits])
       notifyBrowser(hits)
     }
@@ -155,6 +159,7 @@ export function useAlertEngine() {
       fire(evaluatePriceAlerts(alerts.filter((a) => a.symbol === symbol), { [symbol]: price }))
     })
 
+    void retryPendingAlertDeliveries()
     checkTech()
     const iv = setInterval(checkTech, TECH_CHECK_MS)
 
