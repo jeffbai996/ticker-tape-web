@@ -6,7 +6,7 @@ import { marketState } from '../lib/marketState.js'
 import { BUCKETS } from '../lib/symbols.js'
 import { pulseStats } from '../lib/pulse.js'
 import { fetchEarningsDate } from '../lib/fundamentals.js'
-import { EARNINGS_UNIVERSE, EARNINGS_NAMES, ECON_EVENTS, MARKET_DECK, upcomingEvents } from '../lib/markets.js'
+import { EARNINGS_UNIVERSE, EARNINGS_NAMES, ECON_EVENTS, MARKET_DECK, upcomingEvents, eventDayLabel } from '../lib/markets.js'
 import { loadCatalysts, onCatalystsChange, mergedEvents } from '../lib/catalysts.js'
 import { fetchHistory } from '../lib/history.js'
 import {
@@ -434,10 +434,14 @@ const ECON_COLORS = {
 function MacroCalPanel() {
   const [cats, setCats] = useState(loadCatalysts)
   useEffect(() => onCatalystsChange(setCats), [])
-  const events = mergedEvents(ECON_EVENTS, cats, new Date().toISOString().slice(0, 10), 60).slice(0, 12)
+  // One day of look-back. A print that landed yesterday is still the thing
+  // you are reasoning about this morning, and dropping it the moment the clock
+  // rolls over loses the most relevant row on the board (Jeff 2026-08-07).
+  const events = mergedEvents(ECON_EVENTS, cats, new Date().toISOString().slice(0, 10), 60, 1).slice(0, 12)
   if (!events.length) return null
   const dayCls = (d) =>
-    d <= 0 ? 'text-imminent font-bold'
+    d < 0 ? 'text-muted/60'                       // already happened — present, not shouting
+      : d === 0 ? 'text-imminent font-bold'
       : d <= 3 ? 'text-down font-bold' : d <= 7 ? 'text-down'
       : d <= 30 ? 'text-accent' : 'text-muted'
   return (
@@ -462,7 +466,7 @@ function MacroCalPanel() {
                 {e.user ? (e.symbol === 'MACRO' ? e.type : e.symbol) : e.type}
               </span>
               <span class="text-muted flex-1 truncate">{e.user ? e.rawLabel : tl(e.label)}</span>
-              <span class={dayCls(e.days)}>{e.days === 0 ? tl('today') : `${e.days}d`}</span>
+              <span class={dayCls(e.days)}>{e.days === 0 ? tl('today') : eventDayLabel(e.days)}</span>
             </a>
           )
         })}
