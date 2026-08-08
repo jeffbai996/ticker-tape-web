@@ -428,6 +428,47 @@ const LABELS = {
   'ISM Manufacturing': 'ISM制造业', 'ISM Services': 'ISM服务业',
   'FOMC Minutes': '美联储纪要', 'UMich Sentiment': '密歇根消费者信心',
   'output dials': '输出调节', 'length': '长度', 'tone': '语气', 'disconfirm': '反证',
+  Model: '模型', 'Report model': '报告模型', Effort: '强度', 'Thinking effort': '思考强度',
+  'Fixed model effort': '模型固定强度', 'Style & analysis': '风格与分析',
+  'Controls the shape and point of view of this generation.': '控制本次生成的篇幅、文风与分析视角。',
+  'include counter-case': '加入反方论证', 'counter-case': '反方论证', 'Custom instructions': '自定义指令',
+  'e.g. focus on rates, compare against consensus, flag stale inputs': '例如：聚焦利率、对比市场预期、标记过期数据',
+  flash: '速览', trader: '交易员', catalyst: '催化剂', risk: '风险',
+  'Event details': '事件详情', 'Close event details': '关闭事件详情',
+  Date: '日期', 'Typical time': '通常时间', Source: '来源', 'Open official source': '打开官方来源',
+  Actual: '实际', Estimate: '预期', Consensus: '市场预期', Previous: '前值', Revised: '修正',
+  Period: '期间', Symbol: '代码', Location: '地点', Category: '类别', Yes: '是', No: '否',
+  'User catalyst': '用户催化剂', 'All session': '全交易时段', 'Schedule varies': '日程不定',
+  'Federal Reserve': '美联储', 'Bureau of Labor Statistics': '美国劳工统计局',
+  'Bureau of Economic Analysis': '美国经济分析局', 'US Census Bureau': '美国人口普查局',
+  'Exchange calendar': '交易所日历', 'Federal Reserve Bank of Kansas City': '堪萨斯城联储',
+  'Institute for Supply Management': '美国供应管理协会', 'University of Michigan': '密歇根大学',
+  'Federal Reserve policy decision and statement. A press conference usually follows at 14:30 ET.':
+    '美联储公布政策决定与声明；通常于美东时间14:30举行新闻发布会。',
+  'Monthly consumer inflation report, including headline and core price changes.':
+    '月度消费者通胀报告，包括总体与核心价格变化。',
+  'Monthly US employment report covering payroll growth, unemployment, wages, and revisions.':
+    '美国月度就业报告，涵盖新增就业、失业率、薪资及修正值。',
+  'First official estimate of US economic growth for the quarter, with major demand components.':
+    '美国季度经济增长的首次官方估算，并列出主要需求分项。',
+  'The Federal Reserve’s preferred inflation gauge, released with personal income and spending.':
+    '美联储偏好的通胀指标，与个人收入和支出数据一同发布。',
+  'Monthly change in prices received by domestic producers, including headline and core measures.':
+    '国内生产者收取价格的月度变化，包括总体与核心指标。',
+  'Monthly snapshot of consumer spending at retailers, including the control-group measure used in GDP.':
+    '零售端消费者支出的月度快照，包括用于GDP核算的控制组指标。',
+  'Quarterly expiration of index futures, index options, and single-stock options. Closing flows can amplify volume and volatility.':
+    '股指期货、股指期权与个股期权季度到期；收盘资金流可能放大成交量与波动。',
+  'Annual central-bank symposium at Jackson Hole, watched for policy signals from major speakers.':
+    '杰克逊霍尔年度央行研讨会，市场关注重要讲话释放的政策信号。',
+  'Survey of US manufacturing activity, with new orders, employment, prices, and production components.':
+    '美国制造业活动调查，涵盖新订单、就业、价格与生产分项。',
+  'Survey of US services activity, with business activity, new orders, employment, and prices components.':
+    '美国服务业活动调查，涵盖商业活动、新订单、就业与价格分项。',
+  'Detailed record of the most recent FOMC discussion, including risks, policy views, and areas of disagreement.':
+    '最近一次FOMC讨论的详细记录，包括风险、政策观点与分歧。',
+  'Preliminary consumer-sentiment reading with current conditions, expectations, and inflation expectations.':
+    '消费者信心初值，包括当前状况、未来预期与通胀预期。',
   'brief': '简短', 'standard': '标准', 'deep': '深入', 'analyst': '分析师', 'blunt': '直白',
   'skeptic': '质疑',
   'NYSE Composite': '纽交所综合指数', 'NYSE American': '纽交所美国指数',
