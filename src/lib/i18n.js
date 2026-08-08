@@ -128,9 +128,19 @@ const STRINGS = {
   'chat.action_journal': { en: 'what did my journal say about {symbol}?', zh: '我的交易日志里对 {symbol} 怎么说？' },
   'chat.action_heatmap': { en: 'open the heatmap', zh: '打开热力图' },
   'chat.action_moving': { en: "what's moving today?", zh: '今天哪些标的在异动？' },
-  'chat.action_technical': { en: 'how does NVDA look technically?', zh: 'NVDA 的技术面如何？' },
+  // {symbol} is filled from the live watchlist. These used to name NVDA and
+  // TSLA literally, which pinned a real holding into source and also meant the
+  // pad suggested the same two names forever regardless of what you follow.
+  'chat.action_technical': { en: 'how does {symbol} look technically?', zh: '{symbol} 的技术面如何？' },
   'chat.action_calendar': { en: "what's on the calendar this week?", zh: '本周有哪些重要日程？' },
-  'chat.action_research': { en: 'open TSLA research', zh: '打开 TSLA 研究页' },
+  'chat.action_research': { en: 'open {symbol} research', zh: '打开 {symbol} 研究页' },
+  // Reads off the badges the feed already computes, so the pad can ask about
+  // the thing that is actually unusual right now rather than a generic prompt.
+  'chat.action_vol_spike': { en: '{symbol} is trading {mult}x its average volume — what changed?', zh: '{symbol} 成交量是均量的 {mult} 倍，发生了什么？' },
+  'chat.action_near_high': { en: '{symbol} is {pct}% off its 52-week high — room left?', zh: '{symbol} 距 52 周高点 {pct}%，还有空间吗？' },
+  'chat.action_stretched': { en: "{symbol}'s RSI is {rsi} — trending or overextended?", zh: '{symbol} 的 RSI 为 {rsi}，是趋势还是超买？' },
+  'chat.action_rs': { en: '{symbol} is {pct}pp ahead of the market over 20d — why?', zh: '{symbol} 近 20 日跑赢大盘 {pct} 个百分点，原因是什么？' },
+  'chat.action_overnight': { en: '{symbol} moved {pct}% after hours — does it hold?', zh: '{symbol} 盘后波动 {pct}%，能守住吗？' },
   'wire.sync_ok': { en: 'synced {count} symbols → wire', zh: '已同步 {count} 只股票 → 快讯' },
   'wire.sync_failed': { en: 'sync failed', zh: '同步失败' },
   'wire.byo_note': {
