@@ -64,6 +64,11 @@ export function bucketBars(bars, maxBars = MAX_DRAWN_BARS) {
     const close = slice[slice.length - 1].c ?? null
     const prev = out.length ? out[out.length - 1].c : slice[0].c
     out.push({
+      // `n` lets a consumer read the MEAN instead of the sum. The final
+      // bucket usually holds fewer sessions than the rest, so a summed bar
+      // renders artificially short there — which is what made thin-volume
+      // series (metals) look spiky rather than merely uneven.
+      n: slice.length,
       v: slice.reduce((sum, b) => sum + (b.v || 0), 0),
       c: close,
       h: highs.length ? Math.max(...highs) : close,
