@@ -165,7 +165,11 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
     >
       {/* Phone width: meta on line 1, headline unclipped on line 2 — a 10-char
           truncated headline defeats the point of a wire. */}
-      <div class="grid grid-cols-[64px_56px_36px_1fr_auto] max-sm:grid-cols-[64px_auto_auto_1fr] gap-x-2.5 items-baseline px-2.5 py-[3px] text-[12px] leading-[1.55]">
+      {/* Lag column is a fixed narrow track, not `auto`. As auto it sized to
+            the widest string in view and sat hard against the right edge with
+            the 1fr headline pushing it there, so it read as a wide empty column
+            (Jeff 2026-08-07). 58px fits "+3m 11s" with a hair either side. */}
+      <div class="grid grid-cols-[64px_56px_36px_1fr_58px] max-sm:grid-cols-[64px_auto_auto_1fr] gap-x-2.5 items-baseline px-2.5 py-[3px] text-[12px] leading-[1.55]">
         <span class={hot ? '' : 'text-muted'}>{rowTime(ev.ts_event)}</span>
         {(ev.symbols || []).length ? (
           <span class={`truncate ${hot ? 'font-semibold' : 'text-accent font-medium'}`}>
@@ -192,7 +196,7 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
                 hot ? 'border-black/40 text-black' : 'border-line-2 text-muted hover:text-accent hover:border-accent/60'}`}>↗</a>
           )}
         </span>
-        <span class={`text-[10.5px] max-sm:row-start-1 max-sm:col-start-4 max-sm:justify-self-end ${hot ? '' : lat < 60 ? 'text-up' : 'text-muted'}`}>{latTxt}</span>
+        <span class={`text-[10.5px] text-right px-0.5 tabular-nums max-sm:row-start-1 max-sm:col-start-4 max-sm:justify-self-end ${hot ? '' : lat < 60 ? 'text-up' : 'text-muted'}`}>{latTxt}</span>
       </div>
       {open && ev.story_cluster && (
         <div class="px-2.5 pb-2 pl-[168px] max-sm:pl-2.5 flex flex-col gap-0.5">
