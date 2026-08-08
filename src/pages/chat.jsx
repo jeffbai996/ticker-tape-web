@@ -79,11 +79,14 @@ function exportChat(history) {
   URL.revokeObjectURL(a.href)
 }
 
+// Generic tail, used only to top the pad up once the live suggestions run out.
+// `needsSymbol` entries are skipped rather than shown with a placeholder when
+// there is no watchlist to draw a name from.
 const SUGGESTIONS = [
   { key: 'chat.action_moving', k: 'mkt' },
-  { key: 'chat.action_technical', k: 'mkt' },
+  { key: 'chat.action_technical', k: 'mkt', needsSymbol: true },
   { key: 'chat.action_calendar', k: 'mkt' },
-  { key: 'chat.action_research', k: 'app' },
+  { key: 'chat.action_research', k: 'app', needsSymbol: true },
 ]
 
 /**
@@ -134,6 +137,44 @@ function dynamicActions({ watchlist, quotes, earnDays, nextEvent, book, journal 
     push(tt('chat.action_alert', { symbol: top.s, level: lvl }), 'app')
   }
 
+  // Anomalies off the badges the feed already computes for every symbol. These
+  // rank above the generic prompts because they name the thing that is
+  // genuinely unusual right now, which is what you'd actually want to ask.
+  const badge = (s) => quotes[s]?.tech || null
+  const overnight = watchlist
+    .map((s) => ({ s, pct: quotes[s]?.quote?.extPct }))
+    .filter((x) => x.pct != null && Math.abs(x.pct) >= 1.5)
+    .sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct))[0]
+  if (overnight) {
+    push(tt('chat.action_overnight', {
+      symbol: overnight.s, pct: overnight.pct.toFixed(1),
+    }), 'mkt')
+  }
+
+  const spike = watchlist
+    .map((s) => ({ s, r: badge(s)?.volRatio }))
+    .filter((x) => x.r != null && x.r >= 2)
+    .sort((a, b) => b.r - a.r)[0]
+  if (spike) push(tt('chat.action_vol_spike', { symbol: spike.s, mult: spike.r.toFixed(1) }), 'mkt')
+
+  const stretched = watchlist
+    .map((s) => ({ s, rsi: badge(s)?.rsi }))
+    .filter((x) => x.rsi != null && (x.rsi >= 70 || x.rsi <= 30))
+    .sort((a, b) => Math.abs(b.rsi - 50) - Math.abs(a.rsi - 50))[0]
+  if (stretched) push(tt('chat.action_stretched', { symbol: stretched.s, rsi: Math.round(stretched.rsi) }), 'mkt')
+
+  const leader = watchlist
+    .map((s) => ({ s, rs: badge(s)?.rs }))
+    .filter((x) => x.rs != null && Math.abs(x.rs) >= 5)
+    .sort((a, b) => Math.abs(b.rs) - Math.abs(a.rs))[0]
+  if (leader) push(tt('chat.action_rs', { symbol: leader.s, pct: leader.rs.toFixed(1) }), 'mkt')
+
+  const nearHigh = watchlist
+    .map((s) => ({ s, off: badge(s)?.offHigh }))
+    .filter((x) => x.off != null && x.off <= 3)
+    .sort((a, b) => a.off - b.off)[0]
+  if (nearHigh) push(tt('chat.action_near_high', { symbol: nearHigh.s, pct: nearHigh.off.toFixed(1) }), 'mkt')
+
   push(tt('chat.action_strongest'), 'mkt')
 
   // journal recall — only when there is a journal to recall from
@@ -141,9 +182,13 @@ function dynamicActions({ watchlist, quotes, earnDays, nextEvent, book, journal 
   if (lastTagged) push(tt('chat.action_journal', { symbol: lastTagged.symbols[0] }), 'app')
 
   push(tt('chat.action_heatmap'), 'app')
+  // The generic tail. Symbol-bearing ones borrow a name from the watchlist so
+  // the pad never asks about a ticker the reader does not follow.
+  const anySymbol = watchlist[0] || null
   for (const s of SUGGESTIONS) {
     if (acts.length >= 12) break
-    push(tt(s.key), s.k)
+    if (s.needsSymbol && !anySymbol) continue
+    push(tt(s.key, s.needsSymbol ? { symbol: anySymbol } : undefined), s.k)
   }
   return acts.slice(0, 12)
 }
@@ -440,7 +485,15 @@ function ActivityTrace({ steps, busy = false, startedAt }) {
       <div class={`chat-trace-reveal ${open ? 'is-open' : ''}`}>
         <div>
           <div class="chat-trace-body">
-            {steps.map((step) => {
+            {/* The header already IS the live status line, so the step that is
+                currently running would render the same word directly under it
+                — "Thinking…" stacked on "Thinking…" (Jeff 2026-08-07). Drop the
+                running step from the list while it duplicates the header; it
+                joins the list the moment it finishes and has a duration to
+                report, which is when a history row starts being worth having. */}
+            {steps.filter((step) => !(
+              busy && step.status === 'running' && (step.verb || step.label) === title
+            )).map((step) => {
               const end = step.endedAt || now
               const stepElapsed = step.startedAt ? durationLabel(end - step.startedAt) : ''
               return (
@@ -453,15 +506,19 @@ function ActivityTrace({ steps, busy = false, startedAt }) {
                       </span>
                       {stepElapsed && <span class="chat-trace-time">{stepElapsed}</span>}
                     </div>
+                    {/* No placeholder for absent reasoning. Most backends
+                        return none at all, so "no reasoning returned for this
+                        step" was a line of chrome under every model step
+                        announcing that nothing happened. A step with real
+                        reasoning shows it; a step with only a token count says
+                        so; a step with neither says nothing. */}
                     {step.detail
                       ? <div class={`chat-trace-detail ${step.kind === 'tool' ? 'is-tool' : ''}`}>{step.detail}</div>
-                      : step.kind === 'model' && (
+                      : step.kind === 'model' && step.thinkTokens ? (
                         <div class="chat-trace-detail">
-                          {step.thinkTokens
-                            ? `${tl('reasoned privately')} · ${thinkDepth(step.thinkTokens)}`
-                            : tl('no reasoning returned for this step')}
+                          {`${tl('reasoned privately')} · ${thinkDepth(step.thinkTokens)}`}
                         </div>
-                      )}
+                      ) : null}
                   </div>
                 </div>
               )
@@ -1167,16 +1224,24 @@ export function Chat() {
         </div>
         {/* OWUI-style: the model rides the composer, not page chrome */}
         <div class="flex items-center gap-2 px-2 pt-1 font-mono text-[9.5px] text-muted flex-wrap">
-          <select
-            value={model}
-            onChange={(e) => chooseModel(e.currentTarget.value)}
-            title={tl('model')}
-            class="bg-surface-2 border border-line rounded-md px-1.5 py-0.5 font-anth text-[10.5px] text-ink-2 outline-none cursor-pointer hover:border-line-2 focus:border-accent/70"
-          >
-            {(models.length ? models : [{ key: model, label: model }]).map((m) => (
-              <option key={m.key} value={m.key}>{m.label}</option>
-            ))}
-          </select>
+          {/* The bare select rendered the OS's own control — different chrome
+              on every platform, and visibly foreign next to the hand-built
+              effort pills beside it. appearance-none plus our own caret makes
+              the two read as one control group (Jeff 2026-08-07). The caret is
+              pointer-events-none so clicking it still opens the select. */}
+          <span class="relative inline-flex items-center">
+            <select
+              value={model}
+              onChange={(e) => chooseModel(e.currentTarget.value)}
+              title={tl('model')}
+              class="appearance-none bg-surface-2 border border-line rounded-md pl-2 pr-5 py-[3px] font-anth text-[10.5px] text-ink-2 outline-none cursor-pointer hover:border-line-2 focus:border-accent/70 transition-colors"
+            >
+              {(models.length ? models : [{ key: model, label: model }]).map((m) => (
+                <option key={m.key} value={m.key}>{m.label}</option>
+              ))}
+            </select>
+            <span class="pointer-events-none absolute right-1.5 text-[7px] leading-none text-muted">▾</span>
+          </span>
           {effortLevels.length > 0 && (
             <span class="flex items-center gap-0.5 bg-surface-2 border border-line rounded-md px-0.5 py-px" title={tl('thinking effort')}>
               {effortLevels.map((lv) => (
@@ -1233,8 +1298,11 @@ export function Chat() {
           and effort moved onto the composer, OWUI-style. */}
       {/* the wordmark used to sit jammed into the corner at 13px; it now
           shares the rail's 12px inset and reads at 15px (Jeff 2026-08-07) */}
-      <div class="absolute top-3 left-3 z-30 flex items-center gap-2">
-        <h1 class="font-bold text-[15px] leading-none text-ink" style="font-family: 'Plus Jakarta Sans', sans-serif">{tl('AI Chat')}</h1>
+      {/* 15px at top-3/left-3 still read cramped against the rail (Jeff
+          2026-08-07, second pass). 17px with roomier insets; leading-tight
+          rather than leading-none so the descender in "g" isn't clipped. */}
+      <div class="absolute top-4 left-4 z-30 flex items-center gap-2">
+        <h1 class="font-bold text-[17px] leading-tight text-ink" style="font-family: 'Plus Jakarta Sans', sans-serif">{tl('AI Chat')}</h1>
         <span class={`w-1.5 h-1.5 rounded-full ${onWire ? 'bg-up' : 'bg-accent'}`}
               title={tl(onWire ? 'online — private wire' : 'online — public proxy')} />
       </div>
