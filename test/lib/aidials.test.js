@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import {
   LENGTHS, TONES, DEFAULT_DIALS, loadDials, saveDials, applyDials,
+  applyAiPreferences, applyLanguagePreference,
 } from '../../src/lib/aidials.js'
 
 describe('dial persistence', () => {
@@ -45,5 +46,37 @@ describe('applyDials', () => {
     const out = applyDials(undefined, null)
     expect(out).toContain('OUTPUT DIALS')
     expect(out).toContain(LENGTHS.find((l) => l.key === DEFAULT_DIALS.length).rule)
+  })
+})
+
+describe('AI generation preferences', () => {
+  it('offers distinct desk-oriented analysis styles', () => {
+    expect(TONES.map((tone) => tone.key)).toEqual(expect.arrayContaining([
+      'analyst', 'trader', 'catalyst', 'risk', 'blunt', 'skeptic',
+    ]))
+  })
+
+  it('appends custom generation instructions after the shared output dials', () => {
+    const out = applyAiPreferences('system', {
+      dials: DEFAULT_DIALS,
+      instructions: 'Focus on rates and flag stale inputs.',
+      locale: 'en',
+    })
+    expect(out).toContain('CUSTOM GENERATION INSTRUCTIONS')
+    expect(out).toContain('Focus on rates and flag stale inputs.')
+    expect(out.indexOf('CUSTOM GENERATION INSTRUCTIONS')).toBeGreaterThan(out.indexOf('OUTPUT DIALS'))
+  })
+
+  it('forces generated content into Chinese when the app locale is Chinese', () => {
+    const out = applyAiPreferences('system', { dials: DEFAULT_DIALS, locale: 'zh' })
+    expect(out).toContain('Respond in Simplified Chinese')
+    expect(applyLanguagePreference('chat system', 'zh')).toContain('Respond in Simplified Chinese')
+    expect(applyLanguagePreference('chat system', 'en')).toBe('chat system')
+  })
+
+  it('ignores blank custom instructions', () => {
+    expect(applyAiPreferences('system', {
+      dials: DEFAULT_DIALS, instructions: '   ', locale: 'en',
+    })).not.toContain('CUSTOM GENERATION INSTRUCTIONS')
   })
 })

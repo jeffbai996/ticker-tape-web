@@ -4,7 +4,8 @@ import { runAgentic, trimHistory } from '../lib/agent.js'
 import { toolLabel, toolRunLabel } from '../lib/tools.js'
 import { BrandSpinner } from '../components/BrandSpinner.jsx'
 import { MdLite } from '../components/AiReport.jsx'
-import { tl, t as tt } from '../lib/i18n.js'
+import { getLocale, tl, t as tt } from '../lib/i18n.js'
+import { applyLanguagePreference } from '../lib/aidials.js'
 import { fetchWireChatModels, wireChatAvailable } from '../lib/wirechat.js'
 import { useQuotes, useWatchlist } from '../hooks.js'
 import { useEarningsDays } from './dashboard.jsx'
@@ -1006,6 +1007,7 @@ export function Chat() {
     try {
       system += '\n\n' + await buildChatContext(text)
     } catch { /* context is best-effort — a bare prompt still answers */ }
+    system = applyLanguagePreference(system, getLocale())
 
     const traceEvent = (event) => {
       const now = Date.now()
