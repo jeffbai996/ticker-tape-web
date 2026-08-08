@@ -544,3 +544,24 @@ button:hover .burger path:nth-child(2) { transform: scaleX(.55); }
 .px-flash-up, .px-flash-down { color: #000; }
 .px-flash-up { background: #00ff55; }
 .px-flash-down { background: #ff2222; }
+
+/* ─── Calendar past / future demarcation ──────────────────────────────────
+   The calendar now carries a few days of look-back, so the boundary between
+   what has already printed and what has not needs to be obvious at a glance
+   (Jeff 2026-08-07). Past rows recede rather than disappear; the first future
+   row wears the rule. An accent hairline with a soft glow reads as a "you are
+   here" line rather than just another table border — the row separators are
+   already hairlines, so a plain one would vanish among them. */
+.markets-page tr.is-past td { opacity: 0.5; }
+.markets-page tr.is-past:hover td { opacity: 0.8; }
+.markets-page tr.is-now > td {
+  position: relative;
+  box-shadow: inset 0 1px 0 0 var(--color-accent);
+}
+.markets-page tr.is-now > td::before {
+  content: '';
+  position: absolute; left: 0; right: 0; top: -1px; height: 5px;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--color-accent) 26%, transparent), transparent);
+  pointer-events: none;
+}

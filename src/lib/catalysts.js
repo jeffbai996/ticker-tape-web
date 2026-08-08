@@ -72,7 +72,7 @@ export function removeCatalyst(id) {
  * soonest first. Econ entries keep their {date,type,label}; catalyst entries
  * add {id, symbol, user:true} so the UI can chip the symbol and offer remove.
  */
-export function mergedEvents(econEvents, catalysts, today, horizonDays = 90) {
+export function mergedEvents(econEvents, catalysts, today, horizonDays = 90, pastDays = 0) {
   const days = (date) =>
     Math.round((new Date(`${date}T00:00:00Z`) - new Date(`${today}T00:00:00Z`)) / 86_400_000)
   const all = [
@@ -89,6 +89,6 @@ export function mergedEvents(econEvents, catalysts, today, horizonDays = 90) {
     })),
   ]
   return all
-    .filter((e) => e.days >= 0 && e.days <= horizonDays)
+    .filter((e) => e.days >= -pastDays && e.days <= horizonDays)
     .sort((a, b) => a.days - b.days)
 }

@@ -2,8 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   daysUntil, upcomingEvents, ECON_EVENTS, MARKET_GROUPS, COMMODITY_GROUPS,
   MARKET_DECK, RELATIVE_SIGNALS, EARNINGS_UNIVERSE, EARNINGS_NAMES,
-  nthBusinessDay, nthWeekdayOfMonth, shiftDays,
-} from '../../src/lib/markets.js'
+  nthBusinessDay, nthWeekdayOfMonth, shiftDays, eventDayLabel} from '../../src/lib/markets.js'
 import { hasLabelTranslation } from '../../src/lib/i18n.js'
 
 describe('daysUntil', () => {
@@ -116,5 +115,41 @@ describe('earnings universe names', () => {
   it('names every symbol in the universe', () => {
     const missing = EARNINGS_UNIVERSE.filter((s) => !EARNINGS_NAMES[s])
     expect(missing).toEqual([])
+  })
+})
+
+describe('calendar look-back', () => {
+  const evs = [
+    { date: '2026-08-04', type: 'NFP', label: 'Nonfarm Payrolls' },   // 3 days ago
+    { date: '2026-08-06', type: 'CPI', label: 'CPI Release' },        // 1 day ago
+    { date: '2026-08-07', type: 'PPI', label: 'PPI Release' },        // today
+    { date: '2026-08-12', type: 'RET', label: 'Retail Sales' },       // future
+  ]
+
+  it('excludes past events unless a look-back is asked for', () => {
+    const got = upcomingEvents(evs, '2026-08-07', 60).map((e) => e.type)
+    expect(got).toEqual(['PPI', 'RET'])
+  })
+
+  it('admits exactly the requested days of look-back', () => {
+    // a print that landed yesterday is still what you're reasoning about today
+    expect(upcomingEvents(evs, '2026-08-07', 60, 1).map((e) => e.type))
+      .toEqual(['CPI', 'PPI', 'RET'])
+    expect(upcomingEvents(evs, '2026-08-07', 60, 3).map((e) => e.type))
+      .toEqual(['NFP', 'CPI', 'PPI', 'RET'])
+  })
+
+  it('orders oldest first so the past/future boundary is one place', () => {
+    const days = upcomingEvents(evs, '2026-08-07', 60, 3).map((e) => e.days)
+    expect(days).toEqual([...days].sort((a, b) => a - b))
+    expect(days[0]).toBe(-3)
+  })
+
+  it('labels a past event "ago", not as a negative day count', () => {
+    // "-1d" in a column of plain day counts scans as a negative number
+    expect(eventDayLabel(-1)).toBe('1da')
+    expect(eventDayLabel(-3)).toBe('3da')
+    expect(eventDayLabel(0)).toBe('today')
+    expect(eventDayLabel(4)).toBe('4d')
   })
 })
