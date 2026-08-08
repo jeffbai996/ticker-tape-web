@@ -125,6 +125,27 @@ export async function fetchThreadList() {
   return listThreads()
 }
 
+/** Hydrate the active session from the shared store on app boot. The browser
+ * cache is only an offline fallback; it must not win over a newer server copy.
+ * A deleted session releases its stale pointer without deleting the cache. */
+export async function hydrateActiveThread() {
+  const cached = loadActiveHistory()
+  if (!chatstoreAvailable()) return cached
+  const id = currentThreadId()
+  if (id == null) return cached
+  try {
+    const thread = await getThread(id)
+    cacheHistory(thread.messages)
+    return thread.messages
+  } catch (error) {
+    if (error?.status === 404) {
+      setCurrent(null)
+      return cached
+    }
+    throw error
+  }
+}
+
 /** Switch to a thread; resolves its messages. */
 export async function openThread(id, currentMessages) {
   await flushActiveHistory(currentMessages)
