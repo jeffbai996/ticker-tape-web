@@ -470,7 +470,7 @@ function TokenCount({ usage }) {
 /** Per-step glyph. Grey, 12px, stroked — the label already says what happened,
  *  so the icon is a scanning aid, not decoration, and it stays monochrome so a
  *  list of steps reads as one column rather than a row of colours. */
-function StepIcon({ kind, verb }) {
+function StepIcon({ kind, verb, status }) {
   // Keyed off the word actually SHOWN, not the step's original verb: a model
   // step starts life as "Thinking" and ends as "Answered", and pairing the
   // finished row with a lamp said the wrong thing about a row that reads
@@ -490,7 +490,8 @@ function StepIcon({ kind, verb }) {
     d = <g {...p}><path d="M6 12.5h4M6.5 14.2h3" /><path d="M8 1.8a4.4 4.4 0 0 0-2.6 7.9c.4.3.6.8.6 1.3h4c0-.5.2-1 .6-1.3A4.4 4.4 0 0 0 8 1.8z" /></g>
   }
   return (
-    <svg viewBox="0 0 16 16" width="12" height="12" class="shrink-0 text-muted/70" aria-hidden="true">
+    <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"
+         class={`chat-trace-node is-${status || 'done'}`}>
       {d}
     </svg>
   )
@@ -559,10 +560,9 @@ function ActivityTrace({ steps, busy = false, startedAt, usage = null }) {
               const stepElapsed = step.startedAt ? durationLabel(end - step.startedAt) : ''
               return (
                 <div key={step.key} class={`chat-trace-step is-${step.status || 'done'}`}>
-                  <span class="chat-trace-node" />
+                  <StepIcon kind={step.kind} verb={step.label || step.verb} status={step.status} />
                   <div class="min-w-0 flex-1">
                     <div class="flex items-baseline gap-2">
-                      <StepIcon kind={step.kind} verb={step.label || step.verb} />
                       <span class="chat-trace-label">
                         {step.label}{step.status === 'running' && <Ellipsis />}
                       </span>
