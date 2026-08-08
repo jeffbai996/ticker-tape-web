@@ -329,6 +329,7 @@ const LABELS = {
   markets: '市场', app: '应用', 'resume thread': '继续对话', model: '模型',
   'thinking effort': '思考强度', 'saved chat sessions': '已保存的对话',
   'chat sessions': '对话记录', 'trade journal': '交易日志', send: '发送', newline: '换行',
+  'session sync failed': '对话同步失败',
   recall: '调出上次提问', commands: '命令面板',
   'stop generating': '停止生成',
   'reading the wire…': '正在读取快讯…',
