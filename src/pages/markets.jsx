@@ -6,7 +6,7 @@ import { AiReport } from '../components/AiReport.jsx'
 import { BRIEFING_SYSTEM } from '../lib/briefing.js'
 import { EARNINGS_UNIVERSE,
   MARKET_GROUPS, SECTORS, COMMODITY_GROUPS, ECON_EVENTS, RELATIVE_SIGNALS, eventDayLabel,
-  upcomingEvents,
+  upcomingEvents, calendarEventDetails,
 } from '../lib/markets.js'
 import { loadCatalysts, onCatalystsChange, removeCatalyst, mergedEvents } from '../lib/catalysts.js'
 import { fetchEarningsDate } from '../lib/fundamentals.js'
@@ -594,16 +594,20 @@ const URGENCY = [
 function Calendar() {
   const today = new Date().toISOString().slice(0, 10)
   const [cats, setCats] = useState(loadCatalysts)
+  const [openKey, setOpenKey] = useState('')
   useEffect(() => onCatalystsChange(setCats), [])
   // Three days of look-back here. The enlarged view is where you go to reason
   // about a run of prints, so the week's releases should still be on it rather
   // than vanishing one at a time as they land (Jeff 2026-08-07).
   const events = mergedEvents(ECON_EVENTS, cats, today, 90, 3)
+  const eventKey = (event) => `${event.date}-${event.type}-${event.id ?? ''}`
+  const openEvent = events.find((event) => eventKey(event) === openKey)
+  const details = openEvent ? calendarEventDetails(openEvent) : null
   // Index of the first row that has not happened yet — where the rule goes.
   const firstFuture = events.findIndex((e) => e.days >= 0)
 
   return (
-    <section class="bg-surface-1 border border-line rounded-xl overflow-hidden max-w-xl">
+    <section class="bg-surface-1 border border-line rounded-xl overflow-hidden max-w-3xl">
       <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
         <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">
           {tl('Economic calendar — next 90 days')}
@@ -622,17 +626,33 @@ function Calendar() {
         <tbody>
           {events.map((e, i) => {
             const cls = URGENCY.find((u) => e.days <= u.max).cls
+            const key = eventKey(e)
+            const isOpen = key === openKey
+            const toggle = () => setOpenKey(isOpen ? '' : key)
             return (
-              <tr key={`${e.date}-${e.type}-${e.id ?? ''}`}
-                  class={`border-b border-line last:border-0 hover:bg-surface-3 group${
-                    e.days < 0 ? ' is-past' : ''}${i === firstFuture && firstFuture > 0 ? ' is-now' : ''}`}>
+              <tr key={key}
+                  role="button" tabIndex={0} aria-expanded={isOpen}
+                  onClick={toggle}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      toggle()
+                    }
+                  }}
+                  class={`border-b border-line last:border-0 hover:bg-surface-3 group cursor-pointer${
+                    isOpen ? ' bg-surface-3' : ''}${e.days < 0 ? ' is-past' : ''}${
+                    i === firstFuture && firstFuture > 0 ? ' is-now' : ''}`}>
                 <td class="px-3 py-[3px] font-mono text-[12px] text-ink">{e.date}</td>
                 <td class={`px-2 py-[3px] font-mono font-bold text-[11px] ${e.user ? 'text-[#00c8ff]' : cls}`}>{e.type}</td>
                 <td class="px-2 py-[3px] text-[12px] text-ink-2">
                   {e.user ? e.label : tl(e.label)}
                   {e.user && (
                     <button
-                      onClick={() => removeCatalyst(e.id)}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        if (isOpen) setOpenKey('')
+                        removeCatalyst(e.id)
+                      }}
                       class="ml-2 font-mono text-[10px] text-muted opacity-0 group-hover:opacity-100 max-md:opacity-100 hover:text-down"
                       title={tl('remove catalyst')}
                     >
@@ -642,12 +662,62 @@ function Calendar() {
                 </td>
                 <td class={`px-3 py-[3px] font-mono text-[11px] text-right ${e.days < 0 ? 'text-muted/60' : cls}`}>
                   {e.days === 0 ? tl('today') : eventDayLabel(e.days)}
+                  <span class="ml-1.5 text-muted" aria-hidden="true">{isOpen ? '▾' : '▸'}</span>
                 </td>
               </tr>
             )
           })}
         </tbody>
       </table>
+      {openEvent && details && (
+        <aside class="border-t border-line-2 bg-surface-2 px-3 py-3" aria-label={tl('Event details')}>
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="font-mono text-[10px] font-bold text-accent border border-accent/30 rounded px-1.5 py-0.5">
+                  {openEvent.type}
+                </span>
+                <h3 class="font-anth font-semibold text-[14px] text-ink">
+                  {openEvent.user ? openEvent.label : tl(openEvent.label)}
+                </h3>
+              </div>
+              {details.description && (
+                <p class="mt-2 text-[12px] leading-relaxed text-ink-2 max-w-2xl">{tl(details.description)}</p>
+              )}
+            </div>
+            <button onClick={() => setOpenKey('')} class="shrink-0 text-muted hover:text-ink px-1"
+                    aria-label={tl('Close event details')}>✕</button>
+          </div>
+
+          <dl class="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-x-5 gap-y-2">
+            <div>
+              <dt class="font-mono text-[9px] uppercase tracking-wider text-muted">{tl('Date')}</dt>
+              <dd class="font-mono text-[12px] text-ink">{openEvent.date}</dd>
+            </div>
+            <div>
+              <dt class="font-mono text-[9px] uppercase tracking-wider text-muted">{tl('Typical time')}</dt>
+              <dd class="font-mono text-[12px] text-ink">{details.time || '—'}</dd>
+            </div>
+            <div>
+              <dt class="font-mono text-[9px] uppercase tracking-wider text-muted">{tl('Source')}</dt>
+              <dd class="text-[12px] text-ink">{tl(details.source) || '—'}</dd>
+            </div>
+            {details.facts.map((fact) => (
+              <div key={fact.label}>
+                <dt class="font-mono text-[9px] uppercase tracking-wider text-muted">{tl(fact.label)}</dt>
+                <dd class="font-mono text-[12px] text-ink break-words">{tl(fact.value)}</dd>
+              </div>
+            ))}
+          </dl>
+
+          {details.url && (
+            <a href={details.url} target="_blank" rel="noreferrer"
+               class="inline-flex mt-3 font-mono text-[10px] text-accent hover:underline">
+              {tl('Open official source')} ↗
+            </a>
+          )}
+        </aside>
+      )}
       <footer class="px-3 py-1.5 border-t border-line font-mono text-[10px] text-muted">
         {tl('add your own')}: <span class="text-ink-2">cat add 2026-09-09 NVDA product GTC keynote</span>
       </footer>
