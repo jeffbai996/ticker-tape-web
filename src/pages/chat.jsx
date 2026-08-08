@@ -464,6 +464,14 @@ function ActivityTrace({ steps, busy = false, startedAt }) {
   // rather than only inside the folded step list (Jeff 2026-08-07)
   const liveThinking = busy && running?.kind === 'model' ? running.detail : ''
   const liveDepth = busy && running?.kind === 'model' ? thinkDepth(running.thinkTokens) : ''
+  // The header already IS the live status line — it renders the running step's
+  // verb — so the step that is currently running would repeat the same word
+  // directly beneath it ("Thinking..." stacked on "Thinking..."). Drop it while
+  // it duplicates the header; it rejoins the moment it finishes and has a
+  // duration to report, which is when a history row starts being worth having.
+  const visibleSteps = steps.filter((step) => !(
+    busy && step.status === 'running' && (step.verb || step.label) === title
+  ))
 
   return (
     <div class={`chat-trace w-full max-w-[92%] self-start text-muted ${busy ? 'is-live' : ''}`}>
@@ -484,16 +492,14 @@ function ActivityTrace({ steps, busy = false, startedAt }) {
       {liveThinking && <ThinkingPane text={liveThinking} />}
       <div class={`chat-trace-reveal ${open ? 'is-open' : ''}`}>
         <div>
+          {/* Rendered only when it has rows. .chat-trace-body carries a
+              border-left spine plus padding, so an EMPTY body still painted a
+              short grey stub hanging under the header — visible for the whole
+              first turn, since filtering the running step can leave nothing to
+              show (Jeff 2026-08-07). */}
+          {visibleSteps.length > 0 && (
           <div class="chat-trace-body">
-            {/* The header already IS the live status line, so the step that is
-                currently running would render the same word directly under it
-                — "Thinking…" stacked on "Thinking…" (Jeff 2026-08-07). Drop the
-                running step from the list while it duplicates the header; it
-                joins the list the moment it finishes and has a duration to
-                report, which is when a history row starts being worth having. */}
-            {steps.filter((step) => !(
-              busy && step.status === 'running' && (step.verb || step.label) === title
-            )).map((step) => {
+            {visibleSteps.map((step) => {
               const end = step.endedAt || now
               const stepElapsed = step.startedAt ? durationLabel(end - step.startedAt) : ''
               return (
@@ -524,6 +530,7 @@ function ActivityTrace({ steps, busy = false, startedAt }) {
               )
             })}
           </div>
+          )}
         </div>
       </div>
     </div>
