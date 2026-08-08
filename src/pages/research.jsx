@@ -298,7 +298,7 @@ function Candles({ bars, warmPad, intraday }) {
       </div>
       <div class="relative">
         <div ref={legendRef} class="absolute left-2 top-1 z-10 font-mono text-[10.5px] text-ink pointer-events-none" style="display:none" />
-        <div ref={el} class="h-[352px] w-full" />
+        <div ref={el} class="h-[352px] w-full touch-pan-y" />
       </div>
     </div>
   )
@@ -670,7 +670,7 @@ function IntradayView({ symbol }) {
         <span style={{ color: '#f59e0b' }}>— VWAP</span>
         {state === 'error' && <span class="text-down">{tl('no intraday data')}</span>}
       </div>
-      <div ref={el} class="h-[420px] w-full" />
+      <div ref={el} class="h-[420px] w-full touch-pan-y" />
     </section>
   )
 }
