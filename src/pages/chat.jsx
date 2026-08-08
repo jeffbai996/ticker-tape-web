@@ -787,6 +787,10 @@ export function Chat() {
     setActivity([])
     setLiveAnswer('')
     setAtHome(true)
+    // Close the drawer, exactly as switchThread does. Without this the new
+    // thread was created correctly but the modal stayed up covering it, so
+    // from the reader's side the button did nothing at all (Jeff 2026-08-07).
+    setDrawer(null)
     await refreshThreads()
   }
 
@@ -1258,7 +1262,13 @@ export function Chat() {
                       : 'text-muted hover:text-ink hover:bg-surface-3'
                   }`}
                 >
-                  {tl(lv)}
+                  {/* Not translated. These are the API's own effort tiers --
+                      low / medium / high / max are the literal values sent
+                      upstream, so rendering 低/中/高 made the control name
+                      something different from the thing it sets (Jeff
+                      2026-08-07). Model names beside it aren't translated
+                      either, for the same reason. */}
+                  {lv}
                 </button>
               ))}
             </span>
