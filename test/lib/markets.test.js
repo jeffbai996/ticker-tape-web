@@ -2,7 +2,9 @@ import { describe, it, expect } from 'vitest'
 import {
   daysUntil, upcomingEvents, ECON_EVENTS, MARKET_GROUPS, COMMODITY_GROUPS,
   MARKET_DECK, RELATIVE_SIGNALS, EARNINGS_UNIVERSE, EARNINGS_NAMES,
-  nthBusinessDay, nthWeekdayOfMonth, shiftDays, eventDayLabel} from '../../src/lib/markets.js'
+  nthBusinessDay, nthWeekdayOfMonth, shiftDays, eventDayLabel,
+  calendarEventDetails,
+} from '../../src/lib/markets.js'
 import { hasLabelTranslation } from '../../src/lib/i18n.js'
 
 describe('daysUntil', () => {
@@ -42,6 +44,47 @@ describe('ECON_EVENTS', () => {
   it('is sorted ascending by date', () => {
     const dates = ECON_EVENTS.map((e) => e.date)
     expect(dates).toEqual([...dates].sort())
+  })
+
+  it('gives every scheduled event useful drill-down context', () => {
+    for (const event of ECON_EVENTS) {
+      const details = calendarEventDetails(event)
+      expect(details.description, event.type).toBeTruthy()
+      expect(details.source, event.type).toBeTruthy()
+      expect(details.time, event.type).toBeTruthy()
+    }
+  })
+
+  it('preserves available release data and scalar source metadata', () => {
+    const details = calendarEventDetails({
+      date: '2026-08-12', type: 'CPI', label: 'CPI Release',
+      actual: '2.8%', estimate: '2.7%', previous: '2.6%',
+      metadata: { period: 'July 2026', revised: false, nested: { ignore: true }, empty: '' },
+    })
+
+    expect(details.facts).toEqual(expect.arrayContaining([
+      { label: 'Actual', value: '2.8%' },
+      { label: 'Estimate', value: '2.7%' },
+      { label: 'Previous', value: '2.6%' },
+      { label: 'Period', value: 'July 2026' },
+      { label: 'Revised', value: 'No' },
+    ]))
+    expect(details.facts.some((fact) => fact.label === 'Nested')).toBe(false)
+    expect(details.facts.some((fact) => fact.label === 'Empty')).toBe(false)
+  })
+
+  it('describes user catalysts without inventing release data', () => {
+    const details = calendarEventDetails({
+      date: '2026-09-09', type: 'PRODUCT', label: 'Example Co — keynote',
+      rawLabel: 'keynote', symbol: 'EXM', user: true,
+    })
+
+    expect(details.source).toBe('User catalyst')
+    expect(details.facts).toEqual(expect.arrayContaining([
+      { label: 'Symbol', value: 'EXM' },
+      { label: 'Category', value: 'PRODUCT' },
+    ]))
+    expect(details.url).toBe('')
   })
 })
 

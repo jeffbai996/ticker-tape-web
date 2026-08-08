@@ -431,6 +431,108 @@ const MONTHS_2026 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 const FOMC_2026 = ['2026-01-28', '2026-03-18', '2026-05-06', '2026-06-17',
                    '2026-07-29', '2026-09-16', '2026-11-04', '2026-12-16']
 
+const ECON_EVENT_INFO = {
+  FOMC: {
+    time: '14:00 ET', source: 'Federal Reserve', url: 'https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm',
+    description: 'Federal Reserve policy decision and statement. A press conference usually follows at 14:30 ET.',
+  },
+  CPI: {
+    time: '08:30 ET', source: 'Bureau of Labor Statistics', url: 'https://www.bls.gov/cpi/',
+    description: 'Monthly consumer inflation report, including headline and core price changes.',
+  },
+  NFP: {
+    time: '08:30 ET', source: 'Bureau of Labor Statistics', url: 'https://www.bls.gov/ces/',
+    description: 'Monthly US employment report covering payroll growth, unemployment, wages, and revisions.',
+  },
+  GDP: {
+    time: '08:30 ET', source: 'Bureau of Economic Analysis', url: 'https://www.bea.gov/data/gdp/gross-domestic-product',
+    description: 'First official estimate of US economic growth for the quarter, with major demand components.',
+  },
+  PCE: {
+    time: '08:30 ET', source: 'Bureau of Economic Analysis', url: 'https://www.bea.gov/data/personal-consumption-expenditures-price-index',
+    description: 'The Federal Reserve’s preferred inflation gauge, released with personal income and spending.',
+  },
+  PPI: {
+    time: '08:30 ET', source: 'Bureau of Labor Statistics', url: 'https://www.bls.gov/ppi/',
+    description: 'Monthly change in prices received by domestic producers, including headline and core measures.',
+  },
+  RET: {
+    time: '08:30 ET', source: 'US Census Bureau', url: 'https://www.census.gov/retail/index.html',
+    description: 'Monthly snapshot of consumer spending at retailers, including the control-group measure used in GDP.',
+  },
+  OPEX: {
+    time: 'All session', source: 'Exchange calendar', url: '',
+    description: 'Quarterly expiration of index futures, index options, and single-stock options. Closing flows can amplify volume and volatility.',
+  },
+  FED: {
+    time: 'Schedule varies', source: 'Federal Reserve Bank of Kansas City', url: 'https://www.kansascityfed.org/research/jackson-hole-economic-symposium/',
+    description: 'Annual central-bank symposium at Jackson Hole, watched for policy signals from major speakers.',
+  },
+  ISM: {
+    time: '10:00 ET', source: 'Institute for Supply Management', url: 'https://www.ismworld.org/supply-management-news-and-reports/reports/ism-report-on-business/',
+    description: 'Survey of US manufacturing activity, with new orders, employment, prices, and production components.',
+  },
+  ISMS: {
+    time: '10:00 ET', source: 'Institute for Supply Management', url: 'https://www.ismworld.org/supply-management-news-and-reports/reports/ism-report-on-business/',
+    description: 'Survey of US services activity, with business activity, new orders, employment, and prices components.',
+  },
+  MINS: {
+    time: '14:00 ET', source: 'Federal Reserve', url: 'https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm',
+    description: 'Detailed record of the most recent FOMC discussion, including risks, policy views, and areas of disagreement.',
+  },
+  UMCH: {
+    time: '10:00 ET', source: 'University of Michigan', url: 'https://data.sca.isr.umich.edu/',
+    description: 'Preliminary consumer-sentiment reading with current conditions, expectations, and inflation expectations.',
+  },
+}
+
+const FACT_KEYS = [
+  ['actual', 'Actual'], ['estimate', 'Estimate'], ['consensus', 'Consensus'],
+  ['previous', 'Previous'], ['revised', 'Revised'], ['period', 'Period'],
+  ['symbol', 'Symbol'], ['location', 'Location'],
+]
+
+function factValue(value) {
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No'
+  if (typeof value === 'string' || typeof value === 'number') return String(value)
+  return ''
+}
+
+function factLabel(key) {
+  return String(key).replace(/[_-]+/g, ' ').replace(/\b\w/g, (ch) => ch.toUpperCase())
+}
+
+/** Normalize everything useful the calendar currently knows about an event.
+ *  Unknown scalar metadata is intentionally retained so richer feed-backed
+ *  events become visible without requiring another UI change. */
+export function calendarEventDetails(event) {
+  const known = ECON_EVENT_INFO[event.type] || {}
+  const source = event.source || (event.user ? 'User catalyst' : known.source) || ''
+  const facts = []
+  const seen = new Set()
+  const addFact = (key, label, value) => {
+    const clean = factValue(value)
+    if (!clean || seen.has(key)) return
+    seen.add(key)
+    facts.push({ label, value: clean })
+  }
+
+  for (const [key, label] of FACT_KEYS) addFact(key, label, event[key])
+  if (event.user) addFact('category', 'Category', event.type)
+  for (const bag of [event.numbers, event.metadata, event.meta]) {
+    if (!bag || typeof bag !== 'object' || Array.isArray(bag)) continue
+    for (const [key, value] of Object.entries(bag)) addFact(key, factLabel(key), value)
+  }
+
+  return {
+    description: event.description || known.description || '',
+    time: event.time || known.time || '',
+    source,
+    url: event.url || known.url || '',
+    facts,
+  }
+}
+
 export const ECON_EVENTS = [
   ...['2026-01-28', '2026-03-18', '2026-05-06', '2026-06-17', '2026-07-29', '2026-09-16', '2026-11-04', '2026-12-16']
     .map((date) => ({ date, type: 'FOMC', label: 'FOMC Rate Decision' })),
