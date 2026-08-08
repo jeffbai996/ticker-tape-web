@@ -19,8 +19,8 @@ import { loadJournal, addJournalEntry, removeJournalEntry, searchJournal } from 
 import { CHAT_HOME_EVENT, takeChatHomePending } from '../lib/chatnav.js'
 import { CHATSTORE_SYNC_EVENT, chatstoreAvailable, syncNotes } from '../lib/chatstore.js'
 import {
-  fetchThreadList, loadActiveHistory, migrateLegacy, openThread,
-  removeThread, saveActiveHistory, startNewThread, currentThreadId,
+  fetchThreadList, hydrateActiveThread, loadActiveHistory, migrateLegacy,
+  openThread, removeThread, saveActiveHistory, startNewThread, currentThreadId,
 } from '../lib/threads.js'
 import { wireUrl } from '../lib/wire.js'
 
@@ -833,31 +833,46 @@ export function Chat() {
 
   // Boot: pull the shared brain from the wire (server wins), adopt a legacy
   // local conversation as thread #1, and list the threads for the rail.
-  const refreshThreads = () => fetchThreadList().then(setThreads).catch(() => {})
+  const sessionFailure = (err) => {
+    setError(`${tl('session sync failed')}: ${String(err?.message || err)}`)
+  }
+  const refreshThreads = () => fetchThreadList().then(setThreads).catch(sessionFailure)
   useEffect(() => {
     const onSync = () => { setMemories(loadMemories()); setJournal(loadJournal()) }
     if (chatstoreAvailable()) {
       window.addEventListener(CHATSTORE_SYNC_EVENT, onSync)
       syncNotes().catch(() => {})
     }
-    migrateLegacy().then(refreshThreads).catch(() => {})
+    const bootThreads = async () => {
+      try {
+        await migrateLegacy()
+        const messages = await hydrateActiveThread()
+        historyRef.current = messages
+        setHistory(messages)
+        await refreshThreads()
+      } catch (err) {
+        sessionFailure(err)
+      }
+    }
+    bootThreads()
     return () => window.removeEventListener(CHATSTORE_SYNC_EVENT, onSync)
   }, [])
 
   const newThread = async () => {
     if (busyRef.current) return
-    await startNewThread(historyRef.current)
-    historyRef.current = []
-    activityRef.current = []
-    setHistory([])
-    setActivity([])
-    setLiveAnswer('')
-    setAtHome(true)
-    // Close the drawer, exactly as switchThread does. Without this the new
-    // thread was created correctly but the modal stayed up covering it, so
-    // from the reader's side the button did nothing at all (Jeff 2026-08-07).
-    setDrawer(null)
-    await refreshThreads()
+    try {
+      await startNewThread(historyRef.current)
+      historyRef.current = []
+      activityRef.current = []
+      setHistory([])
+      setActivity([])
+      setLiveAnswer('')
+      setAtHome(true)
+      setDrawer(null)
+      await refreshThreads()
+    } catch (err) {
+      sessionFailure(err)
+    }
   }
 
   const switchThread = async (id) => {
@@ -876,22 +891,29 @@ export function Chat() {
       setAtHome(false)
       setDrawer(null)
       await refreshThreads()
-    } catch { /* thread gone — list will refresh */ }
+    } catch (err) {
+      sessionFailure(err)
+      await refreshThreads()
+    }
   }
 
   const deleteSession = async (id) => {
     if (busyRef.current) return
-    const wasActive = id === currentThreadId()
-    await removeThread(id)
-    if (wasActive) {
-      historyRef.current = []
-      activityRef.current = []
-      setHistory([])
-      setActivity([])
-      setLiveAnswer('')
-      setAtHome(true)
+    try {
+      const wasActive = id === currentThreadId()
+      await removeThread(id)
+      if (wasActive) {
+        historyRef.current = []
+        activityRef.current = []
+        setHistory([])
+        setActivity([])
+        setLiveAnswer('')
+        setAtHome(true)
+      }
+      await refreshThreads()
+    } catch (err) {
+      sessionFailure(err)
     }
-    await refreshThreads()
   }
 
   // Warm case: already on the chat page when AI Chat is pressed again.
