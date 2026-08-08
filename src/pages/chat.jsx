@@ -442,7 +442,61 @@ function ThinkingPane({ text }) {
 
 /** One complete provider/tool timeline. Live traces stay open; completed traces
  * fold into an Operator-style "Worked for" row without discarding the steps. */
-function ActivityTrace({ steps, busy = false, startedAt }) {
+/** Compact token count — 36314 -> "36.3k". Whole numbers under 1k, one
+ *  decimal above, because the counter updates live and a jittering third
+ *  significant digit is noise, not information. */
+function fmtTok(n) {
+  if (!n) return '0'
+  if (n < 1000) return String(n)
+  if (n < 100000) return `${(n / 1000).toFixed(1)}k`
+  return `${Math.round(n / 1000)}k`
+}
+
+/** Live in/out token counter, the way the CLI reports it: an up arrow for
+ *  what was sent and a down arrow for what came back. Deliberately not
+ *  animated — the numbers already move on their own as the stream lands, and
+ *  a transition on top of that reads as lag (Jeff 2026-08-07). */
+function TokenCount({ usage }) {
+  if (!usage || (!usage.in && !usage.out)) return null
+  return (
+    <span class="font-mono text-[9px] tabular-nums text-muted/80 flex items-center gap-1.5"
+          title={`${usage.in || 0} tokens in · ${usage.out || 0} out`}>
+      <span class="flex items-center gap-0.5"><span class="text-muted/60">↑</span>{fmtTok(usage.in)}</span>
+      <span class="flex items-center gap-0.5"><span class="text-muted/60">↓</span>{fmtTok(usage.out)}</span>
+    </span>
+  )
+}
+
+/** Per-step glyph. Grey, 12px, stroked — the label already says what happened,
+ *  so the icon is a scanning aid, not decoration, and it stays monochrome so a
+ *  list of steps reads as one column rather than a row of colours. */
+function StepIcon({ kind, verb }) {
+  // Keyed off the word actually SHOWN, not the step's original verb: a model
+  // step starts life as "Thinking" and ends as "Answered", and pairing the
+  // finished row with a lamp said the wrong thing about a row that reads
+  // "Answered".
+  const v = String(verb || '').toLowerCase()
+  const p = { fill: 'none', stroke: 'currentColor', 'stroke-width': 1.6,
+              'stroke-linecap': 'round', 'stroke-linejoin': 'round' }
+  let d
+  if (kind === 'tool' || v.includes('search') || v.includes('look')) {
+    d = <g {...p}><circle cx="7" cy="7" r="4.5" /><path d="M10.5 10.5 14 14" /></g>
+  } else if (v.includes('read') || v.includes('brows')) {
+    d = <g {...p}><path d="M2.5 3.5h4a2 2 0 0 1 2 2v8a1.6 1.6 0 0 0-1.6-1.4H2.5zM13.5 3.5h-4a2 2 0 0 0-2 2v8a1.6 1.6 0 0 1 1.6-1.4h4.4z" /></g>
+  } else if (v.includes('answer')) {
+    d = <g {...p}><path d="M3 8.5 6.5 12 13 4.5" /></g>
+  } else {
+    // reasoning / thinking — a lamp, the one glyph everyone reads as "thought"
+    d = <g {...p}><path d="M6 12.5h4M6.5 14.2h3" /><path d="M8 1.8a4.4 4.4 0 0 0-2.6 7.9c.4.3.6.8.6 1.3h4c0-.5.2-1 .6-1.3A4.4 4.4 0 0 0 8 1.8z" /></g>
+  }
+  return (
+    <svg viewBox="0 0 16 16" width="12" height="12" class="shrink-0 text-muted/70" aria-hidden="true">
+      {d}
+    </svg>
+  )
+}
+
+function ActivityTrace({ steps, busy = false, startedAt, usage = null }) {
   const [open, setOpen] = useState(busy)
   const [, tick] = useState(0)
   useEffect(() => { if (busy) setOpen(true) }, [busy])
@@ -481,6 +535,7 @@ function ActivityTrace({ steps, busy = false, startedAt }) {
         </span>
         <span class="chat-trace-title">{title}{busy ? <Ellipsis /> : ` ${elapsed}`}</span>
         {busy && <span class="font-mono text-[9px] tabular-nums text-muted">{elapsed}</span>}
+        <TokenCount usage={usage} />
         {liveDepth && !liveThinking && (
           <span class="font-mono text-[9px] tabular-nums text-muted/80">{liveDepth}</span>
         )}
@@ -507,6 +562,7 @@ function ActivityTrace({ steps, busy = false, startedAt }) {
                   <span class="chat-trace-node" />
                   <div class="min-w-0 flex-1">
                     <div class="flex items-baseline gap-2">
+                      <StepIcon kind={step.kind} verb={step.label || step.verb} />
                       <span class="chat-trace-label">
                         {step.label}{step.status === 'running' && <Ellipsis />}
                       </span>
@@ -741,6 +797,8 @@ export function Chat() {
   const [queued, setQueued] = useState([])
   const [activity, setActivity] = useState([])
   const [liveAnswer, setLiveAnswer] = useState('')
+  const [usage, setUsage] = useState(null)   // live {in, out} token counter
+  const usageRef = useRef(null)              // same value, readable at turn end
   const [error, setError] = useState(null)
   const [notice, setNotice] = useState(null)          // memory-tag confirmations
   const [drawer, setDrawer] = useState(null)          // 'sessions' | 'mem' | 'journal' | null
@@ -913,6 +971,8 @@ export function Chat() {
     setError(null)
     setNotice(null)
     setLiveAnswer('')
+    setUsage(null)
+    usageRef.current = null
     turnStartedRef.current = Date.now()
     // context assembly is table stakes, not a trace step worth narrating
     // (Jeff 2026-08-06: "it says read live market context every single time")
@@ -962,6 +1022,22 @@ export function Chat() {
         updateActivity((steps) => steps.map((step) => step.key === `model-${event.round}`
           ? { ...step, detail: `${step.detail || ''}${event.delta}`.slice(-5000) }
           : step))
+        return
+      }
+      if (event.type === 'usage') {
+        // Cumulative for the turn: fragwire re-sends usage as output grows, and
+        // a multi-round tool loop reports per round, so keep the max seen for
+        // the prompt side and sum the output side across rounds.
+        setUsage((u) => {
+          const next = ({
+          in: Math.max(u?.in || 0, event.usage?.in || 0),
+          out: (u?.outByRound?.[event.round] != null
+                ? (u.out - u.outByRound[event.round]) : (u?.out || 0)) + (event.usage?.out || 0),
+          outByRound: { ...(u?.outByRound || {}), [event.round]: event.usage?.out || 0 },
+          })
+          usageRef.current = next
+          return next
+        })
         return
       }
       if (event.type === 'thinking_tokens') {
@@ -1025,7 +1101,12 @@ export function Chat() {
       }
       if (finalIndex >= 0) {
         stamped[finalIndex] = {
+          // Carry the final token count onto the message. Without this the
+          // counter vanished the instant the turn finished, since only the
+          // LIVE trace is handed the usage prop — so you could watch a turn
+          // cost 50k and then never see what it cost again.
           ...stamped[finalIndex], trace, traceStartedAt: turnStartedRef.current,
+          traceUsage: usageRef.current,
         }
       }
       if (notes.length) {
@@ -1516,7 +1597,7 @@ export function Chat() {
             return (
               <div key={i} class="w-full flex flex-col gap-1.5 chat-turn-enter">
                 {m.trace?.length > 0 && (
-                  <ActivityTrace steps={m.trace} startedAt={m.traceStartedAt} />
+                  <ActivityTrace steps={m.trace} startedAt={m.traceStartedAt} usage={m.traceUsage} />
                 )}
                 <div class="group self-start max-w-[92%] relative"
                   title={m.ts ? `${m.model ? `${m.model} · ` : ''}${new Date(m.ts).toLocaleString()}` : undefined}>
@@ -1558,7 +1639,7 @@ export function Chat() {
           )
         })}
         {activity.length > 0 && (
-          <ActivityTrace steps={activity} busy={busy} startedAt={turnStartedRef.current} />
+          <ActivityTrace steps={activity} busy={busy} startedAt={turnStartedRef.current} usage={usage} />
         )}
         {liveAnswer && (
           <div class="chat-assistant-bubble chat-message-live self-start max-w-[92%] rounded-2xl border px-3.5 py-2.5 text-[13.5px] leading-relaxed bg-surface-1 border-line text-ink font-anth">
