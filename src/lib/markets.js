@@ -476,8 +476,18 @@ export function daysUntil(eventDate, today) {
 }
 
 /** Upcoming events within the horizon, soonest first. */
-export function upcomingEvents(events, today, horizonDays = 60) {
+export function upcomingEvents(events, today, horizonDays = 60, pastDays = 0) {
   return events
     .map((e) => ({ ...e, days: daysUntil(e.date, today) }))
-    .filter((e) => e.days >= 0 && e.days <= horizonDays)
+    .filter((e) => e.days >= -pastDays && e.days <= horizonDays)
+    .sort((a, b) => a.days - b.days)
+}
+
+/** How a calendar row states its distance from today. Past events read "1da"
+ *  rather than "-1d" — the CLI's form, and a minus sign in a column of plain
+ *  day counts scans as a negative number, not as "ago". A print that landed
+ *  yesterday is still worth seeing, which is why the windows allow it at all. */
+export function eventDayLabel(days) {
+  if (days === 0) return 'today'
+  return days > 0 ? `${days}d` : `${-days}da`
 }

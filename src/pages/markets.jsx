@@ -5,7 +5,7 @@ import { useQuotes, useWatchlist } from '../hooks.js'
 import { AiReport } from '../components/AiReport.jsx'
 import { BRIEFING_SYSTEM } from '../lib/briefing.js'
 import { EARNINGS_UNIVERSE,
-  MARKET_GROUPS, SECTORS, COMMODITY_GROUPS, ECON_EVENTS, RELATIVE_SIGNALS,
+  MARKET_GROUPS, SECTORS, COMMODITY_GROUPS, ECON_EVENTS, RELATIVE_SIGNALS, eventDayLabel,
   upcomingEvents,
 } from '../lib/markets.js'
 import { loadCatalysts, onCatalystsChange, removeCatalyst, mergedEvents } from '../lib/catalysts.js'
@@ -586,7 +586,12 @@ function Calendar() {
   const today = new Date().toISOString().slice(0, 10)
   const [cats, setCats] = useState(loadCatalysts)
   useEffect(() => onCatalystsChange(setCats), [])
-  const events = mergedEvents(ECON_EVENTS, cats, today, 90)
+  // Three days of look-back here. The enlarged view is where you go to reason
+  // about a run of prints, so the week's releases should still be on it rather
+  // than vanishing one at a time as they land (Jeff 2026-08-07).
+  const events = mergedEvents(ECON_EVENTS, cats, today, 90, 3)
+  // Index of the first row that has not happened yet — where the rule goes.
+  const firstFuture = events.findIndex((e) => e.days >= 0)
 
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden max-w-xl">
@@ -597,10 +602,12 @@ function Calendar() {
       </header>
       <table class="w-full border-collapse">
         <tbody>
-          {events.map((e) => {
+          {events.map((e, i) => {
             const cls = URGENCY.find((u) => e.days <= u.max).cls
             return (
-              <tr key={`${e.date}-${e.type}-${e.id ?? ''}`} class="border-b border-line last:border-0 hover:bg-surface-3 group">
+              <tr key={`${e.date}-${e.type}-${e.id ?? ''}`}
+                  class={`border-b border-line last:border-0 hover:bg-surface-3 group${
+                    e.days < 0 ? ' is-past' : ''}${i === firstFuture && firstFuture > 0 ? ' is-now' : ''}`}>
                 <td class="px-3 py-[3px] font-mono text-[12px] text-ink">{e.date}</td>
                 <td class={`px-2 py-[3px] font-mono font-bold text-[11px] ${e.user ? 'text-[#00c8ff]' : cls}`}>{e.type}</td>
                 <td class="px-2 py-[3px] text-[12px] text-ink-2">
@@ -615,8 +622,8 @@ function Calendar() {
                     </button>
                   )}
                 </td>
-                <td class={`px-3 py-[3px] font-mono text-[11px] text-right ${cls}`}>
-                  {e.days === 0 ? tl('today') : `${e.days}d`}
+                <td class={`px-3 py-[3px] font-mono text-[11px] text-right ${e.days < 0 ? 'text-muted/60' : cls}`}>
+                  {e.days === 0 ? tl('today') : eventDayLabel(e.days)}
                 </td>
               </tr>
             )
