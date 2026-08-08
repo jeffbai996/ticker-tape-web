@@ -74,7 +74,7 @@ export function parseToolCall(text, defs = TOOL_DEFS) {
  * wireComplete.
  */
 export async function wireStream({ model, effort, system, messages, onDelta, onThinking,
-                                  onThinkingTokens, signal }) {
+                                  onThinkingTokens, onUsage, signal }) {
   const base = wireUrl().replace(/\/$/, '')
   const resp = await fetch(`${base}/api/chat/stream`, {
     method: 'POST',
@@ -112,6 +112,11 @@ export async function wireStream({ model, effort, system, messages, onDelta, onT
         // Claude 5's adaptive thinking omits the text and reports depth only —
         // the running token estimate is the honest stand-in (2026-08-07)
         else if (payload.t === 'thinking_tokens') onThinkingTokens?.(Number(payload.d) || 0)
+        // live token usage — {in, out}, re-sent as output grows, so the header
+        // can count up the way the CLI does instead of only knowing at the end
+        else if (payload.t === 'usage') {
+          try { onUsage?.(JSON.parse(payload.d)) } catch { /* malformed frame */ }
+        }
       } else if (event === 'done') {
         backend = payload.backend || ''
       } else if (event === 'error') {
