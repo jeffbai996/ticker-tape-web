@@ -27,7 +27,11 @@ async function req(path, opts = {}) {
     ...opts,
   })
   const out = await resp.json()
-  if (!out.ok) throw new Error(out.error || `chatstore ${resp.status}`)
+  if (!out.ok) {
+    const error = new Error(out.error || `chatstore ${resp.status}`)
+    error.status = resp.status
+    throw error
+  }
   return out
 }
 
