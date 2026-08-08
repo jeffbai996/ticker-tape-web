@@ -9,6 +9,8 @@ import { useEarningsDays } from './dashboard.jsx'
 import { fmtPct } from '../lib/format.js'
 import { t as tt, tl } from '../lib/i18n.js'
 import { onSyncStatus } from '../lib/cloudsave.js'
+import { wireUrl } from '../lib/wire.js'
+import { pushWatchlistToWire } from '../lib/watchlistExport.js'
 import { useEffect } from 'preact/hooks'
 
 /** Cloud-save state, quietly: synced rev / syncing / offline. Hidden entirely
@@ -107,7 +109,7 @@ function WatchlistCard({ item, quotes, earnDays, allLists, primary = false }) {
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(item.name)
   const [managing, setManaging] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const [exportState, setExportState] = useState('idle')
   const others = allLists.filter((l) => l.id !== item.id)
   const [dest, setDest] = useState('')
   const destId = dest || others[0]?.id || ''
@@ -116,11 +118,23 @@ function WatchlistCard({ item, quotes, earnDays, allLists, primary = false }) {
   const dropFrom = (symbol) => item.id === 'main'
     ? unwatch(symbol) : removeWatchlistSymbol(item.id, symbol)
   const send = (symbol) => { if (destId) { addTo(destId, symbol); dropFrom(symbol) } }
-  const exportSymbols = () => {
+  const exportSymbols = async () => {
     const text = item.symbols.join(' ')
     const flash = () => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
+      setExportState('done')
+      setTimeout(() => setExportState('idle'), 1500)
+    }
+    const endpoint = wireUrl()
+    if (endpoint) {
+      setExportState('syncing')
+      try {
+        await pushWatchlistToWire(endpoint, item.symbols)
+        flash()
+      } catch {
+        setExportState('error')
+        setTimeout(() => setExportState('idle'), 2500)
+      }
+      return
     }
     // clipboard API needs a secure context — the plain-http tailnet build gets
     // undefined here, and even where it exists the write can be denied — either
@@ -193,15 +207,18 @@ function WatchlistCard({ item, quotes, earnDays, allLists, primary = false }) {
           class={managing ? 'text-accent-2' : 'text-muted hover:text-ink'}>
           {managing ? tl('done') : `⇄ ${tl('manage')}`}
         </button>
-        <button onClick={exportSymbols} class="text-muted hover:text-ink">
-          {copied ? tl('copied ✓') : tl('Export')}
+        <button onClick={exportSymbols} disabled={exportState === 'syncing'} class="text-muted hover:text-ink disabled:opacity-50">
+          {exportState === 'syncing' ? '…'
+            : exportState === 'done' ? tl('exported ✓')
+            : exportState === 'error' ? tl('export failed')
+            : tl('export')}
         </button>
         {!primary && (
           <>
-            <button onClick={() => { setName(item.name); setEditing((value) => !value) }} class="ml-auto text-muted hover:text-ink">{tl('Rename')}</button>
+            <button onClick={() => { setName(item.name); setEditing((value) => !value) }} class="ml-auto text-muted hover:text-ink">{tl('rename')}</button>
             <button onClick={() => {
               if (confirm(tt('watchlists.delete_confirm', { name: item.name }))) removeWatchlist(item.id)
-            }} class="text-muted hover:text-down">{tl('Delete')}</button>
+            }} class="text-muted hover:text-down">{tl('delete')}</button>
           </>
         )}
       </div>
