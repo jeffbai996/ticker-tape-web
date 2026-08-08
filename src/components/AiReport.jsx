@@ -237,6 +237,9 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
     URL.revokeObjectURL(a.href)
   }
 
+  const selectedWriter = models.find((model) => model.key === writer)
+  const effortLevels = selectedWriter?.efforts || []
+
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
       {/* one line, always — when the row is tight the hint folds first, the
@@ -274,26 +277,31 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
               </select>
             </label>
           )}
-          {(models.find((model) => model.key === writer)?.efforts || []).length > 0 && (
-            <label class="flex items-center gap-1 rounded border border-line bg-surface-3 pl-1.5">
-              <span class="font-anth text-[8.5px] uppercase tracking-wider text-muted">{tl('Effort')}</span>
-              <select value={effort}
-                onChange={(event) => {
-                  setEffort(event.currentTarget.value)
-                  localStorage.setItem(EFFORT_KEY, event.currentTarget.value)
-                }}
-                aria-label={tl('Thinking effort')}
-                class="bg-transparent py-1 pr-1.5 font-mono text-[10px] text-ink outline-none cursor-pointer">
-                {models.find((model) => model.key === writer).efforts.map((level) => (
-                  <option key={level} value={level}>{level}</option>
-                ))}
-              </select>
-            </label>
+          {effortLevels.length > 0 && (
+            <span class="flex items-center gap-0.5 bg-surface-2 border border-line rounded-md px-0.5 py-px"
+                  title={tl('Thinking effort')}>
+              {effortLevels.map((level) => (
+                <button key={level} type="button"
+                  aria-label={`${tl('Thinking effort')}: ${level}`}
+                  onClick={() => {
+                    setEffort(level)
+                    localStorage.setItem(EFFORT_KEY, level)
+                  }}
+                  class={`px-1.5 py-px font-anth text-[10px] rounded transition-colors ${
+                    effort === level
+                      ? 'bg-accent text-black font-bold'
+                      : 'text-muted hover:text-ink hover:bg-surface-3'
+                  }`}
+                >
+                  {level}
+                </button>
+              ))}
+            </span>
           )}
-          {models.find((model) => model.key === writer)?.fixed_effort && (
-            <span class="rounded border border-line bg-surface-3 px-1.5 py-1 font-mono text-[9px] text-muted"
+          {selectedWriter?.fixed_effort && (
+            <span class="font-mono text-[9px] text-muted border border-line rounded-md px-1.5 py-px"
                   title={tl('Fixed model effort')}>
-              {tl('Effort')} · {models.find((model) => model.key === writer).fixed_effort}
+              {selectedWriter.fixed_effort}
             </span>
           )}
           {text && !busy && (
