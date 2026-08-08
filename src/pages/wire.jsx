@@ -538,10 +538,12 @@ export function Wire({ route }) {
   const CONN_TONE = {
     live: 'text-up', connecting: 'text-accent', down: 'text-down', demo: 'text-muted',
   }
+  // Solid dots, no glow (Jeff 2026-08-07). The colour already carries the
+  // state; a halo on top of a 6px dot just reads as a smudge at this size.
   const CONN_DOT = {
-    live: 'bg-up shadow-[0_0_6px_var(--color-up)]',
-    connecting: 'bg-accent shadow-[0_0_5px_var(--color-accent)]',
-    down: 'bg-down shadow-[0_0_5px_var(--color-down)]',
+    live: 'bg-up',
+    connecting: 'bg-accent',
+    down: 'bg-down',
     demo: 'bg-muted',
   }
 

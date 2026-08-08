@@ -53,7 +53,7 @@ function DayMeter({ q }) {
 
 /** A yield spread computed from two rows above it — inverted curves are the
  *  point, so the sign gets the colour rather than the day's direction. */
-function SpreadRow({ label, hint, spread, quotes }) {
+function SpreadRow({ label, hint, spread, quotes, withUnits = false }) {
   const [a, b] = spread
   const qa = quotes[a]?.quote?.price
   const qb = quotes[b]?.quote?.price
@@ -70,12 +70,17 @@ function SpreadRow({ label, hint, spread, quotes }) {
       <td class="px-2 py-[3px] text-right font-mono text-[10px] text-muted w-20">
         {val == null ? '' : `${Math.round(val * 100)}bp`}
       </td>
-      <td colSpan={3} />
+      {/* Pad to the table's FULL column count. A row that stops short leaves
+          the tail columns with no cell at all, and a cell is what carries the
+          row's bottom border — so the separator line just stopped partway
+          across, which reads as a phantom column starting at the sparkline
+          (Jeff 2026-08-07). */}
+      <td colSpan={withUnits ? 4 : 3} />
     </tr>
   )
 }
 
-function QuoteRow({ label, symbol, data, unit }) {
+function QuoteRow({ label, symbol, data, unit, withUnits = false }) {
   const q = data?.quote
   const up = (q?.pct ?? 0) >= 0
   const tone = q ? (up ? 'text-up' : 'text-down') : 'text-muted'
@@ -85,7 +90,10 @@ function QuoteRow({ label, symbol, data, unit }) {
       onClick={() => { if (symbol) location.hash = hrefFor('research', symbol.toLowerCase()) }}
     >
       <td class="px-3 py-[3px] text-[12px] text-ink whitespace-nowrap max-sm:whitespace-normal font-anth">{label}</td>
-      {unit !== undefined && <td class="px-2 py-[3px] font-tick text-[10px] text-muted">{unit}</td>}
+      {/* Keyed off the TABLE's mode, not this row's value. Gating on
+          `unit !== undefined` meant a units table whose items did not all
+          carry a unit emitted 7 cells on some rows and 6 on others. */}
+      {withUnits && <td class="px-2 py-[3px] font-tick text-[10px] text-muted">{unit ?? ''}</td>}
       <td class="px-2 py-[3px] font-mono font-semibold text-[12px] text-ink text-right w-24">
         {q ? <FlashPrice price={q.price} fmt={fmtPrice} /> : '—'}
       </td>
@@ -129,13 +137,14 @@ function GroupCard({ name, items, quotes, withUnits }) {
         <tbody>
           {items.map((it) => (it.spread ? (
             <SpreadRow key={it.label} label={tl(it.label)} hint={tl(it.hint)}
-                       spread={it.spread} quotes={quotes} />
+                       spread={it.spread} quotes={quotes} withUnits={withUnits} />
           ) : (
             <QuoteRow
               key={it.symbol}
               symbol={it.symbol}
               label={tl(it.label)}
-              unit={withUnits ? it.unit : undefined}
+              unit={it.unit}
+              withUnits={withUnits}
               data={quotes[it.symbol]}
             />
           )))}
@@ -600,7 +609,16 @@ function Calendar() {
           {tl('Economic calendar — next 90 days')}
         </h2>
       </header>
-      <table class="w-full border-collapse">
+      {/* table-fixed with explicit widths. On auto layout the NAME column
+          absorbs every pixel of slack, so the empty space between a short
+          label and the right-aligned day count grew and shrank with zoom and
+          content -- which reads as a black column that comes and goes (Jeff
+          2026-08-07). Fixed proportions make it identical at every zoom. */}
+      <table class="w-full border-collapse table-fixed">
+        <colgroup>
+          <col class="w-[27%]" /><col class="w-[15%]" />
+          <col class="w-[42%]" /><col class="w-[16%]" />
+        </colgroup>
         <tbody>
           {events.map((e, i) => {
             const cls = URGENCY.find((u) => e.days <= u.max).cls
