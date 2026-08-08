@@ -1311,6 +1311,17 @@ export function Chat() {
       {/* 15px at top-3/left-3 still read cramped against the rail (Jeff
           2026-08-07, second pass). 17px with roomier insets; leading-tight
           rather than leading-none so the descender in "g" isn't clipped. */}
+      {/* The brow. The wordmark and the tool rail float ABOVE the scrolling
+          transcript with nothing behind them, so scrolled content ran straight
+          through the lettering — the launchpad heading collided with "AI Chat"
+          (Jeff 2026-08-07). This is the mask: full width so it covers the rail
+          on the right as well as the wordmark on the left, tall enough to clear
+          both (rail bottoms out at 38px, wordmark at ~37px), and fading rather
+          than a hard edge so text slides under it instead of being guillotined.
+          z-20 keeps it under the z-30 chrome; pointer-events-none so it cannot
+          eat a click meant for the transcript. */}
+      <div class="pointer-events-none absolute inset-x-0 top-0 h-14 z-20
+                  bg-gradient-to-b from-surface-0 via-surface-0/95 to-transparent" />
       <div class="absolute top-4 left-4 z-30 flex items-center gap-2">
         <h1 class="font-bold text-[17px] leading-tight text-ink" style="font-family: 'Plus Jakarta Sans', sans-serif">{tl('AI Chat')}</h1>
         <span class={`w-1.5 h-1.5 rounded-full ${onWire ? 'bg-up' : 'bg-accent'}`}
