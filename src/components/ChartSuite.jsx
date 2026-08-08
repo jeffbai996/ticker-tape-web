@@ -345,7 +345,15 @@ export function ChartSuite({ symbol }) {
       {state === 'error' && (
         <div style={{ height: `${fillH}px` }} class="flex items-center justify-center font-mono text-[11px] text-down">{tl('chart unavailable')}</div>
       )}
-      <div ref={el} class="w-full" style={{ height: state === 'ok' ? `${fillH}px` : 0 }} />
+      {/* touch-action: pan-y is what makes pinch-zoom work on a tablet. The
+          default `auto` lets the browser claim every gesture, so on iOS the
+          chart never receives the pinch and zoom looks broken while desktop
+          wheel-zoom works fine (Jeff 2026-08-07, iPad). NOT `none`, which is
+          what the library docs suggest: this pane is sized to fill the
+          viewport, so surrendering vertical panning would strand the reader
+          on the chart with no way to scroll the page. pan-y keeps the page
+          scrolling vertically and hands pinch + horizontal drag to the chart. */}
+      <div ref={el} class="w-full touch-pan-y" style={{ height: state === 'ok' ? `${fillH}px` : 0 }} />
     </div>
   )
 }
