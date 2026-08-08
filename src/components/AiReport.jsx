@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { streamChat } from '../lib/chatClient.js'
-import { fetchWireChatModels, wireStream } from '../lib/wirechat.js'
+import { fetchWireChatModels, wireComplete, wireStream } from '../lib/wirechat.js'
 import { wireUrl } from '../lib/wire.js'
 import { IS_PRIVATE_BUILD } from '../lib/nav.js'
 import { saveReport } from '../lib/archive.js'
-import { tl } from '../lib/i18n.js'
-import { LENGTHS, TONES, applyDials, loadDials, saveDials } from '../lib/aidials.js'
+import { getLocale, tl } from '../lib/i18n.js'
+import { LENGTHS, TONES, applyAiPreferences, loadDials, saveDials } from '../lib/aidials.js'
 
 // One-click AI synthesis panel: build a prompt, stream the answer, offer
 // copy/download. On a wire build the writer is picked from the subscription
@@ -13,6 +13,8 @@ import { LENGTHS, TONES, applyDials, loadDials, saveDials } from '../lib/aidials
 // worker model.
 const REPORT_MODEL = 'flash'
 const WRITER_KEY = 'report_model'
+const EFFORT_KEY = 'report_effort'
+const INSTRUCTIONS_KEY = 'report_instructions'
 
 // Markdown-lite: headers + bold + bullets, enough to render a model's memo
 // without a parser dependency. Anything fancier falls through as plain text.
@@ -87,9 +89,9 @@ function renderLine(line, i, parts) {
 /** One notch row: label plus mutually-exclusive pills. */
 function DialGroup({ label, options, value, onPick }) {
   return (
-    <div class="flex items-center gap-1.5">
-      <span class="font-anth text-[9px] uppercase tracking-wider text-muted">{label}</span>
-      <div class="flex gap-1">
+    <div class="flex flex-wrap items-center gap-1.5">
+      <span class="font-anth text-[9px] uppercase tracking-wider text-muted shrink-0">{label}</span>
+      <div class="flex flex-wrap gap-1">
         {options.map((o) => (
           <button key={o.key} onClick={() => onPick(o.key)}
             class={`font-mono text-[10px] px-2 py-0.5 rounded border ${
@@ -105,7 +107,9 @@ function DialGroup({ label, options, value, onPick }) {
 /** The collapsed control has to say what it's set to, or the dials are
  *  invisible state that silently changes every report. */
 function dialSummary(dials) {
-  return `${dials.length[0].toUpperCase()}/${dials.tone[0].toUpperCase()}${dials.disconfirm ? '/D' : ''}`
+  return `${tl(LENGTHS.find((item) => item.key === dials.length)?.label || dials.length)} · ${
+    tl(TONES.find((item) => item.key === dials.tone)?.label || dials.tone)}${
+    dials.disconfirm ? ` · ${tl('counter-case')}` : ''}`
 }
 
 /**
@@ -128,6 +132,8 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
   const [copied, setCopied] = useState(false)
   const [models, setModels] = useState([])
   const [writer, setWriter] = useState(() => localStorage.getItem(WRITER_KEY) || 'agy-flash')
+  const [effort, setEffort] = useState(() => localStorage.getItem(EFFORT_KEY) || '')
+  const [instructions, setInstructions] = useState(() => localStorage.getItem(INSTRUCTIONS_KEY) || '')
   const bodyRef = useRef(null)
 
   // the subscription lineup, when a wire is connected — same registry the
@@ -138,7 +144,17 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
       .then((live) => {
         setModels(live)
         const cur = localStorage.getItem(WRITER_KEY)
-        if (!live.some((m) => m.key === cur)) setWriter(live[0]?.key || 'agy-flash')
+        const picked = live.find((m) => m.key === cur) || live[0]
+        const nextWriter = picked?.key || 'agy-flash'
+        setWriter(nextWriter)
+        localStorage.setItem(WRITER_KEY, nextWriter)
+        const choices = picked?.efforts || []
+        const savedEffort = localStorage.getItem(EFFORT_KEY)
+        const nextEffort = choices.includes(savedEffort)
+          ? savedEffort
+          : (picked?.default_effort || choices[0] || '')
+        setEffort(nextEffort)
+        if (nextEffort) localStorage.setItem(EFFORT_KEY, nextEffort)
       })
       .catch(() => {})
   }, [])
@@ -160,7 +176,9 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
     setText('')
     try {
       const { system, prompt } = await buildPrompt()
-      const shaped = applyDials(system, dials)
+      const shaped = applyAiPreferences(system, {
+        dials, instructions, locale: getLocale(),
+      })
       let acc = ''
       const wire = wireUrl()
       if (wire) {
@@ -168,21 +186,18 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
         // /api/chat/stream; the metered API never enters this path.
         try {
           await wireStream({
-            model: writer, effort: '', system: shaped,
+            model: writer, effort, system: shaped,
             messages: [{ role: 'user', content: prompt }],
             onDelta: (d) => { acc += d; setText(acc) },
           })
         } catch {
-          // older fragwire / stream hiccup — the one-shot router still works
-          const resp = await fetch(`${wire.replace(/\/$/, '')}/api/generate`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ system: shaped, prompt,
-              purpose: (archive?.kind || 'ttw-report') }),
+          // The one-shot twin preserves the selected model and effort when a
+          // stream is interrupted before it emits any content.
+          const out = await wireComplete({
+            model: writer, effort, system: shaped,
+            messages: [{ role: 'user', content: prompt }],
             signal: AbortSignal.timeout(240_000),
           })
-          const out = await resp.json()
-          if (!out.ok) throw new Error(out.error || 'wire generation failed')
           acc = out.text
           setText(acc)
         }
@@ -227,24 +242,59 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
       {/* one line, always — when the row is tight the hint folds first, the
           title truncates second, and the controls pan inside the row rather
           than wrapping under it (Jeff 2026-08-06) */}
-      <header class="flex items-center flex-nowrap gap-2 px-3 py-1.5 border-b border-line-2 bg-surface-2 overflow-x-auto no-scrollbar">
-        <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase flex items-center gap-1.5 whitespace-nowrap shrink-0"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3m0 12v3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1M3 12h3m12 0h3M5.6 18.4l2.1-2.1m8.6-8.6 2.1-2.1"/><circle cx="12" cy="12" r="3.5"/></svg>{tl(label)}</h2>
-        {hint && <span class="font-mono text-[9.5px] text-muted normal-case tracking-normal truncate min-w-0 max-sm:hidden">{hint}</span>}
-        <div class="ml-auto flex items-center gap-2 shrink-0">
+      <header class="flex flex-col sm:flex-row sm:items-center gap-2 px-3 py-2 border-b border-line-2 bg-surface-2">
+        <div class="min-w-0 flex items-center gap-2">
+          <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase flex items-center gap-1.5 whitespace-nowrap shrink-0"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3m0 12v3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1M3 12h3m12 0h3M5.6 18.4l2.1-2.1m8.6-8.6 2.1-2.1"/><circle cx="12" cy="12" r="3.5"/></svg>{tl(label)}</h2>
+          {hint && <span class="font-mono text-[9.5px] text-muted normal-case tracking-normal truncate min-w-0 max-sm:hidden">{hint}</span>}
+        </div>
+        <div class="ml-auto flex flex-wrap items-center justify-end gap-1.5 min-w-0">
           {models.length > 0 && (
-            <select
-              value={writer}
-              onChange={(e) => {
-                setWriter(e.currentTarget.value)
-                localStorage.setItem(WRITER_KEY, e.currentTarget.value)
-              }}
-              title={tl('report model')}
-              class="bg-surface-3 border border-line rounded px-1 py-0.5 font-anth text-[10px] text-ink-2 outline-none cursor-pointer max-w-[130px]"
-            >
-              {models.map((m) => (
-                <option key={m.key} value={m.key}>{m.label}</option>
-              ))}
-            </select>
+            <label class="flex items-center gap-1 rounded border border-line bg-surface-3 pl-1.5">
+              <span class="font-anth text-[8.5px] uppercase tracking-wider text-muted">{tl('Model')}</span>
+              <select
+                value={writer}
+                onChange={(e) => {
+                  const nextWriter = e.currentTarget.value
+                  const info = models.find((m) => m.key === nextWriter)
+                  const choices = info?.efforts || []
+                  const nextEffort = choices.includes(effort)
+                    ? effort
+                    : (info?.default_effort || choices[0] || '')
+                  setWriter(nextWriter)
+                  setEffort(nextEffort)
+                  localStorage.setItem(WRITER_KEY, nextWriter)
+                  if (nextEffort) localStorage.setItem(EFFORT_KEY, nextEffort)
+                }}
+                aria-label={tl('Report model')}
+                class="bg-transparent py-1 pr-1.5 font-anth text-[10px] font-semibold text-ink outline-none cursor-pointer max-w-[150px]"
+              >
+                {models.map((m) => (
+                  <option key={m.key} value={m.key}>{m.label}</option>
+                ))}
+              </select>
+            </label>
+          )}
+          {(models.find((model) => model.key === writer)?.efforts || []).length > 0 && (
+            <label class="flex items-center gap-1 rounded border border-line bg-surface-3 pl-1.5">
+              <span class="font-anth text-[8.5px] uppercase tracking-wider text-muted">{tl('Effort')}</span>
+              <select value={effort}
+                onChange={(event) => {
+                  setEffort(event.currentTarget.value)
+                  localStorage.setItem(EFFORT_KEY, event.currentTarget.value)
+                }}
+                aria-label={tl('Thinking effort')}
+                class="bg-transparent py-1 pr-1.5 font-mono text-[10px] text-ink outline-none cursor-pointer">
+                {models.find((model) => model.key === writer).efforts.map((level) => (
+                  <option key={level} value={level}>{level}</option>
+                ))}
+              </select>
+            </label>
+          )}
+          {models.find((model) => model.key === writer)?.fixed_effort && (
+            <span class="rounded border border-line bg-surface-3 px-1.5 py-1 font-mono text-[9px] text-muted"
+                  title={tl('Fixed model effort')}>
+              {tl('Effort')} · {models.find((model) => model.key === writer).fixed_effort}
+            </span>
           )}
           {text && !busy && (
             <>
@@ -256,23 +306,27 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
           )}
           <button
             onClick={() => setShowDials((v) => !v)}
-            title={tl('output dials')}
-            class={`font-mono text-[10px] px-1.5 py-0.5 rounded border ${
+            aria-expanded={showDials}
+            class={`font-anth text-[10px] px-2 py-1 rounded border whitespace-nowrap ${
               showDials ? 'border-accent text-accent' : 'border-line text-muted hover:text-ink'}`}
           >
-            {dialSummary(dials)}
+            {tl('Style & analysis')} <span class="font-mono text-[9px] opacity-80">{dialSummary(dials)}</span>
           </button>
           <button
             onClick={generate}
             disabled={busy}
-            class="font-mono text-[10px] px-2.5 py-0.5 rounded border border-accent text-accent bg-accent-soft hover:bg-accent hover:text-black disabled:opacity-40"
+            class="font-mono text-[10px] px-2.5 py-1 rounded border border-accent text-accent bg-accent-soft hover:bg-accent hover:text-black disabled:opacity-40"
           >
             {busy ? '…' : text ? tl('regenerate') : tl('generate')}
           </button>
         </div>
       </header>
       {showDials && (
-        <div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-3 py-1.5 border-b border-line-2 bg-surface-2/60">
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2.5 border-b border-line-2 bg-surface-2/60">
+          <div class="basis-full flex items-baseline gap-2">
+            <span class="font-anth text-[11px] font-semibold text-ink">{tl('Style & analysis')}</span>
+            <span class="font-anth text-[10px] text-muted">{tl('Controls the shape and point of view of this generation.')}</span>
+          </div>
           <DialGroup label={tl('length')} options={LENGTHS} value={dials.length}
             onPick={(key) => setDials(saveDials({ ...dials, length: key }))} />
           <DialGroup label={tl('tone')} options={TONES} value={dials.tone}
@@ -282,8 +336,23 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
             class={`font-mono text-[10px] px-2 py-0.5 rounded border ${
               dials.disconfirm ? 'border-accent-2 text-accent-2 bg-accent-2-soft' : 'border-line text-muted hover:text-ink'}`}
           >
-            {tl('disconfirm')}
+            {tl('include counter-case')}
           </button>
+          <label class="basis-full mt-0.5">
+            <span class="block mb-1 font-anth text-[9px] uppercase tracking-wider text-muted">
+              {tl('Custom instructions')}
+            </span>
+            <textarea value={instructions}
+              onInput={(event) => {
+                const next = event.currentTarget.value
+                setInstructions(next)
+                localStorage.setItem(INSTRUCTIONS_KEY, next)
+              }}
+              rows={2}
+              placeholder={tl('e.g. focus on rates, compare against consensus, flag stale inputs')}
+              class="block w-full resize-y rounded border border-line bg-surface-0 px-2.5 py-1.5 font-anth text-[11px] leading-relaxed text-ink outline-none placeholder:text-muted/70 focus:border-accent/60"
+            />
+          </label>
         </div>
       )}
       {(text || error) && (
