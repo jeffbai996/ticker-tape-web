@@ -19,7 +19,8 @@ vi.mock('../../src/lib/chatstore.js', () => ({
 }))
 
 import {
-  currentThreadId, fetchThreadList, openThread, saveActiveHistory, startNewThread,
+  currentThreadId, fetchThreadList, hydrateActiveThread, openThread,
+  saveActiveHistory, startNewThread,
 } from '../../src/lib/threads.js'
 
 describe('chat sessions', () => {
@@ -77,5 +78,36 @@ describe('chat sessions', () => {
 
     const opened = await openThread(sessions[1].id, [])
     expect(opened).toEqual(first)
+  })
+
+  it('hydrates the active session from the server instead of a device cache', async () => {
+    const cached = [{ role: 'user', content: 'stale iPad cache' }]
+    const shared = [{ role: 'user', content: 'latest shared session' }]
+    localStorage.setItem('chat_thread_id', '52')
+    localStorage.setItem('chat_history_v1', JSON.stringify(cached))
+    store.getThread.mockResolvedValue({ id: 52, messages: shared })
+
+    await expect(hydrateActiveThread()).resolves.toEqual(shared)
+    expect(store.getThread).toHaveBeenCalledWith(52)
+    expect(JSON.parse(localStorage.getItem('chat_history_v1'))).toEqual(shared)
+  })
+
+  it('preserves the cache but clears a pointer to a deleted server session', async () => {
+    const cached = [{ role: 'user', content: 'recoverable local copy' }]
+    localStorage.setItem('chat_thread_id', '99')
+    localStorage.setItem('chat_history_v1', JSON.stringify(cached))
+    store.getThread.mockRejectedValue(Object.assign(new Error('not found'), { status: 404 }))
+
+    await expect(hydrateActiveThread()).resolves.toEqual(cached)
+    expect(currentThreadId()).toBeNull()
+    expect(JSON.parse(localStorage.getItem('chat_history_v1'))).toEqual(cached)
+  })
+
+  it('reports transport failures without discarding the active pointer', async () => {
+    localStorage.setItem('chat_thread_id', '52')
+    store.getThread.mockRejectedValue(new Error('network down'))
+
+    await expect(hydrateActiveThread()).rejects.toThrow('network down')
+    expect(currentThreadId()).toBe(52)
   })
 })
