@@ -12,6 +12,8 @@ import { LENGTHS, TONES, applyAiPreferences, loadDials, saveDials } from '../lib
 // lineup (localStorage-sticky); the keyless public path keeps the cheapest
 // worker model.
 const REPORT_MODEL = 'flash'
+// pill display only — the full effort key still travels in state and requests
+const EFFORT_SHORT = { medium: 'med', xhigh: 'xhi' }
 const WRITER_KEY = 'report_model'
 const EFFORT_KEY = 'report_effort'
 const INSTRUCTIONS_KEY = 'report_instructions'
@@ -105,11 +107,16 @@ function DialGroup({ label, options, value, onPick }) {
 }
 
 /** The collapsed control has to say what it's set to, or the dials are
- *  invisible state that silently changes every report. */
+ *  invisible state that silently changes every report. Desk-short in en so
+ *  the summary never forces the rail header past two rows. */
+const DIAL_SHORT = { standard: 'std' }
+function dialLabel(list, key) {
+  const label = list.find((item) => item.key === key)?.label || key
+  return getLocale() === 'en' ? (DIAL_SHORT[label] || label) : tl(label)
+}
 function dialSummary(dials) {
-  return `${tl(LENGTHS.find((item) => item.key === dials.length)?.label || dials.length)} · ${
-    tl(TONES.find((item) => item.key === dials.tone)?.label || dials.tone)}${
-    dials.disconfirm ? ` · ${tl('counter-case')}` : ''}`
+  return `${dialLabel(LENGTHS, dials.length)}·${dialLabel(TONES, dials.tone)}${
+    dials.disconfirm ? `+${tl('counter-case')}` : ''}`
 }
 
 /**
@@ -242,18 +249,17 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
 
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
-      {/* one line, always — when the row is tight the hint folds first, the
-          title truncates second, and the controls pan inside the row rather
-          than wrapping under it (Jeff 2026-08-06) */}
-      <header class="flex flex-col sm:flex-row sm:items-center gap-2 px-3 py-2 border-b border-line-2 bg-surface-2">
-        <div class="min-w-0 flex items-center gap-2">
+      {/* one wrapping row: wide surfaces get a single line; the narrow rail
+          breaks into exactly two — title+model, then effort+dials+generate.
+          justify-end right-aligns overflow rows, mr-auto keeps the title left
+          (Jeff 2026-08-09: "get this done in 2 rows instead of 3") */}
+      <header class="flex flex-wrap items-center justify-end gap-x-1.5 gap-y-1.5 px-3 py-2 border-b border-line-2 bg-surface-2">
+        <div class="min-w-0 mr-auto flex items-center gap-2">
           <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase flex items-center gap-1.5 whitespace-nowrap shrink-0"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3m0 12v3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1M3 12h3m12 0h3M5.6 18.4l2.1-2.1m8.6-8.6 2.1-2.1"/><circle cx="12" cy="12" r="3.5"/></svg>{tl(label)}</h2>
           {hint && <span class="font-mono text-[9.5px] text-muted normal-case tracking-normal truncate min-w-0 max-sm:hidden">{hint}</span>}
         </div>
-        <div class="ml-auto flex flex-wrap items-center justify-end gap-1.5 min-w-0">
           {models.length > 0 && (
-            <label class="flex items-center gap-1 rounded border border-line bg-surface-3 pl-1.5">
-              <span class="font-anth text-[8.5px] uppercase tracking-wider text-muted">{tl('Model')}</span>
+            <label class="flex items-center rounded border border-line bg-surface-3 pl-1" title={tl('Report model')}>
               <select
                 value={writer}
                 onChange={(e) => {
@@ -287,13 +293,13 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
                     setEffort(level)
                     localStorage.setItem(EFFORT_KEY, level)
                   }}
-                  class={`px-1.5 py-px font-anth text-[10px] rounded transition-colors ${
+                  class={`px-[3px] py-px font-anth text-[10px] rounded transition-colors ${
                     effort === level
                       ? 'bg-accent text-black font-bold'
                       : 'text-muted hover:text-ink hover:bg-surface-3'
                   }`}
                 >
-                  {level}
+                  {EFFORT_SHORT[level] || level}
                 </button>
               ))}
             </span>
@@ -312,22 +318,27 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
               <button onClick={download} class="font-mono text-[10px] text-muted hover:text-ink">.md</button>
             </>
           )}
+          {/* the dials button wears its state, not its name — the sliders
+              glyph plus the current summary; the full label lives in the
+              tooltip and in the panel it opens */}
           <button
             onClick={() => setShowDials((v) => !v)}
             aria-expanded={showDials}
-            class={`font-anth text-[10px] px-2 py-1 rounded border whitespace-nowrap ${
+            aria-label={tl('Style & analysis')}
+            title={tl('Style & analysis')}
+            class={`flex items-center gap-1 font-anth text-[10px] px-1.5 py-1 rounded border whitespace-nowrap ${
               showDials ? 'border-accent text-accent' : 'border-line text-muted hover:text-ink'}`}
           >
-            {tl('Style & analysis')} <span class="font-mono text-[9px] opacity-80">{dialSummary(dials)}</span>
+            <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h10m4 0h2M4 12h4m4 0h8M4 18h13m3 0h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="19" cy="18" r="2"/></svg>
+            <span class="font-mono text-[9px] opacity-80 truncate max-w-24">{dialSummary(dials)}</span>
           </button>
           <button
             onClick={generate}
             disabled={busy}
             class="font-mono text-[10px] px-2.5 py-1 rounded border border-accent text-accent bg-accent-soft hover:bg-accent hover:text-black disabled:opacity-40"
           >
-            {busy ? '…' : text ? tl('regenerate') : tl('generate')}
+            {busy ? '…' : text ? tl('regen') : tl('gen')}
           </button>
-        </div>
       </header>
       {showDials && (
         <div class="flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2.5 border-b border-line-2 bg-surface-2/60">
