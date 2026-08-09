@@ -18,6 +18,7 @@ import { loadMemories, addMemory, editMemory, removeMemory, applyMemoryTags } fr
 import { loadJournal, addJournalEntry, removeJournalEntry, searchJournal } from '../lib/journal.js'
 import { CHAT_HOME_EVENT, takeChatHomePending } from '../lib/chatnav.js'
 import { CHATSTORE_SYNC_EVENT, chatstoreAvailable, syncNotes } from '../lib/chatstore.js'
+import { dynamicActions } from '../lib/launchpad.js'
 import {
   fetchThreadList, hydrateActiveThread, loadActiveHistory, migrateLegacy,
   openThread, removeThread, saveActiveHistory, startNewThread, currentThreadId,
@@ -83,117 +84,6 @@ function exportChat(history) {
 // Generic tail, used only to top the pad up once the live suggestions run out.
 // `needsSymbol` entries are skipped rather than shown with a placeholder when
 // there is no watchlist to draw a name from.
-const SUGGESTIONS = [
-  { key: 'chat.action_moving', k: 'mkt' },
-  { key: 'chat.action_technical', k: 'mkt', needsSymbol: true },
-  { key: 'chat.action_calendar', k: 'mkt' },
-  { key: 'chat.action_research', k: 'app', needsSymbol: true },
-]
-
-/**
- * Launchpad quick actions, computed from live data so the pad stays current:
- * an earnings print today suggests its own summary, a big mover suggests its
- * own "why", the next macro event suggests its own read, the journal suggests
- * its own recall. Typed (mkt / book / app) so the chips can wear their lane.
- */
-function dynamicActions({ watchlist, quotes, earnDays, nextEvent, book, journal }) {
-  const acts = []
-  const push = (t, k) => { if (!acts.some((a) => a.t === t)) acts.push({ t, k }) }
-
-  const reporting = watchlist.filter((s) => earnDays[s] === 0).slice(0, 2)
-  for (const s of reporting) push(tt('chat.action_earnings_summary', { symbol: s }), 'mkt')
-  const soon = watchlist.filter((s) => earnDays[s] > 0 && earnDays[s] <= 3)
-    .sort((a, b) => earnDays[a] - earnDays[b])[0]
-  if (soon) push(tt('chat.action_earnings_preview', { symbol: soon, days: earnDays[soon] }), 'mkt')
-
-  const movers = watchlist
-    .map((s) => ({ s, pct: quotes[s]?.quote?.pct, price: quotes[s]?.quote?.price }))
-    .filter((x) => x.pct != null && Math.abs(x.pct) >= 3)
-    .sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct))
-  for (const m of movers.slice(0, 2)) {
-    push(tt('chat.action_mover', {
-      symbol: m.s, direction: tl(m.pct > 0 ? 'up' : 'down'), pct: Math.abs(m.pct).toFixed(1),
-    }), 'mkt')
-  }
-
-  if (nextEvent && nextEvent.days <= 7) {
-    push(tt('chat.action_event', {
-      event: tl(nextEvent.rawLabel || nextEvent.label),
-      when: nextEvent.days === 0 ? tl('today') : tt('common.days', { days: nextEvent.days }),
-      target: tl(book ? 'my book' : 'the market'),
-    }), book ? 'book' : 'mkt')
-  }
-
-  if (book) {
-    push(tt('chat.action_book_position'), 'book')
-    push(tt('chat.action_book_risk'), 'book')
-  }
-
-  // a live alert suggestion off the top mover — the arm tool is real
-  const top = movers[0]
-  if (top?.price) {
-    const lvl = top.pct > 0
-      ? Math.ceil((top.price * 1.03) / 5) * 5
-      : Math.floor((top.price * 0.97) / 5) * 5
-    push(tt('chat.action_alert', { symbol: top.s, level: lvl }), 'app')
-  }
-
-  // Anomalies off the badges the feed already computes for every symbol. These
-  // rank above the generic prompts because they name the thing that is
-  // genuinely unusual right now, which is what you'd actually want to ask.
-  const badge = (s) => quotes[s]?.tech || null
-  const overnight = watchlist
-    .map((s) => ({ s, pct: quotes[s]?.quote?.extPct }))
-    .filter((x) => x.pct != null && Math.abs(x.pct) >= 1.5)
-    .sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct))[0]
-  if (overnight) {
-    push(tt('chat.action_overnight', {
-      symbol: overnight.s, pct: overnight.pct.toFixed(1),
-    }), 'mkt')
-  }
-
-  const spike = watchlist
-    .map((s) => ({ s, r: badge(s)?.volRatio }))
-    .filter((x) => x.r != null && x.r >= 2)
-    .sort((a, b) => b.r - a.r)[0]
-  if (spike) push(tt('chat.action_vol_spike', { symbol: spike.s, mult: spike.r.toFixed(1) }), 'mkt')
-
-  const stretched = watchlist
-    .map((s) => ({ s, rsi: badge(s)?.rsi }))
-    .filter((x) => x.rsi != null && (x.rsi >= 70 || x.rsi <= 30))
-    .sort((a, b) => Math.abs(b.rsi - 50) - Math.abs(a.rsi - 50))[0]
-  if (stretched) push(tt('chat.action_stretched', { symbol: stretched.s, rsi: Math.round(stretched.rsi) }), 'mkt')
-
-  const leader = watchlist
-    .map((s) => ({ s, rs: badge(s)?.rs }))
-    .filter((x) => x.rs != null && Math.abs(x.rs) >= 5)
-    .sort((a, b) => Math.abs(b.rs) - Math.abs(a.rs))[0]
-  if (leader) push(tt('chat.action_rs', { symbol: leader.s, pct: leader.rs.toFixed(1) }), 'mkt')
-
-  const nearHigh = watchlist
-    .map((s) => ({ s, off: badge(s)?.offHigh }))
-    .filter((x) => x.off != null && x.off <= 3)
-    .sort((a, b) => a.off - b.off)[0]
-  if (nearHigh) push(tt('chat.action_near_high', { symbol: nearHigh.s, pct: nearHigh.off.toFixed(1) }), 'mkt')
-
-  push(tt('chat.action_strongest'), 'mkt')
-
-  // journal recall — only when there is a journal to recall from
-  const lastTagged = [...(journal || [])].reverse().find((e) => e.symbols?.length)
-  if (lastTagged) push(tt('chat.action_journal', { symbol: lastTagged.symbols[0] }), 'app')
-
-  push(tt('chat.action_heatmap'), 'app')
-  // The generic tail. Symbol-bearing ones borrow a name from the watchlist so
-  // the pad never asks about a ticker the reader does not follow.
-  const anySymbol = watchlist[0] || null
-  for (const s of SUGGESTIONS) {
-    if (acts.length >= 12) break
-    if (s.needsSymbol && !anySymbol) continue
-    push(tt(s.key, s.needsSymbol ? { symbol: anySymbol } : undefined), s.k)
-  }
-  return acts.slice(0, 12)
-}
-
 /** Inline-editable row shared by the memory and journal drawers. */
 function NoteRow({ id, text, meta, onSave, onDelete }) {
   const [editing, setEditing] = useState(false)
@@ -665,7 +555,7 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
             <div class={eyebrow}>{tl('moving now')}</div>
             {movers.length ? movers.map(({ s, pct }) => (
               <a key={s} href={`#/research/${s.toLowerCase()}`} class="flex items-baseline justify-between font-mono text-[11.5px] py-px hover:no-underline">
-                <span class="text-ink font-[650] font-tick">{s}</span>
+                <span class="text-ink font-[650]">{s}</span>
                 <span class={pct >= 0 ? 'text-up' : 'text-down'}>{fmtPct(pct)}</span>
               </a>
             )) : <div class="font-mono text-[11px] text-muted py-1">{tl('loading…')}</div>}
@@ -674,7 +564,7 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
             <div class={eyebrow}>{tl('next earnings')}</div>
             {nextEarn.length ? nextEarn.map((s) => (
               <a key={s} href={`#/research/${s.toLowerCase()}/earnings`} class="flex items-baseline justify-between font-mono text-[11.5px] py-px hover:no-underline">
-                <span class="text-ink font-[650] font-tick">{s}</span>
+                <span class="text-ink font-[650]">{s}</span>
                 <span class={earnDays[s] === 0 ? 'text-imminent font-bold' : earnDays[s] <= 7 ? 'text-down' : 'text-accent'}>
                   {earnDays[s] === 0 ? tl('today') : tt('common.days', { days: earnDays[s] })}
                 </span>
@@ -716,7 +606,7 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
                 <div class="font-mono text-[11.5px] leading-[1.55]">
                   {topPos.map((p) => (
                     <div key={p.symbol} class="flex justify-between">
-                      <span class="text-ink font-[650] font-tick">{p.symbol}</span>
+                      <span class="text-ink font-[650]">{p.symbol}</span>
                       <span><span class="text-ink-2">{Math.round(p.weight_pct)}%</span>{' '}
                         <span class={p.unrealized_pnl >= 0 ? 'text-up' : 'text-down'}>{p.unrealized_pnl >= 0 ? '▲' : '▼'}</span></span>
                     </div>
@@ -1443,6 +1333,19 @@ export function Chat() {
       <div class="pointer-events-none absolute inset-x-0 top-0 h-14 z-20
                   bg-gradient-to-b from-surface-0 via-surface-0/95 to-transparent" />
       <div class="absolute top-4 left-4 z-30 flex items-center gap-2">
+        {/* Flat mark, one path: the bubble is solid and the spark is punched
+            THROUGH it with evenodd rather than painted on in a second colour,
+            so it reads correctly on either theme's background without knowing
+            which one it is sitting on. Sized to the cap height of the 17px
+            wordmark beside it. */}
+        <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"
+             class="shrink-0 text-accent">
+          <path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd"
+                d="M5 3h14a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3h-8.6L5.3 20.8A.8.8
+                   0 0 1 4 20.2V17a3 3 0 0 1-2-2.8V6a3 3 0 0 1 3-3zm7 3.4
+                   1.28 3.32L16.6 11l-3.32 1.28L12 15.6l-1.28-3.32L7.4 11
+                   l3.32-1.28L12 6.4z" />
+        </svg>
         <h1 class="font-bold text-[17px] leading-tight text-ink" style="font-family: 'Plus Jakarta Sans', sans-serif">{tl('AI Chat')}</h1>
         <span class={`w-1.5 h-1.5 rounded-full ${onWire ? 'bg-up' : 'bg-accent'}`}
               title={tl(onWire ? 'online — private wire' : 'online — public proxy')} />
