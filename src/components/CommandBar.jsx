@@ -137,7 +137,7 @@ export function CommandBar() {
       symbolExists(plan.verify, { cached: (s) => getCached(s)?.quote })
         .then((ok) => {
           if (!ok) {
-            print(cmd, `[red]no such symbol:[/] ${plan.verify} [#808080]— you're still here[/]`)
+            print(cmd, `[red]no such symbol:[/] ${plan.verify}`)
             return
           }
           location.hash = plan.hash
