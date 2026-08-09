@@ -26,7 +26,7 @@ describe('spark windows', () => {
   })
   it('falls back to the default window on an unknown id', () => {
     const bars = Array.from({ length: 252 }, (_, i) => bar(i))
-    expect(sparkWindow(bars, 'nonsense')).toHaveLength(63)
+    expect(sparkWindow(bars, 'nonsense')).toHaveLength(126)
   })
   it('returns everything it has when the window is longer than the series', () => {
     expect(sparkWindow([bar(1), bar(2)], '1Y')).toHaveLength(2)
