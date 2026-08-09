@@ -15,6 +15,13 @@ try {
   if (LOCALES.includes(saved)) locale = saved
 } catch { /* no storage — stay en */ }
 
+// the stylesheet keys CJK-specific tuning off :lang(zh) — hanzi at the UI's
+// 10–11px sizes reads smaller than Latin at the same box, so zh gets a nudge
+function reflectLang(l) {
+  try { document.documentElement.lang = l === 'zh' ? 'zh-CN' : 'en' } catch { /* SSR/tests */ }
+}
+reflectLang(locale)
+
 const listeners = new Set()
 
 export function getLocale() {
@@ -24,6 +31,7 @@ export function getLocale() {
 export function setLocale(l) {
   if (!LOCALES.includes(l)) return
   locale = l
+  reflectLang(l)
   try {
     localStorage.setItem(KEY, l)
   } catch { /* best-effort */ }
@@ -363,6 +371,7 @@ const LABELS = {
   'shared across Briefing, Wire, AI, and the tape': '在晨报、快讯、AI 和滚动行情中共享',
   'independent dashboard view': '独立看盘',
   Briefing: '晨报', Data: '数据', copy: '复制', generate: '生成', regenerate: '重新生成',
+  gen: '生成', regen: '再生成',
   'AI synthesis': 'AI 综述', 'AI memo': 'AI 备忘录', 'AI report': 'AI 报告',
   'add symbol': '添加代码', add: '添加', 'already on the list': '已在自选股中',
   reorder: '排序', 'reorder the list': '调整顺序', done: '完成',
