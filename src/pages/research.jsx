@@ -112,7 +112,7 @@ function rollingSma(bars, n) {
   return out
 }
 
-function Candles({ bars, warmPad, intraday }) {
+function Candles({ bars, warmPad, intraday, ticks, tick, onTick }) {
   const el = useRef(null)
   const chartRef = useRef(null)
   const legendRef = useRef(null)
@@ -295,6 +295,22 @@ function Candles({ bars, warmPad, intraday }) {
         >
           FIT
         </button>
+        {/* bar-interval pills, ChartSuite's grammar: rounded-full + primary
+            accent so they read as a different control from the square chips.
+            They lived in the page header before, a screen away from the
+            chart they drive (Jeff 2026-08-09: "rn theyre way up top right") */}
+        {ticks?.length > 0 && (
+          <span class="ml-auto flex items-center gap-1 shrink-0">
+            <span class="font-mono text-[8px] text-muted/70 tracking-widest shrink-0">BAR</span>
+            {ticks.map((v) => (
+              <button key={v} onClick={() => onTick?.(v)} title={`draw ${v} bars`}
+                class={`font-mono text-[8.5px] leading-none px-1 py-[3px] rounded-full border whitespace-nowrap shrink-0 ${
+                  tick === v ? 'border-accent/70 text-accent bg-accent-soft' : 'border-line/50 text-muted hover:text-ink'}`}>
+                {v}
+              </button>
+            ))}
+          </span>
+        )}
       </div>
       <div class="relative">
         <div ref={legendRef} class="absolute left-2 top-1 z-10 font-mono text-[10.5px] text-ink pointer-events-none" style="display:none" />
@@ -2142,23 +2158,11 @@ export function Research({ route }) {
             </span>
           </>
         )}
-        {/* range + tick pills drive only the Overview chart — on the Chart
-            tab they doubled ChartSuite's own picker, and on every other tab
-            they were dead controls (Jeff 2026-08-06: "redundancy w the
-            timeframes"). Overview-only. */}
-        {route.view == null && activeRange?.ticks && (
-          <div class="flex items-center gap-1 shrink-0">
-            {activeRange.ticks.map((v) => (
-              <button key={v} onClick={() => setTick(v === (tick || activeRange.interval) ? v : v)}
-                class={`font-mono text-[10px] px-1.5 py-1 rounded-md border whitespace-nowrap ${
-                  (tick || activeRange.interval) === v
-                    ? 'border-accent-2/60 text-accent-2 bg-accent-2-soft'
-                    : 'border-line/60 text-muted hover:text-ink hover:border-line-2'}`}>
-                {v}
-              </button>
-            ))}
-          </div>
-        )}
+        {/* range pills drive only the Overview chart — on the Chart tab they
+            doubled ChartSuite's own picker, and on every other tab they were
+            dead controls (Jeff 2026-08-06: "redundancy w the timeframes").
+            The bar-interval pills moved into the chart card itself
+            (Jeff 2026-08-09). Overview-only. */}
         {route.view == null && (
           <div class="flex gap-1 flex-nowrap overflow-x-auto no-scrollbar shrink-0 max-w-full">
             {RANGES.map((r) => (
@@ -2242,7 +2246,8 @@ export function Research({ route }) {
           <section class="bg-surface-1 border border-line rounded-xl min-w-0 overflow-hidden flex flex-col self-stretch">
             <div class="p-2 pb-0">
             {hist ? (
-              <Candles bars={hist.bars} warmPad={warmPad} intraday={hist.intraday} />
+              <Candles bars={hist.bars} warmPad={warmPad} intraday={hist.intraday}
+                ticks={activeRange?.ticks} tick={tick || activeRange?.interval} onTick={setTick} />
             ) : (
               <div class="h-[380px] flex items-center justify-center font-mono text-[11px] text-muted">
                 {err ? 'no chart' : 'loading…'}

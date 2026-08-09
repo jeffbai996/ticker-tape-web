@@ -288,7 +288,18 @@ export function ChartSuite({ symbol }) {
   return (
     <div class="flex flex-col gap-1.5 select-none">
       <div class="flex flex-nowrap items-center gap-1 px-1 overflow-x-auto no-scrollbar">
-        {RANGES.map((r) => chip(prefs.range === r.key, r.key.toLowerCase(), () => setP({ range: r.key }), null, `${r.range} of ${r.interval} bars`))}
+        {/* timeframes wear the Overview page's accent-tinted borders so the
+            two pickers read as the same control on both tabs (Jeff 2026-08-09) */}
+        {RANGES.map((r) => (
+          <button key={r.key} onClick={() => setP({ range: r.key })}
+            title={`${r.range} of ${r.interval} bars`}
+            class={`font-mono text-[9.5px] px-1.5 py-0.5 rounded border tracking-wider whitespace-nowrap shrink-0 ${
+              prefs.range === r.key
+                ? 'border-accent-2 text-accent-2 bg-accent-2-soft'
+                : 'border-accent/30 text-muted hover:text-ink hover:bg-surface-3'}`}>
+            {r.key.toLowerCase()}
+          </button>
+        ))}
         {activeRange?.ticks && (
           <>
             <span class="w-2" />
