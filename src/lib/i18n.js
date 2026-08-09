@@ -306,8 +306,9 @@ const LABELS = {
   'USD/CAD': '美元/加元', 'AUD/USD': '澳元/美元', 'USD/CHF': '美元/瑞郎', 'USD/KRW': '美元/韩元',
   'USD/INR': '美元/卢比', 'USD/MXN': '美元/墨西哥比索', 'NZD/USD': '新西兰元/美元',
   NASDAQ: '纳指', DOW: '道指', RUT: '罗素', SOX: '费半', US10Y: '美债10Y', GOLD: '黄金',
-  // off-hours futures swap-ins on the status strip
-  ES: '标普期货', NQ: '纳指期货', YM: '道指期货',
+  // off-hours futures swap-ins on the status strip — 3-char abbreviations,
+  // full 期货 reads too long in the 10px ribbon (Jeff 2026-08-09)
+  ES: '标普期', NQ: '纳指期', YM: '道指期',
   // Commodities
   Gold: '黄金', Silver: '白银', Copper: '铜', Platinum: '铂金', Palladium: '钯金',
   'WTI Crude Oil': 'WTI原油', 'Brent Crude': '布伦特原油', 'Natural Gas': '天然气',
@@ -370,8 +371,7 @@ const LABELS = {
   'empty watchlist — add the first ticker below': '自选股为空 — 在下方添加第一只股票',
   'shared across Briefing, Wire, AI, and the tape': '在晨报、快讯、AI 和滚动行情中共享',
   'independent dashboard view': '独立看盘',
-  Briefing: '晨报', Data: '数据', copy: '复制', generate: '生成', regenerate: '重新生成',
-  gen: '生成', regen: '再生成',
+  Briefing: '晨报', Data: '数据', copy: '复制', generate: '生成', regenerate: '再生成',
   'AI synthesis': 'AI 综述', 'AI memo': 'AI 备忘录', 'AI report': 'AI 报告',
   'add symbol': '添加代码', add: '添加', 'already on the list': '已在自选股中',
   reorder: '排序', 'reorder the list': '调整顺序', done: '完成',
@@ -460,6 +460,7 @@ const LABELS = {
   'Fixed model effort': '模型固定强度', 'Style & analysis': '风格与分析',
   'Controls the shape and point of view of this generation.': '控制本次生成的篇幅、文风与分析视角。',
   'include counter-case': '加入反方论证', 'counter-case': '反方论证', 'Custom instructions': '自定义指令',
+  'model returned nothing — try again': '模型未返回内容 — 请重试',
   'e.g. focus on rates, compare against consensus, flag stale inputs': '例如：聚焦利率、对比市场预期、标记过期数据',
   flash: '速览', trader: '交易员', catalyst: '催化剂', risk: '风险',
   'Event details': '事件详情', 'Close event details': '关闭事件详情',

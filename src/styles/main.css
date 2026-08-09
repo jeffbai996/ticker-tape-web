@@ -576,4 +576,4 @@ button:hover .burger path:nth-child(2) { transform: scaleX(.55); }
    Latin at the same size, so the zh locale gets a uniform ~7% scale bump.
    zoom scales layout too (unlike font-size at fixed-px Tailwind sizes), so
    nothing re-wraps relative to itself. i18n.js stamps <html lang>. */
-html:lang(zh-CN) { zoom: 1.07; }
+html:lang(zh-CN) { zoom: 1.10; }
