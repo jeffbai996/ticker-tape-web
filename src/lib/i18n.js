@@ -152,6 +152,18 @@ const STRINGS = {
   'chat.action_technical': { en: 'how does {symbol} look technically?', zh: '{symbol} 的技术面如何？' },
   'chat.action_calendar': { en: "what's on the calendar this week?", zh: '本周有哪些重要日程？' },
   'chat.action_research': { en: 'open {symbol} research', zh: '打开 {symbol} 研究页' },
+  // Tail prompts that stand up when the market is shut and none of the live
+  // branches have anything to say — the pad has to look built on a Sunday too.
+  'chat.action_week_ahead': { en: "what should I be watching this week?", zh: '本周我该重点关注什么？' },
+  'chat.action_sector': { en: 'which sectors led and lagged last week?', zh: '上周哪些板块领涨、哪些落后？' },
+  'chat.action_compare': { en: 'compare {symbol} against its peers', zh: '把 {symbol} 和同业做个对比' },
+  'chat.action_thesis_check': { en: "what would break the bull case on {symbol}?", zh: '什么情况会打破 {symbol} 的看多逻辑？' },
+  'chat.action_valuation': { en: 'is {symbol} expensive on its own history?', zh: '相对自身历史，{symbol} 贵吗？' },
+  'chat.action_rates': { en: 'how are rates and the dollar setting up?', zh: '利率和美元当前是什么格局？' },
+  'chat.action_last_week': { en: 'recap last week in one paragraph', zh: '用一段话回顾上周' },
+  'chat.action_bear_case': { en: 'argue the bear case on {symbol}', zh: '给出 {symbol} 的看空理由' },
+  'chat.action_watchlist_review': { en: 'walk my watchlist and flag anything unusual', zh: '过一遍我的自选股，指出异常的地方' },
+  'chat.action_explain': { en: 'explain a term or metric I paste in', zh: '解释我粘贴的术语或指标' },
   // Reads off the badges the feed already computes, so the pad can ask about
   // the thing that is actually unusual right now rather than a generic prompt.
   'chat.action_vol_spike': { en: '{symbol} is trading {mult}x its average volume — what changed?', zh: '{symbol} 成交量是均量的 {mult} 倍，发生了什么？' },
