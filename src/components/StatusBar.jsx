@@ -22,7 +22,11 @@ const COMPACT_STATE_LABEL_ZH = { open: '开', pre: '前', post: '后', closed: '
 
 // Outside regular hours the cash indices freeze — swap in the 24h futures
 // contracts, exactly like the TUI status bar does.
-const FUTURES_SWAP = { '^GSPC': { symbol: 'ES=F', label: 'ES' }, '^IXIC': { symbol: 'NQ=F', label: 'NQ' } }
+const FUTURES_SWAP = {
+  '^GSPC': { symbol: 'ES=F', label: 'ES' },
+  '^IXIC': { symbol: 'NQ=F', label: 'NQ' },
+  '^DJI': { symbol: 'YM=F', label: 'YM' },
+}
 
 function vixClass(price) {
   if (price == null) return 'text-ink-2'
