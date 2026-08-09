@@ -306,9 +306,9 @@ const LABELS = {
   'USD/CAD': '美元/加元', 'AUD/USD': '澳元/美元', 'USD/CHF': '美元/瑞郎', 'USD/KRW': '美元/韩元',
   'USD/INR': '美元/卢比', 'USD/MXN': '美元/墨西哥比索', 'NZD/USD': '新西兰元/美元',
   NASDAQ: '纳指', DOW: '道指', RUT: '罗素', SOX: '费半', US10Y: '美债10Y', GOLD: '黄金',
-  // off-hours futures swap-ins on the status strip — 3-char abbreviations,
-  // full 期货 reads too long in the 10px ribbon (Jeff 2026-08-09)
-  ES: '标普期', NQ: '纳指期', YM: '道指期',
+  // off-hours futures swap-ins on the status strip — 2-char abbreviations
+  // (Jeff 2026-08-09: "just 标期 and 纳期")
+  ES: '标期', NQ: '纳期', YM: '道期',
   // Commodities
   Gold: '黄金', Silver: '白银', Copper: '铜', Platinum: '铂金', Palladium: '钯金',
   'WTI Crude Oil': 'WTI原油', 'Brent Crude': '布伦特原油', 'Natural Gas': '天然气',
