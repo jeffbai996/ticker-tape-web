@@ -118,16 +118,11 @@ function DialGroup({ label, options, value, onPick }) {
 }
 
 /** The collapsed control has to say what it's set to, or the dials are
- *  invisible state that silently changes every report. Desk-short in en so
- *  the summary never forces the rail header past two rows. */
-const DIAL_SHORT = { standard: 'std' }
-function dialLabel(list, key) {
-  const label = list.find((item) => item.key === key)?.label || key
-  return getLocale() === 'en' ? (DIAL_SHORT[label] || label) : tl(label)
-}
+ *  invisible state that silently changes every report. */
 function dialSummary(dials) {
-  return `${dialLabel(LENGTHS, dials.length)}·${dialLabel(TONES, dials.tone)}${
-    dials.disconfirm ? `+${tl('counter-case')}` : ''}`
+  return `${tl(LENGTHS.find((item) => item.key === dials.length)?.label || dials.length)} · ${
+    tl(TONES.find((item) => item.key === dials.tone)?.label || dials.tone)}${
+    dials.disconfirm ? ` +${tl('counter-case')}` : ''}`
 }
 
 /**
@@ -204,6 +199,10 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
             messages: [{ role: 'user', content: prompt }],
             onDelta: (d) => { acc += d; setText(acc) },
           })
+          // a stream can "succeed" with zero content — agy exits clean with
+          // an empty answer about one run in four, and a dropped SSE pipe
+          // looks identical. Both recover on the one-shot twin below.
+          if (!acc.trim()) throw new Error('empty stream')
         } catch {
           // The one-shot twin preserves the selected model and effort when a
           // stream is interrupted before it emits any content.
@@ -215,6 +214,7 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
           acc = out.text
           setText(acc)
         }
+        if (!acc.trim()) throw new Error(tl('model returned nothing — try again'))
       } else {
         await streamChat({
           model: REPORT_MODEL,
@@ -334,18 +334,26 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
             aria-expanded={showDials}
             aria-label={tl('Style & analysis')}
             title={tl('Style & analysis')}
-            class={`flex items-center gap-1 font-anth text-[10px] px-1.5 py-1 rounded border whitespace-nowrap ${
+            class={`flex items-center gap-1.5 font-anth text-[10px] px-2 py-1 rounded border whitespace-nowrap ${
               showDials ? 'border-accent text-accent' : 'border-line text-muted hover:text-ink'}`}
           >
             <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h10m4 0h2M4 12h4m4 0h8M4 18h13m3 0h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="19" cy="18" r="2"/></svg>
-            <span class="font-mono text-[9px] opacity-80 truncate max-w-24">{dialSummary(dials)}</span>
+            <span class="font-mono text-[9px] opacity-80 truncate max-w-32">{dialSummary(dials)}</span>
           </button>
+          {/* label goes invisible (not removed) while busy so the button
+              keeps its exact width; the spinner sits in the reserved box */}
           <button
             onClick={generate}
             disabled={busy}
-            class="font-mono text-[10px] px-2.5 py-1 rounded border border-accent text-accent bg-accent-soft hover:bg-accent hover:text-black disabled:opacity-40"
+            class="relative font-mono text-[10px] px-2.5 py-1 rounded border border-accent text-accent bg-accent-soft hover:bg-accent hover:text-black disabled:opacity-40"
           >
-            {busy ? '…' : text ? tl('regen') : tl('gen')}
+            <span class={busy ? 'invisible' : ''}>{text ? tl('regenerate') : tl('generate')}</span>
+            {busy && (
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor"
+                stroke-width="3" stroke-linecap="round" class="animate-spin absolute inset-0 m-auto">
+                <path d="M12 3a9 9 0 1 0 9 9" />
+              </svg>
+            )}
           </button>
         </div>
       </header>
