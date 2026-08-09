@@ -8,15 +8,15 @@
 
 /** What the board menu offers. `id` is what lands in localStorage. */
 export const SPARK_TYPES = [
-  { id: 'vol', label: 'Volume' },
-  { id: 'line', label: 'Price line' },
   { id: 'area', label: 'Price area' },
+  { id: 'line', label: 'Price line' },
+  { id: 'vol', label: 'Volume' },
   { id: 'chg', label: 'Daily change' },
   { id: 'range', label: 'Daily range' },
   { id: 'off', label: 'Off' },
 ]
 
-export const DEFAULT_SPARK = 'vol'
+export const DEFAULT_SPARK = 'area'
 
 /** How far back the spark looks, in trading sessions (Jeff 2026-08-07). The
  *  feed already caches a year of dailies, so every window is a free slice. */
@@ -27,7 +27,7 @@ export const SPARK_WINDOWS = [
   { id: '1Y', sessions: 252 },
 ]
 
-export const DEFAULT_WINDOW = '3M'
+export const DEFAULT_WINDOW = '6M'
 
 /** Bar-shaped sparks stop reading below ~2px a bar, so a long window buckets
  *  into weeks instead of drawing 252 hairlines into 168px. */

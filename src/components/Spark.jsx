@@ -34,9 +34,6 @@ function PriceSpark({ bars, width, height, class: cls, fill }) {
         <polygon points={`0,${height} ${line.points} ${width},${height}`}
           fill={color} opacity="0.16" />
       )}
-      {/* where the window opened: the line crossing it is the whole read */}
-      <line x1="0" x2={width} y1={line.baseline} y2={line.baseline}
-        stroke="currentColor" stroke-width="0.5" opacity="0.35" class="text-muted" />
       <polyline points={line.points} fill="none" stroke={color}
         stroke-width="1.2" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
     </Frame>
