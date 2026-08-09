@@ -18,7 +18,7 @@ import { loadMemories, addMemory, editMemory, removeMemory, applyMemoryTags } fr
 import { loadJournal, addJournalEntry, removeJournalEntry, searchJournal } from '../lib/journal.js'
 import { CHAT_HOME_EVENT, takeChatHomePending } from '../lib/chatnav.js'
 import { CHATSTORE_SYNC_EVENT, chatstoreAvailable, syncNotes } from '../lib/chatstore.js'
-import { dynamicActions } from '../lib/launchpad.js'
+import { LANES, activeLanes, canRefresh, dynamicActions, visibleActions } from '../lib/launchpad.js'
 import {
   fetchThreadList, hydrateActiveThread, loadActiveHistory, migrateLegacy,
   openThread, removeThread, saveActiveHistory, startNewThread, currentThreadId,
@@ -497,7 +497,12 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
                      onOpenMem, onOpenJournal }) {
   const book = hasLiveBook()
   const nextEvent = events[0] || null
-  const acts = dynamicActions({ watchlist, quotes, earnDays, nextEvent, book, journal })
+  const pool = dynamicActions({ watchlist, quotes, earnDays, nextEvent, book, journal })
+  const [lane, setLane] = useState(null)
+  const [page, setPage] = useState(0)
+  const lanes = activeLanes(pool)
+  const shown = visibleActions(pool, { lane, page })
+  const refreshable = canRefresh(pool, { lane })
   const movers = watchlist
     .map((s) => ({ s, pct: quotes[s]?.quote?.pct }))
     .filter((x) => x.pct != null)
@@ -521,7 +526,7 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
 
   const cell = "px-3 py-2 min-w-0"
   const eyebrow = "font-mono text-[9px] tracking-[0.16em] text-muted uppercase pb-1"
-  const DOT = { mkt: 'bg-accent', book: 'bg-up', app: 'bg-accent-2' }
+  const DOT = Object.fromEntries(LANES.map((l) => [l.k, l.dot]))
 
   return (
     <div class="w-full max-w-3xl px-1 py-3 flex flex-col gap-3">
@@ -641,17 +646,49 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
       {/* the composer used to sit here, mid-pad, which meant scrolling to
           find it on a short viewport — it's docked at the bottom of the page
           now (Jeff 2026-08-07) */}
+      {/* The legend used to be three static dots explaining the colours. It is
+          now the filter itself — same information, but it does something, and
+          it only offers lanes the pool actually has so a tap can never empty
+          the pad. Refresh rotates a page forward through the pool and is
+          hidden outright when everything already fits on screen. */}
       <div>
-        <div class="flex items-baseline gap-3 pb-1.5">
+        <div class="flex items-center gap-2 pb-1.5 flex-wrap">
           <span class="font-mono text-[9px] tracking-[0.16em] text-muted uppercase">{tl('start here')}</span>
-          <span class="font-mono text-[9px] text-muted flex items-center gap-2.5">
-            <span class="flex items-center gap-1"><span class="w-1 h-1 rounded-full bg-accent" />{tl('markets')}</span>
-            {book && <span class="flex items-center gap-1"><span class="w-1 h-1 rounded-full bg-up" />{tl('book')}</span>}
-            <span class="flex items-center gap-1"><span class="w-1 h-1 rounded-full bg-accent-2" />{tl('app')}</span>
-          </span>
+          <div class="flex items-center gap-1 flex-wrap">
+            <button
+              type="button"
+              onClick={() => { setLane(null); setPage(0) }}
+              class={`font-mono text-[9px] uppercase tracking-[0.1em] rounded-full px-1.5 py-0.5 border transition-colors ${lane === null ? 'border-accent/60 text-ink bg-accent-soft' : 'border-transparent text-muted hover:text-ink'}`}
+            >{tl('all')}</button>
+            {lanes.map((l) => (
+              <button
+                key={l.k}
+                type="button"
+                onClick={() => { setLane(lane === l.k ? null : l.k); setPage(0) }}
+                class={`flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.1em] rounded-full px-1.5 py-0.5 border transition-colors ${lane === l.k ? 'border-accent/60 text-ink bg-accent-soft' : 'border-transparent text-muted hover:text-ink'}`}
+              >
+                <span class={`w-1 h-1 rounded-full ${l.dot}`} />{tl(l.label)}
+              </button>
+            ))}
+          </div>
+          {refreshable && (
+            <button
+              type="button"
+              onClick={() => setPage((n) => n + 1)}
+              class="ml-auto flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.1em] text-muted hover:text-ink transition-colors"
+              title={tl('show other prompts')}
+              aria-label={tl('refresh prompts')}
+            >
+              <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor"
+                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 11a8 8 0 1 0-.6 4" /><path d="M20 4.5V11h-6" />
+              </svg>
+              {tl('refresh')}
+            </button>
+          )}
         </div>
         <div class="flex flex-wrap gap-1.5">
-          {acts.map((sug) => (
+          {shown.map((sug) => (
             <button
               key={sug.t}
               type="button"
@@ -1333,18 +1370,15 @@ export function Chat() {
       <div class="pointer-events-none absolute inset-x-0 top-0 h-14 z-20
                   bg-gradient-to-b from-surface-0 via-surface-0/95 to-transparent" />
       <div class="absolute top-4 left-4 z-30 flex items-center gap-2">
-        {/* Flat mark, one path: the bubble is solid and the spark is punched
-            THROUGH it with evenodd rather than painted on in a second colour,
-            so it reads correctly on either theme's background without knowing
-            which one it is sitting on. Sized to the cap height of the 17px
-            wordmark beside it. */}
+        {/* Wireframe bubble with two text rules — same stroke language as the
+            tool rail (1.7, round joins) so the header reads as one set. Sized
+            to the cap height of the 17px wordmark beside it. */}
         <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"
-             class="shrink-0 text-accent">
-          <path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd"
-                d="M5 3h14a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3h-8.6L5.3 20.8A.8.8
-                   0 0 1 4 20.2V17a3 3 0 0 1-2-2.8V6a3 3 0 0 1 3-3zm7 3.4
-                   1.28 3.32L16.6 11l-3.32 1.28L12 15.6l-1.28-3.32L7.4 11
-                   l3.32-1.28L12 6.4z" />
+             class="shrink-0 text-accent" fill="none" stroke="currentColor"
+             stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 13.2a3.3 3.3 0 0 1-3.3 3.3H10l-4.2 3.2a.5.5 0 0 1-.8-.4v-2.8
+                   A3.3 3.3 0 0 1 4 13.2V7.3A3.3 3.3 0 0 1 7.3 4h9.4A3.3 3.3 0 0 1 20 7.3z" />
+          <path d="M8.4 9.2h7.2M8.4 12.2h4.4" />
         </svg>
         <h1 class="font-bold text-[17px] leading-tight text-ink" style="font-family: 'Plus Jakarta Sans', sans-serif">{tl('AI Chat')}</h1>
         <span class={`w-1.5 h-1.5 rounded-full ${onWire ? 'bg-up' : 'bg-accent'}`}
