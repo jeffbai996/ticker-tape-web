@@ -114,6 +114,15 @@ describe('compact dashboard company name', () => {
     expect(dashboard).not.toContain('manage lists')
   })
 
+  it('keeps autocomplete identity compact and draws a cached intraday spark', () => {
+    expect(dashboard).toContain('function SearchResultSpark({ symbol })')
+    expect(dashboard).toContain("fetchHistory(symbol, '1D')")
+    expect(dashboard).toContain('<Spark type="line" window="1Y" bars={bars}')
+    expect(dashboard).toContain('class="w-3 h-[9px] rounded-[1px] shrink-0 self-center"')
+    expect(dashboard).toContain('class="font-mono font-bold text-[10.5px] text-accent shrink-0"')
+    expect(dashboard).toContain('<SearchResultSpark symbol={h.symbol} />')
+  })
+
   it('merges desktop controls and the scrollable sector tape into one row', () => {
     // one row at every width — the strip scrolls, nothing wraps to a second row
     expect(dashboard).toContain('class="dashboard-toolbar flex items-center gap-2 md:gap-4 px-1 pb-2 min-w-0"')
