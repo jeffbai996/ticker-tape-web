@@ -171,6 +171,23 @@ export async function fetchMeta(base) {
 
 // ── priority scorer (ported from the fragwire board): what it is × whether
 // it's a watched name × freshness decay, ~25h half-life.
+// Source credibility, fragwire's ladder verbatim: real wires and papers rank,
+// SEO content mills sink. Matched on the article domain or the "— Source"
+// suffix aggregators append to headlines. Unlisted sources ride at 1.0.
+const SRC_CRED = [
+  [/reuters|wsj\.com|bloomberg|ft\.com|apnews|federalreserve\.gov|sec\.gov/i, 1.3],
+  [/cnbc|marketwatch|barrons|economist|asia\.nikkei|trendforce/i, 1.15],
+  [/benzinga|businessinsider|yahoo|investing\.com|seekingalpha|fortune|axios/i, 1.0],
+  [/thestreet|fool\.com|motley fool|zacks|investorplace|tipranks|gurufocus|insider monkey|247wallst|barchart/i, 0.45],
+  [/simplywall|stocktwits|benzinga insights|quiver ?quant|marketbeat|defense world|americanbankingnews/i, 0.15],
+]
+
+export function srcCred(ev) {
+  const hay = `${ev.url || ''} ${ev.headline || ''}`
+  for (const [re, mult] of SRC_CRED) if (re.test(hay)) return mult
+  return 1
+}
+
 export const TYPE_WEIGHT = {
   earnings_release: 100, macro_print: 85, fed_headline: 75, fed_speech: 70,
   live_call: 90, digest: 60, filing: 55, headline: 40, transcript_chunk: 12,

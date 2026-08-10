@@ -23,6 +23,7 @@ import { groupHeat, rankAlerts, rangeExtremes } from '../lib/railstats.js'
 import { conditionText, loadAlerts, onAlertsChange } from '../lib/alerts.js'
 import { groupDashboardRows, quoteSpread, selectFlatRows } from '../lib/dashboardRows.js'
 import { searchSymbols } from '../lib/symbolSearch.js'
+import { venueFlag } from '../lib/venueFlag.js'
 import { fmtPrice, fmtPriceBare, fmtPct, fmtChange, fmtVol, rangePos } from '../lib/format.js'
 import { Histo } from '../components/Histo.jsx'
 import { Spark } from '../components/Spark.jsx'
@@ -393,13 +394,35 @@ function PulseRow({ label, value, cls = 'text-ink' }) {
 
 function PulsePanel({ quotes }) {
   const s = pulseStats(quotes)
+  // collapsed = header only; the two headline stats ride the header so a
+  // minimized pulse still says whether the tape is green (Jeff 2026-08-09)
+  const [min, setMin] = useState(() => localStorage.getItem('rail_pulse_min') === '1')
+  const toggleMin = () => {
+    setMin((v) => {
+      localStorage.setItem('rail_pulse_min', v ? '0' : '1')
+      return !v
+    })
+  }
   if (!s) return null
   const tone = (v) => (v >= 0 ? 'text-up' : 'text-down')
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden flex flex-col max-h-[42vh]">
-      <header class="px-3 py-[3px] border-b border-line-2 bg-surface-2">
+      <header class="flex items-center gap-2 px-3 py-[3px] border-b border-line-2 bg-surface-2">
         <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Pulse')}</h2>
+        {min && (
+          <span class="font-mono text-[10px]">
+            <span class={s.adv >= s.dec ? 'text-up' : 'text-down'}>{s.adv}/{s.dec}</span>
+            {' '}
+            <span class={tone(s.avg)}>{fmtPct(s.avg)}</span>
+          </span>
+        )}
+        <button onClick={toggleMin} aria-expanded={!min}
+          title={min ? tl('expand') : tl('minimize')}
+          class="ml-auto font-mono text-[11px] leading-none px-1 text-muted hover:text-ink">
+          {min ? '+' : '−'}
+        </button>
       </header>
+      {!min && (
       <div class="overflow-y-auto min-h-0">
       <div class="py-1">
         <PulseRow label="A/D" value={`${s.adv} / ${s.dec}`} cls={s.adv >= s.dec ? 'text-up' : 'text-down'} />
@@ -418,6 +441,7 @@ function PulsePanel({ quotes }) {
         <PulseRow label="Flt <1%" value={String(s.flat)} />
       </div>
     </div>
+      )}
     </section>
   )
 }
@@ -772,10 +796,13 @@ function AddSymbolRow({ onAdd, isPresent, onReorder }) {
     return () => { clearTimeout(t); ctl.abort() }
   }, [sym, open])
   const close = () => { setOpen(false); setSym(''); setErr(''); setHits(null); setActive(-1) }
+  // a successful add RESETS the form instead of closing it — mass-adding
+  // tickers shouldn't cost a click per symbol (Jeff 2026-08-09); esc/✕ closes
+  const added = () => { setSym(''); setErr(''); setHits(null); setActive(-1); input.current?.focus() }
   const commit = (raw) => {
     const v = String(raw || '').trim().toUpperCase()
     if (!v) return close()
-    if (onAdd(v)) return close()
+    if (onAdd(v)) return added()
     setErr(isPresent(v) ? `${v} ${tl('already on the list')}` : `${tl('not a symbol')}: ${v}`)
   }
   // ↑/↓ walk the dropdown, Enter takes the highlighted hit — with nothing
@@ -795,7 +822,7 @@ function AddSymbolRow({ onAdd, isPresent, onReorder }) {
     e.preventDefault()
     const v = sym.trim().toUpperCase()
     if (!v) return close()
-    if (onAdd(v)) return close()
+    if (onAdd(v)) return added()
     // The mutator returns null for invalid / duplicate / list-full — say which.
     setErr(isPresent(v) ? `${v} ${tl('already on the list')}` : `${tl('not a symbol')}: ${v}`)
   }
@@ -828,6 +855,10 @@ function AddSymbolRow({ onAdd, isPresent, onReorder }) {
               onClick={() => commit(h.symbol)}
               class={`w-full flex items-baseline gap-2 px-2.5 py-1.5 border-t border-line/60 first:border-0 text-left ${
                 i === active ? 'bg-accent-soft' : 'hover:bg-accent-soft'}`}>
+              {venueFlag(h) && (
+                <img src={venueFlag(h)} alt="" class="w-4 h-3 rounded-[1px] shrink-0 self-center"
+                  title={h.exch} />
+              )}
               <span class="font-mono font-bold text-[11px] text-accent shrink-0">{h.symbol}</span>
               <span class="font-anth text-[10.5px] text-ink-2 truncate">{h.name}</span>
               <span class="ml-auto font-mono text-[8.5px] uppercase tracking-wider text-muted shrink-0">{h.exch}</span>
@@ -1258,6 +1289,10 @@ function TickerSearch({ filter, setFilter, activeList }) {
               <div key={h.symbol}
                 class="flex items-baseline gap-2 px-2.5 py-1.5 border-t border-line/60 first:border-0 hover:bg-accent-soft cursor-pointer"
                 onClick={() => { setOpen(false); setFilter(''); location.hash = `#/research/${h.symbol.toLowerCase()}` }}>
+                {venueFlag(h) && (
+                  <img src={venueFlag(h)} alt="" class="w-4 h-3 rounded-[1px] shrink-0 self-center"
+                    title={h.exch} />
+                )}
                 <span class="font-mono font-bold text-[11px] text-accent shrink-0">{h.symbol}</span>
                 <span class="font-anth text-[10.5px] text-ink-2 truncate">{h.name}</span>
                 <span class="ml-auto font-mono text-[8.5px] uppercase tracking-wider text-muted shrink-0">{h.exch}</span>

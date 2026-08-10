@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import {
   wireUrl, setWireUrl, fragwireHome, fetchEvents, fetchToday, fetchMeta,
   demoBackfill, demoEvent, demoToday, rankEvents, collapseSessions, clusterStories, TYPE_CODE,
+  srcCred,
 } from '../lib/wire.js'
 import { IS_PRIVATE_BUILD } from '../lib/nav.js'
 import { getLocale, t as tt, tl } from '../lib/i18n.js'
@@ -12,7 +13,11 @@ function tierOf(ev, watchset) {
   const th = (ev.meta || {}).thesis || 0
   const onBook = (ev.symbols || []).some((s) => watchset.has(s))
     || ev.type === 'price_move'
-  return th >= 2 && onBook ? 3 : th
+  const t = th >= 2 && onBook ? 3 : th
+  // content mills never make T3 — directional dogshit stays T2 at best
+  // (Jeff 2026-08-09: "dont allow shitty red dot news like motley fool
+  // to be marked a T3")
+  return srcCred(ev) < 1 ? Math.min(t, 2) : t
 }
 
 const TIER_CLS = {
@@ -150,6 +155,25 @@ function sourceTag(ev) {
   } catch { return ev.source ? String(ev.source).slice(0, 8) : '' }
 }
 
+/** fragwire's source-credibility pips: ●●● wires/majors (green), ●● standard
+ *  (amber), ● SEO content mill (red). Self-made rows carry no source to rate. */
+function CredPips({ ev, hot }) {
+  const selfMade = ['prices', 'brief', 'wrap'].includes(ev.source)
+    || ['price_move', 'brief', 'digest', 'transcript_chunk'].includes(ev.type)
+  if (selfMade) return null
+  const c = srcCred(ev)
+  return (
+    <span
+      class={`inline-block align-middle mr-1.5 font-mono text-[6.5px] tracking-[0.5px] ${
+        hot ? 'text-black/60' : c >= 1.25 ? 'text-up' : c < 1 ? 'text-down opacity-75' : 'text-accent'}`}
+      title={tl(c >= 1.25 ? 'source: top tier (wires/majors)'
+        : c < 1 ? 'source: low tier (SEO/content mill)' : 'source: standard')}
+    >
+      {c >= 1.25 ? '●●●' : c < 1 ? '●' : '●●'}
+    </span>
+  )
+}
+
 function Row({ ev, hot, open, onToggle, tier = 0 }) {
   const lat = ev.ts_seen - ev.ts_event
   const latTxt = lat > 0.5 && lat < 600 ? `+${lat.toFixed(1)}s` : ''
@@ -185,6 +209,7 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
           title={ev.headline}
         >
           {!hot && <TierBadge tier={tier} />}
+          <CredPips ev={ev} hot={hot} />
           <span class={tier === 3 && !hot ? 'text-ink font-semibold' : ''}>{ev.headline}</span>
           {ev.story_cluster && <span class="text-accent font-bold"> ×{ev.story_cluster.count}</span>}
           {ev.url && (
