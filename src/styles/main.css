@@ -577,3 +577,8 @@ button:hover .burger path:nth-child(2) { transform: scaleX(.55); }
    zoom scales layout too (unlike font-size at fixed-px Tailwind sizes), so
    nothing re-wraps relative to itself. i18n.js stamps <html lang>. */
 html:lang(zh-CN) { zoom: 1.10; }
+/* lightweight-charts does its own pointer math in layout px; under the root
+   zoom Safari hands it zoomed touch coords and pinch/scroll-zoom dies on the
+   canvas (Jeff 2026-08-10). Counter-zoom the chart subtree to net 1.0 —
+   the rest of the zh UI keeps its bump, the canvas gets honest coordinates. */
+html:lang(zh-CN) .tv-lightweight-charts { zoom: 0.90909; }
