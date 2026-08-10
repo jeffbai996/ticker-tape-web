@@ -1307,7 +1307,8 @@ function PortfolioHeader({ accounts, account, onChange, book, wired }) {
   const label = book?.accountLabel || book?.account || (account === BOTH_ACCOUNTS ? tl('Both') : '')
   const detail = live
     ? `${label} · ${tt('portfolio.live_book')}${book.margin?.cushion_pct != null ? ` · ${tl('Cushion')} ${book.margin.cushion_pct.toFixed(1)}%` : ''}`
-    : wired ? tt('portfolio.connecting') : tt('demo.banner')
+    : book === false ? tt('portfolio.link_down')
+      : wired ? tt('portfolio.connecting') : tt('demo.banner')
   return (
     <header class="flex flex-wrap items-center gap-3 mx-1 mb-2 py-1">
       <div class="flex min-w-0 items-center gap-2.5 mr-auto">
@@ -1375,10 +1376,7 @@ export function Portfolio({ route }) {
   if (wired && !book) {
     return (
       <div class="flex-1 p-3 min-w-0">
-        <PortfolioHeader accounts={accounts} account={account} onChange={onAccountChange} book={null} wired />
-        <div class="mx-1 mb-2 px-3 py-2 bg-surface-1 border border-line rounded-lg font-mono text-[11px] text-muted">
-          {book === false ? tt('portfolio.link_down') : tt('portfolio.connecting')}
-        </div>
+        <PortfolioHeader accounts={accounts} account={account} onChange={onAccountChange} book={book} wired />
       </div>
     )
   }
