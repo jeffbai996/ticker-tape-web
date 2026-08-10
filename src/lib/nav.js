@@ -24,7 +24,10 @@ export const NAV = [
       { id: 'calendar', label: 'Calendar' },
     ],
   },
-  { id: 'research', label: 'Research', subs: [] },
+  // 'research' dropped from the nav (Jeff 2026-08-10): the landing page
+  // only mirrored the per-ticker tabs — every real entry point (search,
+  // palette, terminal, tape) deep-links straight to #/research/<sym>,
+  // which still routes fine without a sidebar item.
   {
     id: 'portfolio',
     label: 'Portfolio',
