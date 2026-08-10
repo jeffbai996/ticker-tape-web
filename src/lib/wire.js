@@ -9,18 +9,20 @@ import { IS_PRIVATE_BUILD } from './nav.js'
 const KEY = 'tape-wire-url'
 
 export function wireUrl() {
+  // Private tailnet build: ALWAYS derive from the host already serving this
+  // page. The build has no connect UI, so a localStorage override can only be
+  // a leftover from an older scheme — and a stale one silently killed every
+  // wire surface on that device ("fragwire headlines do not appear", Jeff
+  // 2026-08-10). Purge it so nothing else trips on it either.
+  if (IS_PRIVATE_BUILD && typeof location !== 'undefined'
+      && location.hostname.endsWith('.ts.net')) {
+    try { localStorage.removeItem(KEY) } catch { /* private mode */ }
+    return `https://${location.hostname}:${WIRE_UI_PORT}`
+  }
   try {
     const saved = localStorage.getItem(KEY)
     if (saved) return saved
   } catch { /* fall through to the build default */ }
-  // Private tailnet build: default to the fragwire on the host already
-  // serving this page — chat and the wire panel work out of the box instead
-  // of dying against the public worker's CORS wall (Jeff 2026-08-04).
-  // Still derived, never hardcoded; the public build gets no default.
-  if (IS_PRIVATE_BUILD && typeof location !== 'undefined'
-      && location.hostname.endsWith('.ts.net')) {
-    return `https://${location.hostname}:${WIRE_UI_PORT}`
-  }
   return ''
 }
 
