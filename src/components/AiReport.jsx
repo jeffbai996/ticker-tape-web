@@ -268,7 +268,7 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
         </div>
         <div class="flex items-center gap-1.5 min-w-0">
           {models.length > 0 && (
-            <label class="h-7 flex items-center rounded border border-line bg-surface-3 pl-1" title={tl('Report model')}>
+            <label class="h-6 flex items-center rounded border border-line bg-surface-3 pl-1" title={tl('Report model')}>
               <select
                 value={writer}
                 onChange={(e) => {
@@ -281,7 +281,7 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
                   if (nextEffort) localStorage.setItem(EFFORT_KEY, nextEffort)
                 }}
                 aria-label={tl('Report model')}
-                class="bg-transparent py-1 pr-1.5 font-anth text-[10px] font-semibold text-ink outline-none cursor-pointer max-w-[150px]"
+                class="bg-transparent pr-1 font-anth text-[10px] font-semibold text-ink outline-none cursor-pointer max-w-[150px]"
               >
                 {models.map((m) => (
                   <option key={m.key} value={m.key}>{m.label}</option>
@@ -290,7 +290,7 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
             </label>
           )}
           {effortLevels.length > 0 && (
-            <span class="h-7 flex items-center gap-0.5 bg-surface-2 border border-line rounded-md px-0.5"
+            <span class="h-6 flex items-center gap-0.5 bg-surface-2 border border-line rounded-md px-0.5"
                   title={tl('Thinking effort')}>
               {effortLevels.map((level) => (
                 <button key={level} type="button"
@@ -311,7 +311,7 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
             </span>
           )}
           {selectedWriter?.fixed_effort && (
-            <span class="font-mono text-[9px] text-muted border border-line rounded-md px-1.5 py-px"
+            <span class="h-6 flex items-center font-mono text-[9px] text-muted border border-line rounded-md px-1.5"
                   title={tl('Fixed model effort')}>
               {selectedWriter.fixed_effort}
             </span>
@@ -334,7 +334,7 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
             aria-expanded={showDials}
             aria-label={tl('Style & analysis')}
             title={tl('Style & analysis')}
-            class={`h-7 flex items-center gap-1.5 font-anth text-[10px] px-2 rounded border whitespace-nowrap ${
+            class={`h-6 flex items-center gap-1 font-anth text-[10px] px-1.5 rounded border whitespace-nowrap ${
               showDials ? 'border-accent text-accent' : 'border-line text-muted hover:text-ink'}`}
           >
             <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h10m4 0h2M4 12h4m4 0h8M4 18h13m3 0h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="19" cy="18" r="2"/></svg>
@@ -345,7 +345,7 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
           <button
             onClick={generate}
             disabled={busy}
-            class="relative h-7 inline-flex items-center font-mono text-[10px] px-2.5 rounded border border-accent text-accent bg-accent-soft hover:bg-accent hover:text-black disabled:opacity-40"
+            class="relative h-6 inline-flex items-center font-mono text-[10px] px-2 rounded border border-accent text-accent bg-accent-soft hover:bg-accent hover:text-black disabled:opacity-40"
           >
             <span class={busy ? 'invisible' : ''}>{text ? tl('regenerate') : tl('generate')}</span>
             {busy && (
