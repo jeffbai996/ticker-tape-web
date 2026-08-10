@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { filterNav, searchSymbols } from '../lib/search.js'
+import { venueFlag } from '../lib/venueFlag.js'
 import { hrefFor } from '../lib/route.js'
 import { t as tt } from '../lib/i18n.js'
 
@@ -33,6 +34,7 @@ export function Palette({ onClose }) {
       kind: 'symbol',
       label: s.symbol,
       detail: [s.name, s.type, s.exchange].filter(Boolean).join(' · '),
+      flag: venueFlag({ exch: s.exchange, symbol: s.symbol }),
       href: hrefFor('research', s.symbol.toLowerCase()),
     })),
     ...navEntries,
@@ -93,6 +95,7 @@ export function Palette({ onClose }) {
               <span class="text-[9px] uppercase tracking-wider text-muted w-12 shrink-0">
                 {entry.kind === 'symbol' ? 'sym' : 'go to'}
               </span>
+              {entry.flag && <img src={entry.flag} alt="" class="w-4 h-3 rounded-[1px] shrink-0 self-center" />}
               <span class="font-bold">{entry.label}</span>
               {entry.detail && <span class="text-[10px] text-muted truncate">{entry.detail}</span>}
             </button>
