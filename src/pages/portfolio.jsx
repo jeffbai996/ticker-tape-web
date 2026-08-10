@@ -1304,9 +1304,10 @@ function AccountSwitcher({ accounts, account, onChange }) {
 
 function PortfolioHeader({ accounts, account, onChange, book, wired }) {
   const live = !!book
-  const label = book?.accountLabel || book?.account || (account === BOTH_ACCOUNTS ? tl('Both') : '')
+  // the account ID + broker, not a nickname + margin readout (Jeff 2026-08-10)
+  const label = book?.account || book?.accountLabel || (account === BOTH_ACCOUNTS ? tl('Both') : '')
   const detail = live
-    ? `${label} · ${tt('portfolio.live_book')}${book.margin?.cushion_pct != null ? ` · ${tl('Cushion')} ${book.margin.cushion_pct.toFixed(1)}%` : ''}`
+    ? `${label} · ${tl('Interactive Brokers')}`
     : book === false ? tt('portfolio.link_down')
       : wired ? tt('portfolio.connecting') : tt('demo.banner')
   return (
