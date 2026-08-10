@@ -325,7 +325,7 @@ function Rail({ today, now, events, watchset, onHide }) {
   const topSrc = [...srcCount.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5)
 
   return (
-    <aside data-wire-rail class="flex flex-col gap-2 w-[clamp(260px,24vw,340px)] shrink-0 min-w-0 min-h-0 overflow-y-auto overscroll-contain max-xl:w-full max-xl:overflow-visible">
+    <aside data-wire-rail class="flex flex-col gap-2 w-[clamp(260px,24vw,340px)] shrink-0 min-w-0 min-h-0 overflow-y-auto overscroll-contain max-lg:w-full max-lg:overflow-visible">
       <Panel title={tl('tape')} action={
         <button onClick={onHide} title={tl('hide the side panels')}
           class="text-muted hover:text-accent leading-none px-1 -mr-1 font-mono text-[11px]">
@@ -596,7 +596,7 @@ export function Wire({ route }) {
   }
 
   return (
-    <div data-wire-workbench class="flex flex-col gap-2 flex-1 min-w-0 h-full min-h-0 overflow-hidden max-xl:overflow-y-auto p-3 pt-0">
+    <div data-wire-workbench class="flex flex-col gap-2 flex-1 min-w-0 h-full min-h-0 overflow-hidden max-lg:overflow-y-auto p-3 pt-0">
       {/* fragwire's own brow, ported: brand, segmented top|wire, conn dot,
           board links — one bar, not a row of floating chips (Jeff 2026-08-05) */}
       <div class="flex items-center gap-3 h-9 shrink-0 -mx-3 px-3 border-b border-line bg-surface-1 min-w-0 overflow-x-auto no-scrollbar">
@@ -668,8 +668,8 @@ export function Wire({ route }) {
           </button>
         ))}
       </div>
-      <div class="flex flex-1 min-h-0 gap-2 items-stretch max-xl:flex-col max-xl:flex-none">
-        <div data-wire-feed class="flex-1 min-w-0 min-h-0 border border-line rounded-lg overflow-y-auto overscroll-contain bg-surface max-xl:h-[55vh] max-xl:min-h-[360px] max-xl:flex-none">
+      <div class="flex flex-1 min-h-0 gap-2 items-stretch max-lg:flex-col max-lg:flex-none">
+        <div data-wire-feed class="flex-1 min-w-0 min-h-0 border border-line rounded-lg overflow-y-auto overscroll-contain bg-surface max-lg:h-[55vh] max-lg:min-h-[360px] max-lg:flex-none">
           {shown.length === 0 && (
             <div class="px-3 py-6 font-mono text-[12px] text-muted">{tl('no events')}</div>
           )}
