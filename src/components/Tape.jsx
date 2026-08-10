@@ -110,7 +110,12 @@ export function Tape() {
     if (!viewport || !cycle) return
 
     const measure = () => {
-      const width = Math.ceil(cycle.getBoundingClientRect().width)
+      // getBoundingClientRect returns VISUAL px, but the keyframe translates
+      // in the element's own layout px — under the zh locale's `zoom` those
+      // differ, and the unscaled mismatch made the loop jump and clip
+      // (Jeff 2026-08-09: "getting clipping in the scrolling ticker")
+      const zoom = Number(getComputedStyle(document.documentElement).zoom) || 1
+      const width = Math.ceil(cycle.getBoundingClientRect().width / zoom)
       const copies = marqueeCopies(viewport.clientWidth, width)
       setMarquee((current) => current.width === width && current.copies === copies
         ? current
