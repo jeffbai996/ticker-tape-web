@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import {
   wireUrl, setWireUrl, fragwireHome, fetchEvents, fetchToday, fetchMeta,
   demoBackfill, demoEvent, demoToday, rankEvents, collapseSessions, clusterStories, TYPE_CODE,
-  srcCred,
+  srcCred, evHeadline, evBody,
 } from '../lib/wire.js'
 import { IS_PRIVATE_BUILD } from '../lib/nav.js'
 import { getLocale, t as tt, tl } from '../lib/i18n.js'
@@ -177,6 +177,9 @@ function CredPips({ ev, hot }) {
 function Row({ ev, hot, open, onToggle, tier = 0 }) {
   const lat = ev.ts_seen - ev.ts_event
   const latTxt = lat > 0.5 && lat < 600 ? `+${lat.toFixed(1)}s` : ''
+  const loc = getLocale()
+  const hl = evHeadline(ev, loc)
+  const body = evBody(ev, loc)
   return (
     <div
       id={`ev-${ev.id}`}
@@ -206,11 +209,11 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
         </span>
         <span
           class={`truncate max-sm:whitespace-normal max-sm:line-clamp-2 max-sm:col-span-full max-sm:row-start-2 ${hot ? '' : ev.type === 'earnings_release' ? 'text-ink font-semibold' : 'text-ink-2'}`}
-          title={ev.headline}
+          title={hl}
         >
           {!hot && <TierBadge tier={tier} />}
           <CredPips ev={ev} hot={hot} />
-          <span class={tier === 3 && !hot ? 'text-ink font-semibold' : ''}>{ev.headline}</span>
+          <span class={tier === 3 && !hot ? 'text-ink font-semibold' : ''}>{hl}</span>
           {ev.story_cluster && <span class="text-accent font-bold"> ×{ev.story_cluster.count}</span>}
           {ev.url && (
             <a href={ev.url} target="_blank" rel="noopener"
@@ -253,8 +256,8 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
       )}
       {open && !ev.live_call && (
         <div class="px-2.5 pb-2 mx-auto w-full max-w-[78ch]">
-          <h3 class="font-anth font-semibold text-[15px] leading-snug text-ink pt-1.5 pb-1">{ev.headline}</h3>
-          {ev.body && <p class="text-[11.5px] leading-relaxed text-ink-2 max-w-[72ch]">{ev.body}</p>}
+          <h3 class="font-anth font-semibold text-[15px] leading-snug text-ink pt-1.5 pb-1">{hl}</h3>
+          {body && <p class="text-[11.5px] leading-relaxed text-ink-2 max-w-[72ch] whitespace-pre-wrap">{body}</p>}
           {!ev.body && !ev.story_cluster && ev.url && <ReadBody ev={ev} />}
           {/* info reads dim, clickable reads amber — everything grey made the
               links invisible (Jeff 2026-08-05) */}

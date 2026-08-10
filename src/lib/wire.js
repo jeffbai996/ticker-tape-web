@@ -190,6 +190,24 @@ export function srcCred(ev) {
   return 1
 }
 
+// ── zh twins for fragwire's own output ────────────────────────────────────
+// Briefs/wraps carry a server-side translation in meta (body_zh/headline_zh);
+// templated machine messages (price moves) translate client-side because
+// they're formulaic. External headlines stay in their source language.
+const PX_MOVE = /^(\S+) ([+-][\d.]+%) on the day \(crossed ([+-][\d.]+%)\)$/
+export function evHeadline(ev, locale) {
+  if (locale !== 'zh') return ev.headline
+  const zh = (ev.meta || {}).headline_zh
+  if (zh) return zh
+  const m = PX_MOVE.exec(ev.headline || '')
+  if (m) return `${m[1]} 当日${m[2]}（越过${m[3]}）`
+  return ev.headline
+}
+export function evBody(ev, locale) {
+  if (locale !== 'zh') return ev.body
+  return (ev.meta || {}).body_zh || ev.body
+}
+
 export const TYPE_WEIGHT = {
   earnings_release: 100, macro_print: 85, fed_headline: 75, fed_speech: 70,
   live_call: 90, digest: 60, filing: 55, headline: 40, transcript_chunk: 12,
