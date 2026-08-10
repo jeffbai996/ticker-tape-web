@@ -112,7 +112,7 @@ function rollingSma(bars, n) {
   return out
 }
 
-function Candles({ bars, warmPad, intraday, ticks, tick, onTick }) {
+function Candles({ bars, warmPad, intraday, ticks, tick, onTick, rangeKey, onRange }) {
   const el = useRef(null)
   const chartRef = useRef(null)
   const legendRef = useRef(null)
@@ -275,12 +275,40 @@ function Candles({ bars, warmPad, intraday, ticks, tick, onTick }) {
 
   return (
     <div>
+      {/* ChartSuite's toolbar layout, mirrored: timeframes + bar interval on
+          the first row, indicator toggles on the second. Both pickers used to
+          live in the page header, a screen away from the chart they drive
+          (Jeff 2026-08-09: "time pills into the chart also") */}
+      <div class="flex items-center gap-1 px-1 pb-1 select-none flex-nowrap overflow-x-auto no-scrollbar">
+        {RANGES.map((r) => (
+          <button key={r.key} onClick={() => onRange?.(r.key)}
+            class={`font-mono text-[9.5px] px-1.5 py-0.5 rounded border tracking-wider whitespace-nowrap shrink-0 ${
+              rangeKey === r.key
+                ? 'border-accent-2 text-accent-2 bg-accent-2-soft'
+                : 'border-accent/30 text-muted hover:text-ink hover:bg-surface-3'}`}>
+            {r.key.toLowerCase()}
+          </button>
+        ))}
+        {ticks?.length > 0 && (
+          <>
+            <span class="w-2 shrink-0" />
+            <span class="font-mono text-[8px] text-muted/70 tracking-widest shrink-0">BAR</span>
+            {ticks.map((v) => (
+              <button key={v} onClick={() => onTick?.(v)} title={`draw ${v} bars`}
+                class={`font-mono text-[8.5px] leading-none px-1 py-[3px] rounded-full border whitespace-nowrap shrink-0 ${
+                  tick === v ? 'border-accent/70 text-accent bg-accent-soft' : 'border-line/50 text-muted hover:text-ink'}`}>
+                {v}
+              </button>
+            ))}
+          </>
+        )}
+      </div>
       <div class="flex gap-1 px-1 pb-1.5 select-none flex-nowrap overflow-x-auto no-scrollbar">
         {[['sma20', 'SMA 20'], ['sma50', 'SMA 50'], ['sma200', 'SMA 200'], ['ema21', 'EMA 21'], ['bb', 'BB'], ...(intraday ? [['vwap', 'VWAP']] : []), ['rsi', 'RSI'], ['macd', 'MACD'], ['vol', 'VOL'], ['log', 'LOG']].map(([k, label]) => (
           <button
             key={k}
             onClick={() => toggle(k)}
-            class={`font-mono text-[9.5px] px-1.5 py-0.5 rounded border tracking-wider ${
+            class={`font-mono text-[9.5px] px-1.5 py-0.5 rounded border tracking-wider whitespace-nowrap shrink-0 ${
               ov[k] ? 'border-accent-2/60 text-accent-2' : 'border-line text-muted hover:text-ink'
             }`}
             style={ov[k] && k.startsWith('sma') ? { color: SMA_COLORS[k.slice(3)], borderColor: SMA_COLORS[k.slice(3)] + '99' } : undefined}
@@ -291,26 +319,10 @@ function Candles({ bars, warmPad, intraday, ticks, tick, onTick }) {
         <button
           onClick={() => chartRef.current?.chart.timeScale().fitContent()}
           title={tl('reset full history')}
-          class="font-mono text-[9.5px] px-1.5 py-0.5 rounded border tracking-wider border-line text-muted hover:text-ink"
+          class="font-mono text-[9.5px] px-1.5 py-0.5 rounded border tracking-wider whitespace-nowrap shrink-0 border-line text-muted hover:text-ink"
         >
           FIT
         </button>
-        {/* bar-interval pills, ChartSuite's grammar: rounded-full + primary
-            accent so they read as a different control from the square chips.
-            They lived in the page header before, a screen away from the
-            chart they drive (Jeff 2026-08-09: "rn theyre way up top right") */}
-        {ticks?.length > 0 && (
-          <span class="ml-auto flex items-center gap-1 shrink-0">
-            <span class="font-mono text-[8px] text-muted/70 tracking-widest shrink-0">BAR</span>
-            {ticks.map((v) => (
-              <button key={v} onClick={() => onTick?.(v)} title={`draw ${v} bars`}
-                class={`font-mono text-[8.5px] leading-none px-1 py-[3px] rounded-full border whitespace-nowrap shrink-0 ${
-                  tick === v ? 'border-accent/70 text-accent bg-accent-soft' : 'border-line/50 text-muted hover:text-ink'}`}>
-                {v}
-              </button>
-            ))}
-          </span>
-        )}
       </div>
       <div class="relative">
         <div ref={legendRef} class="absolute left-2 top-1 z-10 font-mono text-[10.5px] text-ink pointer-events-none" style="display:none" />
@@ -2158,28 +2170,9 @@ export function Research({ route }) {
             </span>
           </>
         )}
-        {/* range pills drive only the Overview chart — on the Chart tab they
-            doubled ChartSuite's own picker, and on every other tab they were
-            dead controls (Jeff 2026-08-06: "redundancy w the timeframes").
-            The bar-interval pills moved into the chart card itself
-            (Jeff 2026-08-09). Overview-only. */}
-        {route.view == null && (
-          <div class="flex gap-1 flex-nowrap overflow-x-auto no-scrollbar shrink-0 max-w-full">
-            {RANGES.map((r) => (
-              <button
-                key={r.key}
-                onClick={() => selectRange(r.key)}
-                class={`font-mono text-[10px] px-2 py-1 rounded-md border whitespace-nowrap shrink-0 ${
-                  rangeKey === r.key
-                    ? 'border-accent-2 text-accent-2 bg-accent-2-soft'
-                    : 'border-accent/30 text-muted hover:text-ink hover:bg-surface-3'
-                }`}
-              >
-                {r.key.toLowerCase()}
-              </button>
-            ))}
-          </div>
-        )}
+        {/* the range + bar-interval pickers live inside the Overview chart
+            card now, ChartSuite-style (Jeff 2026-08-09: "time pills into the
+            chart also") — the header carries only identity and quote */}
       </div>
 
       <div class="flex gap-1 px-1 pb-2 select-none flex-nowrap overflow-x-auto no-scrollbar">
@@ -2247,7 +2240,8 @@ export function Research({ route }) {
             <div class="p-2 pb-0">
             {hist ? (
               <Candles bars={hist.bars} warmPad={warmPad} intraday={hist.intraday}
-                ticks={activeRange?.ticks} tick={tick || activeRange?.interval} onTick={setTick} />
+                ticks={activeRange?.ticks} tick={tick || activeRange?.interval} onTick={setTick}
+                rangeKey={rangeKey} onRange={selectRange} />
             ) : (
               <div class="h-[380px] flex items-center justify-center font-mono text-[11px] text-muted">
                 {err ? 'no chart' : 'loading…'}
