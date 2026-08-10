@@ -417,6 +417,7 @@ const LABELS = {
   'Unreal P&L': '浮动盈亏', Total: '合计', Cash: '现金', 'Gross exposure': '总敞口',
   Leverage: '杠杆', Maintenance: '维持保证金', 'Excess liquidity': '超额流动性',
   Cushion: '缓冲', 'Target weight': '目标权重', 'Target value': '目标市值',
+  'Interactive Brokers': '盈透证券',
   Equity: '净资产', 'Above maintenance': '高于维持保证金', Concentration: '集中度', Margin: '保证金',
   Both: '合并', 'Book pulse': '持仓脉搏', 'Top contributor': '最大正贡献',
   'Top detractor': '最大负贡献', 'Largest line': '最大持仓',
