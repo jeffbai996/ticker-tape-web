@@ -16,7 +16,7 @@ import { fetchFilings } from '../lib/edgar.js'
 import { wireUrl } from '../lib/wire.js'
 import { bsDelta } from '../lib/bs.js'
 import { vwapSeries } from '../lib/vwap.js'
-import { LineSeries } from 'lightweight-charts'
+import { LineSeries, AreaSeries } from 'lightweight-charts'
 import { sma, rsi, macd, bollinger } from '../lib/indicators.js'
 import { fmtPrice, fmtPriceBare, fmtPct, fmtChange, fmtVol, fmtBig, fmtRatio, fmtFracPct } from '../lib/format.js'
 import { hrefFor } from '../lib/route.js'
@@ -112,10 +112,21 @@ function rollingSma(bars, n) {
   return out
 }
 
+const OV_TYPE_KEY = 'research_ov_type'
+const OV_TYPES = ['candles', 'line', 'area']
+
 function Candles({ bars, warmPad, intraday, ticks, tick, onTick, rangeKey, onRange }) {
   const el = useRef(null)
   const chartRef = useRef(null)
   const legendRef = useRef(null)
+  const [ctype, setCtypeState] = useState(() => {
+    const saved = localStorage.getItem(OV_TYPE_KEY)
+    return OV_TYPES.includes(saved) ? saved : 'candles'
+  })
+  const setCtype = (t) => {
+    setCtypeState(t)
+    localStorage.setItem(OV_TYPE_KEY, t)
+  }
   const [ov, setOv] = useState(() => {
     try { return JSON.parse(localStorage.getItem(OV_KEY) || '{"vol":true}') }
     catch { return { vol: true } }
@@ -144,24 +155,34 @@ function Candles({ bars, warmPad, intraday, ticks, tick, onTick, rangeKey, onRan
       timeScale: boundedTimeScale(intraday),
       crosshair: { mode: 0 },
     })
-    const series = chart.addSeries(CandlestickSeries, {
-      upColor: '#3fb950',
-      downColor: '#f85149',
-      borderUpColor: '#3fb950',
-      borderDownColor: '#f85149',
-      wickUpColor: '#3fb950',
-      wickDownColor: '#f85149',
-    })
-    chartRef.current = { chart, series, extra: [] }
-    // crosshair legend: O H L C ±% vol at the top-left, like a real terminal
+    const series = ctype === 'candles'
+      ? chart.addSeries(CandlestickSeries, {
+          upColor: '#3fb950',
+          downColor: '#f85149',
+          borderUpColor: '#3fb950',
+          borderDownColor: '#f85149',
+          wickUpColor: '#3fb950',
+          wickDownColor: '#f85149',
+        })
+      // direction color lands with the data — the window's up/down isn't
+      // known until bars arrive
+      : chart.addSeries(ctype === 'area' ? AreaSeries : LineSeries,
+          { lineWidth: 2, priceLineVisible: true })
+    chartRef.current = { chart, series, type: ctype, extra: [] }
+    // crosshair legend: O H L C ±% vol at the top-left, like a real terminal;
+    // line/area bars carry only a close, so the legend slims down with them
     chart.subscribeCrosshairMove((param) => {
       const lg = legendRef.current
       if (!lg) return
       const b = param?.seriesData?.get(series)
-      if (!b || b.open == null) { lg.style.display = 'none'; return }
+      if (!b || (b.open == null && b.value == null)) { lg.style.display = 'none'; return }
+      lg.style.display = 'block'
+      if (b.open == null) {
+        lg.innerHTML = `<span style="color:#79828d">C</span> ${b.value.toFixed(2)}`
+        return
+      }
       const up = b.close >= b.open
       const pct = ((b.close / b.open) - 1) * 100
-      lg.style.display = 'block'
       lg.innerHTML =
         `<span style="color:#79828d">O</span> ${b.open.toFixed(2)} ` +
         `<span style="color:#79828d">H</span> ${b.high.toFixed(2)} ` +
@@ -170,7 +191,7 @@ function Candles({ bars, warmPad, intraday, ticks, tick, onTick, rangeKey, onRan
         (b.volume ? ` <span style="color:#79828d">V</span> ${fmtVol(b.volume)}` : '')
     })
     return () => chart.remove()
-  }, [intraday])
+  }, [intraday, ctype])
 
   useEffect(() => {
     const c = chartRef.current
@@ -179,7 +200,17 @@ function Candles({ bars, warmPad, intraday, ticks, tick, onTick, rangeKey, onRan
     // window — otherwise RSI starts 14 bars in and MACD 34, which reads as the
     // indicator "not going back as far as the candles" (Jeff 2026-08-06)
     const warmed = warmedBars(bars, warmPad)
-    c.series.setData(bars)
+    if (c.type === 'candles') {
+      c.series.setData(bars)
+    } else {
+      const up = bars.length && bars[bars.length - 1].close >= bars[0].close
+      c.series.applyOptions(c.type === 'area'
+        ? { lineColor: up ? '#3fb950' : '#f85149', lineWidth: 2,
+            topColor: up ? 'rgba(63,185,80,.25)' : 'rgba(248,81,73,.25)',
+            bottomColor: 'rgba(0,0,0,0)' }
+        : { color: up ? '#3fb950' : '#f85149' })
+      c.series.setData(bars.map((b) => ({ time: b.time, value: b.close })))
+    }
     c.chart.priceScale('right').applyOptions({ mode: ov.log ? 1 : 0 })
     c.extra.forEach((sr) => { try { c.chart.removeSeries(sr) } catch { /* gone */ } })
     c.extra = []
@@ -271,7 +302,7 @@ function Candles({ bars, warmPad, intraday, ticks, tick, onTick, rangeKey, onRan
       for (let i = 1; i < panes.length; i++) panes[i].setHeight(84)
     } catch { /* pane sizing is garnish */ }
     c.chart.timeScale().fitContent()
-  }, [bars, warmPad, ov])
+  }, [bars, warmPad, ov, ctype])
 
   return (
     <div>
@@ -302,6 +333,14 @@ function Candles({ bars, warmPad, intraday, ticks, tick, onTick, rangeKey, onRan
             ))}
           </>
         )}
+        <span class="w-2 shrink-0" />
+        {OV_TYPES.map((t) => (
+          <button key={t} onClick={() => setCtype(t)} title={`draw as ${t}`}
+            class={`font-mono text-[9.5px] px-1.5 py-0.5 rounded border tracking-wider whitespace-nowrap shrink-0 ${
+              ctype === t ? 'border-accent-2/70 text-accent-2' : 'border-line text-muted hover:text-ink'}`}>
+            {t.toUpperCase()}
+          </button>
+        ))}
       </div>
       <div class="flex gap-1 px-1 pb-1.5 select-none flex-nowrap overflow-x-auto no-scrollbar">
         {[['sma20', 'SMA 20'], ['sma50', 'SMA 50'], ['sma200', 'SMA 200'], ['ema21', 'EMA 21'], ['bb', 'BB'], ...(intraday ? [['vwap', 'VWAP']] : []), ['rsi', 'RSI'], ['macd', 'MACD'], ['vol', 'VOL'], ['log', 'LOG']].map(([k, label]) => (
