@@ -375,6 +375,10 @@ export function tapeworthy(events, { now = Date.now() / 1000, maxAgeH = 6, limit
     .filter((e) => {
       if (!e.headline) return false
       if ((now - (e.ts_event || 0)) / 3600 > maxAgeH) return false
+      // content mills never ride the banner — the wire list still carries
+      // them with their red pip, but the belt is for real sources only
+      // (Jeff 2026-08-09)
+      if (srcCred(e) < 1) return false
       if (TAPE_TYPES.has(e.type)) return true
       return ((e.meta || {}).thesis || 0) >= 2
     })
