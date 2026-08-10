@@ -1219,6 +1219,32 @@ function BoardMenu({ sort, setSort, setViewMode, spark, setSpark, sparkWin, setS
 /** The board's search box doubles as a global ticker lookup: type a company
  *  name ("Hynix") and every venue Yahoo knows drops down — the local rows
  *  keep filtering underneath, terminal not required (Jeff 2026-08-06). */
+function SearchResultSpark({ symbol }) {
+  const [bars, setBars] = useState(null)
+  useEffect(() => {
+    let dead = false
+    setBars(null)
+    fetchHistory(symbol, '1D')
+      .then((history) => {
+        if (dead) return
+        setBars(history.bars.map((bar, i, all) => ({
+          c: bar.close,
+          h: bar.high,
+          l: bar.low,
+          v: bar.volume,
+          up: i === 0 || bar.close >= all[i - 1].close,
+        })))
+      })
+      .catch(() => { if (!dead) setBars([]) })
+    return () => { dead = true }
+  }, [symbol])
+  return (
+    <span class="ml-auto w-16 h-3.5 shrink-0" title={`${symbol} intraday`}>
+      <Spark type="line" window="1Y" bars={bars} width={64} height={14} class="w-16 h-3.5" />
+    </span>
+  )
+}
+
 function TickerSearch({ filter, setFilter, activeList }) {
   const [hits, setHits] = useState(null)
   const [open, setOpen] = useState(false)
@@ -1290,12 +1316,13 @@ function TickerSearch({ filter, setFilter, activeList }) {
                 class="flex items-baseline gap-2 px-2.5 py-1.5 border-t border-line/60 first:border-0 hover:bg-accent-soft cursor-pointer"
                 onClick={() => { setOpen(false); setFilter(''); location.hash = `#/research/${h.symbol.toLowerCase()}` }}>
                 {venueFlag(h) && (
-                  <img src={venueFlag(h)} alt="" class="w-4 h-3 rounded-[1px] shrink-0 self-center"
+                  <img src={venueFlag(h)} alt="" class="w-3 h-[9px] rounded-[1px] shrink-0 self-center"
                     title={h.exch} />
                 )}
-                <span class="font-mono font-bold text-[11px] text-accent shrink-0">{h.symbol}</span>
+                <span class="font-mono font-bold text-[10.5px] text-accent shrink-0">{h.symbol}</span>
                 <span class="font-anth text-[10.5px] text-ink-2 truncate">{h.name}</span>
-                <span class="ml-auto font-mono text-[8.5px] uppercase tracking-wider text-muted shrink-0">{h.exch}</span>
+                <SearchResultSpark symbol={h.symbol} />
+                <span class="font-mono text-[8.5px] uppercase tracking-wider text-muted shrink-0">{h.exch}</span>
                 <button
                   title={inCur ? tl('remove from current watchlist') : tl('add to current watchlist')}
                   onClick={(e) => { e.stopPropagation(); toggleCur() }}
