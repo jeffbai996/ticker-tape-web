@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import {
-  wireUrl, setWireUrl, fragwireHome, fetchEvents, fetchToday, fetchMeta,
-  demoBackfill, demoEvent, demoToday, rankEvents, collapseSessions, clusterStories, TYPE_CODE,
+  wireUrl, setWireUrl, fragwireHome, fetchEvents, fetchUpdates, fetchToday, fetchMeta,
+  demoBackfill, demoEvent, demoToday, rankEvents, collapseSessions, clusterStories,
   srcCred, evHeadline, evBody,
 } from '../lib/wire.js'
 import { IS_PRIVATE_BUILD } from '../lib/nav.js'
@@ -35,15 +35,6 @@ function TierBadge({ tier }) {
       T{tier}
     </span>
   )
-}
-
-const CODE_TONE = {
-  earnings_release: 'text-accent font-semibold',
-  digest: 'text-up',
-  transcript_chunk: 'text-up',
-  macro_print: 'text-ink-2',
-  fed_speech: 'text-ink-2',
-  fed_headline: 'text-ink-2',
 }
 
 const FILTERS = [
@@ -204,15 +195,14 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
         ) : (
           <span class={`truncate text-[10.5px] ${hot ? '' : 'text-muted'}`}>{sourceTag(ev)}</span>
         )}
-        <span class={`text-[10px] tracking-wider ${hot ? '' : CODE_TONE[ev.type] || 'text-muted'}`}>
-          {TYPE_CODE[ev.type] || String(ev.type).slice(0, 3).toUpperCase()}
+        <span data-wire-credibility class="flex items-center h-full" title={tl('source credibility')}>
+          <CredPips ev={ev} hot={hot} />
         </span>
         <span
           class={`truncate max-sm:whitespace-normal max-sm:line-clamp-2 max-sm:col-span-full max-sm:row-start-2 ${hot ? '' : ev.type === 'earnings_release' ? 'text-ink font-semibold' : 'text-ink-2'}`}
           title={hl}
         >
           {!hot && <TierBadge tier={tier} />}
-          <CredPips ev={ev} hot={hot} />
           <span class={tier === 3 && !hot ? 'text-ink font-semibold' : ''}>{hl}</span>
           {ev.story_cluster && <span class="text-accent font-bold"> ×{ev.story_cluster.count}</span>}
           {ev.url && (
@@ -257,6 +247,16 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
       {open && !ev.live_call && (
         <div class="px-2.5 pb-2 mx-auto w-full max-w-[78ch]">
           <h3 class="font-anth font-semibold text-[15px] leading-snug text-ink pt-1.5 pb-1">{hl}</h3>
+          {Object.keys(ev.numbers || {}).length > 0 && (
+            <div class="flex flex-wrap gap-1.5 mt-1.5 mb-1.5">
+              {Object.entries(ev.numbers).map(([k, v]) => (
+                <span key={k} class="border border-line rounded px-2 py-0.5">
+                  <span class="block text-[8.5px] uppercase tracking-wider text-muted">{k.replace(/_/g, ' ')}</span>
+                  <span class="text-[11.5px] font-semibold text-accent">{v}</span>
+                </span>
+              ))}
+            </div>
+          )}
           {body && <p class="text-[11.5px] leading-relaxed text-ink-2 max-w-[72ch] whitespace-pre-wrap">{body}</p>}
           {!ev.body && !ev.story_cluster && ev.url && <ReadBody ev={ev} />}
           {/* info reads dim, clickable reads amber — everything grey made the
@@ -280,16 +280,6 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
               } catch { return null }
             })()}
           </p>
-          {Object.keys(ev.numbers || {}).length > 0 && (
-            <div class="flex flex-wrap gap-1.5 mt-1.5">
-              {Object.entries(ev.numbers).map(([k, v]) => (
-                <span key={k} class="border border-line rounded px-2 py-0.5">
-                  <span class="block text-[8.5px] uppercase tracking-wider text-muted">{k.replace(/_/g, ' ')}</span>
-                  <span class="text-[11.5px] font-semibold text-accent">{v}</span>
-                </span>
-              ))}
-            </div>
-          )}
         </div>
       )}
     </div>
@@ -335,7 +325,7 @@ function Rail({ today, now, events, watchset, onHide }) {
   const topSrc = [...srcCount.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5)
 
   return (
-    <aside class="flex flex-col gap-2 w-[290px] shrink-0 max-lg:w-full">
+    <aside data-wire-rail class="flex flex-col gap-2 w-[290px] shrink-0 min-h-0 overflow-y-auto overscroll-contain max-lg:w-full max-lg:overflow-visible">
       <Panel title={tl('tape')} action={
         <button onClick={onHide} title={tl('hide the side panels')}
           class="text-muted hover:text-accent leading-none px-1 -mr-1 font-mono text-[11px]">
@@ -462,6 +452,8 @@ export function Wire({ route }) {
 
   useEffect(() => {
     let cancelled = false
+    let revisionTimer = null
+    let revisionSince = 0
     if (esRef.current) { esRef.current.close(); esRef.current = null }
 
     if (!endpoint) {
@@ -485,6 +477,28 @@ export function Wire({ route }) {
     const pollRail = () => {
       fetchToday(endpoint).then((out) => !cancelled && setToday(out)).catch(() => {})
     }
+    const pollRevisions = () => {
+      if (!revisionSince) return
+      fetchUpdates(endpoint, revisionSince)
+        .then((out) => {
+          if (cancelled) return
+          const revisions = out.events || []
+          if (revisions.length) {
+            setEvents((cur) => {
+              const next = cur.slice()
+              revisions.forEach((ev) => {
+                const i = next.findIndex((row) => row.id === ev.id)
+                if (i >= 0) next[i] = ev
+                else next.push(ev)
+              })
+              return next.slice(-400)
+            })
+            revisions.forEach((ev) => markHot(ev.id))
+          }
+          revisionSince = out.server_ts || revisionSince
+        })
+        .catch(() => {})              // SSE still owns connection state
+    }
     fetchMeta(endpoint)
       .then((out) => !cancelled && setWatchset(new Set(out.watchlist || [])))
       .catch(() => {})
@@ -492,6 +506,8 @@ export function Wire({ route }) {
       .then((out) => {
         if (cancelled) return
         setEvents(out.events || [])
+        revisionSince = out.server_ts || Date.now() / 1000
+        revisionTimer = setInterval(pollRevisions, 2000)
         pollRail()
         const es = new EventSource(`${endpoint}/api/stream?since_id=${out.latest_id || 0}`)
         esRef.current = es
@@ -512,6 +528,7 @@ export function Wire({ route }) {
     return () => {
       cancelled = true
       clearInterval(railTimer)
+      if (revisionTimer) clearInterval(revisionTimer)
       if (esRef.current) { esRef.current.close(); esRef.current = null }
     }
   }, [endpoint])
@@ -579,7 +596,7 @@ export function Wire({ route }) {
   }
 
   return (
-    <div class="flex flex-col gap-2 flex-1 min-w-0 p-3 pt-0">
+    <div data-wire-workbench class="flex flex-col gap-2 flex-1 min-w-0 h-full min-h-0 overflow-hidden max-lg:overflow-y-auto p-3 pt-0">
       {/* fragwire's own brow, ported: brand, segmented top|wire, conn dot,
           board links — one bar, not a row of floating chips (Jeff 2026-08-05) */}
       <div class="flex items-center gap-3 h-9 shrink-0 -mx-3 px-3 border-b border-line bg-surface-1 min-w-0 overflow-x-auto no-scrollbar">
@@ -651,8 +668,8 @@ export function Wire({ route }) {
           </button>
         ))}
       </div>
-      <div class="flex gap-2 items-start max-lg:flex-col">
-        <div class="flex-1 min-w-0 border border-line rounded-lg overflow-hidden bg-surface">
+      <div class="flex flex-1 min-h-0 gap-2 items-stretch max-lg:flex-col max-lg:flex-none">
+        <div data-wire-feed class="flex-1 min-w-0 min-h-0 border border-line rounded-lg overflow-y-auto overscroll-contain bg-surface">
           {shown.length === 0 && (
             <div class="px-3 py-6 font-mono text-[12px] text-muted">{tl('no events')}</div>
           )}
