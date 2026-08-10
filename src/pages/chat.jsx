@@ -145,7 +145,11 @@ function MemoryComposer({ memories, onApplied }) {
       const resp = await fetch(`${wireUrl().replace(/\/$/, '')}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'auto', system,
+        // 'auto' was retired from the registry (2026-08-05) and turned this
+        // whole dialog into "unknown chat model" (Jeff 2026-08-10). Ride the
+        // user's picked chat model instead, same fallback as the composer.
+        body: JSON.stringify({
+          model: localStorage.getItem('chat_wire_model') || 'agy-flash', system,
           messages: [{ role: 'user', content: `Current memories:\n${listing}\n\nRequest: ${ask}` }] }),
         signal: AbortSignal.timeout(90_000),
       })
@@ -710,6 +714,17 @@ export function Chat() {
   const onWire = wireChatAvailable()
   const modelStorageKey = onWire ? 'chat_wire_model' : 'chat_model'
   const [models, setModels] = useState([])
+  // transcript text size — like operator's +/-; composer deliberately excluded
+  // (Jeff 2026-08-10). CSS zoom on the scroller scales the px-classed bubbles.
+  const [chatZoom, setChatZoom] = useState(() => {
+    const saved = Number(localStorage.getItem('chat_text_zoom'))
+    return saved >= 0.8 && saved <= 1.4 ? saved : 1
+  })
+  const bumpChatZoom = (d) => setChatZoom((z) => {
+    const next = Math.min(1.4, Math.max(0.8, Math.round((z + d) * 20) / 20))
+    localStorage.setItem('chat_text_zoom', String(next))
+    return next
+  })
   const [model, setModel] = useState(
     localStorage.getItem(modelStorageKey) || (onWire ? 'agy-flash' : 'flash'),
   )
@@ -1246,24 +1261,28 @@ export function Chat() {
               <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
             </button>
           )}
-          {busy && (
+          {/* ONE button that morphs: send at rest, stop while streaming —
+              not a second control spawning beside it (Jeff 2026-08-10).
+              Enter still queues a follow-up mid-stream via the form submit. */}
+          {busy ? (
             <button
               type="button"
               onClick={stop}
               title={tl('stop generating')}
-              class="shrink-0 w-8 h-8 grid place-items-center rounded-md border border-line-2 text-ink-2 hover:text-down hover:border-down/60 transition-colors"
+              class="shrink-0 w-8 h-8 grid place-items-center rounded-md bg-down text-white hover:bg-down/80 transition-colors"
             >
               <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>
             </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={!input.trim()}
+              title="send  ⏎"
+              class="shrink-0 w-8 h-8 grid place-items-center rounded-md bg-white text-black disabled:bg-surface-3 disabled:text-muted transition-colors"
+            >
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+            </button>
           )}
-          <button
-            type="submit"
-            disabled={!input.trim()}
-            title={busy ? 'queue follow-up  ⏎' : 'send  ⏎'}
-            class="shrink-0 w-8 h-8 grid place-items-center rounded-md bg-white text-black disabled:bg-surface-3 disabled:text-muted transition-colors"
-          >
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
-          </button>
         </div>
         {/* OWUI-style: the model rides the composer, not page chrome */}
         <div class="flex items-center gap-2 px-2 pt-1 font-mono text-[9.5px] text-muted flex-wrap">
@@ -1279,11 +1298,30 @@ export function Chat() {
               title={tl('model')}
               class="appearance-none bg-surface-2 border border-line rounded-md pl-2 pr-5 py-[3px] font-anth text-[10.5px] text-ink-2 outline-none cursor-pointer hover:border-line-2 focus:border-accent/70 transition-colors"
             >
-              {(models.length ? models : [{ key: model, label: model }]).map((m) => (
-                <option key={m.key} value={m.key}>{m.label}</option>
-              ))}
+              {(() => {
+                const live = models.length ? models : [{ key: model, label: model }]
+                const label = (g) => ({ 'Claude Code': 'claude', Codex: 'codex', Antigravity: 'agy' }[g] || (g || 'models').toLowerCase())
+                const groups = []
+                live.forEach((m) => {
+                  const g = label(m.group)
+                  const cur = groups[groups.length - 1]
+                  if (cur && cur.name === g) cur.items.push(m)
+                  else groups.push({ name: g, items: [m] })
+                })
+                return groups.map((g) => (
+                  <optgroup key={g.name} label={`— ${g.name} —`}>
+                    {g.items.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
+                  </optgroup>
+                ))
+              })()}
             </select>
             <span class="pointer-events-none absolute right-1.5 text-[7px] leading-none text-muted">▾</span>
+          </span>
+          <span class="flex items-center gap-0.5 bg-surface-2 border border-line rounded-md px-0.5 py-px" title="transcript text size">
+            <button type="button" onClick={() => bumpChatZoom(-0.1)}
+              class="px-1.5 py-px font-mono text-[10px] rounded text-muted hover:text-ink hover:bg-surface-3">A−</button>
+            <button type="button" onClick={() => bumpChatZoom(0.1)}
+              class="px-1.5 py-px font-mono text-[10px] rounded text-muted hover:text-ink hover:bg-surface-3">A+</button>
           </span>
           {effortLevels.length > 0 && (
             <span class="flex items-center gap-0.5 bg-surface-2 border border-line rounded-md px-0.5 py-px" title={tl('thinking effort')}>
@@ -1545,6 +1583,7 @@ export function Chat() {
               stickRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120
             }}
             class="flex-1 overflow-y-auto min-h-0 max-w-[46rem] w-full mx-auto flex flex-col gap-3 px-2"
+            style={chatZoom !== 1 ? { zoom: chatZoom } : undefined}
           >
         {history.map((m, i) => {
           if (m.role === 'tool') return null
