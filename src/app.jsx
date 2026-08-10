@@ -68,7 +68,7 @@ export function App() {
       <SubTabs route={route} />
       <div class="flex-1 flex min-h-0">
         <Sidebar route={route} />
-        <main class="flex-1 flex min-w-0 overflow-y-auto max-md:pb-12">
+        <main class="flex-1 flex min-w-0 min-h-0 overflow-y-auto max-md:pb-12">
           <Page route={route} />
         </main>
       </div>
