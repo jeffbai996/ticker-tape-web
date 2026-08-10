@@ -311,7 +311,7 @@ function Candles({ bars, warmPad, intraday, ticks, tick, onTick, rangeKey, onRan
           the first row, indicator toggles on the second. Both pickers used to
           live in the page header, a screen away from the chart they drive
           (Jeff 2026-08-09: "time pills into the chart also") */}
-      <div class="flex items-center gap-1 px-1 pb-1 select-none flex-nowrap overflow-x-auto no-scrollbar">
+      <div class="flex items-center gap-1 px-1 pb-1 select-none flex-wrap w-full max-w-full overflow-hidden">
         {RANGES.map((r) => (
           <button key={r.key} onClick={() => onRange?.(r.key)}
             class={`font-mono text-[9.5px] px-1.5 py-0.5 rounded border tracking-wider whitespace-nowrap shrink-0 ${
@@ -340,7 +340,7 @@ function Candles({ bars, warmPad, intraday, ticks, tick, onTick, rangeKey, onRan
             <button onClick={() => onExt?.(!ext)}
               title="include pre-market and after-hours bars (04:00–20:00 ET)"
               class={`font-mono text-[8.5px] leading-none px-1.5 py-[3px] rounded-full border whitespace-nowrap shrink-0 ${
-                ext ? 'border-accent/70 text-accent bg-accent-soft' : 'border-line/50 text-muted hover:text-ink'}`}>
+                ext ? 'border-accent/70 text-accent bg-surface-3' : 'border-line-2/70 bg-surface-3 text-ink-2 hover:text-ink'}`}>
               EXT
             </button>
           </>
