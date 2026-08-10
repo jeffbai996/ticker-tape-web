@@ -4,7 +4,8 @@ import { fmtPrice, fmtPct } from '../lib/format.js'
 import { hrefFor } from '../lib/route.js'
 import { marqueeCopies } from '../lib/marquee.js'
 import { tapeBadge, tapeEntries } from '../lib/tape.js'
-import { tapeworthy, wireUrl } from '../lib/wire.js'
+import { tapeworthy, wireUrl, evHeadline } from '../lib/wire.js'
+import { getLocale } from '../lib/i18n.js'
 import { extendedLabelClass } from '../lib/extendedHours.js'
 
 // The namesake: a continuously scrolling quote marquee. The list is doubled
@@ -152,7 +153,7 @@ export function Tape() {
                     // of the wire (Jeff 2026-08-05)
                     href={`#/wire/${e.id}`}
                     class="flex items-baseline gap-2 whitespace-nowrap hover:no-underline px-1 py-0.5"
-                    title={e.headline}
+                    title={evHeadline(e, getLocale())}
                   >
                     <span class={`text-[9px] font-bold tracking-wider px-1 rounded-sm ${tapeBadge(e, watchset).cls}`}>
                       {tapeBadge(e, watchset).code}
@@ -160,7 +161,7 @@ export function Tape() {
                     {/* it's a SCROLLING tape — a longer headline costs nothing but scroll
                         time, and 46ch cut stories off before the point landed (Jeff
                         2026-08-06: "cant really get the point sometimes") */}
-                    <span class="text-accent font-semibold max-w-[110ch] truncate">{e.headline}</span>
+                    <span class="text-accent font-semibold max-w-[110ch] truncate">{evHeadline(e, getLocale())}</span>
                   </a>
                 )
               }
