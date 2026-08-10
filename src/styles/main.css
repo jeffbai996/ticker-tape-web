@@ -487,7 +487,9 @@ button:hover .burger path:nth-child(2) { transform: scaleX(.55); }
   100% { transform: rotate(720deg) scale(1); }
 }
 .chat-trace-caret {
-  width: 7px; height: 7px; flex: 0 0 7px; border-right: 1px solid currentColor;
+  /* 5px, down from 7 — it read oversized next to the step counter's 10px
+     type (Jeff 2026-08-10) */
+  width: 5px; height: 5px; flex: 0 0 5px; border-right: 1px solid currentColor;
   border-bottom: 1px solid currentColor; transform: rotate(45deg) translate(-1px, 1px);
   transition: transform .24s cubic-bezier(.2, 1, .3, 1);
 }
