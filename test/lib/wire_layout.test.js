@@ -21,6 +21,7 @@ describe('wire workbench sizing', () => {
     expect(src).toContain('w-[clamp(260px,24vw,340px)]')
     expect(src).toContain('max-xl:w-full max-xl:overflow-visible')
     expect(src).toContain('max-xl:flex-col max-xl:flex-none')
+    expect(src).toContain('max-xl:h-[55vh] max-xl:min-h-[360px] max-xl:flex-none')
   })
 
   it('uses source credibility pips instead of a repetitive NWS column', () => {
