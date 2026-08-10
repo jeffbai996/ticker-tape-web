@@ -115,7 +115,8 @@ function rollingSma(bars, n) {
 const OV_TYPE_KEY = 'research_ov_type'
 const OV_TYPES = ['candles', 'line', 'area']
 
-function Candles({ bars, warmPad, intraday, ticks, tick, onTick, rangeKey, onRange }) {
+function Candles({ bars, warmPad, intraday, ticks, tick, onTick, rangeKey, onRange,
+                   ext = false, onExt, canExt = false }) {
   const el = useRef(null)
   const chartRef = useRef(null)
   const legendRef = useRef(null)
@@ -333,14 +334,17 @@ function Candles({ bars, warmPad, intraday, ticks, tick, onTick, rangeKey, onRan
             ))}
           </>
         )}
-        <span class="w-2 shrink-0" />
-        {OV_TYPES.map((t) => (
-          <button key={t} onClick={() => setCtype(t)} title={`draw as ${t}`}
-            class={`font-mono text-[9.5px] px-1.5 py-0.5 rounded border tracking-wider whitespace-nowrap shrink-0 ${
-              ctype === t ? 'border-accent-2/70 text-accent-2' : 'border-line text-muted hover:text-ink'}`}>
-            {t.toUpperCase()}
-          </button>
-        ))}
+        {canExt && (
+          <>
+            <span class="w-2 shrink-0" />
+            <button onClick={() => onExt?.(!ext)}
+              title="include pre-market and after-hours bars (04:00–20:00 ET)"
+              class={`font-mono text-[8.5px] leading-none px-1.5 py-[3px] rounded-full border whitespace-nowrap shrink-0 ${
+                ext ? 'border-accent/70 text-accent bg-accent-soft' : 'border-line/50 text-muted hover:text-ink'}`}>
+              EXT
+            </button>
+          </>
+        )}
       </div>
       <div class="flex gap-1 px-1 pb-1.5 select-none flex-nowrap overflow-x-auto no-scrollbar">
         {[['sma20', 'SMA 20'], ['sma50', 'SMA 50'], ['sma200', 'SMA 200'], ['ema21', 'EMA 21'], ['bb', 'BB'], ...(intraday ? [['vwap', 'VWAP']] : []), ['rsi', 'RSI'], ['macd', 'MACD'], ['vol', 'VOL'], ['log', 'LOG']].map(([k, label]) => (
@@ -362,6 +366,14 @@ function Candles({ bars, warmPad, intraday, ticks, tick, onTick, rangeKey, onRan
         >
           FIT
         </button>
+        <span class="w-2 shrink-0" />
+        {OV_TYPES.map((t) => (
+          <button key={t} onClick={() => setCtype(t)} title={`draw as ${t}`}
+            class={`font-mono text-[9.5px] px-1.5 py-0.5 rounded border tracking-wider whitespace-nowrap shrink-0 ${
+              ctype === t ? 'border-accent-2/70 text-accent-2' : 'border-line text-muted hover:text-ink'}`}>
+            {t.toUpperCase()}
+          </button>
+        ))}
       </div>
       <div class="relative">
         <div ref={legendRef} class="absolute left-2 top-1 z-10 font-mono text-[10.5px] text-ink pointer-events-none" style="display:none" />
@@ -2097,6 +2109,13 @@ export function Research({ route }) {
   const [ticks, setTicks] = useState(() => {
     try { return JSON.parse(localStorage.getItem('research_ticks_v1')) || {} } catch { return {} }
   })
+  // extended-hours bars on the Overview chart (Jeff 2026-08-10) — same
+  // 04:00-20:00 ET series ChartSuite's EXT chip fetches; sticky across visits
+  const [ovExt, setOvExtState] = useState(() => localStorage.getItem('research_ov_ext') === '1')
+  const setOvExt = (on) => {
+    setOvExtState(on)
+    try { localStorage.setItem('research_ov_ext', on ? '1' : '0') } catch { /* best-effort */ }
+  }
   const activeRange = RANGES.find((x) => x.key === rangeKey)
   const tick = activeRange?.ticks?.includes(ticks[rangeKey]) ? ticks[rangeKey] : null
   const setTick = (value) => {
@@ -2112,16 +2131,16 @@ export function Research({ route }) {
     if (!symbol) return
     setHist(null)
     setErr(null)
-    fetchHistory(symbol, rangeKey, { interval: tick })
+    fetchHistory(symbol, rangeKey, { interval: tick, prepost: ovExt })
       .then(setHist)
       .catch((e) => setErr(String(e.message || e)))
     // warm-up bars for the oscillators; failure is silent — indicators just
     // start where they used to
     setWarmPad(null)
-    fetchHistory(symbol, rangeKey, { warm: true, interval: tick })
+    fetchHistory(symbol, rangeKey, { warm: true, interval: tick, prepost: ovExt })
       .then((h) => setWarmPad(h.bars))
       .catch(() => {})
-  }, [symbol, rangeKey, tick])
+  }, [symbol, rangeKey, tick, ovExt])
 
   // bloomberg speed keys: the tab numbers are commands — press 3, land on
   // Options. 0 = the tenth tab. Inputs keep their digits.
@@ -2280,7 +2299,8 @@ export function Research({ route }) {
             {hist ? (
               <Candles bars={hist.bars} warmPad={warmPad} intraday={hist.intraday}
                 ticks={activeRange?.ticks} tick={tick || activeRange?.interval} onTick={setTick}
-                rangeKey={rangeKey} onRange={selectRange} />
+                rangeKey={rangeKey} onRange={selectRange}
+                ext={ovExt} onExt={setOvExt} canExt={!!activeRange?.intraday} />
             ) : (
               <div class="h-[380px] flex items-center justify-center font-mono text-[11px] text-muted">
                 {err ? 'no chart' : 'loading…'}
