@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { fetchEvents } from '../../src/lib/wire.js'
+import { fetchEvents, fetchUpdates } from '../../src/lib/wire.js'
 
 describe('fetchEvents', () => {
   const call = async (opts) => {
@@ -24,6 +24,18 @@ describe('fetchEvents', () => {
   it('throws on a bad response so the caller can fall back', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 502 }))
     await expect(fetchEvents('http://wire')).rejects.toThrow('wire 502')
+    vi.unstubAllGlobals()
+  })
+})
+
+describe('fetchUpdates', () => {
+  it('asks for revisions newer than the server marker', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true, json: async () => ({ events: [], server_ts: 12.5 }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    await fetchUpdates('http://wire', 10.25)
+    expect(fetchMock.mock.calls[0][0]).toBe('http://wire/api/updates?since=10.25')
     vi.unstubAllGlobals()
   })
 })
