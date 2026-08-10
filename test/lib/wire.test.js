@@ -167,3 +167,30 @@ describe('clusterStories', () => {
     expect(out.find((e) => e.id === 9)).toBe(ev)
   })
 })
+
+describe('tapeworthy banner policy', () => {
+  const now = 1_700_000_000
+  const mk = (over = {}) => ({
+    id: 1, type: 'headline', symbols: ['MU'], ts_event: now - 60, ts_seen: now,
+    headline: 'Micron Has Surged. Brace for a Steep Pullback.',
+    url: 'https://www.fool.com/investing/2026/micron.aspx',
+    meta: { thesis: 2 }, ...over,
+  })
+
+  it('keeps content-mill stories off the banner even at thesis 2+', async () => {
+    const { tapeworthy } = await import('../../src/lib/wire.js')
+    expect(tapeworthy([mk()], { now })).toHaveLength(0)
+  })
+
+  it('still carries the same story from a ranked outlet', async () => {
+    const { tapeworthy } = await import('../../src/lib/wire.js')
+    const ev = mk({ url: 'https://www.reuters.com/technology/micron.html', headline: 'Micron cuts HBM capacity' })
+    expect(tapeworthy([ev], { now })).toHaveLength(1)
+  })
+
+  it('never blocks self-made hard events, which carry no source to rate', async () => {
+    const { tapeworthy } = await import('../../src/lib/wire.js')
+    const ev = mk({ type: 'price_move', url: '', headline: 'MU -4.2% on volume' })
+    expect(tapeworthy([ev], { now })).toHaveLength(1)
+  })
+})
