@@ -67,6 +67,13 @@ export async function fetchEvents(base, { sinceId = 0, limit = 100, newest = fal
   return resp.json()
 }
 
+/** In-place revisions (primary-release facts arriving after the ERN tripwire). */
+export async function fetchUpdates(base, since) {
+  const resp = await fetch(`${base}/api/updates?since=${encodeURIComponent(since)}`)
+  if (!resp.ok) throw new Error(`wire updates ${resp.status}`)
+  return resp.json()
+}
+
 // ── demo wire ─────────────────────────────────────────────────────────────
 // A written session rather than a template generator. The old version cycled
 // six shapes over six tickers, so every sixth row repeated with a new symbol —

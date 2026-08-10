@@ -463,6 +463,7 @@ const LABELS = {
   'include counter-case': '加入反方论证', 'counter-case': '反方论证', 'Custom instructions': '自定义指令',
   'model returned nothing — try again': '模型未返回内容 — 请重试',
   minimize: '收起', expand: '展开',
+  'source credibility': '信源可信度',
   'source: top tier (wires/majors)': '信源：一线（通讯社/大报）',
   'source: low tier (SEO/content mill)': '信源：低质（SEO内容农场）',
   'source: standard': '信源：普通',
