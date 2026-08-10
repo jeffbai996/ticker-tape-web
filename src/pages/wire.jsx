@@ -669,7 +669,7 @@ export function Wire({ route }) {
         ))}
       </div>
       <div class="flex flex-1 min-h-0 gap-2 items-stretch max-xl:flex-col max-xl:flex-none">
-        <div data-wire-feed class="flex-1 min-w-0 min-h-0 border border-line rounded-lg overflow-y-auto overscroll-contain bg-surface">
+        <div data-wire-feed class="flex-1 min-w-0 min-h-0 border border-line rounded-lg overflow-y-auto overscroll-contain bg-surface max-xl:h-[55vh] max-xl:min-h-[360px] max-xl:flex-none">
           {shown.length === 0 && (
             <div class="px-3 py-6 font-mono text-[12px] text-muted">{tl('no events')}</div>
           )}
