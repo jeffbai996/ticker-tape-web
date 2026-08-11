@@ -1316,6 +1316,17 @@ function SearchResultSpark({ symbol }) {
   )
 }
 
+// Hoisted ONCE: preact re-sets dash-cased SVG attributes via setAttribute on
+// every diff, and a same-value setAttribute still invalidates paint — so an
+// inline glass icon repainted on every quote tick and visibly shimmered under
+// trackpad/OS zoom while its text siblings held dead still (Jeff 2026-08-11).
+// A constant vnode short-circuits the diff entirely.
+const GLASS_ICON = (
+  <span class="absolute inset-y-0 left-2 text-muted pointer-events-none grid place-items-center">
+    <svg viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7" cy="7" r="4.4" /><path d="m10.4 10.4 3 3" /></svg>
+  </span>
+)
+
 function TickerSearch({ filter, setFilter, activeList }) {
   const [hits, setHits] = useState(null)
   const [open, setOpen] = useState(false)
@@ -1349,9 +1360,7 @@ function TickerSearch({ filter, setFilter, activeList }) {
     <div ref={boxRef} class="relative shrink-0">
       {/* The 10px glass stays at x=8 inside the 26px folded control, centered
           without changing positioning modes when focus moves to the menu. */}
-      <span class="absolute inset-y-0 left-2 text-muted pointer-events-none grid place-items-center">
-        <svg viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7" cy="7" r="4.4" /><path d="m10.4 10.4 3 3" /></svg>
-      </span>
+      {GLASS_ICON}
       <input ref={inputRef} value={filter} onInput={(e) => setFilter(e.currentTarget.value)}
         onFocus={() => { setExpanded(true); if (hits?.length) setOpen(true) }}
         onClick={() => setExpanded(true)}

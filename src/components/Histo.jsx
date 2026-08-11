@@ -5,9 +5,20 @@
 // rather than drop it. `preserveAspectRatio="none"` compresses the time axis
 // while bar heights — the part carrying the signal — stay put.
 
+import { useMemo } from 'preact/hooks'
 import { bucketBars } from '../lib/sparks.js'
 
 export function Histo({ bars, width = 130, height = 20, class: cls = '' }) {
+  // Memoized on the bars' identity: preact re-sets dash-cased SVG attributes
+  // via setAttribute on every diff even when unchanged, which invalidates
+  // paint — a year-of-rects histogram repainted on every quote tick and
+  // shimmered under OS/trackpad zoom (Jeff 2026-08-11). Same vnode back →
+  // the diff skips the subtree entirely.
+  return useMemo(() => renderHisto(bars, width, height, cls),
+    [bars, width, height, cls])
+}
+
+function renderHisto(bars, width, height, cls) {
   if (!bars?.length) return <div style={{ width, height }} />
   // Down-sample to the pixels available. The feed carries a year of daily
   // bars (252), and drawing all of them into an 84px spark meant 252 rects at
