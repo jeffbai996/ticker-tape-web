@@ -6,7 +6,7 @@ import {
   DEMO_POSITIONS, DEMO_CASH, DEMO_BETAS, DEMO_ACCOUNT_ID, DEMO_MARGIN_RATE,
   positionRows, accountSummary, mergeLegs, sizeForWeight, carryAt, stressGrid, nlvWalk,
 } from '../lib/demo.js'
-import { fmtPrice, fmtPct, fmtChange, fmtRatio } from '../lib/format.js'
+import { fmtPrice, fmtPct, fmtPctPlain, fmtChange, fmtRatio } from '../lib/format.js'
 import { getLocale, tl, t as tt } from '../lib/i18n.js'
 import { FlashPrice } from '../components/Fig.jsx'
 import { Empty, Loading } from '../components/Loading.jsx'
@@ -68,7 +68,7 @@ function BookSummary({ rows, margin, fallbackNlv }) {
   const costBase = gross != null && unreal != null ? gross - unreal : null
   const unrealPct = costBase ? (unreal / costBase) * 100 : null
   const pctSpan = (pct, cls) => pct == null ? null : (
-    <span class={cls}>{' '}({pct >= 0 ? '+' : ''}{pct.toFixed(2)}%)</span>
+    <span class={cls}>{' '}({fmtPct(pct)})</span>
   )
   const chip = (v, pct) =>
     v == null ? null : (
@@ -108,7 +108,7 @@ function BookSummary({ rows, margin, fallbackNlv }) {
             <div>
               <div class="flex justify-between font-anth text-[8.5px] uppercase tracking-wider text-muted pb-1">
                 <span>{tl('Maintenance')}</span>
-                <span class={cushion < 8 ? 'text-down' : 'text-up'}>{tl('Cushion')} {cushion?.toFixed(1)}%</span>
+                <span class={cushion < 8 ? 'text-down' : 'text-up'}>{tl('Cushion')} {fmtPctPlain(cushion)}</span>
               </div>
               <div class="relative h-2 rounded-full bg-down/25 overflow-hidden">
                 <div class={`absolute inset-y-0 right-0 rounded-full ${cushion < 8 ? 'bg-down' : 'bg-up/70'}`}
@@ -158,7 +158,7 @@ function BookPulse({ rows }) {
         <div class="flex justify-between px-2.5 py-[2px] font-mono text-[10.5px]"><span class="text-muted">{tl('A/D')}</span><span><span class="text-up">{adv}</span><span class="text-muted"> / </span><span class="text-down">{priced.length - adv}</span></span></div>
         {line(tl('Top contributor'), contributor, 'text-up')}
         {line(tl('Top detractor'), detractor, 'text-down')}
-        <div class="flex justify-between px-2.5 py-[2px] font-mono text-[10.5px]"><span class="text-muted">{tl('Largest line')}</span><span class="text-ink-2">{biggest ? <><SymLink sym={biggest.symbol} /> {`${biggest.weight.toFixed(1)}%`}</> : '—'}</span></div>
+        <div class="flex justify-between px-2.5 py-[2px] font-mono text-[10.5px]"><span class="text-muted">{tl('Largest line')}</span><span class="text-ink-2">{biggest ? <><SymLink sym={biggest.symbol} /> {fmtPctPlain(biggest.weight)}</> : '—'}</span></div>
       </div>
     </section>
   )
@@ -210,7 +210,7 @@ function Positions({ priceMap, positions, margin, accountId }) {
               <td class="px-2 py-[3px] text-right text-muted text-[10.5px]">{fmtPrice(r.avgCost)}</td>
               <td class="px-2 py-[3px] text-right text-ink-2 font-medium"><FlashPrice price={r.price} fmt={fmtPrice} /></td>
               <td class="px-2 py-[3px] text-right text-ink font-semibold text-[12px]">{money(r.mktValue)}</td>
-              <td class="px-2 py-[3px] text-right text-ink-2 font-medium">{r.weight != null ? `${r.weight.toFixed(1)}%` : '—'}</td>
+              <td class="px-2 py-[3px] text-right text-ink-2 font-medium">{fmtPctPlain(r.weight)}</td>
               <td class={`px-2 py-[3px] text-right font-semibold ${pnlCls(r.dayPnl)}`}>
                 {signedMoney(r.dayPnl)} {r.dayPct != null && <span class="text-[10px] font-normal">({fmtPct(r.dayPct)})</span>}
               </td>
@@ -245,7 +245,7 @@ function Positions({ priceMap, positions, margin, accountId }) {
                 <div class="absolute inset-y-0 left-0 rounded-sm bg-accent/30"
                   style={{ width: `${(w / maxW) * 100}%` }} />
               </div>
-              <span class="w-11 text-right text-ink-2">{w.toFixed(1)}%</span>
+              <span class="w-11 text-right text-ink-2">{fmtPctPlain(w)}</span>
             </div>
           ))}
         </div>
@@ -260,7 +260,7 @@ function Positions({ priceMap, positions, margin, accountId }) {
             {margin.maintenance != null && <div class="flex justify-between"><span class="text-muted">{tl('Maintenance')}</span><span class="text-ink-2">{dollars(margin.maintenance)}</span></div>}
             {margin.above_maintenance != null && <div class="flex justify-between"><span class="text-muted">{tl('Above maintenance')}</span><span class="text-ink-2">{dollars(margin.above_maintenance)}</span></div>}
             {margin.cushion_pct != null && <div class="flex justify-between"><span class="text-muted">{tl('Cushion')}</span>
-              <span class={`font-semibold ${margin.cushion_pct < 8 ? 'text-down' : 'text-up'}`}>{margin.cushion_pct.toFixed(2)}%</span></div>}
+              <span class={`font-semibold ${margin.cushion_pct < 8 ? 'text-down' : 'text-up'}`}>{fmtPctPlain(margin.cushion_pct, 2)}</span></div>}
           </div>
         </section>
       )}
@@ -303,7 +303,7 @@ function Account({ priceMap, positions, margin, account }) {
         <AccountStat label={tl('Leverage')} value={leverage != null ? `${leverage.toFixed(2)}x` : '—'} />
         <AccountStat label={tl('Maintenance')} value={dollars(margin?.maintenance ?? s.maintenance)} />
         <AccountStat label={tl('Excess liquidity')} value={dollars(margin?.above_maintenance ?? s.excessLiq)} />
-        <AccountStat label={tl('Cushion')} value={(margin?.cushion_pct ?? s.cushionPct) != null ? `${(margin?.cushion_pct ?? s.cushionPct).toFixed(1)}%` : '—'}
+        <AccountStat label={tl('Cushion')} value={fmtPctPlain(margin?.cushion_pct ?? s.cushionPct)}
           cls={(margin?.cushion_pct ?? s.cushionPct) != null && (margin?.cushion_pct ?? s.cushionPct) < 15 ? 'text-down' : 'text-up'} />
         <AccountStat label={tl('Day P&L')} value={signedMoney(dayPnl)} cls={pnlCls(dayPnl)} />
         <AccountStat label={tl('Unreal P&L')} value={signedMoney(unrealPnl)} cls={pnlCls(unrealPnl)} />
@@ -438,9 +438,9 @@ function Cockpit({ priceMap, positions }) {
       </section>
 
       <div class="grid gap-3 sm:grid-cols-3">
-        <AccountStat label={tl('Top position')} value={top != null ? `${top.toFixed(1)}%` : '—'} />
+        <AccountStat label={tl('Top position')} value={fmtPctPlain(top)} />
         <AccountStat label={tl('Concentration (HHI)')} value={hhi != null ? hhi.toFixed(3) : '—'} />
-        <AccountStat label={tl('Cushion')} value={s.cushionPct != null ? `${s.cushionPct.toFixed(1)}%` : '—'}
+        <AccountStat label={tl('Cushion')} value={fmtPctPlain(s.cushionPct)}
           cls={s.cushionPct != null && s.cushionPct < 15 ? 'text-down' : 'text-up'} />
       </div>
 

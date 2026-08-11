@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { fmtPrice, fmtPct, fmtChange, fmtVol, rangePos, fmtPriceBare, sessionMeter } from '../../src/lib/format.js'
+import {
+  fmtPrice, fmtPct, fmtPctPlain, fmtFracPct, fmtChange, fmtVol, rangePos,
+  fmtPriceBare, sessionMeter,
+} from '../../src/lib/format.js'
 
 describe('sessionMeter', () => {
   it('spans from yesterday\'s close to the last trade', () => {
@@ -79,6 +82,28 @@ describe('fmtPct', () => {
   })
   it('renders a dash for missing values', () => {
     expect(fmtPct(null)).toBe('—')
+  })
+  it('takes a precision so the one-decimal call sites can share it', () => {
+    expect(fmtPct(2.345, 1)).toBe('+2.3%')
+    expect(fmtPct(-2.345, 1)).toBe('-2.3%')
+  })
+})
+
+describe('fmtPctPlain', () => {
+  it('leaves the sign to the number — weights and cushions are never "+"', () => {
+    expect(fmtPctPlain(12.34)).toBe('12.3%')
+    expect(fmtPctPlain(12.345, 2)).toBe('12.35%')
+    expect(fmtPctPlain(-3)).toBe('-3.0%')
+    expect(fmtPctPlain(null)).toBe('—')
+  })
+})
+
+describe('fmtFracPct', () => {
+  it('scales a fraction and takes a precision', () => {
+    expect(fmtFracPct(0.4612)).toBe('46.12%')
+    expect(fmtFracPct(0.4612, 1)).toBe('46.1%')
+    expect(fmtFracPct(0.4612, 0)).toBe('46%')
+    expect(fmtFracPct(null)).toBe('—')
   })
 })
 

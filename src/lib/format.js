@@ -26,9 +26,19 @@ export function fmtPriceBare(v) {
   return v.toFixed(2)
 }
 
-export function fmtPct(v) {
+/** Signed percent: an up move is explicitly "+", the way a tape reads it.
+ *  `digits` exists because a handful of dense cells (extended-hours moves,
+ *  earnings reactions) print one decimal — same shape, tighter column. */
+export function fmtPct(v, digits = 2) {
   if (v == null || Number.isNaN(v)) return DASH
-  return `${v >= 0 ? '+' : '-'}${Math.abs(v).toFixed(2)}%`
+  return `${v >= 0 ? '+' : '-'}${Math.abs(v).toFixed(digits)}%`
+}
+
+/** Percent with no forced sign: weights, cushions, ranges and other magnitudes
+ *  where a leading "+" would read as a change rather than a level. */
+export function fmtPctPlain(v, digits = 1) {
+  if (v == null || Number.isNaN(v)) return DASH
+  return `${v.toFixed(digits)}%`
 }
 
 export function fmtChange(v) {
@@ -53,10 +63,12 @@ export function fmtRatio(v) {
   return v.toFixed(2)
 }
 
-/** Fractions rendered as percent: margins (0.46 → "46.00%"). */
-export function fmtFracPct(v) {
+/** Fractions rendered as percent: margins (0.46 → "46.00%"). `digits` lets the
+ *  coarser call sites (option IV, day-range width) share the scaling instead of
+ *  hand-rolling `* 100` at their own precision. */
+export function fmtFracPct(v, digits = 2) {
   if (v == null || Number.isNaN(v)) return DASH
-  return `${(v * 100).toFixed(2)}%`
+  return `${(v * 100).toFixed(digits)}%`
 }
 
 /** 0..1 position of v inside [lo, hi], clamped; null when the range is

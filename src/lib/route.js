@@ -1,9 +1,12 @@
 import { NAV, DEFAULT_SECTION, findSection } from './nav.js'
+// The hash is lowercased wholesale below before anything is matched, so the
+// case-insensitive form is exactly equivalent to the lowercase-only copy this
+// module used to carry — the charset and length bound are the shared ones.
+import { SYMBOL_ANY_CASE_RE } from './symbols.js'
 
 // Hash routing (#/section/sub) rather than path routing: GitHub Pages has no
 // server-side rewrites, so deep links on a path router would 404 at the CDN.
 
-const SYMBOL_RE = /^[a-z0-9.^=-]{1,12}$/
 const WATCHLIST_RE = /^[a-z0-9-]{1,40}$/
 
 export function parseHash(hash) {
@@ -24,7 +27,7 @@ export function parseHash(hash) {
   // page just mirrored the per-ticker tabs, Jeff 2026-08-10), so it must be
   // recognized before the NAV-membership gate.
   if (parts[0] === 'research') {
-    const sym = parts[1] && SYMBOL_RE.test(parts[1]) ? parts[1].toUpperCase() : null
+    const sym = parts[1] && SYMBOL_ANY_CASE_RE.test(parts[1]) ? parts[1].toUpperCase() : null
     const view = sym && ['options', 'intraday', 'insider', 'earnings', 'analysts', 'holders', 'filings', 'profile', 'wire', 'news', 'dividends', 'financials', 'ownership'].includes(parts[2]) ? parts[2] : null
     return { section: 'research', sub: sym, view }
   }
