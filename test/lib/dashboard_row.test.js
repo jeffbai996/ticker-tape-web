@@ -228,12 +228,16 @@ describe('compact dashboard company name', () => {
     expect(css).toMatch(/prefers-reduced-motion:[\s\S]*\.board-menu-pop/)
   })
 
-  it('uses a sectioned popover on desktop and a bottom sheet on mobile', () => {
+  // 2026-08-11: the mobile bottom sheet is gone — it floated detached from
+  // the button that opened it ("drops this far down"). One anchored dropdown
+  // at every width; phones only get a tighter width cap.
+  it('uses one anchored popover at every width, never a detached sheet', () => {
     expect(dashboard).toContain('class="board-menu-grid grid grid-cols-2 gap-1.5 p-1.5"')
     expect(dashboard).toContain('class="board-menu-section"')
     expect(css).toContain('@media (max-width: 639px)')
-    expect(css).toMatch(/max-width: 639px[\s\S]*\.board-menu-pop[\s\S]*position: fixed;/)
-    expect(css).toContain('@keyframes board-menu-sheet')
+    expect(css).not.toMatch(/\.board-menu-pop[\s\S]{0,200}position: fixed;/)
+    expect(css).not.toContain('@keyframes board-menu-sheet')
+    expect(dashboard).not.toContain('board-menu-sheet-handle')
   })
 
   it('refreshes DAY sparklines progressively and feeds them into every row', () => {
