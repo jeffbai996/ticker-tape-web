@@ -1152,8 +1152,14 @@ function SectorScroller({ watchlist, quotes }) {
   }
   return (
     <div class="relative flex-1 min-w-0">
+      {/* pr-9 is UNCONDITIONAL: keying it on canRight made the padding change
+          the very overflow it measures — at the knife-edge the strip
+          oscillated (pad → no overflow → unpad → overflow …), reflowing the
+          toolbar on every quote tick. The mag glass danced left-right and the
+          row below bounced (Jeff 2026-08-11). The chevron still gates on
+          canRight; only the reserved space is constant. */}
       <div ref={scroller}
-        class={`dashboard-sectors flex items-baseline gap-x-4 min-w-0 font-mono text-[10px] flex-nowrap overflow-x-auto no-scrollbar ${canRight ? 'pr-9' : ''}`}>
+        class="dashboard-sectors flex items-baseline gap-x-4 min-w-0 font-mono text-[10px] flex-nowrap overflow-x-auto no-scrollbar pr-9">
         {BUCKETS.map((b) => {
           const inList = b.symbols.filter((s) => watchlist.includes(s))
           const avg = bucketAvg(inList)
@@ -1161,7 +1167,9 @@ function SectorScroller({ watchlist, quotes }) {
           return (
             <a key={b.name} href="#/markets/sectors" class="whitespace-nowrap hover:no-underline hover:text-ink">
               <span class="text-muted uppercase tracking-wider">{tl(b.name)}</span>{' '}
-              <span class={avg >= 0 ? 'text-up' : 'text-down'}>{fmtPct(avg)}</span>
+              {/* fixed slot: a pct crossing a digit-count boundary must not
+                  resize the strip and re-trigger the overflow measure */}
+              <span class={`inline-block min-w-[3.4rem] ${avg >= 0 ? 'text-up' : 'text-down'}`}>{fmtPct(avg)}</span>
             </a>
           )
         })}
