@@ -1327,7 +1327,7 @@ function SearchResultSpark({ symbol }) {
 // per-render diff, no half-pixel centering (Jeff 2026-08-11: "I want the
 // old one").
 const GLASS_ICON = (
-  <span class="absolute inset-y-0 left-2 text-muted pointer-events-none grid place-items-center">
+  <span class="absolute inset-y-0 left-2 text-muted pointer-events-none grid place-items-center translate-y-px">
     <svg viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7" cy="7" r="4.4" /><path d="m10.4 10.4 3 3" /></svg>
   </span>
 )
