@@ -1,9 +1,10 @@
 // Dashboard widget layout — which panels the home view shows, in what order.
 // Persisted per-browser; the dashboard renders whatever this list says.
 
+import { SYMBOL_ANY_CASE_RE } from './symbols.js'
+
 const KEY = 'dash_widgets_v1'
 const MARKET_MIGRATION_KEY = 'dash_widgets_market_v1'
-const SYMBOL_RE = /^[A-Za-z0-9.^=-]{1,12}$/
 
 export const WIDGET_TYPES = ['pulse', 'markets', 'earnings', 'calendar', 'movers',
                              'heat', 'alerts', 'range', 'risk', 'chart']
@@ -55,7 +56,7 @@ export function addWidget(type, symbol) {
   if (!WIDGET_TYPES.includes(type)) return null
   const w = { id: Date.now(), type }
   if (type === 'chart') {
-    if (!symbol || !SYMBOL_RE.test(symbol.trim())) return null
+    if (!symbol || !SYMBOL_ANY_CASE_RE.test(symbol.trim())) return null
     w.symbol = symbol.trim().toUpperCase()
   }
   const widgets = [...load(), w]

@@ -2,9 +2,10 @@
 // of symbols that renders as its own dashboard bucket, claiming its members
 // away from the built-in BUCKETS. Persisted per browser, like the watchlist.
 
+import { SYMBOL_RE } from './symbols.js'
+
 const KEY = 'user_groups_v1'
 const NAME_RE = /^[\w-]{1,24}$/
-const SYMBOL_RE = /^[A-Z0-9.^=-]{1,12}$/
 
 const listeners = new Set()
 
