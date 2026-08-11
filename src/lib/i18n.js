@@ -429,8 +429,27 @@ const LABELS = {
   'Thesis Watcher': '论点监测', 'Thesis signals': '论点信号', 'New candidates': '新候选', 'Rotation estimate': '轮动预期',
   'No thesis-tagged wire signals in this window.': '当前窗口没有标记为论点相关的快讯。',
   'grounded in watcher conditions and wire evidence': '基于监测条件与快讯证据',
-  'AI thesis read': 'AI 论点研判', GOOD: '良好', BREACHED: '已破坏', CLEAR: '已排除',
-  'NEEDS REVIEW': '待复核', FIRED: '已触发',
+  'AI thesis read': 'AI 论点研判', GOOD: '良好', BREACHED: '已破坏',
+  'NEEDS REVIEW': '待复核',
+  // Watcher verdicts/severities/categories live in THESIS_TERMS, not here:
+  // 'CLEAR' as a label collides with the chart toolbar's CLEAR button (清除),
+  // and a breaker pill reading "清除" is a lie about state.
+  // Thesis Watcher chrome (2026-08-11 monitoring-surface pass)
+  'Sweep candidates': '扫描候选', 'Upcoming catalysts': '临近催化剂',
+  'watcher ran': '监测运行于', 'db written': '数据写入于', 'never run': '尚未运行',
+  run: '运行', evaluated: '已评估', fired: '已触发',
+  reason: '判定依据', evidence: '证据', 'manual history': '人工记录',
+  alerted: '已告警', // 'updated' already lives in the market-chrome block above
+  'manual condition': '人工条件', 'automated detector': '自动检测',
+  manual: '人工', breached: '已破', holds: '成立',
+  'no evidence recorded for this condition yet': '该条件暂无证据记录',
+  'record manual reading': '记录人工判读', reading: '判读',
+  'condition holds': '条件成立', 'condition breached': '条件被破',
+  'what did you read, and where': '你看到了什么、出处在哪',
+  'commit reading': '提交判读', 'a note is required': '必须填写说明',
+  'could not record — try again': '记录失败 — 请重试', 'saving…': '保存中…',
+  'why does this matter': '为什么重要', confirm: '确认', dismiss: '忽略',
+  'action failed': '操作失败', revisions: '次修订', d: '天', save: '保存',
   Qty: '数量', 'Value then': '当时市值', 'Price now': '当前价格', 'Since then': '至今涨跌',
   'Target shares': '目标股数', 'Held (demo)': '当前持有（演示）', Buy: '买入',
   Sell: '卖出', shares: '股', 'Target leverage': '目标杠杆', 'Margin loan': '融资额',
@@ -655,6 +674,26 @@ export function t(key, params) {
 export function tl(label) {
   if (locale === 'en') return label
   return LABELS[label] ?? label
+}
+
+// Thesis Watcher enum terms — verdicts, severities, categories. Their own map
+// (the sector-map convention) rather than LABELS entries: these are short,
+// generic words that collide with UI verbs elsewhere ("CLEAR" is a chart
+// toolbar button), and a breaker's state is the last thing that may read wrong.
+const THESIS_TERMS = {
+  FIRED: '已触发', CLEAR: '未触发', 'NO DATA': '无数据', 'AWAITING REVIEW': '待人工复核',
+  reunderwrite: '重估论点', trim: '减仓', other: '其他',
+  'per name': '个股', structural: '结构性', macro: '宏观', capex: '资本开支',
+}
+
+/** Translate a watcher enum term; falls back to the label table, then itself. */
+export function thesisTerm(term) {
+  if (locale === 'en') return term
+  return THESIS_TERMS[term] ?? LABELS[term] ?? term
+}
+
+export function hasThesisTerm(term) {
+  return Object.hasOwn(THESIS_TERMS, term)
 }
 
 export function hasLabelTranslation(label) {
