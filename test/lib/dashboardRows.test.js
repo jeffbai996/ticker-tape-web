@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { groupDashboardRows, selectFlatRows, quoteSpread } from '../../src/lib/dashboardRows.js'
+import { groupDashboardRows, selectFlatRows, quoteSpread, boardBreadth } from '../../src/lib/dashboardRows.js'
 
 beforeEach(() => localStorage.clear())
 
@@ -39,5 +39,34 @@ describe('flat dashboard rows', () => {
     expect(selectFlatRows(syms, quotes, { sort: 'price' }).map((r) => r.symbol)).toEqual(['MSFT', 'AAPL', 'NVDA'])
     expect(selectFlatRows(syms, quotes, { sort: 'spread' }).map((r) => r.symbol)).toEqual(['MSFT', 'AAPL', 'NVDA'])
     expect(quoteSpread(quotes.AAPL.quote)).toBeCloseTo(0.04)
+  })
+})
+
+describe('board breadth', () => {
+  const rows = [
+    { symbol: 'AAPL', pct: 1.2 },
+    { symbol: 'MSFT', pct: -2.4 },
+    { symbol: 'NVDA', pct: 3.1 },
+    { symbol: 'SGOV', pct: 0 },
+  ]
+
+  it('counts movers and picks the extremes', () => {
+    const b = boardBreadth(rows)
+    expect(b.up).toBe(2)
+    expect(b.down).toBe(1)
+    expect(b.flat).toBe(1)
+    expect(b.best).toEqual({ symbol: 'NVDA', pct: 3.1 })
+    expect(b.worst).toEqual({ symbol: 'MSFT', pct: -2.4 })
+  })
+
+  it('returns null with no usable rows', () => {
+    expect(boardBreadth([])).toBeNull()
+    expect(boardBreadth([{ symbol: 'X', pct: null }, { symbol: 'Y' }])).toBeNull()
+  })
+
+  it('ignores rows without a pct instead of miscounting them', () => {
+    const b = boardBreadth([{ symbol: 'AAPL', pct: 1 }, { symbol: 'HALT' }])
+    expect(b.up).toBe(1)
+    expect(b.flat).toBe(0)
   })
 })

@@ -138,7 +138,7 @@ describe('compact dashboard company name', () => {
     expect(dashboard).toContain("open ? 'is-open' : ''")
     expect(dashboard).toContain('<span class={`board-burger ${open ? \'is-open\' : \'\'}`} aria-hidden="true">')
     expect(dashboard).not.toContain('<svg class={`board-burger')
-    expect(dashboard).toContain('class="absolute inset-y-0 left-2 text-muted pointer-events-none grid place-items-center"')
+    expect(dashboard).toContain('class="absolute inset-y-0 left-2 text-muted pointer-events-none grid place-items-center translate-y-px"')
     expect(dashboard).not.toContain("expanded ? 'left-2'")
     expect(dashboard).toContain('class="board-menu-pop z-40')
     expect(dashboard).toContain('board-control inline-flex rounded-lg')

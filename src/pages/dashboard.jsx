@@ -21,7 +21,7 @@ import { addWatchlistSymbol, moveWatchlistSymbol, removeWatchlistSymbol } from '
 import { loadUserGroups, onUserGroupsChange } from '../lib/usergroups.js'
 import { groupHeat, rankAlerts, rangeExtremes } from '../lib/railstats.js'
 import { conditionText, loadAlerts, onAlertsChange } from '../lib/alerts.js'
-import { groupDashboardRows, quoteSpread, selectFlatRows } from '../lib/dashboardRows.js'
+import { groupDashboardRows, quoteSpread, selectFlatRows, boardBreadth } from '../lib/dashboardRows.js'
 import { searchSymbols } from '../lib/symbolSearch.js'
 import { venueFlag } from '../lib/venueFlag.js'
 import { fmtPrice, fmtPriceBare, fmtPct, fmtChange, fmtVol, rangePos } from '../lib/format.js'
@@ -1198,11 +1198,36 @@ function SectorScroller({ watchlist, quotes }) {
   )
 }
 
+/** Fills the menu's spare corner under the spark settings: how the board
+ *  leans right now and who's dragging it each way (Jeff 2026-08-11). */
+function BreadthPanel({ rows, head }) {
+  const b = boardBreadth(rows)
+  if (!b) return null
+  const line = (label, r, cls) => (
+    <div class="flex items-baseline justify-between px-2.5 py-0.5 font-mono text-[10px]">
+      <span class="text-muted">{label}</span>
+      <span class={cls}>{r.symbol} {fmtPct(r.pct)}</span>
+    </div>
+  )
+  return (
+    <section class="board-menu-section min-w-0 pb-1.5">
+      {head(tl('Breadth'))}
+      <div class="flex items-baseline justify-between px-2.5 py-0.5 font-mono text-[10px]">
+        <span class="text-up">↑ {b.up}</span>
+        {b.flat > 0 && <span class="text-muted">— {b.flat}</span>}
+        <span class="text-down">↓ {b.down}</span>
+      </div>
+      {line(tl('Hi'), b.best, 'text-up')}
+      {line(tl('Lo'), b.worst, 'text-down')}
+    </section>
+  )
+}
+
 /** Toolbar hamburger, left of the sector strip: sort and the watchlist picker
  *  fold into one menu instead of standalone controls
  *  (Jeff 2026-08-06: "saves a ton of space"). */
 function BoardMenu({ sort, setSort, setViewMode, spark, setSpark, sparkWin, setSparkWin,
-                     lists, listId }) {
+                     lists, listId, breadthRows }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   useEffect(() => {
@@ -1261,31 +1286,34 @@ function BoardMenu({ sort, setSort, setViewMode, spark, setSpark, sparkWin, setS
                 }))}
               </section>
             </div>
-            <section class="board-menu-section self-start min-w-0">
-              {head(tl('Spark'))}
-              <div class="grid grid-cols-2">
-                {SPARK_TYPES.map((t) => item(tl(t.label), spark === t.id, () => setSpark(t.id)))}
-              </div>
-              {/* Shape and horizon are separate controls; keeping this open
-                  lets you choose both without reopening the menu twice. */}
-              {spark !== 'off' && (
-                <>
-                  <div class="mx-2.5 mt-1 border-t border-line/70" />
-                  {head(tl('Window'))}
-                  <div class="grid grid-cols-4 gap-1 px-2.5 pb-2">
-                    {SPARK_WINDOWS.map((w) => (
-                      <button key={w.id} onClick={() => setSparkWin(w.id)}
-                        class={`rounded border px-1 py-1 font-mono text-[9px] ${
-                          sparkWin === w.id
-                            ? 'border-accent/60 bg-accent-soft text-accent'
-                            : 'border-line text-muted hover:text-ink hover:border-line-2'}`}>
-                        {w.id}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </section>
+            <div class="flex min-w-0 flex-col gap-1.5">
+              <section class="board-menu-section min-w-0">
+                {head(tl('Spark'))}
+                <div class="grid grid-cols-2">
+                  {SPARK_TYPES.map((t) => item(tl(t.label), spark === t.id, () => setSpark(t.id)))}
+                </div>
+                {/* Shape and horizon are separate controls; keeping this open
+                    lets you choose both without reopening the menu twice. */}
+                {spark !== 'off' && (
+                  <>
+                    <div class="mx-2.5 mt-1 border-t border-line/70" />
+                    {head(tl('Window'))}
+                    <div class="grid grid-cols-5 gap-1 px-2.5 pb-2">
+                      {SPARK_WINDOWS.map((w) => (
+                        <button key={w.id} onClick={() => setSparkWin(w.id)}
+                          class={`rounded border px-1 py-1 font-mono text-[9px] ${
+                            sparkWin === w.id
+                              ? 'border-accent/60 bg-accent-soft text-accent'
+                              : 'border-line text-muted hover:text-ink hover:border-line-2'}`}>
+                          {w.id}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </section>
+              <BreadthPanel rows={breadthRows} head={head} />
+            </div>
           </div>
         </div>
       )}
@@ -1546,7 +1574,8 @@ export function Dashboard({ listId = null }) {
         <div class="dashboard-controls flex items-center gap-2 min-w-0 shrink-0">
           <BoardMenu sort={sort} setSort={setSort} setViewMode={setViewMode}
             spark={spark} setSpark={setSpark} sparkWin={sparkWin} setSparkWin={setSparkWin}
-            lists={namedWatchlists} listId={activeList?.id || null} />
+            lists={namedWatchlists} listId={activeList?.id || null}
+            breadthRows={watchlist.map((s) => ({ symbol: s, pct: quotes[s]?.quote?.pct }))} />
           {activeList && (
             <div class="min-w-0 mr-1">
               <div class="font-mono text-[8px] uppercase tracking-wider text-muted">{tl('Watchlist')}</div>
