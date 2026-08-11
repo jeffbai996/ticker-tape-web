@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { marketState, etParts, isOvernight, HOLIDAYS } from '../../src/lib/marketState.js'
+import { marketState, etParts, isOvernight, rollCashSession, HOLIDAYS } from '../../src/lib/marketState.js'
 
 // All fixtures pin the UTC offset explicitly (EDT −4 in summer, EST −5 in
 // winter) so the tests are independent of the runner's local timezone.
@@ -87,5 +87,14 @@ describe('isOvernight', () => {
     expect(isOvernight(at('2026-08-07T21:00:00-04:00'))).toBe(false)  // Fri night
     expect(isOvernight(at('2026-08-08T02:00:00-04:00'))).toBe(false)  // Sat 2am
     expect(isOvernight(at('2026-08-07T02:00:00-04:00'))).toBe(true)   // Fri 2am
+  })
+})
+
+describe('rollCashSession', () => {
+  it('rolls at the 09:30 ET open and holds that session through off-hours', () => {
+    const prior = '2026-08-09'
+    expect(rollCashSession(prior, new Date('2026-08-10T09:29:59-04:00'))).toBe(prior)
+    expect(rollCashSession(prior, new Date('2026-08-10T09:30:00-04:00'))).toBe('2026-08-10')
+    expect(rollCashSession('2026-08-10', new Date('2026-08-10T20:30:00-04:00'))).toBe('2026-08-10')
   })
 })

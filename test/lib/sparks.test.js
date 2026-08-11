@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   SPARK_TYPES, DEFAULT_SPARK, isSparkType, linePoints, changeBars, rangeBars,
   SPARK_WINDOWS, DEFAULT_WINDOW, isSparkWindow, sparkWindow, bucketBars,
+  historyBarsToSparkBars,
 } from '../../src/lib/sparks.js'
 
 const bar = (c, h, l, v, up) => ({ c, h, l, v, up })
@@ -13,6 +14,7 @@ describe('spark windows', () => {
     expect(ids).toContain(DEFAULT_WINDOW)
     const lens = SPARK_WINDOWS.map((w) => w.sessions)
     expect([...lens].sort((a, b) => a - b)).toEqual(lens)
+    expect(ids.slice(0, 3)).toEqual(['DAY', '1W', '2W'])
   })
   it('validates ids', () => {
     expect(isSparkWindow('6M')).toBe(true)
@@ -31,6 +33,19 @@ describe('spark windows', () => {
   it('returns everything it has when the window is longer than the series', () => {
     expect(sparkWindow([bar(1), bar(2)], '1Y')).toHaveLength(2)
     expect(sparkWindow(null, '1M')).toEqual([])
+    expect(sparkWindow([bar(1), bar(2), bar(3)], 'DAY')).toHaveLength(3)
+  })
+})
+
+describe('intraday spark normalization', () => {
+  it('maps chart bars into the shared spark shape and derives direction', () => {
+    expect(historyBarsToSparkBars([
+      { close: 10, high: 11, low: 9, volume: 100 },
+      { close: 9, high: 10, low: 8, volume: 200 },
+    ])).toEqual([
+      { c: 10, h: 11, l: 9, v: 100, up: true },
+      { c: 9, h: 10, l: 8, v: 200, up: false },
+    ])
   })
 })
 

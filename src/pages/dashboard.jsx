@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { createChart, AreaSeries } from 'lightweight-charts'
 import { boundedTimeScale } from '../lib/chartview.js'
 import { useNamedWatchlists, useQuotes, useWatchlist } from '../hooks.js'
-import { marketState } from '../lib/marketState.js'
+import { etParts, marketState, rollCashSession } from '../lib/marketState.js'
 import { BUCKETS } from '../lib/symbols.js'
 import { pulseStats } from '../lib/pulse.js'
 import { fetchEarningsDate } from '../lib/fundamentals.js'
@@ -28,7 +28,7 @@ import { fmtPrice, fmtPriceBare, fmtPct, fmtChange, fmtVol, rangePos } from '../
 import { Histo } from '../components/Histo.jsx'
 import { Spark } from '../components/Spark.jsx'
 import { SPARK_TYPES, DEFAULT_SPARK, isSparkType,
-  SPARK_WINDOWS, DEFAULT_WINDOW, isSparkWindow } from '../lib/sparks.js'
+  SPARK_WINDOWS, DEFAULT_WINDOW, isSparkWindow, historyBarsToSparkBars } from '../lib/sparks.js'
 import { Marquee } from '../components/Marquee.jsx'
 import { FlashMetric, FlashPrice } from '../components/Fig.jsx'
 import { tl } from '../lib/i18n.js'
@@ -65,6 +65,57 @@ export function useEarningsDays(symbols) {
     if (v?.date && v.date >= now - DAY) days[sym] = Math.max(0, Math.round((v.date - now) / DAY))
   }
   return days
+}
+
+/** Cash-session sparklines are intentionally demand-driven: the daily feed
+ *  remains the cheap default, and this fan-out only exists while DAY is the
+ *  selected window. Requests are staggered so a large board does not stampede
+ *  the proxy, then refreshed once a minute while the cash session is open. */
+function useIntradaySparks(symbols, enabled) {
+  const [rows, setRows] = useState({})
+  const session = useRef(null)
+  const lastState = useRef(null)
+  useEffect(() => {
+    if (!enabled) return
+    let dead = false
+    let timers = []
+    const refresh = (initial = false) => {
+      const now = new Date()
+      const state = marketState(now).state
+      const nextSession = rollCashSession(session.current, now)
+      if (nextSession !== session.current) {
+        session.current = nextSession
+        setRows({})
+      }
+      // One final pull on the open→post transition captures the closing bar.
+      const shouldFetch = initial || state === 'open'
+        || (lastState.current === 'open' && state === 'post')
+      lastState.current = state
+      if (!shouldFetch) return
+      timers.forEach(clearTimeout)
+      timers = symbols.map((symbol, i) => setTimeout(() => {
+        if (dead) return
+        fetchHistory(symbol, '1D')
+          .then((history) => {
+            if (dead) return
+            const activeSession = session.current
+            const bars = activeSession
+              ? history.bars.filter((bar) => etParts(new Date(bar.time * 1000)).iso === activeSession)
+              : history.bars
+            setRows((current) => ({ ...current, [symbol]: historyBarsToSparkBars(bars) }))
+          })
+          .catch(() => { if (!dead) setRows((current) => ({ ...current, [symbol]: [] })) })
+      }, i * 160))
+    }
+    refresh(true)
+    const interval = setInterval(refresh, 60_000)
+    return () => {
+      dead = true
+      clearInterval(interval)
+      timers.forEach(clearTimeout)
+    }
+  }, [enabled, symbols.join(',')])
+  return enabled ? rows : {}
 }
 
 // ── Badge row (TUI line 2): R60 27d >50 >200 1.1xv -2%H +3%R ──
@@ -171,8 +222,8 @@ function CompactDayRange({ lo, hi, v, cls = '' }) {
 }
 
 function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggleSelect,
-                  spark = DEFAULT_SPARK, sparkWin = DEFAULT_WINDOW,
-                  revealed = false, onReveal }) {
+                   spark = DEFAULT_SPARK, sparkWin = DEFAULT_WINDOW,
+                   intradayBars = null, revealed = false, onReveal }) {
   const q = data?.quote
   // Touch has no hover, so a tap on the ticker used to jump straight to the
   // symbol page and the name was unreachable (Jeff 2026-08-05). First tap
@@ -319,7 +370,8 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
           <div class="flex items-center gap-2.5 pt-[2px] pl-0 min-w-0 @min-[430px]:overflow-hidden max-sm:overflow-x-auto no-scrollbar">
             {/* Container-relative width changes continuously with zoom. A
                 breakpoint used to turn this from postage stamp to runway. */}
-            <Spark type={spark} window={sparkWin} bars={data?.histo} width={150} height={24}
+            <Spark type={spark} window={sparkWin}
+              bars={sparkWin === 'DAY' ? intradayBars : data?.histo} width={150} height={24}
               class="w-[clamp(76px,18cqw,168px)] h-6 shrink-0" />
             {/* badges yield first: they are chips you glance at, while a range
                 clipped mid-number (Jeff 2026-08-05: "RHS occluded") is worse
@@ -1173,44 +1225,56 @@ function BoardMenu({ sort, setSort, setViewMode, spark, setSpark, sparkWin, setS
         </svg>
       </button>
       {open && (
-        <div class="board-menu-pop absolute top-full left-0 mt-1 w-52 z-40 max-h-[72vh] overflow-y-auto bg-surface-1/95 backdrop-blur border border-line rounded-lg shadow-[0_8px_24px_rgba(0,0,0,0.6)] py-1">
-          {head(tl('Watchlist'))}
-          {item(tl('Dashboard'), !listId, () => { setOpen(false); location.hash = '#/' })}
-          {lists.map((l) => item(l.name, listId === l.id,
-            () => { setOpen(false); location.hash = `#/watchlists/${l.id}` }))}
-          <div class="my-1 border-t border-line/70" />
-          {head(tl('Sort'))}
-          {SORTS.map(([v, label]) => item(label, sort === v, () => {
-            setOpen(false)
-            setSort(v)
-            // any real sort implies the flat view — grouped rows don't reorder
-            if (v !== 'manual') setViewMode('flat')
-          }))}
-          <div class="my-1 border-t border-line/70" />
-          {head(tl('Spark'))}
-          {SPARK_TYPES.map((t) => item(tl(t.label), spark === t.id, () => {
-            setOpen(false)
-            setSpark(t.id)
-          }))}
-          {/* window is a second axis on the same control, so it rides as one
-              pill row rather than four more full-width rows — and it's dead
-              weight when the column is off */}
-          {spark !== 'off' && (
-            <div class="flex items-center gap-1 px-2.5 pt-1 pb-0.5">
-              <span class="w-3 shrink-0" />
-              {SPARK_WINDOWS.map((w) => (
-                <button key={w.id} onClick={() => setSparkWin(w.id)}
-                  class={`flex-1 rounded border px-1 py-0.5 font-mono text-[9.5px] ${
-                    sparkWin === w.id
-                      ? 'border-accent/60 bg-accent-soft text-accent'
-                      : 'border-line text-muted hover:text-ink hover:border-line-2'}`}>
-                  {w.id}
-                </button>
-              ))}
+        <div class="board-menu-pop z-40 max-h-[72vh] overflow-y-auto bg-surface-1/95 backdrop-blur border border-line shadow-[0_12px_36px_rgba(0,0,0,0.68)]">
+          <span class="board-menu-sheet-handle" aria-hidden="true" />
+          <div class="board-menu-grid grid grid-cols-2 gap-1.5 p-1.5">
+            <div class="flex min-w-0 flex-col gap-1.5">
+              <section class="board-menu-section">
+                {head(tl('Watchlist'))}
+                {item(tl('Dashboard'), !listId, () => { setOpen(false); location.hash = '#/' })}
+                {lists.map((l) => item(l.name, listId === l.id,
+                  () => { setOpen(false); location.hash = `#/watchlists/${l.id}` }))}
+              </section>
+              <section class="board-menu-section">
+                {head(tl('Sort'))}
+                {SORTS.map(([v, label]) => item(label, sort === v, () => {
+                  setOpen(false)
+                  setSort(v)
+                  // any real sort implies the flat view — grouped rows don't reorder
+                  if (v !== 'manual') setViewMode('flat')
+                }))}
+              </section>
+              <section class="board-menu-section">
+                {head(tl('Actions'))}
+                {item(tl('Select rows'), false, () => { setOpen(false); onSelectMode() })}
+              </section>
             </div>
-          )}
-          <div class="my-1 border-t border-line/70" />
-          {item(tl('Select rows'), false, () => { setOpen(false); onSelectMode() })}
+            <section class="board-menu-section self-start min-w-0">
+              {head(tl('Spark'))}
+              <div class="grid grid-cols-2">
+                {SPARK_TYPES.map((t) => item(tl(t.label), spark === t.id, () => setSpark(t.id)))}
+              </div>
+              {/* Shape and horizon are separate controls; keeping this open
+                  lets you choose both without reopening the menu twice. */}
+              {spark !== 'off' && (
+                <>
+                  <div class="mx-2.5 mt-1 border-t border-line/70" />
+                  {head(tl('Window'))}
+                  <div class="grid grid-cols-4 gap-1 px-2.5 pb-2">
+                    {SPARK_WINDOWS.map((w) => (
+                      <button key={w.id} onClick={() => setSparkWin(w.id)}
+                        class={`rounded border px-1 py-1 font-mono text-[9px] ${
+                          sparkWin === w.id
+                            ? 'border-accent/60 bg-accent-soft text-accent'
+                            : 'border-line text-muted hover:text-ink hover:border-line-2'}`}>
+                        {w.id}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </section>
+          </div>
         </div>
       )}
     </div>
@@ -1228,13 +1292,7 @@ function SearchResultSpark({ symbol }) {
     fetchHistory(symbol, '1D')
       .then((history) => {
         if (dead) return
-        setBars(history.bars.map((bar, i, all) => ({
-          c: bar.close,
-          h: bar.high,
-          l: bar.low,
-          v: bar.volume,
-          up: i === 0 || bar.close >= all[i - 1].close,
-        })))
+        setBars(historyBarsToSparkBars(history.bars))
       })
       .catch(() => { if (!dead) setBars([]) })
     return () => { dead = true }
@@ -1367,6 +1425,7 @@ export function Dashboard({ listId = null }) {
     const saved = localStorage.getItem('dashboard_spark_window_v1')
     return isSparkWindow(saved) ? saved : DEFAULT_WINDOW
   })
+  const intradaySparks = useIntradaySparks(watchlist, sparkWin === 'DAY' && spark !== 'off')
   // sort is remembered PER LIST — a momentum list can live sorted by %
   // while the main board stays manual (Jeff's fable-run pick #5)
   const sortKey = listId ? `dashboard_sort_v1:${listId}` : 'dashboard_sort_v1'
@@ -1465,11 +1524,11 @@ export function Dashboard({ listId = null }) {
           )}
           <div class={`${activeList ? 'ml-auto' : ''} board-control inline-flex rounded-lg border p-0.5 shrink-0`}>
             <button onClick={() => setViewMode('grouped')}
-              class={`px-2 py-0.5 rounded-md font-anth text-[10px] transition-colors ${viewMode === 'grouped' ? 'bg-surface-3 text-accent-2 shadow-sm' : 'text-muted hover:text-ink'}`}>
+              class={`px-2 py-0.5 rounded-md font-anth text-[10px] transition-colors ${viewMode === 'grouped' ? 'bg-accent-soft text-accent shadow-sm' : 'text-muted hover:text-ink'}`}>
               {tl('Sectors')}
             </button>
             <button onClick={() => setViewMode('flat')}
-              class={`px-2 py-0.5 rounded-md font-anth text-[10px] transition-colors ${viewMode === 'flat' ? 'bg-surface-3 text-accent-2 shadow-sm' : 'text-muted hover:text-ink'}`}>
+              class={`px-2 py-0.5 rounded-md font-anth text-[10px] transition-colors ${viewMode === 'flat' ? 'bg-accent-soft text-accent shadow-sm' : 'text-muted hover:text-ink'}`}>
               {tl('All')}
             </button>
           </div>
@@ -1542,6 +1601,7 @@ export function Dashboard({ listId = null }) {
                 {!folded && g.symbols.map((s) => (
                   <TuiRow key={s} symbol={s} data={quotes[s]} earnDays={earnDays[s]}
                     onRemove={removeSymbol} selecting={selecting} spark={spark} sparkWin={sparkWin}
+                    intradayBars={intradaySparks[s]}
                     revealed={revealedSym === s} onReveal={toggleReveal}
                     selected={selected.has(s)} onToggleSelect={toggleSelect} />
                 ))}
@@ -1550,6 +1610,7 @@ export function Dashboard({ listId = null }) {
           }) : flatRows.map(({ symbol }) => (
             <TuiRow key={symbol} symbol={symbol} data={quotes[symbol]} earnDays={earnDays[symbol]}
               onRemove={removeSymbol} selecting={selecting} spark={spark} sparkWin={sparkWin}
+              intradayBars={intradaySparks[symbol]}
               revealed={revealedSym === symbol} onReveal={toggleReveal}
               selected={selected.has(symbol)} onToggleSelect={toggleSelect} />
           ))}
