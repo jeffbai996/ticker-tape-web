@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { createChart, AreaSeries } from 'lightweight-charts'
 import { boundedTimeScale } from '../lib/chartview.js'
-import { useQuotes } from '../hooks.js'
+import { useEscape, useQuotes } from '../hooks.js'
 import {
   DEMO_POSITIONS, DEMO_CASH, DEMO_BETAS, DEMO_ACCOUNT_ID, DEMO_MARGIN_RATE,
   positionRows, accountSummary, mergeLegs, sizeForWeight, carryAt, stressGrid, nlvWalk,
 } from '../lib/demo.js'
 import { fmtPrice, fmtPct, fmtPctPlain, fmtChange, fmtRatio } from '../lib/format.js'
-import { getLocale, tl, t as tt } from '../lib/i18n.js'
+import { getLocale, tl, thesisTerm, t as tt } from '../lib/i18n.js'
 import { FlashPrice } from '../components/Fig.jsx'
 import { Empty, Loading } from '../components/Loading.jsx'
 import {
@@ -20,7 +20,11 @@ import { wireUrl } from '../lib/wire.js'
 import { AiReport, MdLite } from '../components/AiReport.jsx'
 import { fetchHistory, prefetchSymbol } from '../lib/history.js'
 import { createPCache } from '../lib/pcache.js'
-import { thesisAnalysisPrompt, thesisHealth, thesisSignals } from '../lib/thesis.js'
+import {
+  thesisAnalysisPrompt, thesisHealth, thesisSignals, verdictState, groupBySeverity,
+  watcherFreshness, evidenceRows, catalystRows, rotationLedger, candidateRows, toMs,
+} from '../lib/thesis.js'
+import { StatusPill } from '../components/StatusPill.jsx'
 import { countAdvancers } from '../lib/pulse.js'
 
 const SYMBOLS = DEMO_POSITIONS.map((p) => p.symbol)
@@ -1003,9 +1007,281 @@ function DividendsFold({ accountId }) {
   )
 }
 
+// ── Thesis Watcher ───────────────────────────────────────────────────────
+// A monitoring surface, not a list. The watcher's whole point is that a
+// condition can be FIRED, CLEAR, blind (NO DATA — an automated detector that
+// cannot see is itself a risk) or simply unreviewed (AWAITING REVIEW). Those
+// four never share a colour here, and the human trigger — recording a manual
+// reading — is one expand away from every row.
+
+async function postThesis(path, body) {
+  const resp = await fetch(`${wireBase()}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(10_000),
+  })
+  if (resp.status === 404 || resp.status === 405) {
+    const err = new Error('unsupported')
+    err.unsupported = true
+    throw err
+  }
+  if (!resp.ok) throw new Error(`wire ${resp.status}`)
+  const out = await resp.json().catch(() => ({}))
+  if (out && out.ok === false) throw new Error(out.error || 'write refused')
+  return out
+}
+
+const stamp = (ms) => (ms == null ? '' : new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }))
+const stampFull = (ms) => (ms == null ? '' : new Date(ms).toLocaleString('en-US',
+  { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }))
+
+function FreshChip({ fresh }) {
+  if (!fresh) return <span class="font-mono text-[9px] text-muted">{tl('never run')}</span>
+  const detail = [
+    fresh.kind && `${tl('run')}: ${fresh.kind}`,
+    fresh.evaluated != null && `${tl('evaluated')}: ${fresh.evaluated}`,
+    fresh.fired != null && `${tl('fired')}: ${fresh.fired}`,
+    stampFull(fresh.ms),
+  ].filter(Boolean).join(' · ')
+  return (
+    <StatusPill tone={fresh.tone === 'clear' ? 'muted' : fresh.tone} title={detail}>
+      {fresh.source === 'run' ? tl('watcher ran') : tl('db written')} {fresh.age} {tl('ago')}
+    </StatusPill>
+  )
+}
+
+function ManualEntry({ breaker, onDone }) {
+  const [open, setOpen] = useState(false)
+  const [fired, setFired] = useState(false)
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  if (!open) {
+    return (
+      <button type="button" onClick={(e) => { e.stopPropagation(); setOpen(true) }}
+        class="mt-2 font-mono text-[10px] uppercase tracking-wider text-accent border border-accent/40 rounded-md px-2 py-1 hover:bg-accent-soft">
+        {tl('record manual reading')}
+      </button>
+    )
+  }
+  const commit = async () => {
+    setBusy(true)
+    setErr('')
+    try {
+      await postThesis('/api/thesis/manual', { breaker_id: breaker.id, fired, note: note.trim() })
+      setOpen(false)
+      setNote('')
+      onDone({ ok: true })
+    } catch (error) {
+      if (error.unsupported) {
+        setOpen(false)
+        onDone({ unsupported: true })
+      } else setErr(tl('could not record — try again'))
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div class="mt-2 border border-line rounded-lg p-2 flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
+      <div class="flex items-center gap-1 font-mono text-[10px]">
+        <span class="text-muted uppercase tracking-wider mr-1">{tl('reading')}</span>
+        {[[false, tl('condition holds')], [true, tl('condition breached')]].map(([value, label]) => (
+          <button key={String(value)} type="button" onClick={() => setFired(value)}
+            class={`border rounded-md px-2 py-0.5 font-semibold ${fired === value
+              ? (value ? 'bg-down border-down text-black' : 'bg-up/20 border-up/50 text-up')
+              : 'border-line text-ink-2 hover:text-ink'}`}>{label}</button>
+        ))}
+      </div>
+      <textarea value={note} rows={2} onInput={(e) => setNote(e.currentTarget.value)}
+        placeholder={tl('what did you read, and where')}
+        class="w-full bg-surface-2 border border-line rounded-md px-2 py-1 font-anth text-[12px] text-ink outline-none focus:border-accent placeholder:text-muted" />
+      <div class="flex items-center gap-2">
+        <button type="button" disabled={busy || !note.trim()} onClick={commit}
+          class="font-mono text-[10px] uppercase tracking-wider px-2 py-1 rounded-md bg-accent text-black font-bold disabled:opacity-40">
+          {busy ? tl('saving…') : tl('commit reading')}
+        </button>
+        <button type="button" onClick={() => { setOpen(false); setErr('') }}
+          class="font-mono text-[10px] uppercase tracking-wider text-muted hover:text-ink">{tl('cancel')}</button>
+        {err && <span class="font-mono text-[10px] text-down">{err}</span>}
+        {!note.trim() && <span class="font-mono text-[9px] text-muted">{tl('a note is required')}</span>}
+      </div>
+    </div>
+  )
+}
+
+function BreakerDrawer({ breaker, canWrite, onWrote, onUnsupported }) {
+  const rows = evidenceRows(breaker.evidence)
+  const history = Array.isArray(breaker.manual_history) ? breaker.manual_history : []
+  const alerted = toMs(breaker.alerted_at)
+  return (
+    <div class="border-t border-line-2 bg-surface-2 px-3 py-2.5 flex flex-col gap-2.5">
+      {breaker.reason && (
+        <div>
+          <div class="font-mono text-[9px] uppercase tracking-wider text-muted pb-0.5">{tl('reason')}</div>
+          <div class="font-anth text-[12px] text-ink-2 leading-snug">{breaker.reason}</div>
+        </div>
+      )}
+      {rows.length > 0 && (
+        <div>
+          <div class="font-mono text-[9px] uppercase tracking-wider text-muted pb-1">{tl('evidence')}</div>
+          <dl class="grid grid-cols-[minmax(0,9rem)_1fr] gap-x-3 gap-y-1">
+            {rows.map((row) => (
+              <div key={row.key} class="contents">
+                <dt class="font-mono text-[10px] text-muted truncate" title={row.label}>{row.label}</dt>
+                <dd class="font-mono text-[11px] text-ink break-words">
+                  {/^https?:\/\//.test(row.value)
+                    ? <a href={row.value} target="_blank" rel="noopener" class="text-accent hover:underline break-all">{row.value}</a>
+                    : row.value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      )}
+      {history.length > 0 && (
+        <div>
+          <div class="font-mono text-[9px] uppercase tracking-wider text-muted pb-1">{tl('manual history')}</div>
+          <div class="flex flex-col gap-1">
+            {history.map((entry, i) => (
+              <div key={i} class="flex items-baseline gap-2">
+                <StatusPill tone={entry.fired ? 'fired' : 'clear'}>
+                  {entry.fired ? tl('breached') : tl('holds')}
+                </StatusPill>
+                <span class="font-anth text-[11.5px] text-ink-2 leading-snug">{entry.note}</span>
+                <span class="ml-auto font-mono text-[9px] text-muted shrink-0">{stamp(toMs(entry.created_at))}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      <div class="flex flex-wrap items-center gap-x-3 font-mono text-[9.5px] text-muted">
+        {alerted != null && <span>{tl('alerted')} {stampFull(alerted)}</span>}
+        {breaker.updated_at != null && <span>{tl('updated')} {stampFull(toMs(breaker.updated_at))}</span>}
+        <span>{breaker.auto === false ? tl('manual condition') : tl('automated detector')}</span>
+      </div>
+      {rows.length === 0 && !breaker.reason && (
+        <div class="font-anth text-[11.5px] text-muted">{tl('no evidence recorded for this condition yet')}</div>
+      )}
+      {canWrite && (
+        <ManualEntry breaker={breaker} onDone={(res) => {
+          if (res.unsupported) onUnsupported()
+          else onWrote()
+        }} />
+      )}
+    </div>
+  )
+}
+
+function BreakerRow({ breaker, open, onToggle, canWrite, onWrote, onUnsupported }) {
+  const state = verdictState(breaker)
+  const updated = toMs(breaker.updated_at)
+  // "no manual input recorded" is what AWAITING already says on the pill
+  const reason = /^no manual input recorded/i.test(breaker.reason || '') ? '' : breaker.reason
+  return (
+    <div class={`border-t border-line/50 first:border-0${open ? ' bg-surface-3/50' : ''}`}>
+      <div role="button" tabIndex={0} aria-expanded={open} onClick={onToggle}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle() } }}
+        class="px-3 py-2 cursor-pointer hover:bg-surface-3 group">
+        <div class="flex items-center gap-2 flex-wrap">
+          <StatusPill tone={state.tone}>{thesisTerm(state.label)}</StatusPill>
+          <span class="font-mono text-[9px] uppercase tracking-wider text-ink-2 border border-line rounded px-1.5 py-[1px]">
+            {thesisTerm(String(breaker.category || '').replaceAll('_', ' '))}
+          </span>
+          {breaker.auto === false && (
+            <span class="font-mono text-[9px] uppercase tracking-wider text-muted" title={tl('manual condition')}>{tl('manual')}</span>
+          )}
+          <span class="ml-auto font-mono text-[9px] text-muted">{stamp(updated)}</span>
+          <span class="font-mono text-[10px] text-muted group-hover:text-accent" aria-hidden="true">{open ? '▾' : '▸'}</span>
+        </div>
+        <div class="font-anth text-[12.5px] text-ink leading-snug pt-1">{breaker.description || breaker.id}</div>
+        {reason && !open && <div class="font-mono text-[10.5px] text-muted pt-0.5 truncate">{reason}</div>}
+      </div>
+      {open && (
+        <BreakerDrawer breaker={breaker} canWrite={canWrite} onWrote={onWrote} onUnsupported={onUnsupported} />
+      )}
+    </div>
+  )
+}
+
+function CandidateRow({ candidate, canWrite, onSettled, onUnsupported }) {
+  const [noting, setNoting] = useState(false)
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const send = async (action, text) => {
+    setBusy(true)
+    setErr('')
+    // optimistic: the row leaves the queue now, comes back on failure
+    onSettled(candidate.key, action)
+    try {
+      await postThesis(`/api/thesis/candidates/${encodeURIComponent(candidate.id)}`,
+        text ? { action, note: text } : { action })
+      setNoting(false)
+    } catch (error) {
+      onSettled(candidate.key, null)
+      if (error.unsupported) onUnsupported()
+      else setErr(tl('action failed'))
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div class="border-t border-line/50 first:border-0 px-3 py-2">
+      <div class="flex items-start gap-2">
+        <div class="min-w-0 font-anth text-[12px] text-ink-2 leading-snug">
+          {candidate.url
+            ? <a href={candidate.url} target="_blank" rel="noopener" class="hover:text-accent">{candidate.summary}</a>
+            : candidate.summary}
+          {candidate.breaker_id && (
+            <span class="ml-2 font-mono text-[9px] uppercase tracking-wider text-muted">{candidate.breaker_id}</span>
+          )}
+        </div>
+        <span class="ml-auto shrink-0 font-mono text-[9px] text-muted">{stamp(toMs(candidate.created_at))}</span>
+      </div>
+      {canWrite && candidate.actionable && (
+        <div class="flex flex-wrap items-center gap-2 pt-1.5">
+          {noting ? (
+            <>
+              <input value={note} autofocus onInput={(e) => setNote(e.currentTarget.value)}
+                placeholder={tl('why does this matter')}
+                class="flex-1 min-w-[10rem] bg-surface-2 border border-line rounded-md px-2 py-0.5 font-anth text-[11.5px] text-ink outline-none focus:border-accent placeholder:text-muted" />
+              <button type="button" disabled={busy} onClick={() => send('confirm', note.trim())}
+                class="font-mono text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-md bg-accent text-black font-bold disabled:opacity-40">
+                {tl('save')}
+              </button>
+              <button type="button" onClick={() => setNoting(false)}
+                class="font-mono text-[10px] uppercase tracking-wider text-muted hover:text-ink">{tl('cancel')}</button>
+            </>
+          ) : (
+            <>
+              <button type="button" disabled={busy} onClick={() => setNoting(true)}
+                class="font-mono text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-md border border-up/50 text-up hover:bg-up/10">
+                {tl('confirm')}
+              </button>
+              <button type="button" disabled={busy} onClick={() => send('dismiss')}
+                class="font-mono text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-md border border-line text-muted hover:text-down">
+                {tl('dismiss')}
+              </button>
+            </>
+          )}
+          {err && <span class="font-mono text-[10px] text-down">{err}</span>}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function Thesis() {
   const [snap, setSnap] = useState(null)
   const [signals, setSignals] = useState([])
+  const [nonce, setNonce] = useState(0)
+  const [openKey, setOpenKey] = useState('')
+  // writes stay hidden until the server proves it has the endpoints; a 404
+  // means this fragwire predates them, and faking a confirmation would be a lie
+  const [canWrite, setCanWrite] = useState(true)
+  const [settled, setSettled] = useState({})
+  useEscape(() => setOpenKey(''), !!openKey)
   useEffect(() => {
     if (!wireBase()) return
     let cancelled = false
@@ -1025,44 +1301,115 @@ function Thesis() {
       if (!cancelled) setSnap({ ok: false })
     })
     return () => { cancelled = true }
-  }, [])
+  }, [nonce])
   if (!wireBase()) return <NeedsWire />
   if (!snap) return <Loading label={tt('portfolio.watcher_loading')} minH={160} />
   if (!snap.available) return <div class="px-1 py-2 font-mono text-[11px] text-muted">{tt('portfolio.watcher_unavailable')}</div>
-  const health = thesisHealth(snap.breakers)
-  const VERD = {
-    FIRED: 'bg-down text-black', AWAITING: 'bg-accent text-black',
-    CLEAR: 'bg-up/20 text-up', INSUFFICIENT_DATA: 'bg-surface-3 text-muted',
-    NO_DATA: 'bg-surface-3 text-muted',
-  }
-  const verdictLabel = (verdict) => verdict === 'INSUFFICIENT_DATA'
-    ? tl('NEEDS REVIEW') : tl(verdict.replace('_', ' '))
-  const displayReason = (reason) => /^no manual input recorded/i.test(reason || '') ? '' : reason
+
+  const breakers = Array.isArray(snap.breakers) ? snap.breakers : []
+  const health = thesisHealth(breakers)
+  const groups = groupBySeverity(breakers)
+  const fresh = watcherFreshness(snap.freshness)
+  const ledger = rotationLedger(snap.rotation)
+  const cats = catalystRows(snap.catalysts)
+  const queue = candidateRows(snap.candidates).filter((c) => !settled[c.key])
+  const reload = () => setNonce((n) => n + 1)
+  const byId = new Map(breakers.map((b) => [b.id, b]))
+
   return (
-    <div class="flex flex-col gap-2 max-w-3xl">
+    <div class="flex flex-col gap-3 max-w-3xl">
       <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
-        <header class="flex items-center gap-2 px-3 py-2 border-b border-line-2 bg-surface-2">
+        <header class="flex items-center gap-2 flex-wrap px-3 py-2 border-b border-line-2 bg-surface-2">
           <h2 class="font-jakarta font-bold text-[15px] tracking-tight text-accent">{tl('Thesis Watcher')}</h2>
-          <span class={`ml-auto font-mono text-[10px] font-bold tracking-wider ${health.state === 'GOOD' ? 'text-up' : 'text-down'}`}>{health.state}</span>
+          <StatusPill size="sm" tone={health.state === 'GOOD' ? 'clear' : 'fired'}>{tl(health.state)}</StatusPill>
+          <span class="ml-auto"><FreshChip fresh={fresh} /></span>
         </header>
-        <div class="flex flex-wrap gap-x-3 gap-y-0.5 px-3 py-1.5 border-b border-line/50 font-mono text-[9.5px] uppercase tracking-wider text-muted">
-          <span>{health.fired} {tl('FIRED')}</span>
-          <span>{health.clear} {tl('CLEAR')}</span>
-          <span>{health.review} {tl('NEEDS REVIEW')}</span>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 p-2">
+          <AccountStat label={thesisTerm('FIRED')} value={String(health.fired)}
+            cls={health.fired ? 'text-down' : 'text-muted'} />
+          <AccountStat label={thesisTerm('NO DATA')} value={String(health.noData)}
+            cls={health.noData ? 'text-accent' : 'text-muted'} />
+          <AccountStat label={thesisTerm('AWAITING REVIEW')} value={String(health.awaiting)} cls="text-ink-2" />
+          <AccountStat label={thesisTerm('CLEAR')} value={String(health.clear)}
+            cls={health.clear ? 'text-up' : 'text-muted'} />
         </div>
-        {snap.breakers.map((b) => (
-          <div key={b.id} class="border-t border-line/50 px-3 py-1.5 first:border-0">
-            <div class="flex items-baseline gap-2 font-mono text-[11px]">
-              <span class={`px-1.5 rounded text-[9px] font-bold ${VERD[b.verdict] || VERD.NO_DATA}`}>{verdictLabel(b.verdict)}</span>
-              <span class="text-ink-2 text-[10px] uppercase tracking-wider">{b.category}</span>
-              <span class="text-muted text-[10px]">{b.severity}</span>
-              {b.updated_at && <span class="ml-auto text-muted text-[9.5px]">{new Date(b.updated_at * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>}
-            </div>
-            <div class="font-anth text-[12px] text-ink-2 leading-snug pt-0.5">{b.description}</div>
-            {displayReason(b.reason) && <div class="font-mono text-[10.5px] text-muted pt-0.5">{b.reason}</div>}
-          </div>
-        ))}
       </section>
+
+      {groups.map((group) => (
+        <section key={group.severity} class="bg-surface-1 border border-line rounded-xl overflow-hidden">
+          <header class="flex items-center gap-2 px-3 py-1.5 border-b border-line-2 bg-surface-2">
+            <h3 class="font-jakarta font-bold text-[11px] tracking-wider text-accent uppercase">
+              {thesisTerm(group.severity)}
+            </h3>
+            <span class="font-mono text-[9px] text-muted">{group.rows.length}</span>
+            {group.fired > 0 && <StatusPill tone="fired">{group.fired} {thesisTerm('FIRED')}</StatusPill>}
+          </header>
+          {group.rows.map((breaker) => (
+            <BreakerRow key={breaker.id} breaker={breaker}
+              open={openKey === breaker.id}
+              onToggle={() => setOpenKey(openKey === breaker.id ? '' : breaker.id)}
+              canWrite={canWrite} onWrote={reload} onUnsupported={() => setCanWrite(false)} />
+          ))}
+        </section>
+      ))}
+
+      {queue.length > 0 && (
+        <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
+          <header class="flex items-center gap-2 px-3 py-1.5 border-b border-line-2 bg-surface-2">
+            <h3 class="font-jakarta font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Sweep candidates')}</h3>
+            <span class="font-mono text-[9px] text-muted">{queue.length}</span>
+          </header>
+          {queue.map((candidate) => (
+            <CandidateRow key={candidate.key} candidate={candidate} canWrite={canWrite}
+              onSettled={(key, action) => setSettled((prev) => ({ ...prev, [key]: action }))}
+              onUnsupported={() => setCanWrite(false)} />
+          ))}
+        </section>
+      )}
+
+      {cats.length > 0 && (
+        <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
+          <header class="px-3 py-1.5 border-b border-line-2 bg-surface-2">
+            <h3 class="font-jakarta font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Upcoming catalysts')}</h3>
+          </header>
+          {cats.map((cat, i) => (
+            <div key={`${cat.date}-${i}`} class="flex items-baseline gap-2 border-t border-line/50 first:border-0 px-3 py-1">
+              <span class="font-mono text-[11px] text-ink">{cat.date}</span>
+              {cat.symbol && <span class="font-mono text-[10px] text-accent">{cat.symbol}</span>}
+              <span class="font-anth text-[12px] text-ink-2 truncate">{cat.label}</span>
+              {cat.breaker_id && byId.has(cat.breaker_id) && (
+                <button type="button" onClick={() => setOpenKey(cat.breaker_id)}
+                  class="font-mono text-[9px] uppercase tracking-wider text-muted hover:text-accent shrink-0"
+                  title={byId.get(cat.breaker_id).description || cat.breaker_id}>{cat.breaker_id}</button>
+              )}
+              <span class={`ml-auto shrink-0 font-mono text-[10px] ${cat.days <= 7 ? 'text-accent' : 'text-muted'}`}>
+                {cat.days === 0 ? tl('today') : `${cat.days}${tl('d')}`}
+              </span>
+            </div>
+          ))}
+        </section>
+      )}
+
+      {ledger.length > 0 && (
+        <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
+          <header class="flex items-baseline gap-2 px-3 py-1.5 border-b border-line-2 bg-surface-2">
+            <h3 class="font-jakarta font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Rotation estimate')}</h3>
+            <span class="font-mono text-[17px] font-semibold text-ink">{ledger[0].estimate}</span>
+            <span class="ml-auto font-mono text-[9px] text-muted">{ledger.length} {tl('revisions')}</span>
+          </header>
+          {ledger[0].note && (
+            <div class="px-3 py-1.5 font-anth text-[12px] text-ink-2 leading-snug border-b border-line/50">{ledger[0].note}</div>
+          )}
+          {ledger.slice(1).map((row, i) => (
+            <div key={i} class="flex items-baseline gap-2 border-t border-line/50 first:border-0 px-3 py-1">
+              <span class="font-mono text-[11px] text-ink-2">{row.estimate}</span>
+              <span class="font-anth text-[11.5px] text-muted truncate">{row.note}</span>
+              <span class="ml-auto shrink-0 font-mono text-[9px] text-muted">{stamp(row.ms)}</span>
+            </div>
+          ))}
+        </section>
+      )}
+
       <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
         <header class="flex items-center gap-2 px-3 py-1.5 border-b border-line-2 bg-surface-2">
           <h2 class="font-jakarta font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Thesis signals')}</h2>
@@ -1080,35 +1427,17 @@ function Thesis() {
           </div>
         )) : <div class="px-3 py-2 font-jakarta text-[11px] text-muted">{tl('No thesis-tagged wire signals in this window.')}</div>}
       </section>
+
       <AiReport
         label="AI thesis read"
         filename="thesis-watcher.md"
         hint={tl('grounded in watcher conditions and wire evidence')}
         buildPrompt={async () => ({
           system: 'You are an evidence-first investment research assistant. Distinguish reported facts from inference and stay within the supplied record.',
-          prompt: thesisAnalysisPrompt(snap.breakers, signals),
+          prompt: thesisAnalysisPrompt(breakers, signals),
         })}
         archive={{ kind: 'briefing', title: 'Thesis Watcher' }}
       />
-      {snap.candidates?.length > 0 && (
-        <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
-          <header class="px-3 py-1.5 border-b border-line-2 bg-surface-2">
-            <h2 class="font-jakarta font-bold text-[11px] tracking-wider text-accent uppercase">{tl('New candidates')}</h2>
-          </header>
-          {snap.candidates.map((c, i) => (
-            <div key={i} class="border-t border-line/50 px-3 py-1 first:border-0 font-anth text-[12px] text-ink-2">
-              {c.url ? <a href={c.url} target="_blank" rel="noopener" class="hover:text-accent">{c.summary}</a> : c.summary}
-            </div>
-          ))}
-        </section>
-      )}
-      {snap.rotation?.length > 0 && (
-        <section class="bg-surface-1 border border-line rounded-xl px-3 py-1.5 font-mono text-[11px]">
-          <span class="text-muted uppercase text-[9px] tracking-wider">{tl('Rotation estimate')}</span>{' '}
-          <span class="text-ink font-semibold">{snap.rotation[0].estimate}</span>
-          {snap.rotation[0].note && <span class="text-muted"> — {snap.rotation[0].note}</span>}
-        </section>
-      )}
     </div>
   )
 }
