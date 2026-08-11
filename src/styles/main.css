@@ -66,6 +66,17 @@ body {
     background-color: transparent;
     text-decoration: underline;
   }
+  /* Same argument as the hover rule, for the keyboard: the UA outline is
+     invisible on pitch black, so tabbing through the shell showed nothing at
+     all. :focus-visible only, so a mouse click never draws a ring. */
+  a:focus-visible,
+  button:focus-visible,
+  [role="button"]:focus-visible,
+  select:focus-visible,
+  input:focus-visible {
+    outline: 1px solid var(--color-accent);
+    outline-offset: 1px;
+  }
 }
 
 /* The app is a fixed h-dvh shell; only inner containers scroll. Without this
@@ -523,9 +534,13 @@ button:hover .burger path:nth-child(2) { transform: scaleX(.55); }
 
 /* AI chat motion + execution trace. The trace is a first-class transcript
    object: live work unfolds in place, then contracts to a durable summary. */
+/* `.rise-in` is the same motion under a name nothing chat-specific owns —
+   toasts and other late-arriving chrome use it (2026-08-10). The chat classes
+   stay as they are so nothing has to be renamed to keep working. */
 .chat-message-enter,
 .chat-turn-enter,
-.chat-rail-section {
+.chat-rail-section,
+.rise-in {
   animation: chat-rise-in .36s cubic-bezier(.16, 1, .3, 1) both;
 }
 .chat-message-live {

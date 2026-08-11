@@ -7,6 +7,8 @@ import { tapeBadge, tapeEntries } from '../lib/tape.js'
 import { tapeworthy, wireUrl, evHeadline } from '../lib/wire.js'
 import { getLocale } from '../lib/i18n.js'
 import { extendedLabelClass } from '../lib/extendedHours.js'
+import { prefetchSymbol } from '../lib/history.js'
+import { FlashMetric, FlashPrice } from './Fig.jsx'
 
 // The namesake: a continuously scrolling quote marquee. The list is doubled
 // so the -50% keyframe loops seamlessly.
@@ -173,12 +175,13 @@ export function Tape() {
                   key={`q-${symbol}-${i}`}
                   data-tape-item
                   href={hrefFor('research', symbol.toLowerCase())}
+                  onMouseEnter={() => prefetchSymbol(symbol)}
                   class="flex items-baseline gap-1.5 whitespace-nowrap hover:no-underline px-1 py-0.5"
                 >
                   <span class="text-ink font-bold font-tick text-[10px]">{symbol}</span>
-                  <span class="text-ink-2 font-semibold">{q ? fmtPrice(q.price) : '—'}</span>
+                  <span class="text-ink-2 font-semibold">{q ? <FlashPrice price={q.price} fmt={fmtPrice} /> : '—'}</span>
                   <span class={`text-[10px] ${q ? (up ? 'text-up' : 'text-down') : 'text-muted'}`}>
-                    {q ? fmtPct(q.pct) : '—'}
+                    {q ? <FlashMetric value={q.pct} fmt={fmtPct} /> : '—'}
                   </span>
                   {/* the % glyph carries almost no right side bearing, so an
                       equal gap reads tighter on the label's left than its

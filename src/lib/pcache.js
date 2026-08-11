@@ -37,6 +37,12 @@ export function createPCache(storageKey, { max = 100, throttleMs = 1500 } = {}) 
 
   return {
     get: (k) => map.get(k) ?? null,
+    // Synchronous, TTL-blind, never fetches: what stale-while-revalidate seeds
+    // a view's initial state from, so flipping back to a tab paints the last
+    // answer instead of a spinner while the refetch runs (2026-08-10).
+    // `undefined` (not null) for a miss — a cached value can legitimately be
+    // null, and the callers need to tell those apart.
+    peek: (k) => map.get(k),
     set: (k, v) => {
       map.set(k, v)
       persist()

@@ -1,7 +1,7 @@
 // One-shot fetches for the Research view: OHLC history and news headlines.
 // Light TTL cache so tab-flipping doesn't refetch.
 
-import { proxyBase } from './feed.js'
+import { proxyBase, track } from './feed.js'
 import { quoteFromChart, barsFromChart } from './yahoo.js'
 import { createPCache } from './pcache.js'
 
@@ -63,14 +63,30 @@ async function fetchChart(symbol, range, interval, prepost = false) {
   return result
 }
 
-export function fetchHistory(symbol, rangeKey, { warm = false, interval = null, prepost = false } = {}) {
+// One place that decides what a request resolves to, so the fetch and the
+// synchronous peek below can never key the same series differently.
+function target(symbol, rangeKey, { warm = false, interval = null, prepost = false } = {}) {
   const r = RANGES.find((x) => x.key === rangeKey) || RANGES[2]
-  if (warm && !r.warm) return Promise.resolve({ bars: [] })
-  const range = warm ? r.warm : r.range
   const iv = interval || r.interval
   // the extended session is a DIFFERENT series, so it gets its own cache key
   const ext = prepost && r.intraday
-  return cached(`h:${symbol}:${r.key}${iv !== r.interval ? `:${iv}` : ''}${ext ? ':ext' : ''}${warm ? ':warm' : ''}`, r.ttl, async () => {
+  const key = `h:${symbol}:${r.key}${iv !== r.interval ? `:${iv}` : ''}${ext ? ':ext' : ''}${warm ? ':warm' : ''}`
+  return { r, iv, ext, key }
+}
+
+/** Last-known bars for a range, synchronously and TTL-blind. Research subviews
+ *  seed their state from this instead of null, so a tab flip paints the
+ *  previous answer while fetchHistory revalidates (2026-08-10). */
+export function peekHistory(symbol, rangeKey, opts = {}) {
+  return cache.peek(target(symbol, rangeKey, opts).key)?.value
+}
+
+export function fetchHistory(symbol, rangeKey, opts = {}) {
+  const { warm = false } = opts
+  const { r, iv, ext, key } = target(symbol, rangeKey, opts)
+  if (warm && !r.warm) return Promise.resolve({ bars: [] })
+  const range = warm ? r.warm : r.range
+  return cached(key, r.ttl, async () => {
     const result = await fetchChart(symbol, range, iv, ext)
     let bars = barsFromChart(result)
     // an empty intraday answer is a Yahoo hiccup, not a market holiday —
@@ -98,6 +114,20 @@ export function fetchSplits(symbol) {
       .map((s) => ({ date: s.date, ratio: `${s.numerator}:${s.denominator}` }))
       .sort((a, b) => b.date - a.date)
   })
+}
+
+/** Warm a symbol's quote + chart caches on hover intent, so the click lands on
+ *  a painted page instead of a spinner. Both calls dedupe against their own
+ *  caches, so no debounce is needed and a re-hover costs nothing; failures are
+ *  silent because this is speculative work nobody asked for (2026-08-10). */
+export function prefetchSymbol(symbol) {
+  if (!symbol) return
+  try {
+    track([symbol])
+  } catch {
+    // feed unavailable (SSR/tests): the real fetch on navigation still runs
+  }
+  fetchHistory(symbol, '6M').catch(() => {})
 }
 
 export function fetchDividends(symbol) {

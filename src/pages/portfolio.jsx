@@ -9,6 +9,7 @@ import {
 import { fmtPrice, fmtPct, fmtChange, fmtRatio } from '../lib/format.js'
 import { getLocale, tl, t as tt } from '../lib/i18n.js'
 import { FlashPrice } from '../components/Fig.jsx'
+import { Empty, Loading } from '../components/Loading.jsx'
 import {
   parseFillsCsv, assembleBacktest, convertFills, convertBars, needsFx, symbolCurrency,
   serverFillsToLedger,
@@ -806,7 +807,7 @@ function Backtest({ accountId }) {
       )}
 
       {fills.length > 0 && loading && !result && (
-        <div class="px-1 font-mono text-[11px] text-muted">{tt('common.loading')}</div>
+        <Loading label={tt('common.loading')} minH={220} />
       )}
 
       {error && <div class="px-1 font-mono text-[11px] text-down">{error}</div>}
@@ -846,9 +847,9 @@ function IbkrMd({ url, empty }) {
       .catch((err) => !dead && setState({ status: 'err', md: String(err.message || err) }))
     return () => { dead = true }
   }, [url])
-  if (state.status === 'loading') return <div class="px-1 py-2 font-mono text-[11px] text-muted animate-pulse">{tt('portfolio.gateway_loading')}</div>
+  if (state.status === 'loading') return <Loading label={tt('portfolio.gateway_loading')} minH={120} />
   if (state.status === 'err') return <div class="px-1 py-2 font-mono text-[11px] text-down">{state.md}</div>
-  if (!state.md.trim()) return <div class="px-1 py-2 font-mono text-[11px] text-muted">{empty || tt('portfolio.gateway_empty')}</div>
+  if (!state.md.trim()) return <Empty label={empty || tt('portfolio.gateway_empty')} />
   return (
     <section class="bg-surface-1 border border-line rounded-xl px-3 py-2 font-anth text-[12.5px] leading-relaxed text-ink-2 max-w-3xl overflow-x-auto">
       <MdLite text={state.md} />
@@ -1012,7 +1013,7 @@ function Thesis() {
     return () => { cancelled = true }
   }, [])
   if (!wireBase()) return <NeedsWire />
-  if (!snap) return <div class="px-1 py-2 font-mono text-[11px] text-muted animate-pulse">{tt('portfolio.watcher_loading')}</div>
+  if (!snap) return <Loading label={tt('portfolio.watcher_loading')} minH={160} />
   if (!snap.available) return <div class="px-1 py-2 font-mono text-[11px] text-muted">{tt('portfolio.watcher_unavailable')}</div>
   const health = thesisHealth(snap.breakers)
   const VERD = {
@@ -1169,7 +1170,7 @@ function TimeTravel({ priceMap, accountId }) {
         </button>
         <span class="text-[10px] text-muted">{tt('portfolio.time_note')}</span>
       </form>
-      {rows === 'loading' && <div class="font-mono text-[11px] text-muted animate-pulse px-1">{tt('portfolio.pricing_past')}</div>}
+      {rows === 'loading' && <Loading label={tt('portfolio.pricing_past')} minH={120} />}
       {snapInfo && (
         <div class="font-mono text-[10px] px-1 text-accent">
           ● {tl('broker snapshot')} {snapInfo.date}

@@ -112,10 +112,20 @@ describe('parseCommand', () => {
   it('parses watch/unwatch and alerts', () => {
     expect(parseCommand('w shop')).toEqual({ type: 'watch', symbol: 'SHOP' })
     expect(parseCommand('uw shop')).toEqual({ type: 'unwatch', symbol: 'SHOP' })
-    expect(parseCommand('alert msft > 500')).toEqual({ type: 'alert', symbol: 'MSFT', operator: '>', value: 500 })
-    expect(parseCommand('alert msft >500')).toEqual({ type: 'alert', symbol: 'MSFT', operator: '>', value: 500 })
+    expect(parseCommand('alert msft > 500')).toEqual({ type: 'alert', symbol: 'MSFT', alertType: 'price', operator: '>', value: 500 })
+    expect(parseCommand('alert msft >500')).toEqual({ type: 'alert', symbol: 'MSFT', alertType: 'price', operator: '>', value: 500 })
     expect(parseCommand('alert')).toEqual({ type: 'nav', hash: '#/alerts' })
     expect(parseCommand('alert junk').type).toBe('msg')
+  })
+
+  it('parses technical alert grammar', () => {
+    expect(parseCommand('alert nvda rsi > 70')).toEqual({ type: 'alert', symbol: 'NVDA', alertType: 'rsi', operator: '>', value: 70 })
+    expect(parseCommand('alert nvda rsi < 30')).toEqual({ type: 'alert', symbol: 'NVDA', alertType: 'rsi', operator: '<', value: 30 })
+    expect(parseCommand('alert nvda vol > 2')).toEqual({ type: 'alert', symbol: 'NVDA', alertType: 'volume', operator: '>', value: 2 })
+    expect(parseCommand('alert nvda volume > 1.5')).toEqual({ type: 'alert', symbol: 'NVDA', alertType: 'volume', operator: '>', value: 1.5 })
+    // below-average volume isn't a signal — addAlert would force `>` anyway
+    expect(parseCommand('alert nvda vol < 2').type).toBe('msg')
+    expect(parseCommand('alert nvda macd > 2').type).toBe('msg')
   })
 
   it('parses vs/screen into symbol sets', () => {

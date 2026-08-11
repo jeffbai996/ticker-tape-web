@@ -249,6 +249,23 @@ async function overnightSweep() {
   } catch { /* the stream and v7 batch still carry the page */ }
 }
 
+// Every browser throttles a background tab's timers to minutes, so the 30s
+// sweep effectively stops while the tab is hidden and a return lands on
+// whatever print was current when it was backgrounded. Sweeping on the
+// visibility flip means the first frame the user sees is already refetching
+// (2026-08-10). Registered once, on the first track() — the module can be
+// imported in tests with no document at all.
+let visibilityHooked = false
+function hookVisibility() {
+  if (visibilityHooked || typeof document === 'undefined') return
+  visibilityHooked = true
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible' || !tracked.size) return
+    scheduleBatch([...tracked])
+    setTimeout(overnightSweep, 5_000)
+  })
+}
+
 /** Track symbols: serve the persisted snapshot immediately, fetch only what's
  *  stale, then refresh everything on the sweep cadence. Requested symbols jump
  *  to the front of the queue — the page being looked at fills first, instead
@@ -272,6 +289,7 @@ export function track(symbols) {
     queue = [RS_BENCH, ...queue.filter((s) => s !== RS_BENCH)]
   }
   pump()
+  hookVisibility()
   if (!sweepTimer) {
     // prices twice as often as charts: the v7 batch is one cheap request,
     // and pre/after-hours reads freeze visibly at a 60s cadence

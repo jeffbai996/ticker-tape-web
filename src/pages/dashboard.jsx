@@ -8,7 +8,7 @@ import { pulseStats } from '../lib/pulse.js'
 import { fetchEarningsDate } from '../lib/fundamentals.js'
 import { EARNINGS_UNIVERSE, EARNINGS_NAMES, ECON_EVENTS, MARKET_DECK, upcomingEvents, eventDayLabel } from '../lib/markets.js'
 import { loadCatalysts, onCatalystsChange, mergedEvents } from '../lib/catalysts.js'
-import { fetchHistory } from '../lib/history.js'
+import { fetchHistory, prefetchSymbol } from '../lib/history.js'
 import {
   getWidgets, addWidget, removeWidget, moveWidget, onWidgetsChange, WIDGET_TYPES,
 } from '../lib/widgets.js'
@@ -31,6 +31,7 @@ import { SPARK_TYPES, DEFAULT_SPARK, isSparkType,
   SPARK_WINDOWS, DEFAULT_WINDOW, isSparkWindow, historyBarsToSparkBars } from '../lib/sparks.js'
 import { Marquee } from '../components/Marquee.jsx'
 import { FlashMetric, FlashPrice } from '../components/Fig.jsx'
+import { Empty } from '../components/Loading.jsx'
 import { tl } from '../lib/i18n.js'
 import { extendedLabelClass } from '../lib/extendedHours.js'
 
@@ -253,6 +254,7 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
   return (
     <a
       href={`#/research/${symbol.toLowerCase()}`}
+      onMouseEnter={() => prefetchSymbol(symbol)}
       onClick={(e) => { if (selecting) { e.preventDefault(); e.stopPropagation(); onToggleSelect(symbol) } }}
       class={`tui-row group/row relative block px-3 py-[3px] border-b border-line last:border-0 hover:no-underline${
         selecting ? ' pl-9 cursor-pointer' : ''}${selected ? ' bg-accent-soft' : ' hover:bg-white/[0.035]'}${revealed ? ' is-revealed' : ''}${
@@ -1613,7 +1615,7 @@ export function Dashboard({ listId = null }) {
               selected={selected.has(symbol)} onToggleSelect={toggleSelect} />
           ))}
           {!watchlist.length && (
-            <div class="px-3 py-8 text-center font-anth text-[11px] text-muted">{tl('empty watchlist — add the first ticker below')}</div>
+            <Empty label={tl('empty watchlist — add the first ticker below')} />
           )}
           {!reordering && (
             <AddSymbolRow onAdd={addSymbol} isPresent={isPresent}

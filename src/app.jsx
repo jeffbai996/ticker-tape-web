@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'preact/hooks'
-import { parseHash } from './lib/route.js'
+import { parseHash, hrefFor } from './lib/route.js'
+import { NAV } from './lib/nav.js'
+import { isTypingTarget } from './lib/keys.js'
 import { conditionText } from './lib/alerts.js'
 import { tl } from './lib/i18n.js'
 import { useLocale } from './hooks.js'
@@ -18,13 +20,17 @@ function AlertToasts({ toasts, dismiss }) {
     <div class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-xs">
       {toasts.map((t) => (
         <div key={t.id}
-          class="bg-surface-2 border border-accent rounded-lg px-3 py-2 shadow-lg flex items-start gap-3">
-          <div class="font-mono text-[11px]">
+          class="rise-in bg-surface-2 border border-accent rounded-lg px-3 py-2 shadow-lg flex items-start gap-3">
+          {/* the alert is about a symbol — the toast is the fastest route to it */}
+          <a href={`#/research/${String(t.symbol || '').toLowerCase()}`}
+            onClick={() => dismiss(t.id)}
+            class="font-mono text-[11px] flex-1 min-w-0">
             <div class="text-accent font-bold text-[9px] uppercase tracking-wider pb-0.5">{tl('Alert triggered')}</div>
             <div class="text-ink">{conditionText(t)}</div>
             <div class="text-ink-2">now {Number(t.current).toFixed(2)}</div>
-          </div>
-          <button onClick={() => dismiss(t.id)} class="text-muted hover:text-ink font-mono text-[12px]">✕</button>
+          </a>
+          <button onClick={(e) => { e.stopPropagation(); dismiss(t.id) }}
+            class="text-muted hover:text-ink font-mono text-[12px]">✕</button>
         </div>
       ))}
     </div>
@@ -47,14 +53,21 @@ export function App() {
   useLocale() // locale toggle re-renders the whole shell
   const [paletteOpen, setPaletteOpen] = useState(false)
 
+  // Cmd/Ctrl+K owns the palette; `/` belongs to the command bar (it used to
+  // open the palette too, so one keystroke did two things). Alt+1…9 jumps
+  // straight to a nav section — undiscoverable by design, hinted in the
+  // palette's empty state.
   useEffect(() => {
     const onKey = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault()
         setPaletteOpen((v) => !v)
-      } else if (e.key === '/' && !/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement?.tagName)) {
+      } else if (e.altKey && !e.metaKey && !e.ctrlKey && /^[1-9]$/.test(e.key)) {
+        if (isTypingTarget(document.activeElement)) return
+        const section = NAV[Number(e.key) - 1]
+        if (!section) return
         e.preventDefault()
-        setPaletteOpen(true)
+        location.hash = hrefFor(section.id)
       }
     }
     addEventListener('keydown', onKey)

@@ -1,11 +1,18 @@
-import { useEffect, useRef, useState } from 'preact/hooks'
-import { filterNav, searchSymbols } from '../lib/search.js'
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
+import { filterNav, searchLocal, searchSymbols } from '../lib/search.js'
 import { venueFlag } from '../lib/venueFlag.js'
 import { hrefFor } from '../lib/route.js'
+import { parseCommand, describePlan } from '../lib/commands.js'
+import { executePlan } from '../lib/execute.js'
+import { useEscape } from '../hooks.js'
 import { t as tt } from '../lib/i18n.js'
 
-// Ctrl/Cmd+K command palette: jump to a section or pull up any symbol.
-// Symbol lookups are debounced so a fast typist costs one request, not ten.
+// Ctrl/Cmd+K command palette: run a command, jump to a section, or pull up any
+// symbol. The user's own universe (watchlist, named lists, recents) matches
+// synchronously; the Yahoo lookup is debounced and merges in when it lands.
+// (`/` is the command bar's — the palette is Cmd/Ctrl+K only.)
+
+const TAGS = { command: 'run', symbol: 'sym', nav: 'go to', list: 'list' }
 
 export function Palette({ onClose }) {
   const [query, setQuery] = useState('')
@@ -15,6 +22,7 @@ export function Palette({ onClose }) {
   const debounce = useRef(null)
 
   useEffect(() => inputRef.current?.focus(), [])
+  useEscape(onClose)
 
   useEffect(() => {
     clearTimeout(debounce.current)
@@ -28,28 +36,46 @@ export function Palette({ onClose }) {
     return () => clearTimeout(debounce.current)
   }, [query])
 
-  const navEntries = filterNav(query)
-  const entries = [
-    ...symbols.map((s) => ({
-      kind: 'symbol',
-      label: s.symbol,
-      detail: [s.name, s.type, s.exchange].filter(Boolean).join(' · '),
-      flag: venueFlag({ exch: s.exchange, symbol: s.symbol }),
-      href: hrefFor('research', s.symbol.toLowerCase()),
-    })),
-    ...navEntries,
-  ]
+  const cmd = query.trim()
+  const local = useMemo(() => searchLocal(cmd), [cmd])
+  const plan = useMemo(() => parseCommand(cmd), [cmd])
+
+  const entries = []
+  // A bare ticker already has its own rows below (and `verify` marks exactly
+  // that plan) — a "run: NVDA" row on top of them would just be noise.
+  if (plan && !plan.verify) {
+    entries.push({
+      kind: 'command',
+      label: `run: ${cmd}`,
+      detail: describePlan(plan),
+      plan,
+    })
+  }
+  const localSyms = new Set(local.filter((e) => e.kind === 'symbol').map((e) => e.symbol))
+  entries.push(
+    ...local,
+    ...symbols
+      .filter((s) => !localSyms.has(s.symbol.toUpperCase()))
+      .map((s) => ({
+        kind: 'symbol',
+        label: s.symbol,
+        detail: [s.name, s.type, s.exchange].filter(Boolean).join(' · '),
+        flag: venueFlag({ exch: s.exchange, symbol: s.symbol }),
+        href: hrefFor('research', s.symbol.toLowerCase()),
+      })),
+    ...filterNav(query),
+  )
   const sel = Math.min(selected, Math.max(0, entries.length - 1))
 
   const go = (entry) => {
     if (!entry) return
-    location.hash = entry.href
+    if (entry.kind === 'command') executePlan(entry.plan, cmd)
+    else location.hash = entry.href
     onClose()
   }
 
   const onKey = (e) => {
-    if (e.key === 'Escape') onClose()
-    else if (e.key === 'ArrowDown') {
+    if (e.key === 'ArrowDown') {
       e.preventDefault()
       setSelected((n) => Math.min(n + 1, entries.length - 1))
     } else if (e.key === 'ArrowUp') {
@@ -58,8 +84,8 @@ export function Palette({ onClose }) {
     } else if (e.key === 'Enter') {
       e.preventDefault()
       // bare ticker + no results yet → jump straight to research
-      if (!entries.length && /^[A-Za-z0-9.^=-]{1,12}$/.test(query.trim())) {
-        location.hash = hrefFor('research', query.trim().toLowerCase())
+      if (!entries.length && /^[A-Za-z0-9.^=-]{1,12}$/.test(cmd)) {
+        location.hash = hrefFor('research', cmd.toLowerCase())
         onClose()
       } else go(entries[sel])
     }
@@ -83,6 +109,11 @@ export function Palette({ onClose }) {
               {tt('palette.no_match', { q: query.trim().toUpperCase() })}
             </div>
           )}
+          {!query.trim() && (
+            <div class="px-4 py-2 font-mono text-[10px] text-muted border-b border-line-2">
+              alt+1…9 jumps to a section · type a command (chart NVDA 6M)
+            </div>
+          )}
           {entries.map((entry, i) => (
             <button
               key={`${entry.kind}:${entry.label}`}
@@ -93,7 +124,7 @@ export function Palette({ onClose }) {
               }`}
             >
               <span class="text-[9px] uppercase tracking-wider text-muted w-12 shrink-0">
-                {entry.kind === 'symbol' ? 'sym' : 'go to'}
+                {entry.source || TAGS[entry.kind]}
               </span>
               {entry.flag && <img src={entry.flag} alt="" class="w-4 h-3 rounded-[1px] shrink-0 self-center" />}
               <span class="font-bold">{entry.label}</span>

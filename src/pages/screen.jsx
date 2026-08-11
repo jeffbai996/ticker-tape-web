@@ -9,6 +9,7 @@ import { dailyReturns, pearson, normalize } from '../lib/stats.js'
 import { fmtPrice, fmtPct, fmtBig, fmtRatio, fmtFracPct } from '../lib/format.js'
 import { tl, t as tt } from '../lib/i18n.js'
 import { FlashMetric, FlashPrice } from '../components/Fig.jsx'
+import { Loading } from '../components/Loading.jsx'
 import { BUCKETS } from '../lib/symbols.js'
 import { isWatched, watch, unwatch } from '../lib/watchlist.js'
 import { loadScreens, saveScreen, deleteScreen, passesScreenFilters } from '../lib/screens.js'
@@ -359,9 +360,7 @@ function Valuation({ symbols }) {
         </tbody>
       </table>
       {ready.length === 0 && (
-        <div class="px-3 py-3 font-mono text-[11px] text-muted">
-          loading fundamentals… (indices/futures/crypto have none)
-        </div>
+        <Loading label="loading fundamentals… (indices/futures/crypto have none)" minH={120} />
       )}
     </section>
     </>

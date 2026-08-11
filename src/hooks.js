@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
 import { track, subscribe, getCached } from './lib/feed.js'
 import {
   loadAlerts, onAlertsChange, markTriggered, conditionText,
@@ -17,6 +17,24 @@ export function useLocale() {
   const [locale, set] = useState(getLocale)
   useEffect(() => onLocaleChange(set), [])
   return locale
+}
+
+/**
+ * Escape closes whatever is on top. Bound at the window so it fires no matter
+ * where focus sits — a dialog whose Escape lives on one input is unreachable
+ * the moment the user clicks anything else inside it.
+ */
+export function useEscape(fn, active = true) {
+  // the handler rides a ref so an inline arrow doesn't rebind the listener
+  // on every render of the component that owns the dialog
+  const handler = useRef(fn)
+  handler.current = fn
+  useEffect(() => {
+    if (!active) return undefined
+    const onKey = (e) => { if (e.key === 'Escape') handler.current?.(e) }
+    addEventListener('keydown', onKey)
+    return () => removeEventListener('keydown', onKey)
+  }, [active])
 }
 
 /** User watchlist; re-renders the caller on add/remove. */

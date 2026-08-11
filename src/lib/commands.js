@@ -35,6 +35,7 @@ export const HELP_TEXT = [
   row2('corr', 'correlation grid', 'margin|trades', 'account · fills'),
   section('actions'),
   row2('w|uw SYM', 'watch / unwatch', 'alert SYM > N', 'arm price alert'),
+  row2('alert SYM rsi > 70', 'rsi alert', 'alert SYM vol > 2', 'volume multiple'),
   row2('cat', 'list catalysts', 'cat rm N', 'remove catalyst'),
   row('cat add DATE …', '\\[SYM] \\[type] label — type: product conf policy capex macro'),
   row2('group NAME SYM…', 'name a bucket', 'group rm NAME', 'ungroup'),
@@ -138,12 +139,26 @@ export function parseCommand(input) {
     return { type: 'unwatch', symbol: args[0].toUpperCase() }
   }
 
-  // alert SYM >|< N   ·   bare `alert` lists them
+  // alert SYM >|< N  ·  alert SYM rsi > 70  ·  alert SYM vol > 2
+  // (the alerts page has always stored a type; only the grammar was price-only)
   if (cmd === 'alert') {
+    const usage = `[bold ${INF}]usage[/] [${DIM}]alert SYM > 123.45 · alert SYM rsi > 70 · alert SYM vol > 2[/]`
     if (!args.length) return { type: 'nav', hash: '#/alerts' }
-    const m = args.join(' ').match(/^([A-Za-z0-9.^=-]{1,12})\s*([<>])\s*([\d.]+)$/)
-    if (m) return { type: 'alert', symbol: m[1].toUpperCase(), operator: m[2], value: Number(m[3]) }
-    return { type: 'msg', text: `[bold ${INF}]usage[/] [${DIM}]alert SYM > 123.45[/]` }
+    const m = args.join(' ')
+      .match(/^([A-Za-z0-9.^=-]{1,12})\s*(rsi|vol|volume)?\s*([<>])\s*([\d.]+)$/i)
+    if (!m) return { type: 'msg', text: usage }
+    const kind = low(m[2] || '')
+    const alertType = kind === 'rsi' ? 'rsi' : kind ? 'volume' : 'price'
+    // volume alerts are a "N× the 20-day average" multiple — under-average
+    // volume isn't a signal anyone arms, and addAlert would force `>` anyway
+    if (alertType === 'volume' && m[3] === '<') return { type: 'msg', text: usage }
+    return {
+      type: 'alert',
+      symbol: m[1].toUpperCase(),
+      alertType,
+      operator: m[3],
+      value: Number(m[4]),
+    }
   }
 
   // console + session commands the CLI has and this bar didn't
@@ -282,6 +297,25 @@ export function parseCommand(input) {
   }
 
   return null
+}
+
+/** One-line "what this will do", for UIs that preview a plan before running it. */
+export function describePlan(plan) {
+  if (!plan) return ''
+  switch (plan.type) {
+    case 'nav':
+    case 'nav_msg':
+      return [plan.hash.replace('#/', '') || 'dashboard', plan.range, plan.expiry]
+        .filter(Boolean).join(' · ')
+    case 'watch': return `watch ${plan.symbol}`
+    case 'unwatch': return `unwatch ${plan.symbol}`
+    case 'alert': return `arm ${plan.alertType || 'price'} alert on ${plan.symbol}`
+    case 'screen': return `${plan.view}: ${plan.symbols.join(' ')}`
+    case 'chat': return `ask the AI chat`
+    case 'div': return `${plan.symbol} dividends`
+    case 'msg': return 'usage'
+    default: return plan.type.replace(/_/g, ' ')
+  }
 }
 
 export { hrefFor }

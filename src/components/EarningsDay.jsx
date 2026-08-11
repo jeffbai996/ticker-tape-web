@@ -9,6 +9,7 @@ import {
   expectedMovePct, expiryForEvent, moveEdge, typicalMovePct,
 } from '../lib/expmove.js'
 import { tl } from '../lib/i18n.js'
+import { Loading } from './Loading.jsx'
 
 // Earnings day mode: everything about a print on one screen — when it lands,
 // what the options are charging for it, what this name has actually done on
@@ -211,7 +212,7 @@ export function EarningsDay({ symbols }) {
           </h2>
         </header>
         {docket.length === 0 && (
-          <div class="px-3 py-3 font-mono text-[11px] text-muted">{tl('loading earnings dates…')}</div>
+          <Loading label={tl('loading earnings dates…')} minH={120} />
         )}
         <div class="max-h-[70vh] overflow-y-auto">
           {docket.map((e) => {
