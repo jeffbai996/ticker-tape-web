@@ -6,6 +6,7 @@
 // `preserveAspectRatio="none"`, so a narrow row squeezes the time axis while
 // the heights that carry the signal stay put.
 
+import { useMemo } from 'preact/hooks'
 import { Histo } from './Histo.jsx'
 import {
   linePoints, changeBars, rangeBars, sparkWindow, bucketBars,
@@ -81,6 +82,14 @@ function RangeSpark({ bars, width, height, class: cls }) {
 
 export function Spark({ type = 'vol', window = DEFAULT_WINDOW, bars,
                         width = 150, height = 24, class: cls = '' }) {
+  // Same memo rationale as Histo: identical SVG re-diffs still repaint
+  // (preact setAttribute on dash-cased props), so sparks shimmered under
+  // OS zoom on every quote tick (Jeff 2026-08-11).
+  return useMemo(() => renderSpark(type, window, bars, width, height, cls),
+    [type, window, bars, width, height, cls])
+}
+
+function renderSpark(type, window, bars, width, height, cls) {
   if (type === 'off') return null
   const win = sparkWindow(bars, window)
   // a line can carry 252 points; bars can't — over ~60 they bucket into weeks
