@@ -1321,13 +1321,16 @@ function SearchResultSpark({ symbol }) {
 // inline glass icon repainted on every quote tick and visibly shimmered under
 // trackpad/OS zoom while its text siblings held dead still (Jeff 2026-08-11).
 // A constant vnode short-circuits the diff entirely.
-// Rebuilt from scratch as pure CSS (.board-glass in main.css), mirroring the
-// burger's construction — the one toolbar icon that never wobbled. The old
-// setup was an svg grid-centered at a 7.5px half-pixel offset; the svg layer
-// re-rounded on every global repaint under zoom and the glass danced alone
-// (Jeff 2026-08-11: "destroy the current magnifying glass setup and just do
-// a new one from scratch"). Integer offsets, no svg, no centering math.
-const GLASS_ICON = <span class="board-glass" aria-hidden="true" />
+// The original svg glass, restored once the real shimmer culprit was found
+// (board-control dither re-roll, fixed via layer promotion — the svg was
+// innocent). Kept as a hoisted const on integral offsets: one vnode, no
+// per-render diff, no half-pixel centering (Jeff 2026-08-11: "I want the
+// old one").
+const GLASS_ICON = (
+  <span class="absolute left-2 top-2 w-2.5 h-2.5 text-muted pointer-events-none">
+    <svg viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7" cy="7" r="4.4" /><path d="m10.4 10.4 3 3" /></svg>
+  </span>
+)
 
 function TickerSearch({ filter, setFilter, activeList }) {
   const [hits, setHits] = useState(null)
