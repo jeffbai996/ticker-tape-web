@@ -57,3 +57,21 @@ export function selectFlatRows(watchlist, quotes, { filter = '', sort = 'manual'
     return bv - av || a.index - b.index
   })
 }
+
+/** Board breadth for the hamburger menu's corner panel: how the visible
+ * watchlist leans right now, plus the two extremes. Rows without a pct
+ * (halted, unfetched) are ignored rather than counted as flat. */
+export function boardBreadth(rows) {
+  const live = (rows || []).filter((r) => r?.pct != null && !Number.isNaN(r.pct))
+  if (!live.length) return null
+  let up = 0, down = 0, flat = 0
+  let best = live[0], worst = live[0]
+  for (const r of live) {
+    if (r.pct > 0) up++
+    else if (r.pct < 0) down++
+    else flat++
+    if (r.pct > best.pct) best = r
+    if (r.pct < worst.pct) worst = r
+  }
+  return { up, down, flat, best: { symbol: best.symbol, pct: best.pct }, worst: { symbol: worst.symbol, pct: worst.pct } }
+}
