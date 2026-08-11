@@ -8,7 +8,6 @@ import { tapeworthy, wireUrl, evHeadline } from '../lib/wire.js'
 import { getLocale } from '../lib/i18n.js'
 import { extendedLabelClass } from '../lib/extendedHours.js'
 import { prefetchSymbol } from '../lib/history.js'
-import { FlashMetric, FlashPrice } from './Fig.jsx'
 
 // The namesake: a continuously scrolling quote marquee. The list is doubled
 // so the -50% keyframe loops seamlessly.
@@ -178,10 +177,14 @@ export function Tape() {
                   onMouseEnter={() => prefetchSymbol(symbol)}
                   class="flex items-baseline gap-1.5 whitespace-nowrap hover:no-underline px-1 py-0.5"
                 >
+                  {/* NO tick flash on the belt: crypto ticks 24/7, and each
+                      flash repaint made iPad accessibility-zoom shudder every
+                      ~400ms ("magnifying glass dancing", Jeff 2026-08-10).
+                      The board rows keep their flash — the belt stays calm. */}
                   <span class="text-ink font-bold font-tick text-[10px]">{symbol}</span>
-                  <span class="text-ink-2 font-semibold">{q ? <FlashPrice price={q.price} fmt={fmtPrice} /> : '—'}</span>
+                  <span class="text-ink-2 font-semibold">{q ? fmtPrice(q.price) : '—'}</span>
                   <span class={`text-[10px] ${q ? (up ? 'text-up' : 'text-down') : 'text-muted'}`}>
-                    {q ? <FlashMetric value={q.pct} fmt={fmtPct} /> : '—'}
+                    {q ? fmtPct(q.pct) : '—'}
                   </span>
                   {/* the % glyph carries almost no right side bearing, so an
                       equal gap reads tighter on the label's left than its
