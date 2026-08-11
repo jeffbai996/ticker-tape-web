@@ -155,6 +155,42 @@ html, body {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 0 0 1px rgba(245, 158, 11, 0.12);
 }
 
+/* Magnifier rebuilt as pure CSS, same construction family as the burger —
+   the toolbar's provably wobble-free icon. The svg predecessor sat at a
+   half-pixel centering offset and its layer re-rounded on every repaint
+   under zoom (Jeff 2026-08-11). Integer offsets only. */
+.board-glass {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  width: 10px;
+  height: 10px;
+  pointer-events: none;
+  color: var(--color-muted);
+}
+.board-glass::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 7px;
+  height: 7px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+}
+.board-glass::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  width: 5px;
+  height: 1.5px;
+  background: currentColor;
+  border-radius: 1px;
+  transform: rotate(45deg);
+  transform-origin: 0 50%;
+}
+
 .board-burger {
   position: relative;
   display: block;
