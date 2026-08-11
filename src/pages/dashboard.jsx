@@ -1169,7 +1169,7 @@ function SectorScroller({ watchlist, quotes }) {
               <span class="text-muted uppercase tracking-wider">{tl(b.name)}</span>{' '}
               {/* fixed slot: a pct crossing a digit-count boundary must not
                   resize the strip and re-trigger the overflow measure */}
-              <span class={`inline-block min-w-[3.4rem] ${avg >= 0 ? 'text-up' : 'text-down'}`}>{fmtPct(avg)}</span>
+              <span class={`inline-block min-w-[2.3rem] ${avg >= 0 ? 'text-up' : 'text-down'}`}>{fmtPct(avg)}</span>
             </a>
           )
         })}
