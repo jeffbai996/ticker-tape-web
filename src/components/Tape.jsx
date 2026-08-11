@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { useQuotes, useWatchlist } from '../hooks.js'
 import { fmtPrice, fmtPct } from '../lib/format.js'
+import { FlashPrice, FlashMetric } from './Fig.jsx'
 import { hrefFor } from '../lib/route.js'
 import { marqueeCopies } from '../lib/marquee.js'
 import { tapeBadge, tapeEntries } from '../lib/tape.js'
@@ -177,14 +178,14 @@ export function Tape() {
                   onMouseEnter={() => prefetchSymbol(symbol)}
                   class="flex items-baseline gap-1.5 whitespace-nowrap hover:no-underline px-1 py-0.5"
                 >
-                  {/* NO tick flash on the belt: crypto ticks 24/7, and each
-                      flash repaint made iPad accessibility-zoom shudder every
-                      ~400ms ("magnifying glass dancing", Jeff 2026-08-10).
-                      The board rows keep their flash — the belt stays calm. */}
+                  {/* Flash restored 2026-08-11: the belt was de-flashed as a
+                      shimmer suspect, but the real culprit was the dither
+                      re-roll on .board-control (fixed via layer promotion) —
+                      and a tape that never blinks reads dead. */}
                   <span class="text-ink font-bold font-tick text-[10px]">{symbol}</span>
-                  <span class="text-ink-2 font-semibold">{q ? fmtPrice(q.price) : '—'}</span>
+                  <span class="text-ink-2 font-semibold">{q ? <FlashPrice price={q.price} fmt={fmtPrice} /> : '—'}</span>
                   <span class={`text-[10px] ${q ? (up ? 'text-up' : 'text-down') : 'text-muted'}`}>
-                    {q ? fmtPct(q.pct) : '—'}
+                    {q ? <FlashMetric value={q.pct} fmt={fmtPct} kind="change" /> : '—'}
                   </span>
                   {/* the % glyph carries almost no right side bearing, so an
                       equal gap reads tighter on the label's left than its
@@ -192,7 +193,7 @@ export function Tape() {
                   {q?.extLabel && q.extPrice != null && (
                     <span class="inline-flex items-baseline gap-1.5 text-[10px] pl-[3px]">
                       <span class={`${extendedLabelClass(q.extLabel)} font-bold`}>{q.extLabel}</span>
-                      <span class="text-ink-2 font-semibold">{fmtPrice(q.extPrice)}</span>
+                      <span class="text-ink-2 font-semibold"><FlashPrice price={q.extPrice} fmt={fmtPrice} /></span>
                     </span>
                   )}
                 </a>
