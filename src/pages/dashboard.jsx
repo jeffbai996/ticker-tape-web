@@ -349,7 +349,12 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
                       bigger than the tag beside it — it's the figure you read,
                       the tag and the % are its annotations */}
                   <span class={`font-semibold ${extendedLabelClass(q.extLabel)}`}>{q.extLabel}</span>{' '}
-                  <span class="text-ink-2 font-semibold text-[12px] max-sm:text-[11px]"><FlashPrice price={q.extPrice} fmt={fmtPriceBare} /></span>{' '}
+                  {/* NO flash on extended prints: overnight sessions tick all
+                      night (AAPL ON via Blue Ocean measured flashing 68×/45s),
+                      strobing the row nonstop — "dimming shimmer on the AAPL
+                      row" (Jeff 2026-08-11). The regular print keeps its flash;
+                      the ext annotation just updates. */}
+                  <span class="text-ink-2 font-semibold text-[12px] max-sm:text-[11px]">{fmtPriceBare(q.extPrice)}</span>{' '}
                   <span class={`font-normal ${extUp ? 'text-up' : 'text-down'}`}>
                     {extUp ? '▲' : '▼'}{Math.abs(q.extPct ?? 0).toFixed(1)}%
                   </span>
