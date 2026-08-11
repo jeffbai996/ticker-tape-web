@@ -166,6 +166,59 @@ describe('clusterStories', () => {
     expect(out).toHaveLength(2)
     expect(out.find((e) => e.id === 9)).toBe(ev)
   })
+
+  const typed = (id, type, headline, url, ageMin = 0) => ({
+    id, type, symbols: [], headline, url,
+    ts_event: now - ageMin * 60, ts_seen: now - ageMin * 60, meta: {},
+  })
+
+  it('folds multi-source reprints of a filing into one row', () => {
+    const out = clusterStories([
+      typed(1, 'filing', 'MSFT files 8-K: $60B buyback authorisation approved', 'https://sec.gov/a', 20),
+      typed(2, 'filing', 'MSFT 8-K discloses $60B buyback authorisation approved', 'https://reuters.com/b', 10),
+    ], now)
+    expect(out).toHaveLength(1)
+    expect(out[0].story_cluster.count).toBe(2)
+    expect(out[0].url).toContain('reuters.com')     // ranked source is the face
+    expect(out[0].id).toBe(2)                        // newest member carries the row
+  })
+
+  it('folds the same macro print arriving from several desks', () => {
+    const out = clusterStories([
+      typed(1, 'macro_print', 'US CPI rises 0.2% monthly, core cooler than expected', 'https://a/1', 12),
+      typed(2, 'macro_print', 'CPI rises 0.2% monthly with core cooler than expected', 'https://b/2', 11),
+      typed(3, 'macro_print', 'Initial claims 214k, four-week average lowest since March', 'https://c/3', 9),
+    ], now)
+    expect(out).toHaveLength(2)
+    expect(out.find((e) => e.story_cluster).story_cluster.count).toBe(2)
+  })
+
+  it('folds an earnings release reprinted by two feeds', () => {
+    const out = clusterStories([
+      typed(1, 'earnings_release', 'JPM third quarter EPS $4.92 versus $4.61 estimate', 'https://a/1', 5),
+      typed(2, 'earnings_release', 'JPM third quarter EPS $4.92 versus $4.61 estimate', 'https://wsj.com/b', 4),
+    ], now)
+    expect(out).toHaveLength(1)
+    expect(out[0].story_cluster.count).toBe(2)
+  })
+
+  // an ERN and the write-up about it are two different reads
+  it('never clusters across types', () => {
+    const text = 'JPM third quarter EPS $4.92 versus $4.61 estimate'
+    const out = clusterStories([
+      typed(1, 'earnings_release', text, 'https://a/1', 5),
+      typed(2, 'headline', text, 'https://wsj.com/b', 4),
+    ], now)
+    expect(out).toHaveLength(2)
+    expect(out.every((e) => !e.story_cluster)).toBe(true)
+  })
+
+  it('leaves types outside the collapse set alone', () => {
+    const a = typed(1, 'digest', 'AAPL call digest: services margin 74.1% and guide raised', 'https://a/1', 5)
+    const b = typed(2, 'digest', 'AAPL call digest: services margin 74.1% and guide raised', 'https://a/2', 4)
+    const out = clusterStories([a, b], now)
+    expect(out).toEqual([a, b])
+  })
 })
 
 describe('tapeworthy banner policy', () => {
@@ -225,5 +278,30 @@ describe('matchesWireQuery', () => {
   it('survives rows with no symbols or no headline', async () => {
     const { matchesWireQuery } = await import('../../src/lib/wire.js')
     expect(matchesWireQuery({}, 'mu')).toBe(false)
+    expect(matchesWireQuery({}, 'mu', 'zh')).toBe(false)
+  })
+
+  // the rows paint headline_zh/body_zh on zh, so the filter has to search them
+  it('matches the zh text a zh reader can actually see', async () => {
+    const { matchesWireQuery } = await import('../../src/lib/wire.js')
+    const zhEv = {
+      symbols: ['NVDA'], headline: 'NVDA secures extra CoWoS capacity',
+      body: 'Capacity booked through 2027.',
+      meta: { headline_zh: '英伟达锁定额外 CoWoS 产能', body_zh: '产能已订至 2027 年。' },
+    }
+    expect(matchesWireQuery(zhEv, '产能', 'zh')).toBe(true)
+    expect(matchesWireQuery(zhEv, '订至', 'zh')).toBe(true)
+    // English still works on zh — the source headline stays in the haystack
+    expect(matchesWireQuery(zhEv, 'capacity', 'zh')).toBe(true)
+    expect(matchesWireQuery(zhEv, '黄金', 'zh')).toBe(false)
+  })
+
+  it('leaves the en haystack as the headline alone', async () => {
+    const { matchesWireQuery } = await import('../../src/lib/wire.js')
+    const evz = { symbols: [], headline: 'plain english headline', body: 'buried in the body',
+                  meta: { headline_zh: '中文标题' } }
+    expect(matchesWireQuery(evz, '中文', 'en')).toBe(false)
+    expect(matchesWireQuery(evz, 'buried', 'en')).toBe(false)
+    expect(matchesWireQuery(evz, 'english')).toBe(true)
   })
 })
