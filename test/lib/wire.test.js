@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach } from 'vitest'
-import { setWireUrl, wireUrl, demoBackfill, demoEvent, demoToday, demoQuotes, rankEvents, collapseSessions, clusterStories, TYPE_CODE } from '../../src/lib/wire.js'
+import { setWireUrl, wireUrl, demoBackfill, demoEvent, demoToday, demoQuotes, rankEvents, collapseSessions, clusterStories, TYPE_CODE, pubDisplayName, readMinutes } from '../../src/lib/wire.js'
 
 describe('wire endpoint config', () => {
   beforeEach(() => localStorage.clear())
@@ -303,5 +303,35 @@ describe('matchesWireQuery', () => {
     expect(matchesWireQuery(evz, '中文', 'en')).toBe(false)
     expect(matchesWireQuery(evz, 'buried', 'en')).toBe(false)
     expect(matchesWireQuery(evz, 'english')).toBe(true)
+  })
+})
+
+describe('reader byline', () => {
+  it('spells the publication name in plain english', () => {
+    expect(pubDisplayName({ url: 'https://www.semafor.com/article/x' })).toBe('Semafor')
+    expect(pubDisplayName({ url: 'https://www.ft.com/content/abc' })).toBe('Financial Times')
+    expect(pubDisplayName({ url: 'https://feeds.reuters.com/x' })).toBe('Reuters')
+    expect(pubDisplayName({ url: 'https://spectrum.ieee.org/x' })).toBe('IEEE Spectrum')
+  })
+
+  it('pulls the true source out of a google-news headline tail', () => {
+    expect(pubDisplayName({
+      url: 'https://news.google.com/rss/articles/x',
+      headline: 'Chips rally on earnings - The Elec',
+    })).toBe('The Elec')
+  })
+
+  it('falls back to a capitalized stem, then the source field', () => {
+    expect(pubDisplayName({ url: 'https://stocktwits.com/news/x' })).toBe('Stocktwits')
+    expect(pubDisplayName({ url: 'not a url', source: 'prices' })).toBe('Prices')
+    expect(pubDisplayName({})).toBe('')
+  })
+
+  it('estimates reading minutes for latin and cjk text', () => {
+    expect(readMinutes('word '.repeat(440))).toBe(2)
+    expect(readMinutes('字'.repeat(700))).toBe(2)
+    expect(readMinutes('short text')).toBe(1)
+    expect(readMinutes('')).toBe(0)
+    expect(readMinutes(null)).toBe(0)
   })
 })
