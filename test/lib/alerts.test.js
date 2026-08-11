@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import {
   loadAlerts, addAlert, removeAlert, markTriggered, rearmAlert,
-  setAlertDelivery,
-  evaluatePriceAlerts, evaluateTechnicalAlerts, conditionText,
+  setAlertDelivery, updateAlert, onAlertsChange,
+  evaluatePriceAlerts, evaluateTechnicalAlerts, conditionText, conditionDetail,
 } from '../../src/lib/alerts.js'
 
 beforeEach(() => localStorage.clear())
@@ -115,11 +115,98 @@ describe('evaluateTechnicalAlerts', () => {
   })
 })
 
+describe('updateAlert', () => {
+  const seed = (over = {}) =>
+    addAlert({ symbol: 'MSFT', type: 'price', operator: '>', value: 500, ...over })
+
+  it('edits the condition in place, keeping id/created/order', () => {
+    const first = seed()
+    const second = addAlert({ symbol: 'AAPL', type: 'price', operator: '<', value: 200 })
+    const out = updateAlert(first.id, { symbol: 'nvda', operator: '<', value: 120 })
+    expect(out.id).toBe(first.id)
+    expect(out.symbol).toBe('NVDA')
+    expect(out.operator).toBe('<')
+    expect(out.value).toBe(120)
+    expect(out.created).toBe(first.created)
+    const stored = loadAlerts()
+    expect(stored.map((a) => a.id)).toEqual([first.id, second.id])
+    expect(stored[0].symbol).toBe('NVDA')
+  })
+
+  it('returns null for an unknown id and leaves storage untouched', () => {
+    seed()
+    expect(updateAlert(999, { value: 1 })).toBeNull()
+    expect(loadAlerts()[0].value).toBe(500)
+  })
+
+  it('validates the merged alert like addAlert', () => {
+    const a = seed()
+    expect(() => updateAlert(a.id, { symbol: '  ' })).toThrow()
+    expect(() => updateAlert(a.id, { type: 'nope' })).toThrow()
+    expect(() => updateAlert(a.id, { operator: '=' })).toThrow()
+    expect(() => updateAlert(a.id, { value: 'abc' })).toThrow()
+    expect(() => updateAlert(a.id, { type: 'rsi', value: 150 })).toThrow()
+    expect(() => updateAlert(a.id, { type: 'sma_cross', value: 1.5 })).toThrow()
+    // a rejected edit must not have half-written the alert
+    expect(loadAlerts()[0].value).toBe(500)
+  })
+
+  it('normalizes a switch to volume onto the > operator', () => {
+    const a = seed({ operator: '<' })
+    expect(updateAlert(a.id, { type: 'volume', value: 2 }).operator).toBe('>')
+  })
+
+  it('preserves delivery settings and deliveryId across an edit', () => {
+    const a = seed({ delivery: { enabled: true, destination: 'desk', maxPerHour: 3 } })
+    const out = updateAlert(a.id, { value: 600 })
+    expect(out.delivery).toEqual({ enabled: true, destination: 'desk', maxPerHour: 3 })
+    expect(out.deliveryId).toBe(a.deliveryId)
+  })
+
+  it('re-arms a triggered alert when the condition changes', () => {
+    const a = seed()
+    markTriggered(a.id, 510)
+    const out = updateAlert(a.id, { value: 600 })
+    expect(out.triggered).toBeNull()
+    expect(out.current).toBeNull()
+    expect(out.deliveryStatus).toBeNull()
+    expect(out.deliveryId).not.toBe(a.deliveryId)
+  })
+
+  it('leaves a triggered alert triggered when the edit is a no-op', () => {
+    const a = seed()
+    markTriggered(a.id, 510)
+    const out = updateAlert(a.id, { symbol: 'msft', value: 500 })
+    expect(out.triggered).toBeTruthy()
+    expect(out.current).toBe(510)
+    expect(out.deliveryId).toBe(a.deliveryId)
+  })
+
+  it('notifies subscribers', () => {
+    const a = seed()
+    let hits = 0
+    const off = onAlertsChange(() => { hits += 1 })
+    updateAlert(a.id, { value: 501 })
+    off()
+    expect(hits).toBe(1)
+  })
+})
+
 describe('conditionText', () => {
   it('renders human-readable conditions', () => {
     expect(conditionText({ symbol: 'MSFT', type: 'price', operator: '>', value: 500 })).toBe('MSFT price > 500')
     expect(conditionText({ symbol: 'MSFT', type: 'rsi', operator: '<', value: 30 })).toBe('MSFT RSI < 30')
     expect(conditionText({ symbol: 'MSFT', type: 'sma_cross', operator: '>', value: 50 })).toBe('MSFT crosses above SMA50')
     expect(conditionText({ symbol: 'MSFT', type: 'volume', operator: '>', value: 2 })).toBe('MSFT volume > 2x avg')
+  })
+
+  it('conditionDetail drops the symbol so the UI can link it separately', () => {
+    expect(conditionDetail({ symbol: 'MSFT', type: 'price', operator: '>', value: 500 })).toBe('price > 500')
+    expect(conditionDetail({ symbol: 'MSFT', type: 'rsi', operator: '<', value: 30 })).toBe('RSI < 30')
+    expect(conditionDetail({ symbol: 'MSFT', type: 'sma_cross', operator: '<', value: 50 })).toBe('crosses below SMA50')
+    expect(conditionDetail({ symbol: 'MSFT', type: 'volume', operator: '>', value: 2 })).toBe('volume > 2x avg')
+    // the old slice(symbol.length + 1) hack broke on symbols the text repeats
+    const brk = { symbol: 'BRK.B', type: 'price', operator: '>', value: 400 }
+    expect(conditionText(brk)).toBe(`${brk.symbol} ${conditionDetail(brk)}`)
   })
 })

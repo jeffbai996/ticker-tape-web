@@ -8,7 +8,11 @@ import { EARNINGS_UNIVERSE,
   MARKET_GROUPS, SECTORS, COMMODITY_GROUPS, ECON_EVENTS, RELATIVE_SIGNALS, eventDayLabel,
   upcomingEvents, calendarEventDetails,
 } from '../lib/markets.js'
-import { loadCatalysts, onCatalystsChange, removeCatalyst, mergedEvents } from '../lib/catalysts.js'
+import {
+  addCatalyst, loadCatalysts, onCatalystsChange, removeCatalyst, mergedEvents,
+  CATALYST_TYPES,
+} from '../lib/catalysts.js'
+import { pulseStats } from '../lib/pulse.js'
 import { fetchEarningsDate } from '../lib/fundamentals.js'
 import { tl } from '../lib/i18n.js'
 import { EarningsDay } from '../components/EarningsDay.jsx'
@@ -465,10 +469,9 @@ function Movers() {
     .filter((r) => r.q?.pct != null)
   const byPct = [...priced].sort((a, b) => b.q.pct - a.q.pct)
   const byVol = [...priced].sort((a, b) => (b.q.volume ?? 0) - (a.q.volume ?? 0))
-  const adv = priced.filter((r) => r.q.pct >= 0).length
-  const avg = priced.length ? priced.reduce((s2, r) => s2 + r.q.pct, 0) / priced.length : null
-  const stress = priced.filter((r) => r.q.pct <= -3).length
-  const big = priced.filter((r) => Math.abs(r.q.pct) >= 2).length
+  // same breadth maths as the rail's Pulse block — one definition of
+  // advancing/±2%/stress so the two panels can't disagree
+  const stats = pulseStats(priced.map((r) => ({ symbol: r.symbol, pct: r.q.pct })))
 
   const buildMoversPrompt = async () => {
     const line = (r) => `${r.symbol} ${r.q.price?.toFixed(2)} ${r.q.pct > 0 ? '+' : ''}${r.q.pct.toFixed(2)}%`
@@ -485,13 +488,13 @@ function Movers() {
     <div class="flex flex-col gap-2">
       <div class="flex flex-wrap gap-2 font-mono text-[11px]">
         {[
-          ['breadth', <span><span class="text-up">{adv}</span><span class="text-muted">/</span><span class="text-down">{priced.length - adv}</span></span>],
-          ['avg move', <span class={avg != null && avg >= 0 ? 'text-up' : 'text-down'}>{avg != null ? fmtPct(avg) : '—'}</span>],
-          ['±2% movers', <span class="text-ink">{big}<span class="text-muted">/{priced.length}</span></span>],
-          ['down >3%', <span class={stress ? 'text-down font-bold' : 'text-ink-2'}>{stress}</span>],
+          ['breadth', <span><span class="text-up">{stats?.adv ?? 0}</span><span class="text-muted">/</span><span class="text-down">{stats?.dec ?? 0}</span></span>],
+          ['avg move', <span class={stats && stats.avg >= 0 ? 'text-up' : 'text-down'}>{stats ? fmtPct(stats.avg) : '—'}</span>],
+          ['±2% movers', <span class="text-ink">{stats?.movers ?? 0}<span class="text-muted">/{priced.length}</span></span>],
+          ['down >3%', <span class={stats?.stress ? 'text-down font-bold' : 'text-ink-2'}>{stats?.stress ?? 0}</span>],
         ].map(([label, val]) => (
           <span key={label} class="bg-surface-1 border border-line rounded-lg px-2.5 py-1 flex items-baseline gap-1.5">
-            <span class="text-[9px] uppercase tracking-wider text-muted">{label}</span>{val}
+            <span class="text-[9px] uppercase tracking-wider text-muted">{tl(label)}</span>{val}
           </span>
         ))}
       </div>
@@ -590,6 +593,70 @@ const URGENCY = [
   { max: 10, cls: 'text-accent' },
   { max: Infinity, cls: 'text-ink-2' },
 ]
+
+const CAT_FIELD = 'bg-surface-2 border border-line rounded-md px-1.5 py-1 font-mono text-[11px] text-ink outline-none focus:border-accent'
+
+/** Calendar footer: the CLI's `cat add` as one collapsed row. Same
+ *  addCatalyst() plumbing the command bar uses, so entries made either way are
+ *  the same records — the footer used to only *tell* you the CLI syntax. */
+function CatalystAdd({ today }) {
+  const [open, setOpen] = useState(false)
+  const [date, setDate] = useState(today)
+  const [symbol, setSymbol] = useState('')
+  const [type, setType] = useState('product')
+  const [label, setLabel] = useState('')
+  const [error, setError] = useState(null)
+
+  if (!open) {
+    return (
+      <footer class="px-3 py-1.5 border-t border-line font-mono text-[10px] text-muted">
+        <button onClick={() => setOpen(true)} class="text-accent hover:underline">
+          + {tl('add your own')}
+        </button>
+      </footer>
+    )
+  }
+
+  const submit = (e) => {
+    e.preventDefault()
+    setError(null)
+    try {
+      addCatalyst({ date, symbol, type, label })
+      setLabel('')
+      setSymbol('')
+      setOpen(false)
+    } catch (err) {
+      setError(tl(String(err?.message || err)))
+    }
+  }
+
+  return (
+    <footer class="px-3 py-1.5 border-t border-line">
+      <form onSubmit={submit} class="flex flex-wrap items-center gap-1.5">
+        <input type="date" class={CAT_FIELD} value={date} aria-label={tl('Date')}
+          onInput={(e) => setDate(e.currentTarget.value)} />
+        <input class={`${CAT_FIELD} w-20 uppercase`} value={symbol} aria-label={tl('Symbol')}
+          placeholder={tl('symbol')} onInput={(e) => setSymbol(e.currentTarget.value)} />
+        <select class={CAT_FIELD} value={type} aria-label={tl('Type')}
+          onChange={(e) => setType(e.currentTarget.value)}>
+          {CATALYST_TYPES.map((id) => <option key={id} value={id}>{tl(id)}</option>)}
+        </select>
+        <input class={`${CAT_FIELD} flex-1 min-w-40`} value={label} aria-label={tl('Label')}
+          placeholder={tl('what happens that day')}
+          onInput={(e) => setLabel(e.currentTarget.value)} />
+        <button type="submit"
+          class="font-mono text-[11px] px-2 py-1 rounded-md border border-accent text-accent bg-accent-soft hover:bg-accent hover:text-black">
+          {tl('add')}
+        </button>
+        <button type="button" onClick={() => { setOpen(false); setError(null) }}
+          class="font-mono text-[11px] px-2 py-1 rounded-md border border-line text-muted hover:text-ink hover:border-line-2">
+          {tl('cancel')}
+        </button>
+        {error && <span class="font-mono text-[10px] text-down">{error}</span>}
+      </form>
+    </footer>
+  )
+}
 
 function Calendar() {
   const today = new Date().toISOString().slice(0, 10)
@@ -719,9 +786,7 @@ function Calendar() {
           )}
         </aside>
       )}
-      <footer class="px-3 py-1.5 border-t border-line font-mono text-[10px] text-muted">
-        {tl('add your own')}: <span class="text-ink-2">cat add 2026-09-09 NVDA product GTC keynote</span>
-      </footer>
+      <CatalystAdd today={today} />
     </section>
   )
 }

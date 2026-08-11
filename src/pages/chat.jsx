@@ -1175,7 +1175,7 @@ export function Chat() {
         stream.getTracks().forEach((t) => t.stop())
         setRec(null)
         const blob = new Blob(chunks, { type: mr.mimeType || 'audio/webm' })
-        setNotice('transcribing…')
+        setNotice(tl('transcribing…'))
         try {
           const resp = await fetch(`${wireUrl().replace(/\/$/, '')}/api/transcribe`, {
             method: 'POST', headers: { 'Content-Type': blob.type }, body: blob,
@@ -1187,13 +1187,15 @@ export function Chat() {
           inputRef.current?.focus()
         } catch (err) {
           setNotice(null)
-          setError(`transcription failed: ${err.message || err}`)
+          // {err} pattern key: tl falls back to the English template, so the
+          // substitution works in both locales without a parameterized entry
+          setError(tl('transcription failed: {err}').replace('{err}', err.message || err))
         }
       }
       mr.start()
       setRec(mr)
     } catch {
-      setError('microphone unavailable')
+      setError(tl('microphone unavailable'))
     }
   }
 
