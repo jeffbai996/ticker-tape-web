@@ -1163,16 +1163,17 @@ function BoardMenu({ sort, setSort, setViewMode, spark, setSpark, sparkWin, setS
   return (
     <div ref={ref} class="relative shrink-0">
       <button onClick={() => setOpen((v) => !v)} title={tl('board menu')}
-        class={`grid h-[26px] w-[26px] place-items-center rounded-lg border bg-surface-1 ${
-          open ? 'border-accent/60 text-accent' : 'border-line text-muted hover:text-accent hover:border-accent/50'}`}>
-        <svg class="burger" viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
-          <path d="M2.5 4h11" />
-          <path d="M2.5 8h11" />
-          <path d="M2.5 12h11" />
+        aria-expanded={open}
+        class={`board-control grid h-[26px] w-[26px] place-items-center rounded-lg border ${
+          open ? 'border-accent/60 text-accent' : 'text-ink-2 hover:text-accent hover:border-accent/50'}`}>
+        <svg class={`board-burger ${open ? 'is-open' : ''}`} viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+          <path class="board-burger-line" d="M2.5 4h11" />
+          <path class="board-burger-line" d="M2.5 8h11" />
+          <path class="board-burger-line" d="M2.5 12h11" />
         </svg>
       </button>
       {open && (
-        <div class="absolute top-full left-0 mt-1 w-52 z-40 max-h-[72vh] overflow-y-auto bg-surface-1/95 backdrop-blur border border-line rounded-lg shadow-[0_8px_24px_rgba(0,0,0,0.6)] py-1">
+        <div class="board-menu-pop absolute top-full left-0 mt-1 w-52 z-40 max-h-[72vh] overflow-y-auto bg-surface-1/95 backdrop-blur border border-line rounded-lg shadow-[0_8px_24px_rgba(0,0,0,0.6)] py-1">
           {head(tl('Watchlist'))}
           {item(tl('Dashboard'), !listId, () => { setOpen(false); location.hash = '#/' })}
           {lists.map((l) => item(l.name, listId === l.id,
@@ -1290,7 +1291,7 @@ function TickerSearch({ filter, setFilter, activeList }) {
         }}
         placeholder={`${tl('Search')}…`}
         aria-label={tl('Search')}
-        class={`min-w-0 bg-surface-1 border border-line rounded-lg pl-6 py-1 font-anth text-[10px] text-ink outline-none focus:border-accent placeholder:text-muted transition-[width] duration-300 ease-out ${
+        class={`board-control board-search min-w-0 border rounded-lg pl-6 py-1 font-anth text-[10px] text-ink outline-none focus:border-accent placeholder:text-muted transition-[width,background-color,border-color,box-shadow] duration-300 ease-out ${
           expanded ? 'w-44 sm:w-60 pr-2'
             : 'w-[26px] sm:w-[88px] pr-0 sm:pr-2 cursor-pointer max-sm:placeholder:text-transparent'}`} />
       {open && hits?.length > 0 && (
@@ -1462,13 +1463,13 @@ export function Dashboard({ listId = null }) {
               <div class="font-anth font-bold text-[13px] text-ink truncate">{activeList.name}</div>
             </div>
           )}
-          <div class={`${activeList ? 'ml-auto' : ''} inline-flex rounded-lg border border-line bg-surface-1 p-0.5 shrink-0`}>
+          <div class={`${activeList ? 'ml-auto' : ''} board-control inline-flex rounded-lg border p-0.5 shrink-0`}>
             <button onClick={() => setViewMode('grouped')}
-              class={`px-2 py-0.5 rounded-md font-anth text-[10px] transition-colors ${viewMode === 'grouped' ? 'bg-accent-soft text-accent' : 'text-muted hover:text-ink'}`}>
+              class={`px-2 py-0.5 rounded-md font-anth text-[10px] transition-colors ${viewMode === 'grouped' ? 'bg-surface-3 text-accent-2 shadow-sm' : 'text-muted hover:text-ink'}`}>
               {tl('Sectors')}
             </button>
             <button onClick={() => setViewMode('flat')}
-              class={`px-2 py-0.5 rounded-md font-anth text-[10px] transition-colors ${viewMode === 'flat' ? 'bg-accent-soft text-accent' : 'text-muted hover:text-ink'}`}>
+              class={`px-2 py-0.5 rounded-md font-anth text-[10px] transition-colors ${viewMode === 'flat' ? 'bg-surface-3 text-accent-2 shadow-sm' : 'text-muted hover:text-ink'}`}>
               {tl('All')}
             </button>
           </div>

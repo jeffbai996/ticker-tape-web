@@ -104,7 +104,7 @@ describe('compact dashboard company name', () => {
     // search rests folded (desktop keeps a readable Search… pill) and
     // animates open on click
     expect(dashboard).toContain("placeholder={`${tl('Search')}…`}")
-    expect(dashboard).toContain('transition-[width]')
+    expect(dashboard).toContain('transition-[width,background-color,border-color,box-shadow]')
     expect(dashboard).toContain('max-sm:placeholder:text-transparent')
     // sort, select mode and the watchlist picker fold into the board menu
     expect(dashboard).toContain('function BoardMenu')
@@ -121,6 +121,18 @@ describe('compact dashboard company name', () => {
     expect(dashboard).toContain('class="w-3 h-[9px] rounded-[1px] shrink-0 self-center"')
     expect(dashboard).toContain('class="font-mono font-bold text-[10.5px] text-accent shrink-0"')
     expect(dashboard).toContain('<SearchResultSpark symbol={h.symbol} />')
+  })
+
+  it('animates and shades the watchlist toolbar controls as one family', () => {
+    expect(dashboard).toContain('aria-expanded={open}')
+    expect(dashboard).toContain("open ? 'is-open' : ''")
+    expect(dashboard).toContain('class="board-menu-pop absolute top-full left-0')
+    expect(dashboard).toContain('board-control inline-flex rounded-lg')
+    expect(dashboard).toContain('board-search')
+    expect(css).toContain('.board-burger-line')
+    expect(css).toContain('.board-burger.is-open .board-burger-line:nth-child(1)')
+    expect(css).toContain('@keyframes board-menu-pop')
+    expect(css).toMatch(/prefers-reduced-motion:[\s\S]*\.board-menu-pop/)
   })
 
   it('merges desktop controls and the scrollable sector tape into one row', () => {
