@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { createChart, CandlestickSeries, HistogramSeries } from 'lightweight-charts'
-import { useQuotes } from '../hooks.js'
+import { createChart, CandlestickSeries, HistogramSeries, createSeriesMarkers } from 'lightweight-charts'
+import { useEscape, useQuotes } from '../hooks.js'
 import { fetchDividends as fetchDivHistory, fetchHistory, fetchNews, fetchSplits, peekHistory, RANGES } from '../lib/history.js'
 import { fetchFinancials, statementRows } from '../lib/financials.js'
 import { alignedReturns, regressStats } from '../lib/regress.js'
@@ -24,7 +24,10 @@ import { Marquee } from '../components/Marquee.jsx'
 import { getLocale, tl, t as tt } from '../lib/i18n.js'
 import { Fig, FlashMetric, FlashPrice } from '../components/Fig.jsx'
 import { Loading } from '../components/Loading.jsx'
-import { watch, unwatch } from '../lib/watchlist.js'
+import { getWatchlist, watch, unwatch } from '../lib/watchlist.js'
+import { isTypingTarget } from '../lib/keys.js'
+import { techBadges } from '../lib/badges.js'
+import { quoteSpread } from '../lib/dashboardRows.js'
 import { useWatchlist } from '../hooks.js'
 import { getCached } from '../lib/feed.js'
 import { fetchEarningsDate, peekEarningsDate } from '../lib/fundamentals.js'
@@ -42,6 +45,47 @@ function consumePrefill(key) {
     if (v) sessionStorage.removeItem(key)
     return v
   } catch { return null }
+}
+
+// Wire event type → the three-letter code the tape and the chart markers both
+// speak. Shared so a marker can never disagree with the row beneath it.
+const WIRE_CODE = {
+  earnings_release: 'ERN', filing: 'FIL', headline: 'NWS', macro_print: 'ECO',
+  price_move: 'PX', digest: 'DIG', transcript_chunk: 'LIV', brief: 'BRF',
+}
+
+/** The last events fragwire caught on a symbol, fetched once per symbol and
+ *  shared by the mini tape and the overview chart's markers. */
+function useSymbolWire(symbol) {
+  const [rows, setRows] = useState(() => peekSymbolWire(symbol) ?? null)
+  const base = wireUrl()
+  useEffect(() => {
+    let dead = false
+    setRows(peekSymbolWire(symbol) ?? null)
+    if (!base || !symbol) return undefined
+    fetchSymbolWire(base, symbol)
+      .then((events) => { if (!dead) setRows(events) })
+      .catch(() => { if (!dead) setRows([]) })
+    return () => { dead = true }
+  }, [symbol, base])
+  return base ? rows : null
+}
+
+// The book moves on fills, not on tab flips — one in-flight pull is shared by
+// every research header for a minute (portfolio.jsx owns the same endpoint).
+const POSITIONS_TTL = 60_000
+let positionsCache = null
+
+function fetchPositions() {
+  const base = wireUrl()
+  if (!base) return Promise.resolve([])
+  if (positionsCache && Date.now() - positionsCache.ts < POSITIONS_TTL) return positionsCache.value
+  const value = fetch(`${base.replace(/\/$/, '')}/api/portfolio`, { signal: AbortSignal.timeout(10_000) })
+    .then((r) => r.json())
+    .then((out) => (out.ok ? out.positions || [] : []))
+    .catch(() => [])
+  positionsCache = { ts: Date.now(), value }
+  return value
 }
 
 /** Snapshot whatever the page already knows about a symbol into a memo
@@ -117,7 +161,7 @@ const OV_TYPE_KEY = 'research_ov_type'
 const OV_TYPES = ['candles', 'line', 'area']
 
 function Candles({ bars, warmPad, intraday, ticks, tick, onTick, rangeKey, onRange,
-                   ext = false, onExt, canExt = false }) {
+                   ext = false, onExt, canExt = false, events = null }) {
   const el = useRef(null)
   const chartRef = useRef(null)
   const legendRef = useRef(null)
@@ -305,6 +349,36 @@ function Candles({ bars, warmPad, intraday, ticks, tick, onTick, rangeKey, onRan
     } catch { /* pane sizing is garnish */ }
     c.chart.timeScale().fitContent()
   }, [bars, warmPad, ov, ctype])
+
+  // Wire events pinned to the price line. lightweight-charts places a marker
+  // by matching the series' own time scale, so each event snaps back to the
+  // last bar at or before it; anything older than the window is dropped
+  // rather than thrown (2026-08-10).
+  useEffect(() => {
+    const c = chartRef.current
+    if (!c) return
+    const times = bars?.map((b) => b.time) || []
+    const marks = []
+    for (const e of events || []) {
+      const ts = Number(e?.ts_event)
+      if (!times.length || !Number.isFinite(ts) || ts < times[0]) continue
+      let lo = 0; let hi = times.length - 1; let at = -1
+      while (lo <= hi) {
+        const mid = (lo + hi) >> 1
+        if (times[mid] <= ts) { at = mid; lo = mid + 1 } else hi = mid - 1
+      }
+      if (at < 0) continue
+      marks.push({
+        time: times[at], position: 'aboveBar', color: '#79828d',
+        shape: 'circle', text: WIRE_CODE[e.type] || 'NWS',
+      })
+    }
+    marks.sort((a, b) => a.time - b.time)
+    try {
+      c.markers ||= createSeriesMarkers(c.series)
+      c.markers.setMarkers(marks)
+    } catch { /* series type without marker support — the chart is fine bare */ }
+  }, [bars, events, ctype, intraday])
 
   return (
     <div>
@@ -1727,7 +1801,11 @@ function SymbolWireView({ symbol }) {
 function DesCell({ n, label, value, tone, big }) {
   return (
     <div class="flex flex-col gap-0.5 px-2.5 py-1.5 min-w-0">
-      <span class="text-[8.5px] text-muted uppercase tracking-wider truncate">{label}</span>
+      {/* the cell number was passed in from the start but never drawn — it's
+          the DES grid's coordinate, dimmer than the label it prefixes */}
+      <span class="text-[8.5px] text-muted uppercase tracking-wider truncate">
+        {n != null && <span class="text-muted/50">{n} </span>}{label}
+      </span>
       <span class={`font-mono min-w-0 truncate ${big ? 'text-[14px] font-semibold' : 'text-[12.5px] font-medium'} ${tone || 'text-ink'}`} title={value ?? ''}><Fig v={value} /></span>
     </div>
   )
@@ -1774,6 +1852,12 @@ function DesBand({ symbol, bars }) {
   const ytdFull = yFirst && price != null ? ((price / yFirst.close) - 1) * 100 : null
   const wkPos = f?.fiftyTwoWeekHigh != null && f?.fiftyTwoWeekLow != null && price != null
     ? (price - f.fiftyTwoWeekLow) / (f.fiftyTwoWeekHigh - f.fiftyTwoWeekLow) : null
+  // spread and drawdown-from-high both already have one implementation each
+  // (dashboardRows / badges) — the band reads them, it doesn't re-derive them
+  const spread = quoteSpread(q)
+  const badges = yr?.bars?.length
+    ? techBadges({ closes: yr.bars.map((b) => b.close), volumes: yr.bars.map((b) => b.volume) })
+    : null
   return (
     <div class="border-t border-line grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 divide-x divide-line select-none">
       <DesCell n={1} label={tl('Px / Chg')} big
@@ -1844,6 +1928,11 @@ function DesBand({ symbol, bars }) {
           ? `${fmtRatio(f?.pegRatio)} / ${fmtFracPct(f?.payoutRatio)}` : null} />
       <DesCell n={30} label="Div rate"
         value={f?.dividendRate != null ? fmtPrice(f.dividendRate) : '—'} />
+      <DesCell n={31} label={tl('Bid/Ask · SPR')}
+        value={spread != null ? `${fmtPriceBare(q.bid)} / ${fmtPriceBare(q.ask)} · ${fmtPriceBare(spread)}` : null} />
+      <DesCell n={32} label={tl('% off 52w high')}
+        value={badges?.offHigh != null ? fmtPct(badges.offHigh) : null}
+        tone={badges?.offHigh != null && badges.offHigh > -5 ? 'text-up' : 'text-ink-2'} />
     </div>
   )
 }
@@ -1968,22 +2057,9 @@ function SymbolPrompt() {
 
 // Dense symbol tape under the DES band — the overview's dead zone becomes
 // the last 10 things fragwire caught on this name. Hidden when no wire.
-function WireMini({ symbol }) {
-  const [rows, setRows] = useState(() => peekSymbolWire(symbol) ?? null)
-  const base = wireUrl()
-  useEffect(() => {
-    let dead = false
-    setRows(peekSymbolWire(symbol) ?? null)
-    if (!base) return
-    fetchSymbolWire(base, symbol)
-      .then((events) => { if (!dead) setRows(events) })
-      .catch(() => { if (!dead) setRows([]) })
-    return () => { dead = true }
-  }, [symbol, base])
-  if (!base || !rows?.length) return null
-  const CODE = { earnings_release: 'ERN', filing: 'FIL', headline: 'NWS',
-    macro_print: 'ECO', price_move: 'PX', digest: 'DIG',
-    transcript_chunk: 'LIV', brief: 'BRF' }
+function WireMini({ symbol, rows }) {
+  if (!wireUrl() || !rows?.length) return null
+  const CODE = WIRE_CODE
   return (
     <div class="border-t border-line">
       <div class="flex items-baseline gap-2 px-3 pt-1.5 pb-0.5">
@@ -1992,7 +2068,10 @@ function WireMini({ symbol }) {
       </div>
       <div class="font-mono text-[11px] pb-1">
         {rows.map((e, i) => (
-          <div key={e.id} class="grid grid-cols-[18px_78px_30px_1fr] gap-x-2 items-baseline px-3 py-[2px] hover:bg-surface-3">
+          // the row is the story's front door (#/wire/<id>); the ↗ still goes
+          // to the publisher, so both destinations stay one click away
+          <a key={e.id} href={`#/wire/${e.id}`}
+            class="grid grid-cols-[18px_78px_30px_1fr] gap-x-2 items-baseline px-3 py-[2px] hover:bg-surface-3">
             <span class="text-muted text-[10px] text-right">{i + 1})</span>
             <span class="text-muted text-[10.5px] whitespace-nowrap">
               {new Date(e.ts_event * 1000).toLocaleDateString(getLocale() === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric' }).toLowerCase()}
@@ -2002,8 +2081,16 @@ function WireMini({ symbol }) {
             <span class={`text-[9.5px] tracking-wider ${e.type === 'earnings_release' || e.type === 'price_move' ? 'text-accent font-semibold' : 'text-muted'}`}>
               {CODE[e.type] || (e.type || '').slice(0, 3).toUpperCase()}
             </span>
-            <span class="text-ink-2 truncate min-w-0" title={e.headline}>{e.headline}</span>
-          </div>
+            <span class="text-ink-2 truncate min-w-0" title={e.headline}>
+              {e.headline}
+              {e.url && (
+                <a href={e.url} target="_blank" rel="noopener"
+                  onClick={(ev) => ev.stopPropagation()}
+                  title={e.url}
+                  class="ml-1 text-muted hover:text-accent">↗</a>
+              )}
+            </span>
+          </a>
         ))}
       </div>
     </div>
@@ -2076,6 +2163,52 @@ function WatchStar({ symbol }) {
   )
 }
 
+/** Broker position in the symbol on the header line. Silent when flat, when
+ *  the endpoint is down, or when there's no wire at all. */
+function PositionChip({ symbol, price }) {
+  const [pos, setPos] = useState(null)
+  useEffect(() => {
+    let dead = false
+    setPos(null)
+    fetchPositions().then((rows) => {
+      if (dead) return
+      const hit = rows.find((p) => String(p.symbol || '').toUpperCase() === symbol.toUpperCase()
+        && Number(p.shares))
+      setPos(hit || null)
+    })
+    return () => { dead = true }
+  }, [symbol])
+  if (!pos) return null
+  const shares = Number(pos.shares)
+  const avg = Number(pos.avg_cost)
+  const mark = pos.market_price ?? price ?? null
+  const pct = avg > 0 && mark != null ? ((mark / avg) - 1) * 100 : null
+  return (
+    <span class="font-mono text-[10px] px-1.5 py-0.5 rounded border border-line text-muted whitespace-nowrap">
+      {Math.round(shares).toLocaleString('en-US')} sh · avg {fmtPriceBare(avg)}
+      {pct != null && (
+        <> · <span class={pct >= 0 ? 'text-up' : 'text-down'}>{fmtPct(pct)}</span></>
+      )}
+    </span>
+  )
+}
+
+/** Hand the current symbol + price to the alerts form (mirrors chat_prefill). */
+function AlertButton({ symbol, price }) {
+  const go = () => {
+    try {
+      sessionStorage.setItem('alert_prefill', JSON.stringify({
+        symbol, value: price != null ? Number(Number(price).toFixed(2)) : null,
+      }))
+    } catch { /* storage unavailable — the form just opens empty */ }
+    location.hash = '#/alerts'
+  }
+  return (
+    <button onClick={go} title={tl('alert on this symbol')}
+      class="text-[15px] leading-none text-muted hover:text-accent">⏰</button>
+  )
+}
+
 export function Research({ route }) {
   const symbol = route.sub
   useEffect(() => {
@@ -2128,6 +2261,12 @@ export function Research({ route }) {
   // Header quote comes from the live 1D feed — a multi-month chart fetch
   // reports change vs the range START (chartPreviousClose), not yesterday.
   const live = useQuotes(symbol ? [symbol] : [])
+  // one wire pull feeds both the mini tape and the chart's markers
+  const wireRows = useSymbolWire(symbol)
+  // the mobile rail's state lives above the no-symbol early return so the
+  // hook order can't shift when the landing page renders instead
+  const [railOpen, setRailOpen] = useState(false)
+  useEscape(() => setRailOpen(false), railOpen)
 
   useEffect(() => {
     if (!symbol) return
@@ -2156,6 +2295,19 @@ export function Research({ route }) {
       if (e.target instanceof HTMLInputElement
           || e.target instanceof HTMLTextAreaElement
           || e.metaKey || e.ctrlKey || e.altKey) return
+      // [ / ] walk the watchlist without leaving the subview you're reading —
+      // cycling to the next name on the financials tab lands on financials
+      if (e.key === '[' || e.key === ']') {
+        if (isTypingTarget(e.target)) return
+        const list = getWatchlist()
+        if (!list.length) return
+        const i = list.indexOf(symbol.toUpperCase())
+        const next = i < 0
+          ? (e.key === ']' ? list[0] : list[list.length - 1])
+          : list[(i + (e.key === ']' ? 1 : -1) + list.length) % list.length]
+        location.hash = `#/research/${next.toLowerCase()}${route.view ? '/' + route.view : ''}`
+        return
+      }
       if (!/^[0-9]$/.test(e.key)) return
       const i = e.key === '0' ? 9 : Number(e.key) - 1
       if (i >= VIEWS.length) return
@@ -2164,14 +2316,13 @@ export function Research({ route }) {
     }
     addEventListener('keydown', onKey)
     return () => removeEventListener('keydown', onKey)
-  }, [symbol])
+  }, [symbol, route.view])
 
   if (!symbol) return <SymbolPrompt />
 
   const q = live[symbol]?.quote
   const up = (q?.pct ?? 0) >= 0
   const extUp = (q?.extPct ?? 0) >= 0
-  const [railOpen, setRailOpen] = useState(false)
   const rail = (
     <>
       <AiReport
@@ -2191,6 +2342,8 @@ export function Research({ route }) {
       <div class="flex items-baseline gap-3 px-1 pb-2 flex-wrap">
         <h1 class="font-tick font-bold text-lg text-ink">{symbol}</h1>
         <WatchStar symbol={symbol} />
+        <AlertButton symbol={symbol} price={q?.price} />
+        <PositionChip symbol={symbol} price={q?.price} />
         {q && (
           <>
             {/* the name owns the middle slack; the quote cluster is one
@@ -2249,6 +2402,9 @@ export function Research({ route }) {
           { id: 'ownership', label: tl('Ownership'), href: `#/research/${symbol.toLowerCase()}/ownership` },
           { id: 'filings', label: tl('Filings'), href: `#/research/${symbol.toLowerCase()}/filings` },
           { id: 'profile', label: tl('Profile'), href: `#/research/${symbol.toLowerCase()}/profile` },
+          // route.js has accepted /dividends since it shipped; the tab strip
+          // never listed it, so the view was deep-link-only (2026-08-10)
+          { id: 'dividends', label: tl('Dividends'), href: `#/research/${symbol.toLowerCase()}/dividends` },
         ].map((tab, ti) => (
           <a
             key={tab.label}
@@ -2263,8 +2419,10 @@ export function Research({ route }) {
                 the accent-coloured "1)" bolded along with it and the label never
                 looked any heavier than its own prefix (Jeff 2026-08-07). The
                 digit stays at 400 so the word reads as the label and the number
-                as the shortcut hint. */}
-            <span class="font-normal text-accent">{(ti + 1) % 10})</span>{' '}
+                as the shortcut hint. Past the tenth tab there is no digit left
+                to spend — (ti+1)%10 would re-print "1)" and promise a key that
+                lands somewhere else — so those tabs carry the label alone. */}
+            {ti < 10 && <><span class="font-normal text-accent">{(ti + 1) % 10})</span>{' '}</>}
             <span class="font-semibold">{tab.label}</span>
           </a>
         ))}
@@ -2304,7 +2462,8 @@ export function Research({ route }) {
               <Candles bars={hist.bars} warmPad={warmPad} intraday={hist.intraday}
                 ticks={activeRange?.ticks} tick={tick || activeRange?.interval} onTick={setTick}
                 rangeKey={rangeKey} onRange={selectRange}
-                ext={ovExt} onExt={setOvExt} canExt={!!activeRange?.intraday} />
+                ext={ovExt} onExt={setOvExt} canExt={!!activeRange?.intraday}
+                events={wireRows} />
             ) : (
               <div class="h-[380px] flex items-center justify-center font-mono text-[11px] text-muted">
                 {err ? 'no chart' : 'loading…'}
@@ -2312,7 +2471,7 @@ export function Research({ route }) {
             )}
             </div>
             <DesBand symbol={symbol} bars={hist?.bars} />
-            <WireMini symbol={symbol} />
+            <WireMini symbol={symbol} rows={wireRows} />
             {/* when the right rail runs longer, the column keeps its ruling
                 instead of ending mid-air (Jeff 2026-08-04) */}
             <div class="flex-1 min-h-0 border-t border-line bg-[repeating-linear-gradient(180deg,transparent,transparent_27px,var(--color-line)_27px,var(--color-line)_28px)]" />

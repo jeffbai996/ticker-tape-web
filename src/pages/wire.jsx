@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import {
   wireUrl, setWireUrl, fragwireHome, fetchEvents, fetchUpdates, fetchToday, fetchMeta,
   demoBackfill, demoEvent, demoToday, rankEvents, collapseSessions, clusterStories,
-  srcCred, evHeadline, evBody,
+  srcCred, evHeadline, evBody, matchesWireQuery,
 } from '../lib/wire.js'
 import { IS_PRIVATE_BUILD } from '../lib/nav.js'
+import { prefetchSymbol } from '../lib/history.js'
+import { useEscape } from '../hooks.js'
 import { Empty, Loading } from '../components/Loading.jsx'
 import { getLocale, t as tt, tl } from '../lib/i18n.js'
 
@@ -35,6 +37,19 @@ function TierBadge({ tier }) {
         : tier === 2 ? 'T2 — core thesis story' : 'T1 — touches the sector')}>
       T{tier}
     </span>
+  )
+}
+
+/** A tagged symbol is a route into research, not decoration. The row itself
+ *  toggles open on click, so each link has to stop the event escaping. */
+function SymbolLink({ sym }) {
+  return (
+    <a href={`#/research/${sym.toLowerCase()}`}
+       onClick={(e) => e.stopPropagation()}
+       onMouseEnter={() => prefetchSymbol(sym)}
+       class="hover:no-underline">
+      {sym}
+    </a>
   )
 }
 
@@ -191,7 +206,8 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
         <span class={hot ? '' : 'text-muted'}>{rowTime(ev.ts_event)}</span>
         {(ev.symbols || []).length ? (
           <span class={`truncate ${hot ? 'font-semibold' : 'text-accent font-medium'}`}>
-            {ev.symbols.join(' ')}
+            {/* array, not a fragment: the key has to ride the link itself */}
+            {ev.symbols.map((sym, i) => [i > 0 ? ' ' : null, <SymbolLink key={sym} sym={sym} />])}
           </span>
         ) : (
           <span class={`truncate text-[10.5px] ${hot ? '' : 'text-muted'}`}>{sourceTag(ev)}</span>
@@ -366,7 +382,9 @@ function Rail({ today, now, events, watchset, onHide }) {
               <span class="text-accent whitespace-nowrap">{countdown(row.ts - now)}</span>
             </div>
             <div class="text-[9.5px] uppercase tracking-wider text-muted">
-              {row.kind}{row.symbol ? ` · ${row.symbol}` : ''} · {hhmmss(row.ts).slice(0, 5)}
+              {row.kind}
+              {row.symbol && <> · <SymbolLink sym={row.symbol} /></>}
+              {' · '}{hhmmss(row.ts).slice(0, 5)}
             </div>
           </div>
         ))}
@@ -390,7 +408,7 @@ function Rail({ today, now, events, watchset, onHide }) {
                 s.status === 'capturing' ? 'text-accent' : s.status === 'done' ? 'text-up' : 'text-muted'
               }`}>{tl(s.status)}</span>
               <span class="text-ink-2 truncate" title={s.label}>
-                {s.symbol}{s.label ? ` · ${s.label}` : ''}
+                {s.symbol ? <SymbolLink sym={s.symbol} /> : null}{s.label ? ` · ${s.label}` : ''}
               </span>
             </div>
           ))}
@@ -419,13 +437,19 @@ function Rail({ today, now, events, watchset, onHide }) {
   )
 }
 
+// Expanded rows are session state, not component state: leaving the wire for a
+// research page and coming back used to collapse whatever you were reading
+// (2026-08-10). Module-level, so it dies with the tab and not before.
+const openStore = new Set()
+
 export function Wire({ route }) {
   const [endpoint, setEndpoint] = useState(() => wireUrl())
   const [draft, setDraft] = useState(() => wireUrl())
   const [events, setEvents] = useState([])
   const [hotIds, setHotIds] = useState(new Set())
-  const [openIds, setOpenIds] = useState(new Set())
-  const [filter, setFilter] = useState('')
+  const [openIds, setOpenIdsRaw] = useState(() => new Set(openStore))
+  const [filter, setFilterRaw] = useState(() => localStorage.getItem('tape-wire-filter') || '')
+  const [query, setQueryRaw] = useState(() => localStorage.getItem('tape-wire-filter-text') || '')
   const [mode, setMode] = useState(() => localStorage.getItem('tape-wire-mode') || 'top')
   // rail off = full-width reading; sticky, it's a layout preference
   const [rail, setRail] = useState(() => localStorage.getItem('tape-wire-rail') !== '0')
@@ -438,6 +462,28 @@ export function Wire({ route }) {
   // #/wire/<id> — a tape headline links at its own story, not the page
   const targetId = route?.sub ? Number(route.sub) : null
   const landedRef = useRef(null)
+  // one archive read per missed deep link, whatever the SSE feed does after
+  const missRef = useRef(null)
+  const [missing, setMissing] = useState(null)
+
+  // Same shape as the raw setters (value or updater), so callers below read as
+  // plain state — they just also write through to the store / localStorage.
+  const setOpenIds = (next) => {
+    const value = typeof next === 'function' ? next(new Set(openStore)) : next
+    openStore.clear()
+    for (const k of value) openStore.add(k)
+    setOpenIdsRaw(value)
+  }
+  const setFilter = (f) => {
+    setFilterRaw(f)
+    localStorage.setItem('tape-wire-filter', f)
+  }
+  const setQuery = (q) => {
+    setQueryRaw(q)
+    localStorage.setItem('tape-wire-filter-text', q)
+  }
+
+  useEscape(() => setOpenIds(new Set()), openIds.size > 0)
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now() / 1000), 30_000)
@@ -539,6 +585,7 @@ export function Wire({ route }) {
   const typeOf = (ev) => (ev.type === 'live_call' ? 'digest' : ev.type)
   const filtered = clusterStories(collapseSessions(events, now), now)
     .filter((ev) => !wanted || wanted.includes(typeOf(ev)) || wanted.includes(ev.type))
+    .filter((ev) => matchesWireQuery(ev, query))
   const shown = mode === 'top'
     ? rankEvents(filtered, watchset, now)
     : filtered.slice().sort((a, b) => (b.is_live ? 1 : 0) - (a.is_live ? 1 : 0) || b.id - a.id)
@@ -562,17 +609,41 @@ export function Wire({ route }) {
   // scroll it into view. Once per id — re-renders from the SSE feed must not
   // yank the page back after the reader has scrolled away.
   useEffect(() => {
-    if (targetId == null || landedRef.current === targetId) return
-    if (!events.some((ev) => ev.id === targetId)) return
-    landedRef.current = targetId
-    setFilter('')
-    setMode('all')
-    setOpenIds((cur) => new Set(cur).add(targetId))
-    requestAnimationFrame(() => {
-      document.getElementById(`ev-${targetId}`)
-        ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-    })
-  }, [targetId, events])
+    if (targetId == null) {
+      setMissing((cur) => (cur == null ? cur : null))   // back to the plain feed
+      return
+    }
+    if (landedRef.current === targetId) return
+    if (events.some((ev) => ev.id === targetId)) {
+      landedRef.current = targetId
+      setMissing((cur) => (cur === targetId ? null : cur))
+      setFilter('')
+      setQuery('')
+      setMode('all')
+      setOpenIds((cur) => new Set(cur).add(targetId))
+      requestAnimationFrame(() => {
+        document.getElementById(`ev-${targetId}`)
+          ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      })
+      return
+    }
+    // Older than the 300-row buffer isn't gone, it's just not loaded. since_id
+    // answers with the first row ABOVE it, so since_id = target-1 lands exactly
+    // on the story when it still exists (verified against the API 2026-08-10);
+    // anything else back means it was purged, and the reader gets told.
+    if (!events.length || !endpoint || missRef.current === targetId) return
+    missRef.current = targetId
+    fetchEvents(endpoint, { sinceId: targetId - 1, limit: 1 })
+      .then((out) => {
+        const row = (out.events || [])[0]
+        if (row && row.id === targetId) {
+          setEvents((cur) => (cur.some((ev) => ev.id === targetId) ? cur : [...cur, row]))
+        } else {
+          setMissing(targetId)
+        }
+      })
+      .catch(() => setMissing(targetId))
+  }, [targetId, events, endpoint])
 
   const setModePersist = (m) => {
     setMode(m)
@@ -668,7 +739,19 @@ export function Wire({ route }) {
             {tl(f.label)}
           </button>
         ))}
+        <input
+          data-wire-query
+          class="bg-surface-2 border border-line rounded-md px-2 py-0.5 font-mono text-[11px] text-ink outline-none focus:border-accent w-36"
+          placeholder={tl('filter…')}
+          value={query}
+          onInput={(e) => setQuery(e.currentTarget.value)}
+        />
       </div>
+      {missing != null && (
+        <p class="font-mono text-[10.5px] text-muted px-1">
+          {tt('wire.story_outside_buffer', { id: missing })}
+        </p>
+      )}
       <div class="flex flex-1 min-h-0 gap-2 items-stretch max-lg:flex-col max-lg:flex-none">
         <div data-wire-feed class="flex-1 min-w-0 min-h-0 border border-line rounded-lg overflow-y-auto overscroll-contain bg-surface max-lg:h-[55vh] max-lg:min-h-[360px] max-lg:flex-none">
           {shown.length === 0 && (
