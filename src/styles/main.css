@@ -506,12 +506,10 @@ button:hover .burger path:nth-child(2) { transform: scaleX(.55); }
 @media (prefers-reduced-motion: reduce) {
   .time-wheel-face, .time-wheel-old, .time-wheel-new { transition: none !important; }
 }
-/* Roll animation OFF everywhere (2026-08-11): the .32s transform burst fires
-   every second and under iPadOS zoom each burst nudges the whole magnified
-   view — Jeff's recording showed spike pairs 380ms apart on a strict 1s
-   period. pointer:coarse alone missed iPad-with-trackpad, so the digits now
-   swap plainly for everyone until a shimmer-free rolodex exists. */
-.time-wheel-face, .time-wheel-old, .time-wheel-new { transition: none !important; }
+/* Rolodex restored 2026-08-11 (it was collateral of a wrong shimmer theory):
+   with the digit boxes now FIXED-width, the roll is a transform inside an
+   overflow:hidden box — compositor-only, physically unable to touch layout.
+   The jitter fix was the boxes, never the roll. */
 
 /* Anthropic Sans (Jeff 2026-08-03). Shipped in public/fonts/ for BOTH builds
    since 2026-08-06 (Jeff: "put anth sans on the github, i can drop it later")
