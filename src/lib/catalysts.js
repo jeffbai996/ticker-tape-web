@@ -3,10 +3,12 @@
 // with the same countdown semantics. Per-browser localStorage, like the
 // watchlist and alerts; nothing here ships in the build.
 
+import { SYMBOL_RE } from './symbols.js'
+
 const KEY = 'catalysts_v1'
 const MAX = 100
+const MAX_LABEL = 120
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
-const SYMBOL_RE = /^[A-Z0-9.^=-]{1,12}$/
 
 export const CATALYST_TYPES = ['product', 'conf', 'policy', 'capex', 'macro', 'other']
 
@@ -39,6 +41,9 @@ export function addCatalyst({ date, symbol, type = 'other', label }) {
   }
   const lbl = (label || '').trim()
   if (!lbl) throw new Error('label required')
+  // Clipping at 120 stored a label the user never typed and the form had no
+  // way to say so; every other constraint here reports itself, so this does.
+  if (lbl.length > MAX_LABEL) throw new Error(`label too long (${MAX_LABEL} max)`)
   if (!CATALYST_TYPES.includes(type)) {
     throw new Error(`type must be one of: ${CATALYST_TYPES.join(', ')}`)
   }
@@ -53,7 +58,7 @@ export function addCatalyst({ date, symbol, type = 'other', label }) {
     date,
     symbol: sym,
     type,
-    label: lbl.slice(0, 120),
+    label: lbl,
   }
   save([...list, cat])
   return cat

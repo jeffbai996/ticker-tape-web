@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import {
   addWatchlistSymbol, createWatchlist, getWatchlistById, loadWatchlists,
   onWatchlistsChange, removeWatchlist, removeWatchlistSymbol, renameWatchlist,
+  isNamedWatchlistFull, MAX_WATCHLIST_SYMBOLS,
 } from '../../src/lib/watchlists.js'
 
 beforeEach(() => localStorage.clear())
@@ -14,6 +15,18 @@ describe('named watchlists', () => {
     expect(addWatchlistSymbol(list.id, 'NVDA')).toEqual(['SNDK', 'NVDA'])
     expect(getWatchlistById(list.id).symbols).toEqual(['SNDK', 'NVDA'])
     expect(removeWatchlistSymbol(list.id, 'sndk')).toEqual(['NVDA'])
+  })
+
+  it('reports a full list so the add UI can say why it refused', () => {
+    const list = createWatchlist('Full house',
+      Array.from({ length: MAX_WATCHLIST_SYMBOLS }, (_, i) => `TST${i}`))
+    expect(list.symbols).toHaveLength(MAX_WATCHLIST_SYMBOLS)
+    expect(isNamedWatchlistFull(list.id)).toBe(true)
+    expect(addWatchlistSymbol(list.id, 'NVDA')).toBeNull()
+
+    const room = createWatchlist('Room to spare', ['NVDA'])
+    expect(isNamedWatchlistFull(room.id)).toBe(false)
+    expect(isNamedWatchlistFull('no-such-list')).toBe(false)
   })
 
   it('uses stable unique ids and rejects duplicate names', () => {

@@ -134,11 +134,6 @@ html, body {
   display: none;
 }
 
-.sector-scroll-fade {
-  background: var(--color-surface-0);
-  border-left: 1px solid var(--color-line);
-}
-
 /* Watchlist toolbar controls share one slightly lifted neutral surface. The
    extra contrast makes the controls findable without turning them into three
    amber sirens competing with actual market state. */
