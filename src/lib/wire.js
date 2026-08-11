@@ -269,12 +269,19 @@ export function rankEvents(events, watchset, now = Date.now() / 1000) {
  * Free-text feed filter. A symbol match is EXACT — "am" as a substring would
  * drag in half the tape via AMD/AMZN — while anything else falls through to a
  * headline substring, so a phrase like "capex" still works (2026-08-10).
+ *
+ * The filter has to search what the reader can SEE. On zh the rows paint
+ * headline_zh/body_zh, so an English-only haystack meant typing the words on
+ * screen returned nothing; the localized text joins the search, and the
+ * original headline stays in it so a ticker-free English phrase still hits.
  */
-export function matchesWireQuery(ev, query) {
+export function matchesWireQuery(ev, query, locale) {
   const q = String(query || '').trim().toLowerCase()
   if (!q) return true
   if ((ev.symbols || []).some((s) => String(s).toLowerCase() === q)) return true
-  return String(ev.headline || '').toLowerCase().includes(q)
+  const hay = [ev.headline]
+  if (locale && locale !== 'en') hay.push(evHeadline(ev, locale), evBody(ev, locale))
+  return hay.some((s) => String(s || '').toLowerCase().includes(q))
 }
 
 // ── synthetic rail data for demo mode ──
@@ -367,14 +374,30 @@ function srcRank(ev) {
   return 1
 }
 
+// Reprints are not a headline-only problem: a wire, an aggregator and the
+// filing agent all print the same 8-K, and the same CPI number arrives from
+// three macro desks. Clustering runs PER TYPE — an ERN and the NWS write-up
+// about it are different reads and must stay two rows.
+const CLUSTER_TYPES = new Set(['headline', 'filing', 'macro_print', 'earnings_release'])
+
 export function clusterStories(events, now = Date.now() / 1000) {
-  const headlines = []
+  const byType = new Map()
   const rest = []
   for (const ev of events) {
-    (ev.type === 'headline' ? headlines : rest).push(ev)
+    if (!CLUSTER_TYPES.has(ev.type)) { rest.push(ev); continue }
+    if (!byType.has(ev.type)) byType.set(ev.type, [])
+    byType.get(ev.type).push(ev)
   }
+  for (const group of byType.values()) rest.push(...clusterGroup(group))
+  return rest
+}
+
+/** One type's worth of events, collapsed: singletons come back untouched
+ *  (same object identity), reprints come back as one row carrying the rest. */
+function clusterGroup(events) {
+  const out = []
   const clusters = []          // [{tokens, members}]
-  for (const ev of headlines) {
+  for (const ev of events) {
     const toks = storyTokens(ev.headline)
     let home = null
     if (toks.size >= 3) {
@@ -397,7 +420,7 @@ export function clusterStories(events, now = Date.now() / 1000) {
   }
   for (const c of clusters) {
     if (c.members.length === 1) {
-      rest.push(c.members[0])
+      out.push(c.members[0])
       continue
     }
     // ties go to a DIRECT link over an aggregator redirect
@@ -405,7 +428,7 @@ export function clusterStories(events, now = Date.now() / 1000) {
     const face = c.members.slice().sort((a, b) =>
       srcRank(b) - srcRank(a) || direct(b) - direct(a) || b.id - a.id)[0]
     const latest = c.members.reduce((a, b) => (b.id > a.id ? b : a))
-    rest.push({
+    out.push({
       ...face,
       id: latest.id,
       ts_event: latest.ts_event, ts_seen: latest.ts_seen,
@@ -415,7 +438,7 @@ export function clusterStories(events, now = Date.now() / 1000) {
       },
     })
   }
-  return rest
+  return out
 }
 
 /**

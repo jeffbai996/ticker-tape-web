@@ -458,6 +458,11 @@ export function Wire({ route }) {
   const [today, setToday] = useState(null)
   const [watchset, setWatchset] = useState(new Set())
   const [now, setNow] = useState(Date.now() / 1000)
+  // Bumping this re-runs the connect effect from scratch (backfill + a fresh
+  // EventSource). `attempts` only feeds the backoff, so it's a ref — changing
+  // it must not repaint the feed.
+  const [reconnect, setReconnect] = useState(0)
+  const attemptsRef = useRef(0)
   const esRef = useRef(null)
   // #/wire/<id> — a tape headline links at its own story, not the page
   const targetId = route?.sub ? Number(route.sub) : null
@@ -500,8 +505,24 @@ export function Wire({ route }) {
   useEffect(() => {
     let cancelled = false
     let revisionTimer = null
+    let reArmTimer = null
     let revisionSince = 0
     if (esRef.current) { esRef.current.close(); esRef.current = null }
+
+    // EventSource retries on its own only while the socket keeps failing in a
+    // way it likes; a dead host, a 404 stream or a laptop that woke up to a
+    // closed connection leaves it permanently CLOSED, and the page just sat
+    // red until a reload. Rebuild the whole thing on a capped backoff so the
+    // wire comes back by itself, and let the brow's button jump the queue.
+    const reArm = () => {
+      if (cancelled || reArmTimer) return
+      const wait = Math.min(30_000, 3_000 * 2 ** attemptsRef.current)
+      attemptsRef.current += 1
+      reArmTimer = setTimeout(() => {
+        reArmTimer = null
+        if (!cancelled) setReconnect((n) => n + 1)
+      }, wait)
+    }
 
     if (!endpoint) {
       setState('demo')
@@ -558,8 +579,8 @@ export function Wire({ route }) {
         pollRail()
         const es = new EventSource(`${endpoint}/api/stream?since_id=${out.latest_id || 0}`)
         esRef.current = es
-        es.onopen = () => setState('live')
-        es.onerror = () => setState('error')
+        es.onopen = () => { attemptsRef.current = 0; setState('live') }
+        es.onerror = () => { setState('error'); reArm() }
         es.addEventListener('wire', (msg) => {
           const ev = JSON.parse(msg.data)
           setEvents((cur) => [...cur.slice(-399), ev])
@@ -570,22 +591,24 @@ export function Wire({ route }) {
         if (cancelled) return
         setState('error')
         setError(String(err.message || err))
+        reArm()
       })
     const railTimer = setInterval(pollRail, 30_000)
     return () => {
       cancelled = true
       clearInterval(railTimer)
       if (revisionTimer) clearInterval(revisionTimer)
+      if (reArmTimer) clearTimeout(reArmTimer)
       if (esRef.current) { esRef.current.close(); esRef.current = null }
     }
-  }, [endpoint])
+  }, [endpoint, reconnect])
 
   const wanted = filter ? filter.split(',') : null
   // a session card answers for its audio contents on the type filter
   const typeOf = (ev) => (ev.type === 'live_call' ? 'digest' : ev.type)
   const filtered = clusterStories(collapseSessions(events, now), now)
     .filter((ev) => !wanted || wanted.includes(typeOf(ev)) || wanted.includes(ev.type))
-    .filter((ev) => matchesWireQuery(ev, query))
+    .filter((ev) => matchesWireQuery(ev, query, getLocale()))
   const shown = mode === 'top'
     ? rankEvents(filtered, watchset, now)
     : filtered.slice().sort((a, b) => (b.is_live ? 1 : 0) - (a.is_live ? 1 : 0) || b.id - a.id)
@@ -597,6 +620,13 @@ export function Wire({ route }) {
     } catch (err) {
       setError(String(err.message || err))
     }
+  }
+
+  // jump the backoff queue: a reader who can see the wire is back should not
+  // have to wait out a 30s timer or reload the page
+  const retryNow = () => {
+    attemptsRef.current = 0
+    setReconnect((n) => n + 1)
   }
 
   const toggleOpen = (id) => setOpenIds((cur) => {
@@ -708,6 +738,13 @@ export function Wire({ route }) {
           </nav>
         )}
         {error && <span class="font-mono text-[11px] text-down truncate">{error}</span>}
+        {state === 'error' && (
+          <button data-wire-retry onClick={retryNow}
+            title={tl('reconnecting on its own — click to try now')}
+            class="shrink-0 px-2 py-0.5 rounded-md border border-down/50 font-sans font-semibold text-[11px] text-down hover:text-ink hover:border-down">
+            {tl('retry')}
+          </button>
+        )}
         <span class="ml-auto" />
         {/* Private build has exactly one wire and it's auto-configured —
             the connect affordance only exists for public demo viewers. */}

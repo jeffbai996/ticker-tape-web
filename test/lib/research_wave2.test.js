@@ -48,8 +48,11 @@ describe('research tabs and keys', () => {
     expect(research).toContain("{ id: 'dividends', label: tl('Dividends')")
   })
 
-  it('stops printing digit prefixes once the speed keys run out', () => {
-    expect(research).toContain('{ti < 10 && <><span class="font-normal text-accent">{(ti + 1) % 10})</span>{\' \'}</>}')
+  // digits carry the first ten tabs, "-" carries the eleventh; past that
+  // there is no key left to promise, so those tabs print no prefix
+  it('stops printing key prefixes once the speed keys run out', () => {
+    expect(research).toContain('{ti < 11 && (')
+    expect(research).toContain('<span class="font-normal text-accent">{ti < 10 ? (ti + 1) % 10 : \'-\'})</span>')
   })
 
   it('cycles the watchlist with [ and ] without leaving the current subview', () => {

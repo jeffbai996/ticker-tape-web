@@ -29,7 +29,7 @@ import { isTypingTarget } from '../lib/keys.js'
 import { techBadges } from '../lib/badges.js'
 import { quoteSpread } from '../lib/dashboardRows.js'
 import { useWatchlist } from '../hooks.js'
-import { getCached } from '../lib/feed.js'
+import { getCached, lastGoodTs } from '../lib/feed.js'
 import { fetchEarningsDate, peekEarningsDate } from '../lib/fundamentals.js'
 import { memoPrompt, BRIEFING_SYSTEM } from '../lib/briefing.js'
 import { AiReport, MdLite } from '../components/AiReport.jsx'
@@ -1748,61 +1748,6 @@ function SymbolNewsView({ symbol, name }) {
   )
 }
 
-function SymbolWireView({ symbol }) {
-  const [rows, setRows] = useState(null)
-  const [err, setErr] = useState('')
-  const base = wireUrl()
-  useEffect(() => {
-    let dead = false
-    setRows(null)
-    setErr('')
-    if (!base) return
-    fetch(`${base.replace(/\/$/, '')}/api/events?symbols=${encodeURIComponent(symbol)}&limit=60&newest=1`,
-          { signal: AbortSignal.timeout(10_000) })
-      .then((r) => r.json())
-      .then((out) => { if (!dead) setRows(out.events || []) })
-      .catch((e) => { if (!dead) setErr(String(e.message || e)) })
-    return () => { dead = true }
-  }, [symbol, base])
-
-  if (!base) {
-    return (
-      <div class="px-1 font-mono text-[11px] text-muted max-w-xl leading-relaxed">
-        {tt('research.no_wire_config', { symbol })}
-      </div>
-    )
-  }
-  if (err) return <div class="px-1 font-mono text-[11px] text-down">{tt('research.wire_unreachable', { error: err })}</div>
-  if (rows === null) return <div class="px-1 font-mono text-[11px] text-muted">{tt('common.loading')}</div>
-  if (!rows.length) return <div class="px-1 font-mono text-[11px] text-muted">{tt('research.nothing_on_wire', { symbol })}</div>
-  const CODE = { earnings_release: 'ERN', filing: 'FIL', headline: 'NWS',
-    macro_print: 'ECO', price_move: 'PX', digest: 'DIG',
-    transcript_chunk: 'LIV', brief: 'BRF' }
-  return (
-    <div class="flex flex-col gap-3 max-w-6xl">
-      <SectionCard title={`FRAGWIRE · ${symbol}`}>
-        <div class="font-mono text-[11.5px]">
-          {rows.map((e) => (
-            <div key={e.id} class="grid grid-cols-[86px_36px_1fr] gap-x-2.5 items-baseline px-3 py-[3px] border-t border-line first:border-0 hover:bg-surface-3">
-              <span class="text-muted whitespace-nowrap">
-                {new Date(e.ts_event * 1000).toLocaleDateString(getLocale() === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric' }).toLowerCase()}
-                {' '}
-                {new Date(e.ts_event * 1000).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', timeZone: 'America/New_York' })}
-              </span>
-              <span class={`text-[10px] tracking-wider ${e.type === 'earnings_release' || e.type === 'price_move' ? 'text-accent font-semibold' : 'text-muted'}`}>
-                {CODE[e.type] || (e.type || '').slice(0, 3).toUpperCase()}
-              </span>
-              {e.url
-                ? <a class="text-ink-2 hover:text-accent truncate" href={e.url} target="_blank" rel="noopener">{e.headline}</a>
-                : <span class="text-ink-2 truncate">{e.headline}</span>}
-            </div>
-          ))}
-        </div>
-      </SectionCard>
-    </div>
-  )
-}
-
 // DES-style stat band under the overview chart — numbered blocks, dense
 // mono, the bloomberg register (Jeff's GSK DES reference, 2026-08-03)
 // numbers are reserved for keyboard targets (tabs); stat cells are read-only
@@ -2217,6 +2162,28 @@ function AlertButton({ symbol, price }) {
   )
 }
 
+/** Dead-feed tell for the quote header. A frozen price looks exactly like a
+ *  quiet one, and the dashboard/sidebar already say so when the sweep stops —
+ *  research was the only place still showing stale numbers straight-faced.
+ *  Own component so its 10s tick can't repaint the whole page. */
+function StaleQuoteTag() {
+  const [, tick] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => tick((n) => n + 1), 10_000)
+    return () => clearInterval(t)
+  }, [])
+  const good = lastGoodTs()
+  if (!good) return null
+  const mins = Math.floor((Date.now() - good) / 60_000)
+  if (mins < 5) return null      // same threshold as the sidebar's banner
+  return (
+    <span class="font-mono text-[10px] text-down whitespace-nowrap"
+      title={tl('quotes stopped updating — the feed is not answering')}>
+      ⚠ {tl('STALE')} {mins < 60 ? `${mins}m` : `${Math.floor(mins / 60)}h`}
+    </span>
+  )
+}
+
 export function Research({ route }) {
   const symbol = route.sub
   useEffect(() => {
@@ -2297,8 +2264,13 @@ export function Research({ route }) {
   // Options. 0 = the tenth tab. Inputs keep their digits.
   useEffect(() => {
     if (!symbol) return
+    // index = the key that reaches it: 1-9, then 0 for the tenth. The strip
+    // has outgrown the digits, so the eleventh tab (dividends) takes "-", the
+    // key sitting right past 0 on every layout — same one-press scheme, and
+    // the tab prints "-)" so the hint still matches the keyboard.
     const VIEWS = [null, 'news', 'intraday', 'options', 'earnings',
-                   'analysts', 'financials', 'ownership', 'filings', 'profile']
+                   'analysts', 'financials', 'ownership', 'filings', 'profile',
+                   'dividends']
     const onKey = (e) => {
       if (e.target instanceof HTMLInputElement
           || e.target instanceof HTMLTextAreaElement
@@ -2316,8 +2288,8 @@ export function Research({ route }) {
         location.hash = `#/research/${next.toLowerCase()}${route.view ? '/' + route.view : ''}`
         return
       }
-      if (!/^[0-9]$/.test(e.key)) return
-      const i = e.key === '0' ? 9 : Number(e.key) - 1
+      if (e.key !== '-' && !/^[0-9]$/.test(e.key)) return
+      const i = e.key === '-' ? 10 : e.key === '0' ? 9 : Number(e.key) - 1
       if (i >= VIEWS.length) return
       const v = VIEWS[i]
       location.hash = `#/research/${symbol.toLowerCase()}${v ? '/' + v : ''}`
@@ -2379,6 +2351,7 @@ export function Research({ route }) {
               {q.volume != null && (
                 <span class="font-mono text-[11px] text-muted">vol {fmtVol(q.volume)}</span>
               )}
+              <StaleQuoteTag />
               {q.extLabel && q.extPrice != null && (
                 <span class="font-mono text-[12px] whitespace-nowrap">
                   <span class={extendedLabelClass(q.extLabel)}>{q.extLabel}</span>{' '}
@@ -2429,8 +2402,11 @@ export function Research({ route }) {
                 digit stays at 400 so the word reads as the label and the number
                 as the shortcut hint. Past the tenth tab there is no digit left
                 to spend — (ti+1)%10 would re-print "1)" and promise a key that
-                lands somewhere else — so those tabs carry the label alone. */}
-            {ti < 10 && <><span class="font-normal text-accent">{(ti + 1) % 10})</span>{' '}</>}
+                lands somewhere else — so the eleventh takes "-", the key next
+                along the row, and anything beyond it carries the label alone. */}
+            {ti < 11 && (
+              <><span class="font-normal text-accent">{ti < 10 ? (ti + 1) % 10 : '-'})</span>{' '}</>
+            )}
             <span class="font-semibold">{tab.label}</span>
           </a>
         ))}
