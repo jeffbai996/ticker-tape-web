@@ -194,3 +194,36 @@ describe('tapeworthy banner policy', () => {
     expect(tapeworthy([ev], { now })).toHaveLength(1)
   })
 })
+
+describe('matchesWireQuery', () => {
+  const ev = { symbols: ['AMD', 'NVDA'], headline: 'AMD MI400 sampling ahead of schedule' }
+
+  it('passes everything through on an empty query', async () => {
+    const { matchesWireQuery } = await import('../../src/lib/wire.js')
+    expect(matchesWireQuery(ev, '')).toBe(true)
+    expect(matchesWireQuery(ev, '   ')).toBe(true)
+  })
+
+  it('matches a tagged symbol case-insensitively', async () => {
+    const { matchesWireQuery } = await import('../../src/lib/wire.js')
+    expect(matchesWireQuery(ev, 'nvda')).toBe(true)
+    expect(matchesWireQuery(ev, ' AMD ')).toBe(true)
+  })
+
+  // a substring symbol test would drag every AMD/AMZN row in on "am"
+  it('does not match a symbol on a partial ticker', async () => {
+    const { matchesWireQuery } = await import('../../src/lib/wire.js')
+    expect(matchesWireQuery({ symbols: ['AMZN'], headline: 'quiet tape' }, 'am')).toBe(false)
+  })
+
+  it('falls through to a headline substring', async () => {
+    const { matchesWireQuery } = await import('../../src/lib/wire.js')
+    expect(matchesWireQuery(ev, 'sampling')).toBe(true)
+    expect(matchesWireQuery(ev, 'CoWoS')).toBe(false)
+  })
+
+  it('survives rows with no symbols or no headline', async () => {
+    const { matchesWireQuery } = await import('../../src/lib/wire.js')
+    expect(matchesWireQuery({}, 'mu')).toBe(false)
+  })
+})

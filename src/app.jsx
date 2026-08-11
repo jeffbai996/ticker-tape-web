@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
 import { parseHash, hrefFor } from './lib/route.js'
 import { NAV } from './lib/nav.js'
 import { isTypingTarget } from './lib/keys.js'
@@ -37,6 +37,52 @@ function AlertToasts({ toasts, dismiss }) {
   )
 }
 
+// Scroll offsets per hash. The shell has ONE scrolling element, so leaving a
+// long page and coming back used to land at the top — the position is state
+// the route doesn't carry. Bounded so a long session can't grow it forever.
+const scrollTops = new Map()
+const SCROLL_MAX = 50
+
+function rememberScroll(key, top) {
+  scrollTops.delete(key)          // re-insert so eviction drops the oldest READ
+  scrollTops.set(key, top)
+  if (scrollTops.size > SCROLL_MAX) scrollTops.delete(scrollTops.keys().next().value)
+}
+
+/** Save the scroll offset continuously, restore it after the route paints. */
+function useScrollRestore(route, ref) {
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return undefined
+    let frame = 0
+    let pending = null
+    const onScroll = () => {
+      // key and offset are read at event time: by the rAF the hash may
+      // already be the NEXT route, which would file this page's offset
+      // under the new one
+      pending = [location.hash || '#/', el.scrollTop]
+      if (frame) return
+      frame = requestAnimationFrame(() => {
+        frame = 0
+        if (pending) rememberScroll(pending[0], pending[1])
+      })
+    }
+    el.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      el.removeEventListener('scroll', onScroll)
+      if (frame) cancelAnimationFrame(frame)
+    }
+  }, [])
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return undefined
+    const key = location.hash || '#/'
+    const frame = requestAnimationFrame(() => { el.scrollTop = scrollTops.get(key) || 0 })
+    return () => cancelAnimationFrame(frame)
+  }, [route.section, route.sub, route.view])
+}
+
 function useHashRoute() {
   const [route, setRoute] = useState(() => parseHash(location.hash))
   useEffect(() => {
@@ -52,6 +98,8 @@ export function App() {
   const { toasts, dismiss } = useAlertEngine()
   useLocale() // locale toggle re-renders the whole shell
   const [paletteOpen, setPaletteOpen] = useState(false)
+  const mainRef = useRef(null)
+  useScrollRestore(route, mainRef)
 
   // Cmd/Ctrl+K owns the palette; `/` belongs to the command bar (it used to
   // open the palette too, so one keystroke did two things). Alt+1…9 jumps
@@ -81,7 +129,7 @@ export function App() {
       <SubTabs route={route} />
       <div class="flex-1 flex min-h-0">
         <Sidebar route={route} />
-        <main class="flex-1 flex min-w-0 min-h-0 overflow-y-auto max-md:pb-12">
+        <main ref={mainRef} class="flex-1 flex min-w-0 min-h-0 overflow-y-auto max-md:pb-12">
           <Page route={route} />
         </main>
       </div>

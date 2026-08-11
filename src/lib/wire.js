@@ -265,6 +265,18 @@ export function rankEvents(events, watchset, now = Date.now() / 1000) {
       || scoreEvent(b, watchset, now) - scoreEvent(a, watchset, now))
 }
 
+/**
+ * Free-text feed filter. A symbol match is EXACT — "am" as a substring would
+ * drag in half the tape via AMD/AMZN — while anything else falls through to a
+ * headline substring, so a phrase like "capex" still works (2026-08-10).
+ */
+export function matchesWireQuery(ev, query) {
+  const q = String(query || '').trim().toLowerCase()
+  if (!q) return true
+  if ((ev.symbols || []).some((s) => String(s).toLowerCase() === q)) return true
+  return String(ev.headline || '').toLowerCase().includes(q)
+}
+
 // ── synthetic rail data for demo mode ──
 export function demoToday(now = Date.now() / 1000) {
   return {

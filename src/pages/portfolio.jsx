@@ -18,7 +18,7 @@ import { demoFillsCsv, loadFillsCsv, saveFillsCsv, closesByDateFromChart } from 
 import { proxyBase } from '../lib/feed.js'
 import { wireUrl } from '../lib/wire.js'
 import { AiReport, MdLite } from '../components/AiReport.jsx'
-import { fetchHistory } from '../lib/history.js'
+import { fetchHistory, prefetchSymbol } from '../lib/history.js'
 import { createPCache } from '../lib/pcache.js'
 import { thesisAnalysisPrompt, thesisHealth, thesisSignals } from '../lib/thesis.js'
 
@@ -121,6 +121,19 @@ function BookSummary({ rows, margin, fallbackNlv }) {
   )
 }
 
+/** Every symbol printed on this page is a route into research — the tables
+ *  already navigate on row click, the loose stats used to be dead text. */
+function SymLink({ sym, class: cls = '' }) {
+  if (!sym) return null
+  return (
+    <a href={`#/research/${String(sym).toLowerCase()}`}
+       onMouseEnter={() => prefetchSymbol(sym)}
+       class={`hover:no-underline ${cls}`}>
+      {sym}
+    </a>
+  )
+}
+
 function BookPulse({ rows }) {
   const priced = rows.filter((row) => row.dayPnl != null)
   const ranked = [...priced].sort((a, b) => b.dayPnl - a.dayPnl)
@@ -131,7 +144,7 @@ function BookPulse({ rows }) {
   const line = (label, row, cls) => (
     <div class="flex items-baseline gap-2 px-2.5 py-[2px] font-mono text-[10.5px]">
       <span class="text-muted">{label}</span>
-      <span class="ml-auto text-ink-2">{row?.symbol || '—'}</span>
+      <span class="ml-auto text-ink-2">{row?.symbol ? <SymLink sym={row.symbol} /> : '—'}</span>
       <span class={`w-16 text-right ${cls}`}>{row ? signedMoney(row.dayPnl) : '—'}</span>
     </div>
   )
@@ -144,7 +157,7 @@ function BookPulse({ rows }) {
         <div class="flex justify-between px-2.5 py-[2px] font-mono text-[10.5px]"><span class="text-muted">{tl('A/D')}</span><span><span class="text-up">{adv}</span><span class="text-muted"> / </span><span class="text-down">{priced.length - adv}</span></span></div>
         {line(tl('Top contributor'), contributor, 'text-up')}
         {line(tl('Top detractor'), detractor, 'text-down')}
-        <div class="flex justify-between px-2.5 py-[2px] font-mono text-[10.5px]"><span class="text-muted">{tl('Largest line')}</span><span class="text-ink-2">{biggest ? `${biggest.symbol} ${biggest.weight.toFixed(1)}%` : '—'}</span></div>
+        <div class="flex justify-between px-2.5 py-[2px] font-mono text-[10.5px]"><span class="text-muted">{tl('Largest line')}</span><span class="text-ink-2">{biggest ? <><SymLink sym={biggest.symbol} /> {`${biggest.weight.toFixed(1)}%`}</> : '—'}</span></div>
       </div>
     </section>
   )
@@ -226,7 +239,7 @@ function Positions({ priceMap, positions, margin, accountId }) {
         <div class="px-2.5 py-1.5">
           {ladder.map(([sym, w]) => (
             <div key={sym} class="flex items-center gap-2 py-[2px] font-mono text-[10.5px]">
-              <span class="w-12 font-[650] font-tick text-ink">{sym}</span>
+              <span class="w-12 font-[650] font-tick text-ink"><SymLink sym={sym} /></span>
               <div class="flex-1 h-3 relative">
                 <div class="absolute inset-y-0 left-0 rounded-sm bg-accent/30"
                   style={{ width: `${(w / maxW) * 100}%` }} />
@@ -1196,7 +1209,7 @@ function TimeTravel({ priceMap, accountId }) {
                 const chg = r.then && r.now ? ((r.now / r.then) - 1) * 100 : null
                 return (
                   <tr key={r.sym} class="border-t border-line">
-                    <td class="px-3 py-[3px] font-[650] font-tick text-ink">{r.sym}</td>
+                    <td class="px-3 py-[3px] font-[650] font-tick text-ink"><SymLink sym={r.sym} /></td>
                     <td class="px-2 py-[3px] text-right text-ink-2">{Math.round(r.qty)}</td>
                     <td class="px-2 py-[3px] text-right text-muted">{r.avg.toFixed(2)}</td>
                     <td class="px-2 py-[3px] text-right text-ink-2">{r.then != null ? r.then.toFixed(2) : '—'}</td>

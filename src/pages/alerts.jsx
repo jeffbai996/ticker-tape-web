@@ -19,11 +19,23 @@ const TYPE_META = {
 
 const FIELD = 'bg-surface-2 border border-line rounded-md px-2 py-1.5 font-mono text-[12px] text-ink outline-none focus:border-accent disabled:opacity-40'
 
+/** Read-and-clear a ride-along from the research header's ⏰ (mirrors the
+ *  command bar's chat_prefill). One-shot: a reload starts empty. */
+function consumeAlertPrefill() {
+  try {
+    const raw = sessionStorage.getItem('alert_prefill')
+    if (!raw) return {}
+    sessionStorage.removeItem('alert_prefill')
+    return JSON.parse(raw) || {}
+  } catch { return {} }
+}
+
 function AddForm({ destinations, prefs }) {
-  const [symbol, setSymbol] = useState('')
+  const [prefill] = useState(consumeAlertPrefill)
+  const [symbol, setSymbol] = useState(() => String(prefill.symbol || '').toUpperCase())
   const [type, setType] = useState('price')
   const [operator, setOperator] = useState('>')
-  const [value, setValue] = useState('')
+  const [value, setValue] = useState(() => (prefill.value != null ? String(prefill.value) : ''))
   const [error, setError] = useState(null)
   const [delivery, setDelivery] = useState(prefs)
 
