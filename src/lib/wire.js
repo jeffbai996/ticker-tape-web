@@ -5,6 +5,7 @@
 // their browser. Without an endpoint the panel runs on synthetic demo events.
 
 import { IS_PRIVATE_BUILD } from './nav.js'
+import { createPCache } from './pcache.js'
 
 const KEY = 'tape-wire-url'
 
@@ -65,6 +66,26 @@ export async function fetchEvents(base, { sinceId = 0, limit = 100, newest = fal
     `${base}/api/events?since_id=${sinceId}&limit=${limit}${newest ? '&newest=1' : ''}`)
   if (!resp.ok) throw new Error(`wire ${resp.status}`)
   return resp.json()
+}
+
+// Symbol-scoped tail for the research overview's wire strip. Persisted so a
+// tab flip paints the last ten rows immediately and the fetch only ever
+// replaces them (2026-08-10) — the panel is hidden when empty, so a cold miss
+// used to make the whole strip pop in late.
+const miniCache = createPCache('wire_mini_v1', { max: 40 })
+
+export function peekSymbolWire(symbol) {
+  return miniCache.peek(String(symbol).toUpperCase())?.value
+}
+
+export async function fetchSymbolWire(base, symbol, limit = 10) {
+  const resp = await fetch(
+    `${base.replace(/\/$/, '')}/api/events?symbols=${encodeURIComponent(symbol)}&limit=${limit}&newest=1`,
+    { signal: AbortSignal.timeout(8_000) })
+  if (!resp.ok) throw new Error(`wire ${resp.status}`)
+  const value = (await resp.json()).events || []
+  miniCache.set(String(symbol).toUpperCase(), { value, ts: Date.now() })
+  return value
 }
 
 /** In-place revisions (primary-release facts arriving after the ERN tripwire). */

@@ -43,6 +43,12 @@ const cache = createPCache('fund_cache_v2', { max: 40 })
 const calCache = createPCache('cal_cache_v1', { max: 60 })
 const CAL_TTL = 6 * 60 * 60_000
 
+/** Last-known values, synchronously and TTL-blind — research subviews seed
+ *  their initial state from these so a tab flip paints the previous answer
+ *  while the fetch below revalidates (2026-08-10). */
+export function peekFundamentals(symbol) { return cache.peek(symbol)?.value }
+export function peekEarningsDate(symbol) { return calCache.peek(symbol)?.value }
+
 /** Next earnings date (epoch ms) + EPS estimate via v10 calendarEvents. */
 export async function fetchEarningsDate(symbol) {
   const hit = calCache.get(symbol)
@@ -179,6 +185,8 @@ export function parseProfile(result) {
 
 const profCache = createPCache('prof_cache_v1', { max: 30 })
 const PROF_TTL = 7 * 24 * 60 * 60_000
+
+export function peekProfile(symbol) { return profCache.peek(symbol)?.value }
 
 export async function fetchProfile(symbol) {
   const hit = profCache.get(symbol)

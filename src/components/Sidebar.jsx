@@ -9,11 +9,13 @@ import { addWatchlistSymbol, removeWatchlistSymbol } from '../lib/watchlists.js'
 import { nextSort, sortSymbols } from '../lib/watchsort.js'
 import { fmtPriceBare, fmtPct } from '../lib/format.js'
 import { lastGoodTs } from '../lib/feed.js'
+import { prefetchSymbol } from '../lib/history.js'
 
 function WatchRow({ symbol, q, onRemove }) {
   const up = (q?.pct ?? 0) >= 0
   return (
-    <div class="wl-row group flex items-baseline px-3 py-[3px] font-mono text-[11px]">
+    <div class="wl-row group flex items-baseline px-3 py-[3px] font-mono text-[11px]"
+      onMouseEnter={() => prefetchSymbol(symbol)}>
       <a href={`#/research/${symbol.toLowerCase()}`} class="text-ink font-[650] font-tick text-[10px] w-14 hover:no-underline hover:bg-transparent">
         {symbol}
       </a>
