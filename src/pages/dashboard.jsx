@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'preact/hooks'
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { createChart, AreaSeries } from 'lightweight-charts'
 import { boundedTimeScale } from '../lib/chartview.js'
 import { useNamedWatchlists, useQuotes, useWatchlist } from '../hooks.js'
@@ -21,7 +21,7 @@ import { addWatchlistSymbol, moveWatchlistSymbol, removeWatchlistSymbol } from '
 import { loadUserGroups, onUserGroupsChange } from '../lib/usergroups.js'
 import { groupHeat, rankAlerts, rangeExtremes } from '../lib/railstats.js'
 import { conditionText, loadAlerts, onAlertsChange } from '../lib/alerts.js'
-import { groupDashboardRows, quoteSpread, selectFlatRows, boardBreadth } from '../lib/dashboardRows.js'
+import { groupDashboardRows, quoteSpread, selectFlatRows, boardBreadth, dropSlot, resolveDrop } from '../lib/dashboardRows.js'
 import { searchSymbols } from '../lib/symbolSearch.js'
 import { venueFlag } from '../lib/venueFlag.js'
 import { fmtPrice, fmtPriceBare, fmtPct, fmtChange, fmtVol, rangePos } from '../lib/format.js'
@@ -80,8 +80,14 @@ function useIntradaySparks(symbols, enabled) {
   useEffect(() => {
     if (!enabled) return
     let dead = false
+    let missed = false
     let timers = []
     const refresh = (initial = false) => {
+      // A backgrounded tab is still on the clock: an iPad parked on the board
+      // behind a lock screen refetched every symbol once a minute for nothing.
+      // Skip while hidden and catch up on the way back in — one fan-out on
+      // return beats sixty nobody ever saw.
+      if (!initial && document.hidden) { missed = true; return }
       const now = new Date()
       const state = marketState(now).state
       const nextSession = rollCashSession(session.current, now)
@@ -111,9 +117,16 @@ function useIntradaySparks(symbols, enabled) {
     }
     refresh(true)
     const interval = setInterval(refresh, 60_000)
+    const onVisible = () => {
+      if (document.hidden || !missed) return
+      missed = false
+      refresh()
+    }
+    document.addEventListener('visibilitychange', onVisible)
     return () => {
       dead = true
       clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisible)
       timers.forEach(clearTimeout)
     }
   }, [enabled, symbols.join(',')])
@@ -225,7 +238,8 @@ function CompactDayRange({ lo, hi, v, cls = '' }) {
 
 function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggleSelect,
                    spark = DEFAULT_SPARK, sparkWin = DEFAULT_WINDOW,
-                   intradayBars = null, revealed = false, onReveal }) {
+                   intradayBars = null, revealed = false, onReveal,
+                   dragScope = null, dragging = false, drag = null }) {
   const q = data?.quote
   // Touch has no hover, so a tap on the ticker used to jump straight to the
   // symbol page and the name was unreachable (Jeff 2026-08-05). First tap
@@ -252,16 +266,39 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
   const avgVol = q?.volume != null && data?.tech?.volRatio
     ? q.volume / data.tech.volRatio : null
   const hasRange = q?.dayHigh != null && q?.dayLow != null && q?.price > 0
+  const grabbable = selecting && !!dragScope && !!drag
   return (
     <a
       href={`#/research/${symbol.toLowerCase()}`}
+      data-row-symbol={symbol}
+      data-drag-scope={dragScope || undefined}
       onMouseEnter={() => prefetchSymbol(symbol)}
       onClick={(e) => { if (selecting) { e.preventDefault(); e.stopPropagation(); onToggleSelect(symbol) } }}
       class={`tui-row group/row relative block px-3 py-[3px] border-b border-line last:border-0 hover:no-underline${
-        selecting ? ' pl-9 cursor-pointer' : ''}${selected ? ' bg-accent-soft' : ' hover:bg-white/[0.035]'}${revealed ? ' is-revealed' : ''}${
+        selecting ? ' pl-9 cursor-pointer' : ''}${grabbable ? ' pr-11' : ''}${
+        dragging ? ' is-dragging' : ''}${
+        selected ? ' bg-accent-soft' : ' hover:bg-white/[0.035]'}${revealed ? ' is-revealed' : ''}${
         q?.name && !q?.extLabel ? ' has-inline-name' : ''}`}
       title={q?.name ? `${symbol} — ${q.name}` : symbol}
     >
+      {/* Select mode owns row order now (Jeff 2026-08-11): the grip replaces
+          the figures on the right of the row, so the drag target is a real
+          32px box on an iPad instead of a sliver between two meters. */}
+      {grabbable && (
+        <span
+          class="tui-drag-handle absolute right-1 top-1/2 -translate-y-1/2 z-20 grid h-8 w-8 place-items-center rounded-md font-mono text-[15px] leading-none text-muted hover:text-accent hover:bg-surface-2"
+          role="button"
+          aria-label={`${tl('drag to reorder')} ${symbol}`}
+          title={tl('drag to reorder')}
+          onPointerDown={(e) => drag.onPointerDown(symbol, e)}
+          onPointerMove={drag.onPointerMove}
+          onPointerUp={drag.onPointerUp}
+          onPointerCancel={drag.onPointerCancel}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation() }}
+        >
+          ≡
+        </span>
+      )}
       {/* select mode: rows become toggles — the box replaces navigation, so
           a misclick can't yank you off the board mid-batch */}
       {selecting && (
@@ -274,7 +311,7 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
           (Jeff 2026-08-05). Filled = on the board; a tap lifts it off. */}
       {!selecting && <button
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(symbol) }}
-        title={`remove ${symbol} from the board`}
+        title={`${tl('remove')} ${symbol} ${tl('from the board')}`}
         class="absolute right-1.5 top-1/2 -translate-y-1/2 z-10 w-6 h-6 grid place-items-center rounded-md text-accent opacity-0 group-hover/row:opacity-100 hover:bg-surface-2 hover:text-down transition-opacity"
       >
         ★
@@ -397,7 +434,9 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
         {/* Meters live in their own fixed column so DAY and 52W align by
             construction — sharing the text rows made them wrap and overflow
             once the row ran out of width (Jeff 2026-08-03). */}
-        <div class="hidden @min-[545px]:flex shrink-0 flex-col justify-center gap-1 font-mono text-[11px]">
+        {/* the grip takes this column's space while selecting — the meters are
+            reference, the reorder target is the job you're doing */}
+        <div class={`${grabbable ? 'hidden' : 'hidden @min-[545px]:flex'} shrink-0 flex-col justify-center gap-1 font-mono text-[11px]`}>
           <span class="flex items-baseline gap-1.5">
             {/* the compact range lives on the badge line at this width for
                 EVERY row — keeping it here made the two meter lines different
@@ -778,54 +817,7 @@ function AddWidget() {
  *  command bar's `w SYM` — neither reads as a control, and the sidebar is
  *  hidden entirely below 768px (Jeff 2026-08-04: "not very obvious where to
  *  add tickers"). Mirrors AddWidget's dashed-button → inline-form idiom. */
-/** Reorder mode: the flat list with grips — drag a row onto another, or
- *  nudge with the arrows. Exits back to the normal board via done. */
-function ReorderList({ watchlist, quotes, onMove, onPlace, onRemove, onDone }) {
-  const [dragSym, setDragSym] = useState(null)
-  return (
-    <div>
-      <div class="flex items-center px-3 py-1.5 border-b border-line font-mono text-[10px] tracking-wider text-muted uppercase">
-        {tl('drag rows or use the arrows')}
-        <button onClick={onDone}
-          class="ml-auto px-2 py-0.5 rounded border border-accent text-accent hover:bg-accent hover:text-black font-semibold normal-case">
-          {tl('done')}
-        </button>
-      </div>
-      {watchlist.map((s) => {
-        const q = quotes[s]?.quote
-        const up = (q?.pct ?? 0) >= 0
-        return (
-          <div
-            key={s}
-            draggable
-            onDragStart={(e) => { setDragSym(s); e.dataTransfer.effectAllowed = 'move' }}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => { e.preventDefault(); if (dragSym && dragSym !== s) onPlace(dragSym, s) }}
-            onDragEnd={() => setDragSym(null)}
-            class={`flex items-center gap-2.5 px-3 py-1 border-b border-line/60 font-mono text-[12px] cursor-grab active:cursor-grabbing select-none ${
-              dragSym === s ? 'opacity-40' : 'hover:bg-white/[0.035]'
-            }`}
-          >
-            <span class="text-muted text-[13px] leading-none">≡</span>
-            <span class="text-ink font-[650] font-tick w-14">{s}</span>
-            <span class="text-ink-2">{q ? fmtPrice(q.price) : '—'}</span>
-            {q && <span class={`text-[10px] ${up ? 'text-up' : 'text-down'}`}>{fmtPct(q.pct)}</span>}
-            <span class="ml-auto flex gap-0.5">
-              <button onClick={() => onMove(s, -1)} title={tl('move up')}
-                class="w-6 h-6 grid place-items-center rounded text-muted hover:text-ink hover:bg-surface-2">↑</button>
-              <button onClick={() => onMove(s, 1)} title={tl('move down')}
-                class="w-6 h-6 grid place-items-center rounded text-muted hover:text-ink hover:bg-surface-2">↓</button>
-              <button onClick={() => onRemove(s)} title={tl('remove')}
-                class="w-6 h-6 grid place-items-center rounded text-muted hover:text-down hover:bg-surface-2">×</button>
-            </span>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-function AddSymbolRow({ onAdd, isPresent, onReorder }) {
+function AddSymbolRow({ onAdd, isPresent }) {
   const [open, setOpen] = useState(false)
   const [sym, setSym] = useState('')
   const [err, setErr] = useState('')
@@ -888,19 +880,14 @@ function AddSymbolRow({ onAdd, isPresent, onReorder }) {
   }
   if (!open) {
     return (
+      /* row order is dragged on the rows themselves now (grips in select
+         mode), so this row is back to its one job */
       <div class="flex items-center border-t border-line">
         <button
           onClick={() => setOpen(true)}
           class="flex-1 px-3 py-2 text-left font-mono text-[11px] tracking-wider text-muted hover:text-accent hover:bg-white/[0.035]"
         >
           + {tl('add symbol')}
-        </button>
-        <button
-          onClick={onReorder}
-          title={tl('reorder the list')}
-          class="px-3 py-2 font-mono text-[11px] tracking-wider text-muted hover:text-accent hover:bg-white/[0.035]"
-        >
-          ⇅ {tl('reorder')}
         </button>
       </div>
     )
@@ -1338,7 +1325,7 @@ function SearchResultSpark({ symbol }) {
     return () => { dead = true }
   }, [symbol])
   return (
-    <span class="ml-auto w-16 h-3.5 shrink-0" title={`${symbol} intraday`}>
+    <span class="ml-auto w-16 h-3.5 shrink-0" title={`${symbol} ${tl('intraday')}`}>
       <Spark type="line" window="1Y" bars={bars} width={64} height={14} class="w-16 h-3.5" />
     </span>
   )
@@ -1511,15 +1498,24 @@ export function Dashboard({ listId = null }) {
     localStorage.setItem(sortKey, value)
   }
   useEffect(() => onGroupsChange(setGroupPrefs), [])
-  const [, bumpGroups] = useState(0)
+  const [groupsRev, bumpGroups] = useState(0)
   useEffect(() => onUserGroupsChange(() => bumpGroups((n) => n + 1)), [])
-  const userGroups = loadUserGroups()
-  const visibleManual = selectFlatRows(watchlist, quotes, { filter }).map((row) => row.symbol)
-  const ordered = orderGroups(
-    groupDashboardRows(visibleManual, userGroups),
-    groupPrefs.order,
-  )
-  const flatRows = selectFlatRows(watchlist, quotes, { filter, sort })
+  const watchKey = watchlist.join(',')
+  // Company-name filtering is the only part of the grouped split that reads a
+  // quote, and names land once per symbol — key on WHICH names exist, not on
+  // the tick that changed a price.
+  const nameKey = filter ? watchlist.filter((s) => quotes[s]?.quote?.name).join(',') : ''
+  // Grouping is pure list math: it doesn't move when a price does, and in flat
+  // view nothing consumes it at all. It used to re-run on every quote tick in
+  // both views, which on a 30-name board is the single hottest thing here.
+  const { visibleManual, ordered } = useMemo(() => {
+    if (viewMode !== 'grouped') return { visibleManual: [], ordered: [] }
+    const rows = selectFlatRows(watchlist, quotes, { filter }).map((row) => row.symbol)
+    return { visibleManual: rows, ordered: orderGroups(groupDashboardRows(rows, loadUserGroups()), groupPrefs.order) }
+  }, [viewMode, watchKey, filter, nameKey, groupsRev, groupPrefs.order.join(',')])
+  // The flat view's numeric sorts genuinely re-rank on every tick, so this one
+  // stays live — it just no longer runs while the grouped view is on screen.
+  const flatRows = viewMode === 'flat' ? selectFlatRows(watchlist, quotes, { filter, sort }) : []
   const names = ordered.map((g) => g.name)
   useEffect(() => onWidgetsChange((w) => setWidgets([...w])), [])
   const addSymbol = activeList
@@ -1531,7 +1527,6 @@ export function Dashboard({ listId = null }) {
   const isPresent = (symbol) => watchlist.includes(String(symbol || '').trim().toUpperCase())
   const [revealedSym, setRevealedSym] = useState(null)
   const toggleReveal = (sym) => setRevealedSym((cur) => (cur === sym ? null : sym))
-  const [reordering, setReordering] = useState(false)
   // batch mode: tick rows, act once — one-star-at-a-time was the only way to
   // clear several names off the board (Jeff 2026-08-06)
   const [selecting, setSelecting] = useState(false)
@@ -1558,6 +1553,85 @@ export function Dashboard({ listId = null }) {
     if (anchor) for (const s of sel) dropSymbol(s, anchor)
     endSelect()
   }
+
+  // ── Drag to reorder, nested under Select (Jeff 2026-08-11) ──
+  //
+  // Pointer events, not HTML5 drag-and-drop: DnD does not exist on iOS Safari,
+  // and the board is driven from an iPad. Row geometry is measured ONCE at
+  // pointerdown and everything after that is a transform on a single drop
+  // line — no per-move setState, no layout reads in the move handler, so a
+  // drag can't start the measurement/reflow feedback loop this board has been
+  // burned by. The dragged row only changes opacity.
+  const boardRef = useRef(null)
+  const dropLineRef = useRef(null)
+  const dragRef = useRef(null)
+  const [dragSym, setDragSym] = useState(null)
+  const measureScope = (scope) => {
+    const board = boardRef.current
+    if (!board) return []
+    const boardTop = board.getBoundingClientRect().top
+    return [...board.querySelectorAll('[data-row-symbol][data-drag-scope]')]
+      .filter((el) => el.dataset.dragScope === scope)
+      .map((el) => {
+        const box = el.getBoundingClientRect()
+        return { symbol: el.dataset.rowSymbol, top: box.top - boardTop, bottom: box.bottom - boardTop }
+      })
+  }
+  const paintDrop = (clientY) => {
+    const state = dragRef.current
+    const board = boardRef.current
+    const line = dropLineRef.current
+    if (!state || !board) return
+    const slot = dropSlot(state.rows, clientY - board.getBoundingClientRect().top)
+    state.slot = slot
+    if (!line || !slot) return
+    const row = slot.before != null
+      ? state.rows.find((r) => r.symbol === slot.before)
+      : state.rows[state.rows.length - 1]
+    if (!row) return
+    line.style.transform = `translateY(${Math.round(slot.before != null ? row.top : row.bottom)}px)`
+    line.style.opacity = '1'
+  }
+  const endDrag = (e, commit) => {
+    const state = dragRef.current
+    dragRef.current = null
+    setDragSym(null)
+    if (dropLineRef.current) dropLineRef.current.style.opacity = '0'
+    try { e.currentTarget.releasePointerCapture?.(state?.pointerId ?? e.pointerId) } catch { /* already released */ }
+    if (!commit || !state) return
+    // A drop that changes nothing still writes storage and re-renders the
+    // whole board, so resolveDrop returns null instead of a no-op placement.
+    const move = resolveDrop(watchlist, state.symbol, state.slot)
+    if (!move) return
+    if (move.toEnd) nudgeSymbol(state.symbol, watchlist.length)
+    else dropSymbol(state.symbol, move.before)
+  }
+  const rowDrag = {
+    onPointerDown: (symbol, e) => {
+      if (e.button > 0) return
+      e.preventDefault()
+      e.stopPropagation()
+      const scope = e.currentTarget.closest('[data-drag-scope]')?.dataset.dragScope
+      if (!scope) return
+      e.currentTarget.setPointerCapture?.(e.pointerId)
+      dragRef.current = { symbol, pointerId: e.pointerId, rows: measureScope(scope), slot: null }
+      setDragSym(symbol)
+      paintDrop(e.clientY)
+    },
+    onPointerMove: (e) => {
+      if (!dragRef.current || dragRef.current.pointerId !== e.pointerId) return
+      e.preventDefault()
+      paintDrop(e.clientY)
+    },
+    onPointerUp: (e) => endDrag(e, true),
+    onPointerCancel: (e) => endDrag(e, false),
+  }
+  // Manual order is the only order a drag can persist into: with a % or price
+  // sort live the row would snap straight back on the next tick, so the grips
+  // simply don't appear (the grouped view is always manual). Grouped drags are
+  // scoped to their own sector — dropping a name into a foreign group would
+  // move it in the underlying list and then bounce it back where it belongs.
+  const dragScopeFor = (scope) => (selecting && sort === 'manual' ? scope : null)
 
   // 10s tick keeps the "updated" line and stale banner honest between fetches.
   const [, tick] = useState(0)
@@ -1648,19 +1722,20 @@ export function Dashboard({ listId = null }) {
           1024 keeps it alive through two more notches (115%, 125%) on a 1376px
           CSS viewport before genuinely running out of room. */}
       <div class="grid gap-2 lg:grid-cols-[1fr_230px] min-w-0">
-        <section data-watchlist-board class="@container bg-surface-1 border border-line rounded-xl overflow-hidden min-w-0">
-          {reordering ? (
-            <ReorderList watchlist={watchlist} quotes={quotes}
-              onMove={nudgeSymbol} onPlace={dropSymbol} onRemove={removeSymbol}
-              onDone={() => setReordering(false)} />
-          ) : viewMode === 'grouped' ? ordered.map((g, gi) => {
+        <section ref={boardRef} data-watchlist-board class="@container relative bg-surface-1 border border-line rounded-xl overflow-hidden min-w-0">
+          {/* One element for the whole board, parked at the top and moved by
+              transform — a per-row insertion marker would relayout the list
+              under the finger that's dragging it. */}
+          <span ref={dropLineRef} data-drop-line aria-hidden="true"
+            class="board-drop-line pointer-events-none absolute inset-x-0 top-0 z-30 h-[2px] bg-accent opacity-0" />
+          {viewMode === 'grouped' ? ordered.map((g, gi) => {
             const folded = isCollapsed(g.name, groupPrefs)
             return (
               <div key={g.name}>
                 <div class={`group flex items-center gap-2 px-3 py-1.5 font-mono text-[11px] text-muted tracking-wider border-b border-line select-none ${gi ? 'border-t' : ''}`}>
                   <button onClick={() => toggleCollapsed(g.name)}
                           class="flex-1 flex items-center gap-2 hover:text-ink uppercase text-left"
-                          title={folded ? 'expand' : 'collapse'}>
+                          title={folded ? tl('expand') : tl('collapse')}>
                     {tl(g.name)}
                     {folded && (
                       <span class="text-[9px] text-ink-2 border border-line rounded-full px-1.5 py-px leading-none tracking-normal normal-case">
@@ -1680,6 +1755,7 @@ export function Dashboard({ listId = null }) {
                     onRemove={removeSymbol} selecting={selecting} spark={spark} sparkWin={sparkWin}
                     intradayBars={intradaySparks[s]}
                     revealed={revealedSym === s} onReveal={toggleReveal}
+                    dragScope={dragScopeFor(g.name)} dragging={dragSym === s} drag={rowDrag}
                     selected={selected.has(s)} onToggleSelect={toggleSelect} />
                 ))}
               </div>
@@ -1689,15 +1765,13 @@ export function Dashboard({ listId = null }) {
               onRemove={removeSymbol} selecting={selecting} spark={spark} sparkWin={sparkWin}
               intradayBars={intradaySparks[symbol]}
               revealed={revealedSym === symbol} onReveal={toggleReveal}
+              dragScope={dragScopeFor('flat')} dragging={dragSym === symbol} drag={rowDrag}
               selected={selected.has(symbol)} onToggleSelect={toggleSelect} />
           ))}
           {!watchlist.length && (
             <Empty label={tl('empty watchlist — add the first ticker below')} />
           )}
-          {!reordering && (
-            <AddSymbolRow onAdd={addSymbol} isPresent={isPresent}
-              onReorder={() => setReordering(true)} />
-          )}
+          <AddSymbolRow onAdd={addSymbol} isPresent={isPresent} />
         </section>
         <div class="flex flex-col gap-3 min-w-0">
           {widgets.map((w) => (
