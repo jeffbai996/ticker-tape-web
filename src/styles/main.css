@@ -146,6 +146,14 @@ html, body {
   background: linear-gradient(180deg, rgba(231, 236, 243, 0.055), rgba(231, 236, 243, 0.025));
   border-color: rgba(231, 236, 243, 0.22);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035), 0 1px 4px rgba(0, 0, 0, 0.35);
+  /* Own compositing layer: these low-alpha gradients + shadows are DITHERED,
+     and the dither pattern re-rolls on every rasterization — so any repaint
+     made exactly these controls shimmer (frame-diff mask of Jeff's recording,
+     2026-08-11, lit up the burger + search pill outlines and nothing else).
+     A promoted layer caches the raster as a texture: repaints elsewhere
+     composite it back bit-identical. */
+  transform: translateZ(0);
+  will-change: transform;
 }
 .board-control:hover,
 .board-control:focus-within {
