@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'preact/hooks'
 import { NAV, hrefFor } from '../lib/route.js'
 import { goChatHome } from '../lib/chatnav.js'
-import { tl } from '../lib/i18n.js'
+import { t as tt, tl } from '../lib/i18n.js'
 import { useNamedWatchlists, useQuotes, useWatchlist } from '../hooks.js'
 import { FlashPrice } from './Fig.jsx'
-import { watch, unwatch } from '../lib/watchlist.js'
-import { addWatchlistSymbol, removeWatchlistSymbol } from '../lib/watchlists.js'
+import { watch, unwatch, isWatchlistFull, MAX_WATCHLIST } from '../lib/watchlist.js'
+import {
+  addWatchlistSymbol, removeWatchlistSymbol, isNamedWatchlistFull, MAX_WATCHLIST_SYMBOLS,
+} from '../lib/watchlists.js'
 import { nextSort, sortSymbols } from '../lib/watchsort.js'
 import { fmtPriceBare, fmtPct } from '../lib/format.js'
 import { lastGoodTs } from '../lib/feed.js'
@@ -34,23 +36,30 @@ function WatchRow({ symbol, q, onRemove }) {
   )
 }
 
-function AddSymbol({ onAdd }) {
+function AddSymbol({ onAdd, isFull, cap }) {
   const [value, setValue] = useState('')
+  // The rail swallowed every refusal. Only the cap is worth a line here — a
+  // typo is obvious from the box still holding it, "no room left" is not.
+  const [err, setErr] = useState('')
   const submit = (e) => {
     e.preventDefault()
-    if (onAdd(value)) setValue('')
+    if (onAdd(value)) { setValue(''); setErr(''); return }
+    setErr(isFull() ? tt('watchlists.full', { max: cap }) : '')
   }
   // Dashed box + "+ add" reads as a control; the old bare underline with a
   // "+ SYM" placeholder was invisible (Jeff 2026-08-04). Same 56px footprint.
   return (
-    <form onSubmit={submit} class="ml-auto" title={tl('add symbol')}>
-      <input
-        value={value}
-        onInput={(e) => setValue(e.currentTarget.value)}
-        placeholder={`+ ${tl('add')}`}
-        class="w-14 bg-transparent border border-dashed border-line-2 rounded px-1 text-[10px] font-mono text-ink uppercase outline-none text-center hover:border-accent/60 focus:border-solid focus:border-accent placeholder:text-ink-2 placeholder:normal-case"
-      />
-    </form>
+    <div class="ml-auto flex flex-col items-end">
+      <form onSubmit={submit} title={tl('add symbol')}>
+        <input
+          value={value}
+          onInput={(e) => { setValue(e.currentTarget.value); setErr('') }}
+          placeholder={`+ ${tl('add')}`}
+          class="w-14 bg-transparent border border-dashed border-line-2 rounded px-1 text-[10px] font-mono text-ink uppercase outline-none text-center hover:border-accent/60 focus:border-solid focus:border-accent placeholder:text-ink-2 placeholder:normal-case"
+        />
+      </form>
+      {err && <span class="pt-0.5 font-anth text-[9px] normal-case tracking-normal text-down">{err}</span>}
+    </div>
   )
 }
 
@@ -121,6 +130,11 @@ export function Sidebar({ route }) {
   const removeSymbol = activeNamed
     ? (symbol) => removeWatchlistSymbol(activeNamed.id, symbol)
     : unwatch
+  // which list the rail is actually editing decides whose cap applies
+  const listFull = activeNamed
+    ? () => isNamedWatchlistFull(activeNamed.id)
+    : isWatchlistFull
+  const listCap = activeNamed ? MAX_WATCHLIST_SYMBOLS : MAX_WATCHLIST
 
   return (
     <nav class="w-52 shrink-0 bg-black border-r border-line flex flex-col max-md:hidden min-h-0">
@@ -171,7 +185,7 @@ export function Sidebar({ route }) {
 
       <div class="px-3 pt-2 pb-1 border-t border-line font-mono text-[10px] tracking-wider text-muted flex items-baseline">
         {(activeNamed?.name || tl('Watchlist')).toUpperCase()}
-        <AddSymbol onAdd={addSymbol} />
+        <AddSymbol onAdd={addSymbol} isFull={listFull} cap={listCap} />
       </div>
       <div class="px-3 pb-1 flex items-baseline gap-2 border-b border-line/60">
         <SortHead label="sym" col="sym" sort={sort} onSort={applySort} />

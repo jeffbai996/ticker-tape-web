@@ -25,6 +25,16 @@ describe('catalyst store', () => {
     expect(() => addCatalyst({ date: '2026-09-09', label: 'x', symbol: 'not a symbol' })).toThrow(/symbol/)
   })
 
+  it('rejects an over-long label instead of silently truncating it', () => {
+    // Silent clipping shipped a label the user never wrote and gave the form
+    // no way to say so — every sibling constraint here throws, so this does.
+    expect(() => addCatalyst({ date: '2026-09-09', label: 'x'.repeat(121) }))
+      .toThrow(/label too long \(120 max\)/)
+    expect(loadCatalysts()).toHaveLength(0)
+    const ok = addCatalyst({ date: '2026-09-09', label: 'x'.repeat(120) })
+    expect(ok.label).toHaveLength(120)
+  })
+
   it('removes by id', () => {
     const c = addCatalyst({ date: '2026-09-09', label: 'x' })
     expect(removeCatalyst(c.id)).toBe(true)

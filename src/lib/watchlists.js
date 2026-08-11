@@ -3,10 +3,11 @@
 // all intentionally share it. These lists are alternate dashboard lenses.
 
 import { moveInList } from './watchorder.js'
+import { SYMBOL_RE } from './symbols.js'
 
 const KEY = 'named_watchlists_v1'
-const SYMBOL_RE = /^[A-Z0-9.^=-]{1,12}$/
 const MAX_SYMBOLS = 60
+export const MAX_WATCHLIST_SYMBOLS = MAX_SYMBOLS
 const MAX_NAME = 32
 const listeners = new Set()
 
@@ -114,6 +115,14 @@ export function addWatchlistSymbol(id, value) {
   const item = getWatchlistById(id)
   if (!item || item.symbols.includes(symbol) || item.symbols.length >= MAX_SYMBOLS) return null
   return updateSymbols(id, (symbols) => [...symbols, symbol])
+}
+
+/** Same reason as watchlist.js's isWatchlistFull: addWatchlistSymbol returns
+ *  a single null for invalid / duplicate / full, so the caller cannot say why
+ *  it refused. An unknown id is not "full" — it is nothing at all. */
+export function isNamedWatchlistFull(id) {
+  const item = getWatchlistById(id)
+  return !!item && item.symbols.length >= MAX_SYMBOLS
 }
 
 export function moveWatchlistSymbol(id, symbol, where) {

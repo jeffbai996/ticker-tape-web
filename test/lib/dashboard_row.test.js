@@ -167,7 +167,9 @@ describe('compact dashboard company name', () => {
     expect(dashboard).not.toContain('onReorder')
     expect(dashboard).not.toContain("tl('reorder')")
     expect(dashboard).not.toContain("tl('drag rows or use the arrows')")
-    expect(dashboard).toContain('<AddSymbolRow onAdd={addSymbol} isPresent={isPresent} />')
+    // the add row survived the reorder-mode deletion; it now also carries the
+    // cap so a full board reports itself (see cap_notices.test.js)
+    expect(dashboard).toContain('<AddSymbolRow onAdd={addSymbol} isPresent={isPresent} isFull={listFull} cap={listCap} />')
   })
 
   it('computes the grouped board once per input change, not per quote tick', () => {
@@ -251,7 +253,10 @@ describe('compact dashboard company name', () => {
     expect(dashboard).toContain('overflow-x-auto no-scrollbar')
     expect(dashboard).toContain('function SectorScroller')
     expect(dashboard).toContain('aria-label={tl(\'Scroll sectors right\')}')
-    expect(css).toContain('.sector-scroll-fade')
+    // .sector-scroll-fade was dropped: the class was never applied to any
+    // element, so the rule styled nothing. The scroller itself is what this
+    // test guards.
+    expect(css).not.toContain('.sector-scroll-fade')
   })
 
   it('shows raw bid-ask spread without a basis-point suffix', () => {
