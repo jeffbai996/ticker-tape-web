@@ -1265,7 +1265,6 @@ function BoardMenu({ sort, setSort, setViewMode, spark, setSpark, sparkWin, setS
       </button>
       {open && (
         <div class="board-menu-pop z-40 max-h-[72vh] overflow-y-auto bg-surface-1/95 backdrop-blur border border-line shadow-[0_12px_36px_rgba(0,0,0,0.68)]">
-          <span class="board-menu-sheet-handle" aria-hidden="true" />
           <div class="board-menu-grid grid grid-cols-2 gap-1.5 p-1.5">
             <div class="flex min-w-0 flex-col gap-1.5">
               <section class="board-menu-section">
