@@ -501,9 +501,9 @@ button:hover .burger path:nth-child(2) { transform: scaleX(.55); }
    with data frozen (Jeff 2026-08-11). A box that can never change size keeps
    the swap paint-only. */
 .time-wheel-digit { position: relative; display: inline-grid; height: 1em;
-  width: .58em; overflow: hidden; align-items: start;
+  width: .6em; overflow: hidden; align-items: start;
   justify-items: center; font-variant-numeric: tabular-nums; }
-.time-wheel-mark { display: inline-block; width: .24em; text-align: center; }
+.time-wheel-mark { display: inline-block; width: .28em; text-align: center; }
 .time-wheel-face, .time-wheel-old, .time-wheel-new {
   grid-area: 1 / 1; line-height: 1; transform: translateY(0);
   backface-visibility: hidden; will-change: transform;
