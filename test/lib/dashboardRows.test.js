@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { groupDashboardRows, selectFlatRows, quoteSpread, boardBreadth } from '../../src/lib/dashboardRows.js'
+import {
+  groupDashboardRows, selectFlatRows, quoteSpread, boardBreadth, dropSlot, resolveDrop,
+} from '../../src/lib/dashboardRows.js'
 
 beforeEach(() => localStorage.clear())
 
@@ -39,6 +41,46 @@ describe('flat dashboard rows', () => {
     expect(selectFlatRows(syms, quotes, { sort: 'price' }).map((r) => r.symbol)).toEqual(['MSFT', 'AAPL', 'NVDA'])
     expect(selectFlatRows(syms, quotes, { sort: 'spread' }).map((r) => r.symbol)).toEqual(['MSFT', 'AAPL', 'NVDA'])
     expect(quoteSpread(quotes.AAPL.quote)).toBeCloseTo(0.04)
+  })
+})
+
+describe('drag-to-reorder slots', () => {
+  // three 20px rows stacked from the board's top edge
+  const rows = [
+    { symbol: 'AAPL', top: 0, bottom: 20 },
+    { symbol: 'MSFT', top: 20, bottom: 40 },
+    { symbol: 'NVDA', top: 40, bottom: 60 },
+  ]
+
+  it('splits each row at its midpoint and treats the tail as its own slot', () => {
+    expect(dropSlot(rows, 2)).toEqual({ before: 'AAPL' })
+    expect(dropSlot(rows, 9)).toEqual({ before: 'AAPL' })
+    expect(dropSlot(rows, 11)).toEqual({ before: 'MSFT' })
+    expect(dropSlot(rows, 39)).toEqual({ before: 'NVDA' })
+    expect(dropSlot(rows, 51)).toEqual({ after: 'NVDA' })
+    // above the first row is still the first slot, not "no slot"
+    expect(dropSlot(rows, -40)).toEqual({ before: 'AAPL' })
+    expect(dropSlot([], 10)).toBeNull()
+  })
+
+  it('resolves a slot into one placement call', () => {
+    const list = ['AAPL', 'MSFT', 'NVDA', 'AMD']
+    expect(resolveDrop(list, 'AMD', { before: 'MSFT' })).toEqual({ before: 'MSFT' })
+    expect(resolveDrop(list, 'AAPL', { after: 'AMD' })).toEqual({ toEnd: true })
+    // a group is a slice of the list: its tail row is followed by whatever
+    // comes next in the WATCHLIST, which is where the drop has to land
+    expect(resolveDrop(list, 'AAPL', { after: 'MSFT' })).toEqual({ before: 'NVDA' })
+  })
+
+  it('reports no-op drops instead of writing the list back unchanged', () => {
+    const list = ['AAPL', 'MSFT', 'NVDA']
+    expect(resolveDrop(list, 'MSFT', { before: 'MSFT' })).toBeNull()   // onto itself
+    expect(resolveDrop(list, 'AAPL', { before: 'MSFT' })).toBeNull()   // already there
+    expect(resolveDrop(list, 'MSFT', { after: 'AAPL' })).toBeNull()    // already there
+    expect(resolveDrop(list, 'NVDA', { after: 'NVDA' })).toBeNull()    // already last
+    expect(resolveDrop(list, 'GONE', { before: 'AAPL' })).toBeNull()
+    expect(resolveDrop(list, 'AAPL', { before: 'GONE' })).toBeNull()
+    expect(resolveDrop(list, 'AAPL', null)).toBeNull()
   })
 })
 

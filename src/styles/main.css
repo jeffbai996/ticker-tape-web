@@ -366,6 +366,33 @@ html, body {
     }
   }
   
+/* ─── Drag to reorder (select mode) ───────────────────────────────────────
+   touch-action: none is the whole reason this works on the iPad — without it
+   WebKit claims the gesture for page scrolling before the first pointermove
+   ever reaches us, and the row never moves.
+   Everything visible here is opacity or transform. This board relayouts on
+   every quote tick, and a drag visual that touched geometry would feed the
+   measure → reflow → measure loop the toolbar already got caught in. */
+.tui-drag-handle {
+  touch-action: none;
+  cursor: grab;
+  -webkit-user-select: none;
+  user-select: none;
+  /* the grip sits INSIDE the row's <a>: without these, a long press on iPad
+     opens the link-preview callout and steals the drag before it starts */
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+}
+.tui-drag-handle:active { cursor: grabbing; }
+.tui-row.is-dragging { opacity: .42; }
+/* Parked at the board's top edge and moved by translateY alone, so a drop
+   target 30 rows down costs one composited transform, not a relayout. */
+.board-drop-line {
+  will-change: transform;
+  transition: opacity .09s linear;
+  box-shadow: 0 0 6px color-mix(in srgb, var(--color-accent) 55%, transparent);
+}
+
 /* Brand spinner: the logo's dot ring, lit by a wave that runs around it.
    Sized by the caller; the dots inherit the ring's colour from currentColor. */
 .brand-spinner circle { fill: currentColor; opacity: .18; }
@@ -403,7 +430,8 @@ html, body {
 @media (prefers-reduced-motion: reduce) {
     .mq-inner,
     .tui-company-symbol,
-    .tui-company-name-swap {
+    .tui-company-name-swap,
+    .board-drop-line {
       transition: none !important;
     }
     .mq-inner { transform: none !important; }
