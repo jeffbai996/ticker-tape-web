@@ -176,7 +176,7 @@ describe('compact dashboard company name', () => {
     // one row at every width — the strip scrolls, nothing wraps to a second row
     expect(dashboard).toContain('class="dashboard-toolbar flex items-center gap-2 md:gap-4 px-1 pb-2 min-w-0"')
     expect(dashboard).toContain('class="dashboard-controls flex items-center gap-2 min-w-0 shrink-0"')
-    expect(dashboard).toContain('class={`dashboard-sectors flex items-baseline gap-x-4 min-w-0')
+    expect(dashboard).toContain('class="dashboard-sectors flex items-baseline gap-x-4 min-w-0')
     expect(dashboard).toContain('overflow-x-auto no-scrollbar')
     expect(dashboard).toContain('function SectorScroller')
     expect(dashboard).toContain('aria-label={tl(\'Scroll sectors right\')}')
