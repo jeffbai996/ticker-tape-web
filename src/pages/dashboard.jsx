@@ -1321,11 +1321,13 @@ function SearchResultSpark({ symbol }) {
 // inline glass icon repainted on every quote tick and visibly shimmered under
 // trackpad/OS zoom while its text siblings held dead still (Jeff 2026-08-11).
 // A constant vnode short-circuits the diff entirely.
-const GLASS_ICON = (
-  <span class="absolute inset-y-0 left-2 text-muted pointer-events-none grid place-items-center">
-    <svg viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7" cy="7" r="4.4" /><path d="m10.4 10.4 3 3" /></svg>
-  </span>
-)
+// Rebuilt from scratch as pure CSS (.board-glass in main.css), mirroring the
+// burger's construction — the one toolbar icon that never wobbled. The old
+// setup was an svg grid-centered at a 7.5px half-pixel offset; the svg layer
+// re-rounded on every global repaint under zoom and the glass danced alone
+// (Jeff 2026-08-11: "destroy the current magnifying glass setup and just do
+// a new one from scratch"). Integer offsets, no svg, no centering math.
+const GLASS_ICON = <span class="board-glass" aria-hidden="true" />
 
 function TickerSearch({ filter, setFilter, activeList }) {
   const [hits, setHits] = useState(null)
@@ -1372,7 +1374,7 @@ function TickerSearch({ filter, setFilter, activeList }) {
         }}
         placeholder={`${tl('Search')}…`}
         aria-label={tl('Search')}
-        class={`board-control board-search min-w-0 border rounded-lg pl-6 py-1 font-anth text-[10px] text-ink outline-none focus:border-accent placeholder:text-muted transition-[width,background-color,border-color,box-shadow] duration-300 ease-out ${
+        class={`board-control board-search min-w-0 border rounded-lg pl-6 py-1 font-anth text-[10px] text-ink outline-none focus:border-accent placeholder:text-[9.5px] placeholder:text-muted/70 transition-[width,background-color,border-color,box-shadow] duration-300 ease-out ${
           expanded ? 'w-44 sm:w-60 pr-2'
             : 'w-[26px] sm:w-[88px] pr-0 sm:pr-2 cursor-pointer max-sm:placeholder:text-transparent'}`} />
       {open && hits?.length > 0 && (
@@ -1565,7 +1567,7 @@ export function Dashboard({ listId = null }) {
             class={`board-control h-[25px] shrink-0 inline-flex items-center gap-1 rounded-lg border px-2 font-anth text-[10px] transition-colors ${
               selecting
                 ? 'border-accent/60 bg-accent-soft text-accent'
-                : 'text-ink-2 hover:text-accent hover:border-accent/50'
+                : 'border-white/25 text-ink-2 hover:text-accent hover:border-accent/50'
             }`}>
             {/* checkbox glyph: without it the button read as the search
                 field's submit (Jeff 2026-08-11); 25px matches the search +
