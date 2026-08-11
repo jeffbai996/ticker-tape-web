@@ -5,6 +5,7 @@ import { marketState } from '../lib/marketState.js'
 import { paintRollingTime, CLOCK_ZONES } from '../lib/rollclock.js'
 import { hrefFor } from '../lib/route.js'
 import { fmtPrice, fmtPct } from '../lib/format.js'
+import { FlashPrice } from './Fig.jsx'
 import { tl, getLocale, setLocale } from '../lib/i18n.js'
 
 // Session-state chip styling mirrors the extended-quote grammar: blue PM and
@@ -103,11 +104,10 @@ function StripCell({ symbol, label, q }) {
       {/* no thousands separators in the strip — "29536.50" scans faster at a
           glance than "29,536.50" in a 10px ribbon (Jeff 2026-08-06); commas
           stay everywhere else */}
-      {/* NO flash in the index strip: overnight it carries futures + BTC,
-          which tick 24/7 — a permanently strobing status bar (Jeff
-          2026-08-11, "search bar row" shimmer). It's a reference strip,
-          not the tape. */}
-      <span class={`font-semibold ${isVix ? vixClass(q?.price) : 'text-ink-2'}`}>{q ? fmtPrice(q.price).replace(/,/g, '') : '—'}</span>
+      {/* Flash restored 2026-08-11: stripped as a shimmer suspect, exonerated
+          when the dither re-roll on .board-control turned out to be the whole
+          story. Futures + BTC blinking overnight is the strip doing its job. */}
+      <span class={`font-semibold ${isVix ? vixClass(q?.price) : 'text-ink-2'}`}>{q ? <FlashPrice price={q.price} fmt={(v) => fmtPrice(v).replace(/,/g, '')} /> : '—'}</span>
       {q && !isVix && <span class={`text-[10px] ${up ? 'text-up' : 'text-down'}`}>{fmtPct(q.pct)}</span>}
     </a>
   )
