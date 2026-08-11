@@ -140,11 +140,16 @@ export function StatusBar() {
   const etParts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: 'numeric', hour12: false }).formatToParts(now)
   const etMins = Number(etParts.find((p) => p.type === 'hour').value) % 24 * 60
     + Number(etParts.find((p) => p.type === 'minute').value)
-  const EDGES = [[240, 'pre-market opens'], [570, 'session opens'], [960, 'session closes'], [1200, 'after-hours ends']]
+  // {t} pattern keys: zh needs the countdown in a different position than
+  // "<event> in 2h 14m", so the whole sentence is the label and tl's
+  // fall-back-to-key keeps English working until the entry lands
+  const EDGES = [[240, 'pre-market opens in {t}'], [570, 'session opens in {t}'],
+    [960, 'session closes in {t}'], [1200, 'after-hours ends in {t}']]
   const edge = EDGES.find(([m]) => etMins < m)
-  const chipTitle = holiday ? holiday
-    : edge ? `${edge[1]} in ${Math.floor((edge[0] - etMins) / 60)}h ${(edge[0] - etMins) % 60}m`
-    : 'next session monday'
+  const chipTitle = holiday ? tl(holiday)
+    : edge ? tl(edge[1]).replace('{t}',
+      `${Math.floor((edge[0] - etMins) / 60)}h ${(edge[0] - etMins) % 60}m`)
+    : tl('next session monday')
 
   return (
     <header class="flex items-center gap-3 max-md:gap-1.5 px-3 max-md:px-2 h-8 shrink-0 bg-black border-b border-line font-mono text-[11px] select-none">
@@ -184,7 +189,7 @@ export function StatusBar() {
       <RollingClock />
       <span
         class={`inline-block w-1.5 h-1.5 rounded-full ${online ? 'bg-up' : 'bg-down'}`}
-        title={online ? 'online' : 'offline'}
+        title={online ? tl('online') : tl('offline')}
       />
       <button
         onClick={() => setLocale(getLocale() === 'en' ? 'zh' : 'en')}

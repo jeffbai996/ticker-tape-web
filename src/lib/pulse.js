@@ -1,12 +1,18 @@
 // Pulse panel: breadth stats over the live watchlist, mirroring the TUI's
 // left-rail Pulse block. Pure — takes the quote list, returns the numbers.
 
+/** Advancers in a list of moves (pct, day P&L, whatever's signed). One place
+ *  decides that flat counts as green, so every breadth readout agrees. */
+export function countAdvancers(values) {
+  return values.filter((v) => Number.isFinite(v) && v >= 0).length
+}
+
 export function pulseStats(quotes) {
   const pcts = quotes.filter((q) => q?.pct != null)
   if (!pcts.length) return null
 
   const sorted = [...pcts].sort((a, b) => b.pct - a.pct)
-  const adv = pcts.filter((q) => q.pct >= 0).length
+  const adv = countAdvancers(pcts.map((q) => q.pct))
   const dec = pcts.length - adv
   const avg = pcts.reduce((s, q) => s + q.pct, 0) / pcts.length
   const hi = sorted[0]
@@ -19,7 +25,7 @@ export function pulseStats(quotes) {
   const variance = pcts.reduce((s, q) => s + (q.pct - avg) ** 2, 0) / pcts.length
 
   const ext = quotes.filter((q) => q?.extPct != null)
-  const extAdv = ext.filter((q) => q.extPct >= 0).length
+  const extAdv = countAdvancers(ext.map((q) => q.extPct))
 
   return {
     adv,

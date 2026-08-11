@@ -21,6 +21,7 @@ import { AiReport, MdLite } from '../components/AiReport.jsx'
 import { fetchHistory, prefetchSymbol } from '../lib/history.js'
 import { createPCache } from '../lib/pcache.js'
 import { thesisAnalysisPrompt, thesisHealth, thesisSignals } from '../lib/thesis.js'
+import { countAdvancers } from '../lib/pulse.js'
 
 const SYMBOLS = DEMO_POSITIONS.map((p) => p.symbol)
 const BOTH_ACCOUNTS = 'all'
@@ -139,7 +140,7 @@ function BookPulse({ rows }) {
   const ranked = [...priced].sort((a, b) => b.dayPnl - a.dayPnl)
   const contributor = ranked.find((row) => row.dayPnl >= 0)
   const detractor = [...ranked].reverse().find((row) => row.dayPnl < 0)
-  const adv = priced.filter((row) => row.dayPnl >= 0).length
+  const adv = countAdvancers(priced.map((row) => row.dayPnl))
   const biggest = [...rows].filter((row) => row.weight != null).sort((a, b) => b.weight - a.weight)[0]
   const line = (label, row, cls) => (
     <div class="flex items-baseline gap-2 px-2.5 py-[2px] font-mono text-[10.5px]">
