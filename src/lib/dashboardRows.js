@@ -58,6 +58,42 @@ export function selectFlatRows(watchlist, quotes, { filter = '', sort = 'manual'
   })
 }
 
+/** Which slot a drag is hovering, from row geometry measured once at
+ * pointerdown. `rows` are {symbol, top, bottom} in visual order and `y` is
+ * board-relative, so a page scroll mid-drag can't drift the answer.
+ * Returns {before: SYM} for "insert above SYM" or {after: SYM} for the tail
+ * slot — the tail is expressed relative to a row because a scope (one sector
+ * group) is only a slice of the underlying list. */
+export function dropSlot(rows, y) {
+  if (!rows?.length) return null
+  for (const row of rows) {
+    if (y < (row.top + row.bottom) / 2) return { before: row.symbol }
+  }
+  return { after: rows[rows.length - 1].symbol }
+}
+
+/** Translate a hovered slot into the one placement the watchlist mutators
+ * understand: {before} for placeSymbol/moveWatchlistSymbol, {toEnd} for the
+ * nudge path (no anchor exists past the last row). Returns null when the drop
+ * would leave the list exactly as it is — a no-op write still fires the
+ * storage listeners and re-renders the whole board. */
+export function resolveDrop(list, symbol, slot) {
+  if (!slot || !symbol) return null
+  const from = list.indexOf(symbol)
+  if (from < 0) return null
+  let before = slot.before
+  if (before == null) {
+    const anchor = list.indexOf(slot.after)
+    if (anchor < 0) return null
+    before = anchor + 1 < list.length ? list[anchor + 1] : null
+  }
+  if (before === symbol) return null
+  if (before == null) return from === list.length - 1 ? null : { toEnd: true }
+  const to = list.indexOf(before)
+  if (to < 0 || to === from + 1) return null
+  return { before }
+}
+
 /** Board breadth for the hamburger menu's corner panel: how the visible
  * watchlist leans right now, plus the two extremes. Rows without a pct
  * (halted, unfetched) are ignored rather than counted as flat. */

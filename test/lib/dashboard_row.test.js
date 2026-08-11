@@ -124,6 +124,77 @@ describe('compact dashboard company name', () => {
     expect(dashboard).toContain('lg:mr-[238px]')
   })
 
+  // 2026-08-11: reordering is a thing you do to the rows, not a separate mode.
+  // The grip lives on the row inside select mode; the bottom-right ⇅ button
+  // and the whole ReorderList screen are gone.
+  it('drags rows to reorder from inside select mode', () => {
+    expect(dashboard).toContain('class="tui-drag-handle')
+    expect(dashboard).toContain('const grabbable = selecting && !!dragScope && !!drag')
+    expect(dashboard).toContain('data-row-symbol={symbol}')
+    expect(dashboard).toContain('data-drag-scope={dragScope || undefined}')
+    // pointer events, never HTML5 DnD — iOS Safari has no dragstart at all
+    expect(dashboard).toContain('onPointerDown={(e) => drag.onPointerDown(symbol, e)}')
+    expect(dashboard).toContain('onPointerCancel={drag.onPointerCancel}')
+    expect(dashboard).toContain('setPointerCapture?.(e.pointerId)')
+    expect(dashboard).not.toMatch(/draggable\b/)
+    expect(dashboard).not.toContain('dataTransfer')
+    expect(css).toMatch(/\.tui-drag-handle\s*\{[\s\S]*touch-action: none;/)
+    // the grip takes the meters' space rather than squeezing in beside them
+    expect(dashboard).toContain("${grabbable ? 'hidden' : 'hidden @min-[545px]:flex'} shrink-0 flex-col")
+    expect(dashboard).toContain("${grabbable ? ' pr-11' : ''}")
+    // manual order only: a live % sort would snap the row straight back
+    expect(dashboard).toContain("selecting && sort === 'manual' ? scope : null")
+    expect(dashboard).toContain('dragScope={dragScopeFor(g.name)}')
+    expect(dashboard).toContain("dragScope={dragScopeFor('flat')}")
+  })
+
+  it('moves the drop marker by transform and never per-frame setState', () => {
+    expect(dashboard).toContain('class="board-drop-line pointer-events-none absolute inset-x-0 top-0')
+    expect(dashboard).toMatch(/line\.style\.transform = `translateY\(/)
+    // the move handler must not touch state — dragSym is set once per drag
+    expect(dashboard).toMatch(/onPointerMove: \(e\) => \{[\s\S]*?paintDrop\(e\.clientY\)\s*\},/)
+    expect(dashboard).not.toMatch(/onPointerMove: \(e\) => \{[\s\S]*?setDrag/)
+    // geometry is read once at pointerdown, not on every move
+    expect(dashboard).toContain('rows: measureScope(scope)')
+    expect(css).toMatch(/\.board-drop-line\s*\{[\s\S]*will-change: transform;/)
+    expect(css).toMatch(/prefers-reduced-motion:[\s\S]*\.board-drop-line/)
+  })
+
+  it('drops the standalone reorder mode it replaces', () => {
+    expect(dashboard).not.toContain('function ReorderList')
+    expect(dashboard).not.toContain('setReordering')
+    expect(dashboard).not.toContain('reordering')
+    expect(dashboard).not.toContain('onReorder')
+    expect(dashboard).not.toContain("tl('reorder')")
+    expect(dashboard).not.toContain("tl('drag rows or use the arrows')")
+    expect(dashboard).toContain('<AddSymbolRow onAdd={addSymbol} isPresent={isPresent} />')
+  })
+
+  it('computes the grouped board once per input change, not per quote tick', () => {
+    expect(dashboard).toContain('const { visibleManual, ordered } = useMemo(')
+    expect(dashboard).toContain("if (viewMode !== 'grouped') return { visibleManual: [], ordered: [] }")
+    expect(dashboard).toContain('[viewMode, watchKey, filter, nameKey, groupsRev, groupPrefs.order.join(\',\')]')
+    // the flat view's numeric sorts stay live, but only while it is on screen
+    expect(dashboard).toContain("const flatRows = viewMode === 'flat' ? selectFlatRows(watchlist, quotes, { filter, sort }) : []")
+  })
+
+  it('stops the DAY spark fan-out while the tab is hidden', () => {
+    expect(dashboard).toContain('if (!initial && document.hidden) { missed = true; return }')
+    expect(dashboard).toContain("document.addEventListener('visibilitychange', onVisible)")
+    expect(dashboard).toContain("document.removeEventListener('visibilitychange', onVisible)")
+    // still ONE interval driving the whole board
+    expect(dashboard.match(/setInterval\(refresh/g)).toHaveLength(1)
+  })
+
+  it('translates the strings the zh board was still rendering in English', () => {
+    expect(dashboard).toContain("title={folded ? tl('expand') : tl('collapse')}")
+    expect(dashboard).toContain("title={`${tl('remove')} ${symbol} ${tl('from the board')}`}")
+    expect(dashboard).toContain("title={`${symbol} ${tl('intraday')}`}")
+    expect(dashboard).toContain("title={tl('drag to reorder')}")
+    // nothing left rendering a bare English literal into a title
+    expect(dashboard).not.toMatch(/title="[a-z]/)
+  })
+
   it('keeps autocomplete identity compact and draws a cached intraday spark', () => {
     expect(dashboard).toContain('function SearchResultSpark({ symbol })')
     expect(dashboard).toContain("fetchHistory(symbol, '1D')")
