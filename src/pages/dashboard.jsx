@@ -328,9 +328,17 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
       <div class="flex gap-6 max-sm:gap-2 min-w-0">
         <div class="flex-1 min-w-0 overflow-hidden">
           <div class="flex items-baseline gap-1.5 max-sm:gap-1 font-mono text-[13px] max-sm:text-[12px] flex-nowrap max-sm:flex-wrap min-w-0">
-            <span ref={identityRef} onClick={onIdentityTap}
+            <span ref={identityRef}
               class="tui-company-identity relative flex items-baseline gap-1.5 flex-1 min-w-0 @min-[820px]:flex-none @min-[820px]:w-14 text-ink font-[650] font-tick text-[12px]">
-              <span class="tui-company-symbol shrink-0">{symbol}</span>
+              {/* The tap target is the TICKER LETTERS, not the identity slot.
+                  The slot is flex-1, so it stretches across the row's spare
+                  width and was swallowing taps far to the right of the glyphs
+                  — tapping empty space beside a short ticker expanded the name
+                  over the price (Jeff 2026-08-11: "only expand the name if the
+                  user clicks on the ticker letters area, not the area to the
+                  right of it"). This span is shrink-0, so it is exactly as
+                  wide as the symbol it draws. */}
+              <span class="tui-company-symbol shrink-0" onClick={onIdentityTap}>{symbol}</span>
               {/* The elastic slot used to sit empty next to a short ticker and
                   only show the name on hover (Jeff 2026-08-05: "don't let it
                   go to waste"). Now the name rides inline wherever the slot
