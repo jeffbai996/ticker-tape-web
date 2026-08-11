@@ -1342,7 +1342,11 @@ function TickerSearch({ filter, setFilter, activeList }) {
     return () => removeEventListener('pointerdown', close)
   }, [])
   return (
-    <div ref={boxRef} class="relative min-w-0">
+    // shrink-0, not min-w-0: as the row's only shrinkable child this box
+    // absorbed every sub-pixel reflow — the glass + placeholder wobbled while
+    // fixed neighbors held still (Jeff 2026-08-11). The strip scrolls;
+    // nothing here needs to shrink.
+    <div ref={boxRef} class="relative shrink-0">
       {/* The 10px glass stays at x=8 inside the 26px folded control, centered
           without changing positioning modes when focus moves to the menu. */}
       <span class="absolute inset-y-0 left-2 text-muted pointer-events-none grid place-items-center">
@@ -1549,11 +1553,18 @@ export function Dashboard({ listId = null }) {
           <button data-select-trigger type="button" aria-pressed={selecting}
             title={tl('Select rows')}
             onClick={() => { if (selecting) endSelect(); else setSelecting(true) }}
-            class={`board-control h-[26px] shrink-0 rounded-lg border px-2 font-anth text-[10px] transition-colors ${
+            class={`board-control h-[25px] shrink-0 inline-flex items-center gap-1 rounded-lg border px-2 font-anth text-[10px] transition-colors ${
               selecting
                 ? 'border-accent/60 bg-accent-soft text-accent'
                 : 'text-ink-2 hover:text-accent hover:border-accent/50'
             }`}>
+            {/* checkbox glyph: without it the button read as the search
+                field's submit (Jeff 2026-08-11); 25px matches the search +
+                view-toggle beside it, not the 26px burger across the row */}
+            <svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="1.5" y="1.5" width="11" height="11" rx="2.5" />
+              <path d="m4.4 7.2 1.9 1.9 3.4-4" />
+            </svg>
             {tl('Select')}
           </button>
         </div>
