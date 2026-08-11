@@ -336,7 +336,7 @@ const LABELS = {
   today: '今日', advancing: '上涨', avg: '均', est: '预期',
   updated: '更新于', 'STALE — last good fetch': '数据过期 — 上次成功获取', ago: '前',
   General: '其他',
-  All: '全部', Sort: '排序', Ticker: '代码', Spread: '价差', Search: '搜索',
+  All: '全部', Sort: '排序', Ticker: '代码', Spread: '价差', Search: '搜索', Select: '多选',
   'Main dashboard': '主仪表盘', 'Market workspace': '市场工作区',
   'Global markets': '全球市场', 'Open markets': '打开市场', 'Market groups': '市场分组',
   'Jump to': '快速跳转', 'Relative signals': '相对强弱', 'leadership and risk appetite': '领涨结构与风险偏好',

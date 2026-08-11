@@ -24,8 +24,6 @@ export const SPARK_WINDOWS = [
   // DAY is supplied by the live intraday pump rather than the daily cache.
   // Zero deliberately means "use every point present" in sparkWindow.
   { id: 'DAY', sessions: 0, intraday: true },
-  { id: '1W', sessions: 5 },
-  { id: '2W', sessions: 10 },
   { id: '1M', sessions: 21 },
   { id: '3M', sessions: 63 },
   { id: '6M', sessions: 126 },
@@ -44,6 +42,13 @@ export function isSparkType(id) {
 
 export function isSparkWindow(id) {
   return SPARK_WINDOWS.some((w) => w.id === id)
+}
+
+/** Retire the old five/ten-daily-close windows without leaving saved boards
+ *  pointed at an option the menu can no longer represent. */
+export function normalizeSparkWindow(id) {
+  if (id === '1W' || id === '2W') return '1M'
+  return isSparkWindow(id) ? id : DEFAULT_WINDOW
 }
 
 /** The tail of the cached series for a window id; unknown ids fall back to the
