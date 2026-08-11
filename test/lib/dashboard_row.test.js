@@ -126,13 +126,32 @@ describe('compact dashboard company name', () => {
   it('animates and shades the watchlist toolbar controls as one family', () => {
     expect(dashboard).toContain('aria-expanded={open}')
     expect(dashboard).toContain("open ? 'is-open' : ''")
-    expect(dashboard).toContain('class="board-menu-pop absolute top-full left-0')
+    expect(dashboard).toContain('class="board-menu-pop z-40')
     expect(dashboard).toContain('board-control inline-flex rounded-lg')
     expect(dashboard).toContain('board-search')
+    expect(dashboard).toContain("viewMode === 'grouped' ? 'bg-accent-soft text-accent shadow-sm'")
+    expect(dashboard).toContain("viewMode === 'flat' ? 'bg-accent-soft text-accent shadow-sm'")
     expect(css).toContain('.board-burger-line')
     expect(css).toContain('.board-burger.is-open .board-burger-line:nth-child(1)')
     expect(css).toContain('@keyframes board-menu-pop')
     expect(css).toMatch(/prefers-reduced-motion:[\s\S]*\.board-menu-pop/)
+  })
+
+  it('uses a sectioned popover on desktop and a bottom sheet on mobile', () => {
+    expect(dashboard).toContain('class="board-menu-grid grid grid-cols-2 gap-1.5 p-1.5"')
+    expect(dashboard).toContain('class="board-menu-section"')
+    expect(css).toContain('@media (max-width: 639px)')
+    expect(css).toMatch(/max-width: 639px[\s\S]*\.board-menu-pop[\s\S]*position: fixed;/)
+    expect(css).toContain('@keyframes board-menu-sheet')
+  })
+
+  it('refreshes DAY sparklines progressively and feeds them into every row', () => {
+    expect(dashboard).toContain('function useIntradaySparks(symbols, enabled)')
+    expect(dashboard).toContain('rollCashSession(session.current, now)')
+    expect(dashboard).toContain("fetchHistory(symbol, '1D')")
+    expect(dashboard).toContain('const intradaySparks = useIntradaySparks(watchlist, sparkWin === \'DAY\'')
+    expect(dashboard).toContain("intradayBars={intradaySparks[symbol]}")
+    expect(dashboard).toContain("sparkWin === 'DAY' ? intradayBars : data?.histo")
   })
 
   it('merges desktop controls and the scrollable sector tape into one row', () => {

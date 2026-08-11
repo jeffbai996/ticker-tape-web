@@ -52,6 +52,15 @@ export function marketState(date = new Date()) {
   return { state: 'closed', holiday: null }
 }
 
+/** Advance an intraday chart's session only at the 09:30 ET cash open.
+ *  Pre-market keeps yesterday's completed line; post-market keeps today's.
+ *  This transition is what lets a long-lived dashboard clear once per day
+ *  without also blanking itself at the closing bell. */
+export function rollCashSession(current, date = new Date()) {
+  const parts = etParts(date)
+  return marketState(date).state === 'open' ? parts.iso : current
+}
+
 /**
  * Blue Ocean's overnight equity session: Sunday 20:00 ET → Friday 20:00 ET,
  * i.e. the hours between the 20:00 after-hours close and the 04:00 pre-market
