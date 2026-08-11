@@ -5,6 +5,7 @@ import { ECON_EVENTS, upcomingEvents } from '../lib/markets.js'
 import { assembleBriefing, renderBriefing, briefingPrompt, BRIEFING_SYSTEM } from '../lib/briefing.js'
 import { useEarningsDays } from './dashboard.jsx'
 import { AiReport, MdLite } from '../components/AiReport.jsx'
+import { Empty } from '../components/Loading.jsx'
 import { loadArchive, onArchiveChange, removeReport } from '../lib/archive.js'
 import { formatBriefTechnicalNote, getLocale, tl } from '../lib/i18n.js'
 import { fmtPct } from '../lib/format.js'
@@ -131,7 +132,7 @@ function BriefData({ s }) {
             <span class="ml-auto text-ink-2">{m.price.toFixed(2)}</span>
             <span class={`w-16 text-right ${upDown(m.pct)}`}>{fmtPct(m.pct)}</span>
           </div>
-        )) : <div class="px-3 py-2 font-mono text-[11px] text-muted">{tl('flat tape')}</div>}
+        )) : <Empty label={tl('flat tape')} />}
       </Card>
 
       <Card title={tl('Technical flags')}>
@@ -144,7 +145,7 @@ function BriefData({ s }) {
               ))}
             </span>
           </div>
-        )) : <div class="px-3 py-2 font-mono text-[11px] text-muted">{tl('nothing stretched')}</div>}
+        )) : <Empty label={tl('nothing stretched')} />}
       </Card>
 
       <Card title={tl('Ahead')}>

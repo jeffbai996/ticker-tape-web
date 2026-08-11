@@ -1,19 +1,19 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { createChart, CandlestickSeries, HistogramSeries } from 'lightweight-charts'
 import { useQuotes } from '../hooks.js'
-import { fetchDividends as fetchDivHistory, fetchHistory, fetchNews, fetchSplits, RANGES } from '../lib/history.js'
+import { fetchDividends as fetchDivHistory, fetchHistory, fetchNews, fetchSplits, peekHistory, RANGES } from '../lib/history.js'
 import { fetchFinancials, statementRows } from '../lib/financials.js'
 import { alignedReturns, regressStats } from '../lib/regress.js'
 import { BUCKETS } from '../lib/symbols.js'
-import { fetchFundamentals } from '../lib/fundamentals.js'
+import { fetchFundamentals, peekFundamentals } from '../lib/fundamentals.js'
 import { fetchOptions } from '../lib/options.js'
 import { fetchInsider } from '../lib/fundamentals.js'
 import { fetchEarningsImpact } from '../lib/earnings.js'
 import { reconcileQuarters } from '../lib/earnings.js'
 import { fetchAnalysts } from '../lib/fundamentals.js'
-import { fetchProfile, fetchHolders } from '../lib/fundamentals.js'
+import { fetchProfile, fetchHolders, peekProfile } from '../lib/fundamentals.js'
 import { fetchFilings } from '../lib/edgar.js'
-import { wireUrl } from '../lib/wire.js'
+import { fetchSymbolWire, peekSymbolWire, wireUrl } from '../lib/wire.js'
 import { bsDelta } from '../lib/bs.js'
 import { vwapSeries } from '../lib/vwap.js'
 import { LineSeries, AreaSeries } from 'lightweight-charts'
@@ -23,10 +23,11 @@ import { hrefFor } from '../lib/route.js'
 import { Marquee } from '../components/Marquee.jsx'
 import { getLocale, tl, t as tt } from '../lib/i18n.js'
 import { Fig, FlashMetric, FlashPrice } from '../components/Fig.jsx'
+import { Loading } from '../components/Loading.jsx'
 import { watch, unwatch } from '../lib/watchlist.js'
 import { useWatchlist } from '../hooks.js'
 import { getCached } from '../lib/feed.js'
-import { fetchEarningsDate } from '../lib/fundamentals.js'
+import { fetchEarningsDate, peekEarningsDate } from '../lib/fundamentals.js'
 import { memoPrompt, BRIEFING_SYSTEM } from '../lib/briefing.js'
 import { AiReport, MdLite } from '../components/AiReport.jsx'
 import { ChartSuite } from '../components/ChartSuite.jsx'
@@ -405,10 +406,10 @@ function Stat({ label, value, cls = 'text-ink' }) {
 }
 
 function Technicals({ symbol }) {
-  const [daily, setDaily] = useState(null)
+  const [daily, setDaily] = useState(() => peekHistory(symbol, '1Y') ?? null)
 
   useEffect(() => {
-    setDaily(null)
+    setDaily(peekHistory(symbol, '1Y') ?? null)
     fetchHistory(symbol, '1Y').then(setDaily).catch(() => setDaily({ bars: [] }))
   }, [symbol])
 
@@ -464,11 +465,11 @@ function Technicals({ symbol }) {
 }
 
 function Fundamentals({ symbol }) {
-  const [f, setF] = useState(null)
+  const [f, setF] = useState(() => peekFundamentals(symbol) ?? null)
   const [failed, setFailed] = useState(false)
 
   useEffect(() => {
-    setF(null)
+    setF(peekFundamentals(symbol) ?? null)
     setFailed(false)
     fetchFundamentals(symbol).then(setF).catch(() => setFailed(true))
   }, [symbol])
@@ -484,7 +485,7 @@ function Fundamentals({ symbol }) {
           <span class={`font-mono text-[10px] uppercase ${ratingTone(f.recommendationKey)}`}>{f.recommendationKey.replace('_', ' ')}</span>
         )}
       </header>
-      {!f && <div class="px-3 py-3 text-[11px] text-muted font-mono">{tt('common.loading')}</div>}
+      {!f && <Loading label={tt('common.loading')} minH={345} />}
       {f && (
         <>
           <Stat label="Mkt cap" value={fmtBig(f.marketCap)} />
@@ -522,7 +523,7 @@ function News({ symbol }) {
       <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
         <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{tl('News')}</h2>
       </header>
-      {items == null && <div class="px-3 py-3 text-[11px] text-muted font-mono">{tt('common.loading')}</div>}
+      {items == null && <Loading label={tt('common.loading')} minH={240} />}
       {items?.length === 0 && <div class="px-3 py-3 text-[11px] text-muted font-mono">{tl('no headlines')}</div>}
       {items?.map((n) => (
         <a
@@ -822,7 +823,7 @@ function PeerComp({ symbol }) {
   return (
     <SectionCard title={`${tl('Relative value')} · ${tl(bucket.name)}`}>
       {rows === null ? (
-        <div class="px-3 py-2 font-mono text-[11px] text-muted">{tt('common.loading')}</div>
+        <Loading label={tt('common.loading')} minH={160} />
       ) : (
         <div class="overflow-x-auto">
           <table class="w-full border-collapse font-mono text-[11px] whitespace-nowrap">
@@ -905,7 +906,7 @@ function FinancialsView({ symbol }) {
     fetchFinancials(symbol).then(setFa).catch((e) => setErr(String(e.message || e)))
   }, [symbol])
   if (err) return <div class="px-1 font-mono text-[11px] text-down">{err}</div>
-  if (fa === null) return <div class="px-1 font-mono text-[11px] text-muted">{tt('common.loading')}</div>
+  if (fa === null) return <Loading label={tt('common.loading')} minH={320} />
   return (
     <div class="flex flex-col gap-3 max-w-6xl">
       <StatementTable title={`${tl('Quarterly')} · ${symbol}`} periods={fa.quarterly} />
@@ -935,7 +936,7 @@ function InsiderView({ symbol }) {
       </div>
     )
   }
-  if (!rows) return <div class="px-1 font-mono text-[11px] text-muted">{tt('common.loading')}</div>
+  if (!rows) return <Loading label={tt('common.loading')} minH={240} />
 
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-x-auto max-w-4xl">
@@ -1005,7 +1006,7 @@ function EarningsView({ symbol }) {
       </div>
     )
   }
-  if (!data) return <div class="px-1 font-mono text-[11px] text-muted">{tt('common.loading')}</div>
+  if (!data) return <Loading label={tt('common.loading')} minH={240} />
   if (!data.events.length) {
     return <div class="px-1 font-mono text-[11px] text-muted">no reported quarters for {symbol}</div>
   }
@@ -1119,7 +1120,7 @@ function AnalystsView({ symbol }) {
   if (failed) {
     return <div class="px-1 font-mono text-[11px] text-muted">no analyst coverage for {symbol}</div>
   }
-  if (!data) return <div class="px-1 font-mono text-[11px] text-muted">{tt('common.loading')}</div>
+  if (!data) return <Loading label={tt('common.loading')} minH={240} />
 
   const t9 = data.trend
   const total = t9 ? t9.strongBuy + t9.buy + t9.hold + t9.sell + t9.strongSell : 0
@@ -1733,12 +1734,15 @@ function DesCell({ n, label, value, tone, big }) {
 }
 
 function DesBand({ symbol, bars }) {
-  const [f, setF] = useState(null)
-  const [yr, setYr] = useState(null)
-  const [cal, setCal] = useState(null)
-  const [prof, setProf] = useState(null)
+  const [f, setF] = useState(() => peekFundamentals(symbol) ?? null)
+  const [yr, setYr] = useState(() => peekHistory(symbol, '1Y') ?? null)
+  const [cal, setCal] = useState(() => peekEarningsDate(symbol) ?? null)
+  const [prof, setProf] = useState(() => peekProfile(symbol) ?? null)
   useEffect(() => {
-    setF(null); setYr(null); setCal(null); setProf(null)
+    setF(peekFundamentals(symbol) ?? null)
+    setYr(peekHistory(symbol, '1Y') ?? null)
+    setCal(peekEarningsDate(symbol) ?? null)
+    setProf(peekProfile(symbol) ?? null)
     fetchFundamentals(symbol).then(setF).catch(() => setF({}))
     fetchHistory(symbol, '1Y').then(setYr).catch(() => {})
     fetchEarningsDate(symbol).then(setCal).catch(() => {})
@@ -1965,16 +1969,14 @@ function SymbolPrompt() {
 // Dense symbol tape under the DES band — the overview's dead zone becomes
 // the last 10 things fragwire caught on this name. Hidden when no wire.
 function WireMini({ symbol }) {
-  const [rows, setRows] = useState(null)
+  const [rows, setRows] = useState(() => peekSymbolWire(symbol) ?? null)
   const base = wireUrl()
   useEffect(() => {
     let dead = false
-    setRows(null)
+    setRows(peekSymbolWire(symbol) ?? null)
     if (!base) return
-    fetch(`${base.replace(/\/$/, '')}/api/events?symbols=${encodeURIComponent(symbol)}&limit=10&newest=1`,
-          { signal: AbortSignal.timeout(8_000) })
-      .then((r) => r.json())
-      .then((out) => { if (!dead) setRows(out.events || []) })
+    fetchSymbolWire(base, symbol)
+      .then((events) => { if (!dead) setRows(events) })
       .catch(() => { if (!dead) setRows([]) })
     return () => { dead = true }
   }, [symbol, base])
@@ -2129,7 +2131,9 @@ export function Research({ route }) {
 
   useEffect(() => {
     if (!symbol) return
-    setHist(null)
+    // stale-while-revalidate: paint the last bars for this range immediately
+    // and let the fetch below replace them (2026-08-10)
+    setHist(peekHistory(symbol, rangeKey, { interval: tick, prepost: ovExt }) ?? null)
     setErr(null)
     fetchHistory(symbol, rangeKey, { interval: tick, prepost: ovExt })
       .then(setHist)

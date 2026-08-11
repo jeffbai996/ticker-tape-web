@@ -1,5 +1,36 @@
-import { describe, it, expect } from 'vitest'
-import { filterNav } from '../../src/lib/search.js'
+import { describe, it, expect, beforeEach } from 'vitest'
+import { filterNav, searchLocal } from '../../src/lib/search.js'
+
+describe('searchLocal', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    localStorage.setItem('tape-recent-syms', JSON.stringify(['MU', 'AVGO']))
+    localStorage.setItem('named_watchlists_v1', JSON.stringify([
+      { id: 'memory', name: 'Memory', symbols: ['MU', 'WDC'] },
+    ]))
+  })
+
+  it('returns nothing for an empty query', () => {
+    expect(searchLocal('  ')).toEqual([])
+  })
+
+  it('matches recents first and dedupes across sources', () => {
+    const out = searchLocal('mu')
+    expect(out[0]).toMatchObject({ kind: 'symbol', symbol: 'MU', source: 'recent' })
+    expect(out.filter((e) => e.symbol === 'MU')).toHaveLength(1)
+  })
+
+  it('matches named watchlists by name and their members', () => {
+    const out = searchLocal('mem')
+    expect(out.some((e) => e.kind === 'list' && e.href === '#/watchlists/memory')).toBe(true)
+  })
+
+  it('pulls symbols out of named lists', () => {
+    expect(searchLocal('wdc')).toEqual([
+      expect.objectContaining({ symbol: 'WDC', source: 'list', href: '#/research/wdc' }),
+    ])
+  })
+})
 
 describe('filterNav', () => {
   it('returns all top-level sections for an empty query', () => {

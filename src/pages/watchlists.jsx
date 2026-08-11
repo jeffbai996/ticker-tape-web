@@ -11,6 +11,7 @@ import { t as tt, tl } from '../lib/i18n.js'
 import { onSyncStatus } from '../lib/cloudsave.js'
 import { wireUrl } from '../lib/wire.js'
 import { pushWatchlistToWire } from '../lib/watchlistExport.js'
+import { Empty } from '../components/Loading.jsx'
 import { useEffect } from 'preact/hooks'
 
 /** Cloud-save state, quietly: synced rev / syncing / offline. Hidden entirely
@@ -282,9 +283,11 @@ export function WatchlistsPage() {
         </div>
 
         {!lists.length && (
-          <div class="mt-3 rounded-xl border border-dashed border-line-2 px-4 py-5 text-center">
-            <div class="font-anth text-[11px] font-semibold text-ink-2">{tt('watchlists.empty_title')}</div>
-            <div class="pt-1 font-anth text-[10px] text-muted">{tt('watchlists.empty_body')}</div>
+          <div class="mt-3 rounded-xl border border-dashed border-line-2">
+            {/* the title keeps its own weight and tone — Empty owns only the
+                centring and the reserved breathing room */}
+            <Empty label={<span class="font-semibold text-ink-2">{tt('watchlists.empty_title')}</span>}
+              body={tt('watchlists.empty_body')} />
           </div>
         )}
       </div>

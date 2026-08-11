@@ -3,6 +3,7 @@ import { fetchChatModels, fetchSpend } from '../lib/chatClient.js'
 import { runAgentic, trimHistory } from '../lib/agent.js'
 import { toolLabel, toolRunLabel } from '../lib/tools.js'
 import { BrandSpinner } from '../components/BrandSpinner.jsx'
+import { Loading } from '../components/Loading.jsx'
 import { MdLite } from '../components/AiReport.jsx'
 import { getLocale, tl, t as tt } from '../lib/i18n.js'
 import { applyLanguagePreference } from '../lib/aidials.js'
@@ -567,7 +568,7 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
                 <span class="text-ink font-[650]">{s}</span>
                 <span class={pct >= 0 ? 'text-up' : 'text-down'}>{fmtPct(pct)}</span>
               </a>
-            )) : <div class="font-mono text-[11px] text-muted py-1">{tl('loading…')}</div>}
+            )) : <Loading label={tl('loading…')} minH={72} />}
           </div>
           <div class={cell}>
             <div class={eyebrow}>{tl('next earnings')}</div>
@@ -578,7 +579,7 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
                   {earnDays[s] === 0 ? tl('today') : tt('common.days', { days: earnDays[s] })}
                 </span>
               </a>
-            )) : <div class="font-mono text-[11px] text-muted py-1">{tl('loading…')}</div>}
+            )) : <Loading label={tl('loading…')} minH={72} />}
           </div>
           <div class={cell}>
             <div class={eyebrow}>{tl('on the calendar')}</div>
@@ -606,7 +607,7 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
                 <div class="flex justify-between"><span class="text-muted">{tl('down >3%')}</span>
                   <span class={pulse.stress ? 'text-down font-bold' : 'text-ink-2'}>{pulse.stress}</span></div>
               </div>
-            ) : <div class="font-mono text-[11px] text-muted py-1">{tl('loading…')}</div>}
+            ) : <Loading label={tl('loading…')} minH={72} />}
           </div>
           {book && (
             <div class={cell}>

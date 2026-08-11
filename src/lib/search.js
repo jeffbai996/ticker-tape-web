@@ -4,6 +4,61 @@ import { proxyBase } from './feed.js'
 import { createPCache } from './pcache.js'
 import { NAV } from './nav.js'
 import { hrefFor } from './route.js'
+import { getWatchlist } from './watchlist.js'
+import { loadWatchlists } from './watchlists.js'
+
+const RECENT_KEY = 'tape-recent-syms' // written by the research page
+
+function recentSymbols() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]')
+    return Array.isArray(raw) ? raw.filter((s) => typeof s === 'string') : []
+  } catch { return [] }
+}
+
+/**
+ * The user's own universe — watchlist, named lists, recently viewed — matched
+ * synchronously so the palette has something on the very first keystroke
+ * instead of 250ms of debounced nothing. Yahoo hits merge in afterwards.
+ * Returns [{kind:'symbol'|'list', symbol|id, label, source, href}].
+ */
+export function searchLocal(query) {
+  const q = (query || '').trim().toUpperCase()
+  if (!q) return []
+  const out = []
+  const seen = new Set()
+  const pushSymbol = (symbol, source) => {
+    const sym = String(symbol || '').toUpperCase()
+    if (!sym || seen.has(sym) || !sym.includes(q)) return
+    seen.add(sym)
+    out.push({
+      kind: 'symbol',
+      symbol: sym,
+      label: sym,
+      source,
+      href: hrefFor('research', sym.toLowerCase()),
+    })
+  }
+
+  // ordered by how likely the user means it: what they just looked at, then
+  // what they watch, then members of their other lists
+  for (const s of recentSymbols()) pushSymbol(s, 'recent')
+  for (const s of getWatchlist()) pushSymbol(s, 'watch')
+  for (const list of loadWatchlists()) {
+    if (list.name.toUpperCase().includes(q)) {
+      out.push({
+        kind: 'list',
+        id: list.id,
+        label: list.name,
+        source: 'list',
+        detail: `${list.symbols.length} symbols`,
+        href: hrefFor('watchlists', list.id),
+      })
+    }
+    for (const s of list.symbols) pushSymbol(s, 'list')
+  }
+  return out
+}
 
 /** Nav sections/sub-tabs whose label matches the query. Empty query → all sections. */
 export function filterNav(query) {

@@ -5,6 +5,7 @@ import {
   srcCred, evHeadline, evBody,
 } from '../lib/wire.js'
 import { IS_PRIVATE_BUILD } from '../lib/nav.js'
+import { Empty, Loading } from '../components/Loading.jsx'
 import { getLocale, t as tt, tl } from '../lib/i18n.js'
 
 // fragwire's relevance ramp, same colors as its pills: T1 sector (blue),
@@ -95,7 +96,7 @@ function ReadBody({ ev }) {
   }, [ev.id])
   if (state.status === 'off') return null
   if (state.status === 'loading') {
-    return <p class="text-[10.5px] font-mono text-muted animate-pulse pt-1">{tl('pulling the story…')}</p>
+    return <Loading label={tl('pulling the story…')} />
   }
   if (state.status === 'empty') {
     return (
@@ -356,7 +357,7 @@ function Rail({ today, now, events, watchset, onHide }) {
       )}
       <Panel title={tl('today')}>
         {(today?.calendar || []).length === 0 && (
-          <p class="font-mono text-[11px] text-muted py-0.5">{tl('nothing on the sheet')}</p>
+          <Empty label={tl('nothing on the sheet')} />
         )}
         {(today?.calendar || []).map((row) => (
           <div key={row.id} class="py-[3px] font-mono">
@@ -372,7 +373,7 @@ function Rail({ today, now, events, watchset, onHide }) {
       </Panel>
       <Panel title={tl('coming up')}>
         {(today?.upcoming || []).length === 0 && (
-          <p class="font-mono text-[11px] text-muted py-0.5">{tl('nothing on the horizon')}</p>
+          <Empty label={tl('nothing on the horizon')} />
         )}
         {(today?.upcoming || []).slice(0, 8).map((row) => (
           <div key={row.id} class="flex justify-between gap-2 py-[2.5px] font-mono text-[11px]">
