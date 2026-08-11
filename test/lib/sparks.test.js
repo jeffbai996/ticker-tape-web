@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   SPARK_TYPES, DEFAULT_SPARK, isSparkType, linePoints, changeBars, rangeBars,
   SPARK_WINDOWS, DEFAULT_WINDOW, isSparkWindow, sparkWindow, bucketBars,
-  historyBarsToSparkBars,
+  historyBarsToSparkBars, normalizeSparkWindow,
 } from '../../src/lib/sparks.js'
 
 const bar = (c, h, l, v, up) => ({ c, h, l, v, up })
@@ -14,11 +14,19 @@ describe('spark windows', () => {
     expect(ids).toContain(DEFAULT_WINDOW)
     const lens = SPARK_WINDOWS.map((w) => w.sessions)
     expect([...lens].sort((a, b) => a - b)).toEqual(lens)
-    expect(ids.slice(0, 3)).toEqual(['DAY', '1W', '2W'])
+    expect(ids).toEqual(['DAY', '1M', '3M', '6M', '1Y'])
   })
   it('validates ids', () => {
     expect(isSparkWindow('6M')).toBe(true)
+    expect(isSparkWindow('1W')).toBe(false)
+    expect(isSparkWindow('2W')).toBe(false)
     expect(isSparkWindow('5Y')).toBe(false)
+  })
+  it('migrates retired short windows to the first useful daily horizon', () => {
+    expect(normalizeSparkWindow('1W')).toBe('1M')
+    expect(normalizeSparkWindow('2W')).toBe('1M')
+    expect(normalizeSparkWindow('3M')).toBe('3M')
+    expect(normalizeSparkWindow('nonsense')).toBe(DEFAULT_WINDOW)
   })
   it('takes the tail of the series', () => {
     const bars = Array.from({ length: 252 }, (_, i) => bar(i))
