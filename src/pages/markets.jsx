@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'preact/hooks'
 import { fetchHistory } from '../lib/history.js'
 import { BUCKETS } from '../lib/symbols.js'
-import { useQuotes, useWatchlist } from '../hooks.js'
+import { useEscape, useQuotes, useWatchlist } from '../hooks.js'
 import { AiReport } from '../components/AiReport.jsx'
 import { BRIEFING_SYSTEM } from '../lib/briefing.js'
 import { EARNINGS_UNIVERSE,
@@ -595,6 +595,7 @@ function Calendar() {
   const today = new Date().toISOString().slice(0, 10)
   const [cats, setCats] = useState(loadCatalysts)
   const [openKey, setOpenKey] = useState('')
+  useEscape(() => setOpenKey(''), !!openKey)
   useEffect(() => onCatalystsChange(setCats), [])
   // Three days of look-back here. The enlarged view is where you go to reason
   // about a run of prints, so the week's releases should still be on it rather

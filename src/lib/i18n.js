@@ -186,6 +186,7 @@ const STRINGS = {
     zh: '自带快讯源：此页不内置地址或数据。连接任意兼容 Fragwire 的服务后，内容只会在浏览器中渲染；地址留空则使用模拟数据。',
   },
   'wire.story_outlets': { en: '{count} outlets on this story', zh: '{count} 家媒体报道此事件' },
+  'wire.story_outside_buffer': { en: 'story #{id} is outside the buffer', zh: '事件 #{id} 已超出缓冲区' },
   'wire.digest_number': { en: 'digest #{number}', zh: '摘要 #{number}' },
   'wire.tape_latency': { en: 'tape latency {latency}', zh: '快讯延迟 {latency}' },
   'chat.cap_note': {
@@ -418,6 +419,8 @@ const LABELS = {
   Leverage: '杠杆', Maintenance: '维持保证金', 'Excess liquidity': '超额流动性',
   Cushion: '缓冲', 'Target weight': '目标权重', 'Target value': '目标市值',
   'Interactive Brokers': '盈透证券',
+  'filter…': '筛选…', 'Bid/Ask · SPR': '买卖价差', '% off 52w high': '距52周高点',
+  'alert on this symbol': '为此标的设置警报',
   Equity: '净资产', 'Above maintenance': '高于维持保证金', Concentration: '集中度', Margin: '保证金',
   Both: '合并', 'Book pulse': '持仓脉搏', 'Top contributor': '最大正贡献',
   'Top detractor': '最大负贡献', 'Largest line': '最大持仓',
