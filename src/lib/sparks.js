@@ -21,6 +21,11 @@ export const DEFAULT_SPARK = 'area'
 /** How far back the spark looks, in trading sessions (Jeff 2026-08-07). The
  *  feed already caches a year of dailies, so every window is a free slice. */
 export const SPARK_WINDOWS = [
+  // DAY is supplied by the live intraday pump rather than the daily cache.
+  // Zero deliberately means "use every point present" in sparkWindow.
+  { id: 'DAY', sessions: 0, intraday: true },
+  { id: '1W', sessions: 5 },
+  { id: '2W', sessions: 10 },
   { id: '1M', sessions: 21 },
   { id: '3M', sessions: 63 },
   { id: '6M', sessions: 126 },
@@ -46,7 +51,19 @@ export function isSparkWindow(id) {
 export function sparkWindow(bars, id = DEFAULT_WINDOW) {
   const win = SPARK_WINDOWS.find((w) => w.id === id)
     || SPARK_WINDOWS.find((w) => w.id === DEFAULT_WINDOW)
-  return (bars || []).slice(-win.sessions)
+  const source = bars || []
+  return win.sessions ? source.slice(-win.sessions) : source
+}
+
+/** Normalize fetchHistory OHLC bars into the compact board-spark contract. */
+export function historyBarsToSparkBars(bars) {
+  return (bars || []).map((bar, i, all) => ({
+    c: bar.close,
+    h: bar.high,
+    l: bar.low,
+    v: bar.volume,
+    up: i === 0 || bar.close >= all[i - 1].close,
+  }))
 }
 
 /** Aggregate consecutive sessions into at most `maxBars` buckets: volume sums,

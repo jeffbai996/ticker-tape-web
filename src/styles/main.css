@@ -165,8 +165,51 @@ html, body {
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 .board-menu-pop {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  width: min(30rem, calc(100vw - 1.5rem));
+  border-radius: 14px;
   transform-origin: top left;
   animation: board-menu-pop 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.board-menu-section {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(231, 236, 243, 0.12);
+  border-radius: 10px;
+  background: rgba(231, 236, 243, 0.025);
+}
+.board-menu-sheet-handle {
+  display: none;
+}
+
+@keyframes board-menu-sheet {
+  from { opacity: 0; transform: translateY(12px) scale(0.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (max-width: 639px) {
+  .board-menu-pop {
+    position: fixed;
+    top: auto;
+    right: 12px;
+    bottom: calc(4.25rem + env(safe-area-inset-bottom, 0px));
+    left: 12px;
+    width: auto;
+    max-height: min(72vh, 34rem);
+    border-radius: 18px;
+    transform-origin: bottom center;
+    animation-name: board-menu-sheet;
+  }
+  .board-menu-sheet-handle {
+    display: block;
+    width: 34px;
+    height: 3px;
+    margin: 7px auto 1px;
+    border-radius: 999px;
+    background: rgba(231, 236, 243, 0.24);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
