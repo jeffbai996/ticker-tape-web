@@ -352,6 +352,62 @@ export function collapseSessions(events, now = Date.now() / 1000) {
 // ── story clustering: the same story from N outlets is ONE row. Headlines
 // normalize to significant-token sets; Jaccard >= 0.5 within a 48h window
 // joins a cluster. The face of the cluster is the highest-tier source.
+/** Proper publication names for the reader byline — the row's terse tag
+ *  ("sa", "gnw") is a column width trick, but a byline that says "gnw"
+ *  reads like a stock code, not a source (Jeff 2026-08-11). Keyed by
+ *  hostname with www. stripped; anything unlisted gets its stem
+ *  capitalized, which is right more often than not ("Stocktwits"). */
+const PUB_NAMES = {
+  'semafor.com': 'Semafor', 'ft.com': 'Financial Times',
+  'reuters.com': 'Reuters', 'feeds.reuters.com': 'Reuters',
+  'wsj.com': 'The Wall Street Journal', 'bloomberg.com': 'Bloomberg',
+  'economist.com': 'The Economist', 'theinformation.com': 'The Information',
+  'spectrum.ieee.org': 'IEEE Spectrum', 'taipeitimes.com': 'Taipei Times',
+  'thelec.net': 'The Elec', 'nikkei.com': 'Nikkei', 'asia.nikkei.com': 'Nikkei Asia',
+  'scmp.com': 'South China Morning Post', 'cnbc.com': 'CNBC',
+  'barrons.com': "Barron's", 'marketwatch.com': 'MarketWatch',
+  'seekingalpha.com': 'Seeking Alpha', 'fool.com': 'The Motley Fool',
+  'investors.com': "Investor's Business Daily", 'finance.yahoo.com': 'Yahoo Finance',
+  'prnewswire.com': 'PR Newswire', 'globenewswire.com': 'GlobeNewswire',
+  'businesswire.com': 'Business Wire', 'benzinga.com': 'Benzinga',
+  'thestreet.com': 'TheStreet', 'investing.com': 'Investing.com',
+  'zacks.com': 'Zacks', 'morningstar.com': 'Morningstar',
+  'techcrunch.com': 'TechCrunch', 'theverge.com': 'The Verge',
+  'arstechnica.com': 'Ars Technica', 'tomshardware.com': "Tom's Hardware",
+  'anandtech.com': 'AnandTech', 'digitimes.com': 'DigiTimes',
+  'trendforce.com': 'TrendForce', 'sec.gov': 'SEC',
+  'federalreserve.gov': 'Federal Reserve', 'apnews.com': 'Associated Press',
+  'nytimes.com': 'The New York Times', 'theregister.com': 'The Register',
+}
+
+const cap = (s) => (s ? s[0].toUpperCase() + s.slice(1) : '')
+
+export function pubDisplayName(ev) {
+  try {
+    const host = new URL(ev.url).hostname.replace(/^www\./, '')
+    if (host === 'news.google.com') {
+      // aggregator links carry the true source in the headline tail
+      const m = (ev.headline || '').match(/ [-–] ([^-–]{2,40})$/)
+      if (m) return m[1].trim()
+    }
+    if (PUB_NAMES[host]) return PUB_NAMES[host]
+    return cap(host.split('.')[0])
+  } catch {
+    return cap(ev?.source || '')
+  }
+}
+
+/** ~220 latin wpm, ~350 cjk chars/min — coarse on purpose, it's a glance
+ *  figure. 0 means "nothing to read", the byline hides it. */
+export function readMinutes(text) {
+  if (!text) return 0
+  const s = String(text)
+  const cjk = (s.match(/[　-鿿]/g) || []).length
+  const words = s.replace(/[　-鿿]/g, ' ').split(/\s+/).filter(Boolean).length
+  const mins = words / 220 + cjk / 350
+  return mins > 0 ? Math.max(1, Math.round(mins)) : 0
+}
+
 const STOP = new Set(['the', 'a', 'an', 'to', 'of', 'in', 'on', 'for', 'and',
   'as', 'at', 'its', 'is', 'are', 'up', 'with', 'after', 'over', 'from',
   'by', 'says', 'say', 'said', 'new', 'reuters', 'bloomberg', 'wsj'])

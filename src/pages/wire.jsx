@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import {
   wireUrl, setWireUrl, fragwireHome, fetchEvents, fetchUpdates, fetchToday, fetchMeta,
   demoBackfill, demoEvent, demoToday, rankEvents, collapseSessions, clusterStories,
-  srcCred, evHeadline, evBody, matchesWireQuery,
+  srcCred, evHeadline, evBody, matchesWireQuery, pubDisplayName, readMinutes,
 } from '../lib/wire.js'
 import { IS_PRIVATE_BUILD } from '../lib/nav.js'
 import { prefetchSymbol } from '../lib/history.js'
@@ -264,6 +264,25 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
       {open && !ev.live_call && (
         <div class="px-2.5 pb-2 mx-auto w-full max-w-[78ch]">
           <h3 class="font-anth font-semibold text-[15px] leading-snug text-ink pt-1.5 pb-1">{hl}</h3>
+          {/* the byline: everything that used to hide in the footer, at the
+              top where a reader decides whether to read — source spelled as a
+              publication, not a hostname (Jeff 2026-08-11) */}
+          <p class="text-[9.5px] font-mono pb-1.5 mb-1.5 border-b border-line/40 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            {ev.url ? (
+              <a href={ev.url} target="_blank" rel="noopener"
+                 class="text-accent hover:underline" onClick={(e) => e.stopPropagation()}>
+                {pubDisplayName(ev)} ↗
+              </a>
+            ) : pubDisplayName(ev) ? (
+              <span class="text-ink-2">{pubDisplayName(ev)}</span>
+            ) : null}
+            <span class="text-ink-2">{new Date(ev.ts_event * 1000).toLocaleString(getLocale() === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</span>
+            <span class="uppercase tracking-wider text-muted">{String(ev.type).replace(/_/g, ' ')}</span>
+            {latTxt && <span class="text-muted">{tl('tape latency')}{' '}<span class="text-ink-2">{latTxt}</span></span>}
+            {readMinutes(body) > 0 && (
+              <span class="text-muted">{tl('~{n} min read').replace('{n}', readMinutes(body))}</span>
+            )}
+          </p>
           {Object.keys(ev.numbers || {}).length > 0 && (
             <div class="flex flex-wrap gap-1.5 mt-1.5 mb-1.5">
               {Object.entries(ev.numbers).map(([k, v]) => (
@@ -276,27 +295,6 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
           )}
           {body && <p class="text-[11.5px] leading-relaxed text-ink-2 max-w-[72ch] whitespace-pre-wrap">{body}</p>}
           {!ev.body && !ev.story_cluster && ev.url && <ReadBody ev={ev} />}
-          {/* info reads dim, clickable reads amber — everything grey made the
-              links invisible (Jeff 2026-08-05) */}
-          <p class="text-[9.5px] font-mono pt-1.5 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-line/40 mt-1.5">
-            <span class="text-ink-2">{new Date(ev.ts_event * 1000).toLocaleString(getLocale() === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</span>
-            {latTxt && <span class="text-muted">{tl('tape latency')}{' '}<span class="text-ink-2">{latTxt}</span></span>}
-            <span class="uppercase tracking-wider text-muted">{String(ev.type).replace(/_/g, ' ')}</span>
-            {ev.url && (() => {
-              try {
-                const host = new URL(ev.url).hostname.replace('www.', '')
-                // aggregator links carry the true source in the headline tail
-                const m = host === 'news.google.com' && ev.headline.match(/ [-–] ([^-–]{2,40})$/)
-                const label = m ? m[1].trim() : host
-                return (
-                  <a href={ev.url} target="_blank" rel="noopener"
-                     class="text-accent hover:underline" onClick={(e) => e.stopPropagation()}>
-                    {label} ↗
-                  </a>
-                )
-              } catch { return null }
-            })()}
-          </p>
         </div>
       )}
     </div>
