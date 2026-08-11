@@ -396,29 +396,37 @@ function Candles({ bars, warmPad, intraday, ticks, tick, onTick, rangeKey, onRan
             {r.key.toLowerCase()}
           </button>
         ))}
-        {ticks?.length > 0 && (
-          <>
-            <span class="w-2 shrink-0" />
-            <span class="font-mono text-[8px] text-muted/70 tracking-widest shrink-0">BAR</span>
-            {ticks.map((v) => (
-              <button key={v} onClick={() => onTick?.(v)} title={`draw ${v} bars`}
-                class={`font-mono text-[8.5px] leading-none px-1 py-[3px] rounded-full border whitespace-nowrap shrink-0 ${
-                  tick === v ? 'border-accent/70 text-accent bg-accent-soft' : 'border-line/50 text-muted hover:text-ink'}`}>
-                {v}
-              </button>
-            ))}
-          </>
-        )}
-        {canExt && (
-          <>
-            <span class="w-2 shrink-0" />
-            <button onClick={() => onExt?.(!ext)}
-              title="include pre-market and after-hours bars (04:00–20:00 ET)"
-              class={`font-mono text-[8.5px] leading-none px-1.5 py-[3px] rounded-full border whitespace-nowrap shrink-0 ${
-                ext ? 'border-accent/70 text-accent bg-surface-3' : 'border-line-2/70 bg-surface-3 text-ink-2 hover:text-ink'}`}>
-              EXT
-            </button>
-          </>
+        {/* BAR + intervals + EXT wrap as ONE unit: as loose flex children the
+            EXT pill wrapped onto a line of its own at narrow widths / zoom
+            (Jeff 2026-08-11: "in ANY zoom level, EXT should not break out
+            onto its own line"). */}
+        {(ticks?.length > 0 || canExt) && (
+          <span class="inline-flex items-center gap-1 flex-nowrap shrink-0">
+            {ticks?.length > 0 && (
+              <>
+                <span class="w-2 shrink-0" />
+                <span class="font-mono text-[8px] text-muted/70 tracking-widest shrink-0">BAR</span>
+                {ticks.map((v) => (
+                  <button key={v} onClick={() => onTick?.(v)} title={`draw ${v} bars`}
+                    class={`font-mono text-[8.5px] leading-none px-1 py-[3px] rounded-full border whitespace-nowrap shrink-0 ${
+                      tick === v ? 'border-accent/70 text-accent bg-accent-soft' : 'border-line/50 text-muted hover:text-ink'}`}>
+                    {v}
+                  </button>
+                ))}
+              </>
+            )}
+            {canExt && (
+              <>
+                <span class="w-2 shrink-0" />
+                <button onClick={() => onExt?.(!ext)}
+                  title="include pre-market and after-hours bars (04:00–20:00 ET)"
+                  class={`font-mono text-[8.5px] leading-none px-1.5 py-[3px] rounded-full border whitespace-nowrap shrink-0 ${
+                    ext ? 'border-accent/70 text-accent bg-surface-3' : 'border-line-2/70 bg-surface-3 text-ink-2 hover:text-ink'}`}>
+                  EXT
+                </button>
+              </>
+            )}
+          </span>
         )}
       </div>
       <div class="flex gap-1 px-1 pb-1.5 select-none flex-nowrap overflow-x-auto no-scrollbar">
