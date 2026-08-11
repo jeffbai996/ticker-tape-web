@@ -1218,11 +1218,11 @@ function BoardMenu({ sort, setSort, setViewMode, spark, setSpark, sparkWin, setS
         aria-expanded={open}
         class={`board-control grid h-[26px] w-[26px] place-items-center rounded-lg border ${
           open ? 'border-accent/60 text-accent' : 'text-ink-2 hover:text-accent hover:border-accent/50'}`}>
-        <svg class={`board-burger ${open ? 'is-open' : ''}`} viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
-          <path class="board-burger-line" d="M2.5 4h11" />
-          <path class="board-burger-line" d="M2.5 8h11" />
-          <path class="board-burger-line" d="M2.5 12h11" />
-        </svg>
+        <span class={`board-burger ${open ? 'is-open' : ''}`} aria-hidden="true">
+          <span class="board-burger-line" />
+          <span class="board-burger-line" />
+          <span class="board-burger-line" />
+        </span>
       </button>
       {open && (
         <div class="board-menu-pop z-40 max-h-[72vh] overflow-y-auto bg-surface-1/95 backdrop-blur border border-line shadow-[0_12px_36px_rgba(0,0,0,0.68)]">
@@ -1331,11 +1331,9 @@ function TickerSearch({ filter, setFilter, activeList }) {
   }, [])
   return (
     <div ref={boxRef} class="relative min-w-0">
-      {/* folded on touch, the glass owns the whole pill and centers dead-on;
-          desktop keeps a readable "Search…" pill, so the glass docks left
-          (Jeff 2026-08-06) */}
-      <span class={`absolute inset-y-0 text-muted pointer-events-none grid place-items-center ${
-        expanded ? 'left-2' : 'inset-x-0 sm:inset-x-auto sm:left-2'}`}>
+      {/* The 10px glass stays at x=8 inside the 26px folded control, centered
+          without changing positioning modes when focus moves to the menu. */}
+      <span class="absolute inset-y-0 left-2 text-muted pointer-events-none grid place-items-center">
         <svg viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7" cy="7" r="4.4" /><path d="m10.4 10.4 3 3" /></svg>
       </span>
       <input ref={inputRef} value={filter} onInput={(e) => setFilter(e.currentTarget.value)}
