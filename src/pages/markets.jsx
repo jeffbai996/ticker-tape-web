@@ -16,7 +16,7 @@ import { pulseStats } from '../lib/pulse.js'
 import { fetchEarningsDate } from '../lib/fundamentals.js'
 import { tl } from '../lib/i18n.js'
 import { EarningsDay } from '../components/EarningsDay.jsx'
-import { fmtPrice, fmtPct, fmtChange, fmtVol } from '../lib/format.js'
+import { fmtPrice, fmtPct, fmtChange, fmtVol, fmtFracPct } from '../lib/format.js'
 import { Histo } from '../components/Histo.jsx'
 import { FlashMetric, FlashPrice } from '../components/Fig.jsx'
 import { hrefFor } from '../lib/route.js'
@@ -34,7 +34,7 @@ import { extendedLabelClass } from '../lib/extendedHours.js'
 function DayMeter({ q }) {
   const m = sessionMeter(q?.dayLow, q?.dayHigh, q?.price, q?.prevClose)
   if (m == null) return null
-  const pct = (v) => `${(v * 100).toFixed(1)}%`
+  const pct = (v) => fmtFracPct(v, 1)
   const tone = m.up ? 'bg-up' : 'bg-down'
   const title = `${fmtPrice(q.dayLow)} – ${fmtPrice(q.dayHigh)}`
     + (q.prevClose != null ? ` · ${tl('prev close')} ${fmtPrice(q.prevClose)}` : '')

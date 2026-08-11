@@ -18,7 +18,9 @@ import { bsDelta } from '../lib/bs.js'
 import { vwapSeries } from '../lib/vwap.js'
 import { LineSeries, AreaSeries } from 'lightweight-charts'
 import { sma, rsi, macd, bollinger } from '../lib/indicators.js'
-import { fmtPrice, fmtPriceBare, fmtPct, fmtChange, fmtVol, fmtBig, fmtRatio, fmtFracPct } from '../lib/format.js'
+import {
+  fmtPrice, fmtPriceBare, fmtPct, fmtPctPlain, fmtChange, fmtVol, fmtBig, fmtRatio, fmtFracPct,
+} from '../lib/format.js'
 import { hrefFor } from '../lib/route.js'
 import { Marquee } from '../components/Marquee.jsx'
 import { getLocale, tl, t as tt } from '../lib/i18n.js'
@@ -233,7 +235,7 @@ function Candles({ bars, warmPad, intraday, ticks, tick, onTick, rangeKey, onRan
         `<span style="color:#79828d">O</span> ${b.open.toFixed(2)} ` +
         `<span style="color:#79828d">H</span> ${b.high.toFixed(2)} ` +
         `<span style="color:#79828d">L</span> ${b.low.toFixed(2)} ` +
-        `<span style="color:#79828d">C</span> <span style="color:${up ? '#3fb950' : '#f85149'}">${b.close.toFixed(2)} ${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%</span>` +
+        `<span style="color:#79828d">C</span> <span style="color:${up ? '#3fb950' : '#f85149'}">${b.close.toFixed(2)} ${fmtPct(pct)}</span>` +
         (b.volume ? ` <span style="color:#79828d">V</span> ${fmtVol(b.volume)}` : '')
     })
     return () => chart.remove()
@@ -677,7 +679,7 @@ function OptionSide({ title, rows, spot, t, type }) {
                   <td class="px-2 py-[3px] text-right text-up/90">{c.bid != null ? fmtPrice(c.bid) : '—'}</td>
                   <td class="px-2 py-[3px] text-right text-down/90">{c.ask != null ? fmtPrice(c.ask) : '—'}</td>
                   <td class={`px-2 py-[3px] text-right ${hotIv ? 'text-accent' : 'text-ink-2'}`}>
-                    {c.iv != null ? `${(c.iv * 100).toFixed(0)}%` : '—'}
+                    {fmtFracPct(c.iv, 0)}
                   </td>
                   <td class={`px-2 py-[3px] text-right ${deltaCls}`}>
                     {delta != null ? delta.toFixed(2) : '—'}
@@ -844,7 +846,7 @@ function StatementTable({ title, periods }) {
   if (!rows.length) return null
   const fmtCell = (kind, v) => v == null ? '—'
     : kind === 'money' ? fmtBig(v)
-    : kind === 'pct' ? `${v.toFixed(1)}%`
+    : kind === 'pct' ? fmtPctPlain(v)
     : v >= 100 ? v.toFixed(0) : v.toFixed(2)
   const short = (end) => end ? `${end.slice(2, 4)}'${end.slice(5, 7)}` : '—'
   return (

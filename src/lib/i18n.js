@@ -212,6 +212,14 @@ const STRINGS = {
     en: 'Use a unique watchlist name.',
     zh: '请输入一个未使用的自选股名称。',
   },
+  'watchlists.full': {
+    en: 'list full — {max} symbols max',
+    zh: '列表已满 — 最多 {max} 个代码',
+  },
+  'screen.cap': {
+    en: 'the screen compares at most {max} symbols',
+    zh: '筛选器最多同时比较 {max} 个代码',
+  },
   'watchlists.delete_confirm': {
     en: 'Delete watchlist “{name}”?',
     zh: '删除自选股“{name}”？',
@@ -630,6 +638,9 @@ const LABELS = {
   'trendline — tap two points; Esc cancels': '趋势线 — 点两个点连线；Esc 取消',
   'delete the selected drawing': '删除选中的标注',
   'remove every drawing on this symbol': '清除该标的的全部标注',
+  // cruft tie-off (2026-08-11): silent caps and silent clips now speak up
+  dropped: '已略过', 'label too long (120 max)': '说明过长（最多120字）',
+  '~{n} min read': '约 {n} 分钟读完',
 }
 
 export function t(key, params) {

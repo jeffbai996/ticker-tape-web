@@ -2,6 +2,21 @@
 // A secret carrying a real watchlist into a public build is
 // a leak surface. Nothing here may reference a real portfolio.
 
+// Ticker validation, defined once. The charset is wider than [A-Z] because
+// Yahoo tickers carry dots (BF.B), hyphens (BRK-B), carets (^GSPC) and equals
+// (GC=F); 12 chars clears the longest of them with room to spare.
+//
+// Two casings, because the stores and the entry points sit on opposite sides
+// of the upcase. Anything that has already normalised its input (the
+// localStorage stores, the hash router, which lowercases the whole hash before
+// matching) tests the strict form, so a gate can never pass a string the store
+// would then persist in the wrong case. The raw-input validators (chat tool
+// args, the widget form) test before upcasing and need the loose form.
+// No /g flag anywhere — a shared stateful regex would carry lastIndex between
+// unrelated callers.
+export const SYMBOL_RE = /^[A-Z0-9.^=-]{1,12}$/
+export const SYMBOL_ANY_CASE_RE = /^[A-Za-z0-9.^=-]{1,12}$/
+
 export const WATCHLIST = [
   'AAPL', 'MSFT', 'NVDA', 'GOOG', 'AMZN', 'META', 'TSLA',
   'AMD', 'INTC', 'TSM', 'PLTR', 'CRM', 'ORCL', 'NFLX', 'UBER', 'DIS',

@@ -20,8 +20,8 @@ import { loadCatalysts, addCatalyst, mergedEvents, CATALYST_TYPES } from './cata
 import { addMemory, editMemory, removeMemory } from './chatMemory.js'
 import { addJournalEntry, searchJournal, loadJournal } from './journal.js'
 import { wireUrl } from './wire.js'
+import { SYMBOL_ANY_CASE_RE } from './symbols.js'
 
-const SYM_RE = /^[A-Za-z0-9.^=-]{1,12}$/
 const MAX_SYMBOLS = 15
 const MAX_RESULT_CHARS = 4000
 const QUOTE_FRESH_MS = 90_000
@@ -52,7 +52,7 @@ const slimQuote = (q) => ({
 export function cleanSymbols(symbols) {
   if (!Array.isArray(symbols)) return null
   const out = symbols
-    .filter((s) => typeof s === 'string' && SYM_RE.test(s.trim()))
+    .filter((s) => typeof s === 'string' && SYMBOL_ANY_CASE_RE.test(s.trim()))
     .map((s) => s.trim().toUpperCase())
   return out.length ? [...new Set(out)].slice(0, MAX_SYMBOLS) : null
 }

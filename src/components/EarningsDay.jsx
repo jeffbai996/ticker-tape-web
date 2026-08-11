@@ -4,7 +4,7 @@ import { fetchEarningsImpact } from '../lib/earnings.js'
 import { fetchOptions } from '../lib/options.js'
 import { getCached } from '../lib/feed.js'
 import { wireUrl } from '../lib/wire.js'
-import { fmtPct, fmtPrice } from '../lib/format.js'
+import { fmtPct, fmtPctPlain, fmtPrice } from '../lib/format.js'
 import {
   expectedMovePct, expiryForEvent, moveEdge, typicalMovePct,
 } from '../lib/expmove.js'
@@ -116,10 +116,10 @@ function EventPanel({ symbol, date, epsEstimate }) {
           value={new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toLowerCase()} />
         <Stat label={tl('EPS est')} value={epsEstimate != null ? epsEstimate.toFixed(2) : null} />
         <Stat label={tl('Implied move')}
-          value={implied === undefined ? '…' : implied != null ? `±${implied.toFixed(1)}%` : null}
+          value={implied === undefined ? '…' : implied != null ? `±${fmtPctPlain(implied)}` : null}
           hint={tl('atm straddle')} />
         <Stat label={tl('Typical move')}
-          value={typical != null ? `±${typical.toFixed(1)}%` : null}
+          value={typical != null ? `±${fmtPctPlain(typical)}` : null}
           hint={typical != null ? `${recent.length} ${tl('prints')}` : null} />
       </div>
 
@@ -149,7 +149,7 @@ function EventPanel({ symbol, date, epsEstimate }) {
                   class={`font-mono text-[11px] px-1.5 py-0.5 rounded border ${
                     e.priceMove >= 0 ? 'border-up/40 text-up' : 'border-down/40 text-down'}`}
                   title={e.report ? new Date(e.report).toDateString() : ''}>
-              {e.priceMove >= 0 ? '+' : ''}{e.priceMove.toFixed(1)}%
+              {fmtPct(e.priceMove, 1)}
             </span>
           ))}
         </div>
