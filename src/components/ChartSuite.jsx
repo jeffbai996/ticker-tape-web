@@ -10,7 +10,9 @@ import { fetchHistory, RANGES } from '../lib/history.js'
 import { smaSeries, emaSeries, rsiSeries, macdSeries, bollingerSeries,
          normalizedSeries } from '../lib/chartmath.js'
 import { vwapSeries } from '../lib/vwap.js'
-import { boundedTimeScale } from '../lib/chartview.js'
+import { boundedTimeScale, trendlinePrimitive, projectSegment } from '../lib/chartview.js'
+import { nearestDrawing } from '../lib/chartmath.js'
+import { loadDrawings, addDrawing, removeDrawing, clearDrawings } from '../lib/chartDrawings.js'
 import { fmtPrice } from '../lib/format.js'
 import { tl } from '../lib/i18n.js'
 
@@ -19,6 +21,11 @@ const UP = '#3fb950'
 const DOWN = '#f85149'
 const SMA_COLORS = { sma20: '#f59e0b', sma50: '#22d3ee', sma200: '#c084fc' }
 const CMP_COLOR = '#22d3ee'
+const DRAW = '#e7ecf3'
+const DRAW_SEL = '#f59e0b'
+// A fingertip is nowhere near a mouse pointer: this is the tap radius for
+// "which drawing did you mean", not a cursor-precision hit box.
+const TAP_TOL = 14
 
 const DEFAULTS = {
   range: '6M', type: 'candles', log: false, ext: false,
@@ -62,6 +69,16 @@ export function ChartSuite({ symbol }) {
   const [bars, setBars] = useState(null)
   const [cmpBars, setCmpBars] = useState(null)
   const [intraday, setIntraday] = useState(false)
+  // Drawings live outside the chart-building effect: adding a line must not
+  // tear down and rebuild the whole chart. The series handle and an epoch
+  // counter are how the annotation effects find the current chart again.
+  const seriesRef = useRef(null)
+  const [epoch, setEpoch] = useState(0)
+  const [drawings, setDrawings] = useState(() => loadDrawings(symbol))
+  const [mode, setMode] = useState(null) // null | 'hline' | 'trend'
+  const [pending, setPending] = useState(null) // first point of a trendline
+  const [sel, setSel] = useState(null) // id of the tapped drawing, for delete
+  const comparing = !!(cmp && cmpBars && cmpBars.length)
   // A fixed 430px left a black void under the chart on tall windows and at
   // low zoom (Jeff 2026-08-07). Measure the room actually left below the
   // toolbars — off the SCROLL CONTAINER, not innerHeight, so the phone's
@@ -140,7 +157,6 @@ export function ChartSuite({ symbol }) {
       },
     })
     chartRef.current = chart
-    const comparing = !!(cmp && cmpBars && cmpBars.length)
     let priceSeries
     if (comparing) {
       priceSeries = chart.addSeries(LineSeries,
@@ -248,17 +264,133 @@ export function ChartSuite({ symbol }) {
       paint(b || bars[bars.length - 1])
     })
     chart.timeScale().fitContent()
+    // Drawings hang off the MAIN price series only. In compare mode that
+    // series holds % change, not price, so there is nothing honest to anchor
+    // to — leave it null and the annotation effects sit out entirely.
+    seriesRef.current = comparing ? null : priceSeries
+    setEpoch((e) => e + 1)
     return () => {
       if (chartRef.current === chart) chartRef.current = null
+      if (seriesRef.current === priceSeries) seriesRef.current = null
       chart.remove()
     }
   }, [bars, cmpBars, cmp, prefs, intraday])
 
+  // Reload annotations when the symbol changes, and drop any half-finished
+  // gesture — a pending trendline point belongs to the chart you left.
+  useEffect(() => {
+    setDrawings(loadDrawings(symbol))
+    setMode(null)
+    setPending(null)
+    setSel(null)
+  }, [symbol])
+
+  // Compare mode has no price axis to draw on, so it also cancels drawing mode
+  // rather than leaving a toggle armed that silently does nothing.
+  useEffect(() => {
+    if (comparing) { setMode(null); setPending(null); setSel(null) }
+  }, [comparing])
+
+  useEffect(() => {
+    if (!mode && !pending) return
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return
+      setMode(null)
+      setPending(null)
+    }
+    addEventListener('keydown', onKey)
+    return () => removeEventListener('keydown', onKey)
+  }, [mode, pending])
+
+  // Paint the stored drawings onto the current chart. Horizontal lines use the
+  // library's own price lines (free axis label, free re-projection); trendlines
+  // use a series primitive, which the library re-runs on every scroll/zoom.
+  useEffect(() => {
+    const series = seriesRef.current
+    if (!series || comparing) return
+    const attached = []
+    for (const d of drawings) {
+      const on = d.id === sel
+      try {
+        if (d.type === 'hline') {
+          const line = series.createPriceLine({
+            price: d.points[0].price,
+            color: on ? DRAW_SEL : DRAW,
+            lineWidth: on ? 2 : 1,
+            lineStyle: 0,
+            axisLabelVisible: true,
+            title: '',
+          })
+          attached.push(() => series.removePriceLine(line))
+        } else {
+          const prim = trendlinePrimitive({
+            points: d.points, color: on ? DRAW_SEL : DRAW, width: 1.5 })
+          prim.setSelected(on)
+          series.attachPrimitive(prim)
+          attached.push(() => series.detachPrimitive(prim))
+        }
+      } catch { /* a drawing that won't attach is not worth killing the chart for */ }
+    }
+    return () => {
+      // The chart may already be gone (rebuild races this cleanup); detaching
+      // from a disposed series throws and there is nothing left to clean.
+      for (const off of attached) { try { off() } catch { /* already disposed */ } }
+    }
+  }, [drawings, sel, epoch, comparing])
+
+  // Taps: place a drawing while a mode is armed, otherwise select one to delete.
+  useEffect(() => {
+    const chart = chartRef.current
+    const series = seriesRef.current
+    if (!chart || !series || comparing) return
+    const onClick = (param) => {
+      if (!param?.point) return
+      const price = series.coordinateToPrice(param.point.y)
+      if (price == null) return
+      // param.time is only set over a real bar; off the end of the data the
+      // coordinate lookup still gives us the nearest one.
+      const time = param.time ?? chart.timeScale().coordinateToTime(param.point.x)
+      if (mode === 'hline') {
+        if (time == null) return
+        setDrawings(addDrawing(symbol, { type: 'hline', points: [{ time, price }] }))
+        setMode(null)
+        return
+      }
+      if (mode === 'trend') {
+        if (time == null) return
+        if (!pending) { setPending({ time, price }); return }
+        setDrawings(addDrawing(symbol,
+          { type: 'trend', points: [pending, { time, price }] }))
+        setPending(null)
+        setMode(null)
+        return
+      }
+      // No mode: this is a selection tap. Project every drawing to pixels and
+      // take the nearest within a fingertip.
+      const ts = chart.timeScale()
+      const shapes = []
+      for (const d of drawings) {
+        if (d.type === 'hline') {
+          shapes.push({ id: d.id, kind: 'h', y: series.priceToCoordinate(d.points[0].price) })
+        } else {
+          const g = projectSegment(d.points, series, ts)
+          if (g) shapes.push({ id: d.id, kind: 'seg', ...g })
+        }
+      }
+      const hit = nearestDrawing(shapes, param.point.x, param.point.y, TAP_TOL)
+      setSel(hit ? hit.id : null)
+    }
+    chart.subscribeClick(onClick)
+    return () => { try { chart.unsubscribeClick(onClick) } catch { /* disposed */ } }
+  }, [epoch, mode, pending, drawings, symbol, comparing])
+
+  // `touch-manipulation` kills the iPad's 300ms tap delay without touching the
+  // size or the type — the toolbar has to stay visually identical.
   const chip = (on, label, cb, color, tip) => (
     <button
       onClick={cb}
       title={tip}
-      class={`font-mono text-[9.5px] px-1.5 py-0.5 rounded border tracking-wider whitespace-nowrap shrink-0 ${
+      class={`font-mono text-[9.5px] px-1.5 py-0.5 rounded border tracking-wider whitespace-nowrap shrink-0 touch-manipulation ${
         on ? 'border-accent-2/70 text-accent-2' : 'border-line text-muted hover:text-ink'}`}
       style={on && color ? { color, borderColor: color + '99' } : undefined}
     >
@@ -333,6 +465,25 @@ export function ChartSuite({ symbol }) {
         {chip(prefs.panes.rsi, 'RSI', () => togglePane('rsi'), null, 'relative strength index in its own pane — 70 overbought, 30 oversold')}
         {chip(prefs.panes.macd, 'MACD', () => togglePane('macd'), null, 'MACD 12/26/9 in its own pane')}
         {chip(false, 'FIT', () => chartRef.current?.timeScale().fitContent(), null, 'reset zoom to the full loaded history')}
+        {/* Drawing tools. Hidden outright in compare mode: the frame is % change
+            there, so a price anchored line would be a lie, not a limitation. */}
+        {!comparing && (
+          <>
+            <span class="w-2" />
+            {chip(mode === 'hline', tl('LINE'),
+              () => { setMode(mode === 'hline' ? null : 'hline'); setPending(null) },
+              DRAW_SEL, tl('price line — tap the chart to drop a horizontal line at that price'))}
+            {chip(mode === 'trend', pending ? `${tl('TREND')} ·1` : tl('TREND'),
+              () => { setMode(mode === 'trend' ? null : 'trend'); setPending(null) },
+              DRAW_SEL, tl('trendline — tap two points; Esc cancels'))}
+            {sel && chip(true, tl('DELETE'),
+              () => { setDrawings(removeDrawing(symbol, sel)); setSel(null) },
+              DOWN, tl('delete the selected drawing'))}
+            {!!drawings.length && chip(false, tl('CLEAR'),
+              () => { setDrawings(clearDrawings(symbol)); setSel(null) },
+              null, tl('remove every drawing on this symbol'))}
+          </>
+        )}
         <span class="w-2" />
         <form
           class="flex items-center gap-1"
@@ -364,7 +515,9 @@ export function ChartSuite({ symbol }) {
           viewport, so surrendering vertical panning would strand the reader
           on the chart with no way to scroll the page. pan-y keeps the page
           scrolling vertically and hands pinch + horizontal drag to the chart. */}
-      <div ref={el} class="w-full touch-pan-y" style={{ height: state === 'ok' ? `${fillH}px` : 0 }} />
+      <div ref={el}
+           class={`w-full touch-pan-y ${mode ? 'cursor-crosshair' : ''}`}
+           style={{ height: state === 'ok' ? `${fillH}px` : 0 }} />
     </div>
   )
 }

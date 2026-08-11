@@ -130,3 +130,40 @@ export function trimToWindow(series, bars) {
   const start = bars[0].time
   return series.filter((p) => p.time >= start)
 }
+
+/**
+ * Pixel distance from a point to a SEGMENT (not the infinite line) — the
+ * projection is clamped to [0,1] so a tap far off the end of a short trendline
+ * doesn't select it just because it happens to be collinear.
+ */
+export function segmentDistance(px, py, x1, y1, x2, y2) {
+  const dx = x2 - x1
+  const dy = y2 - y1
+  const len2 = dx * dx + dy * dy
+  const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / len2))
+  return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy))
+}
+
+/**
+ * Which drawing did that tap mean? Shapes are already projected to pixels:
+ * `{kind:'h', y}` for a full-width horizontal line (x is irrelevant — the line
+ * spans the pane), `{kind:'seg', x1,y1,x2,y2}` for a trendline. `tol` wants to
+ * be generous: a fingertip is ~10mm, so 12–14px, not the 3px a mouse could use.
+ */
+export function nearestDrawing(shapes, x, y, tol = 12) {
+  if (!Array.isArray(shapes)) return null
+  let best = null
+  let bestD = Infinity
+  for (const s of shapes) {
+    let d
+    if (s.kind === 'h') {
+      if (!Number.isFinite(s.y)) continue
+      d = Math.abs(y - s.y)
+    } else {
+      if (![s.x1, s.y1, s.x2, s.y2].every(Number.isFinite)) continue
+      d = segmentDistance(x, y, s.x1, s.y1, s.x2, s.y2)
+    }
+    if (d <= tol && d < bestD) { best = s; bestD = d }
+  }
+  return best
+}
