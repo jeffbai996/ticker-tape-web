@@ -501,6 +501,14 @@ button:hover .burger path:nth-child(2) { transform: scaleX(.55); }
 @media (prefers-reduced-motion: reduce) {
   .time-wheel-face, .time-wheel-old, .time-wheel-new { transition: none !important; }
 }
+/* Touch devices swap digits without the roll: the .32s transform burst fires
+   every second, and under iPadOS zoom each burst nudges the whole magnified
+   view — read as a constant shimmer/"dancing" (Jeff 2026-08-10, screen
+   recording: spike pairs ~375ms apart = roll start + settle). Desktop keeps
+   the rolodex. */
+@media (pointer: coarse) {
+  .time-wheel-face, .time-wheel-old, .time-wheel-new { transition: none !important; }
+}
 
 /* Anthropic Sans (Jeff 2026-08-03). Shipped in public/fonts/ for BOTH builds
    since 2026-08-06 (Jeff: "put anth sans on the github, i can drop it later")
