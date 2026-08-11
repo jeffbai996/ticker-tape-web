@@ -106,12 +106,22 @@ describe('compact dashboard company name', () => {
     expect(dashboard).toContain("placeholder={`${tl('Search')}…`}")
     expect(dashboard).toContain('transition-[width,background-color,border-color,box-shadow]')
     expect(dashboard).toContain('max-sm:placeholder:text-transparent')
-    // sort, select mode and the watchlist picker fold into the board menu
+    // sort and the watchlist picker stay in the menu; select is a first-class
+    // toolbar action directly after search
     expect(dashboard).toContain('function BoardMenu')
     expect(dashboard).toContain("['spread', tl('Spread')]")
     expect(dashboard).toContain("{item(tl('Dashboard'), !listId,")
+    expect(dashboard).not.toContain("{head(tl('Actions'))}")
+    expect(dashboard).not.toContain('onSelectMode')
+    expect(dashboard).toMatch(/<TickerSearch[^>]+\/>\s*<button data-select-trigger/)
+    expect(dashboard).toContain("{tl('Select')}")
     expect(dashboard).not.toContain('<option value="manual"')
     expect(dashboard).not.toContain('manage lists')
+  })
+
+  it('anchors batch actions over the watchlist instead of the widget rail', () => {
+    expect(dashboard).toContain('data-select-actions')
+    expect(dashboard).toContain('lg:mr-[238px]')
   })
 
   it('keeps autocomplete identity compact and draws a cached intraday spark', () => {

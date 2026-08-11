@@ -28,7 +28,8 @@ import { fmtPrice, fmtPriceBare, fmtPct, fmtChange, fmtVol, rangePos } from '../
 import { Histo } from '../components/Histo.jsx'
 import { Spark } from '../components/Spark.jsx'
 import { SPARK_TYPES, DEFAULT_SPARK, isSparkType,
-  SPARK_WINDOWS, DEFAULT_WINDOW, isSparkWindow, historyBarsToSparkBars } from '../lib/sparks.js'
+  SPARK_WINDOWS, DEFAULT_WINDOW, isSparkWindow, normalizeSparkWindow,
+  historyBarsToSparkBars } from '../lib/sparks.js'
 import { Marquee } from '../components/Marquee.jsx'
 import { FlashMetric, FlashPrice } from '../components/Fig.jsx'
 import { Empty } from '../components/Loading.jsx'
@@ -1184,11 +1185,11 @@ function SectorScroller({ watchlist, quotes }) {
   )
 }
 
-/** Toolbar hamburger, left of the sector strip: sort, select mode and the
- *  watchlist picker fold into one menu instead of three standalone controls
+/** Toolbar hamburger, left of the sector strip: sort and the watchlist picker
+ *  fold into one menu instead of standalone controls
  *  (Jeff 2026-08-06: "saves a ton of space"). */
 function BoardMenu({ sort, setSort, setViewMode, spark, setSpark, sparkWin, setSparkWin,
-                     lists, listId, onSelectMode }) {
+                     lists, listId }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   useEffect(() => {
@@ -1245,10 +1246,6 @@ function BoardMenu({ sort, setSort, setViewMode, spark, setSpark, sparkWin, setS
                   // any real sort implies the flat view — grouped rows don't reorder
                   if (v !== 'manual') setViewMode('flat')
                 }))}
-              </section>
-              <section class="board-menu-section">
-                {head(tl('Actions'))}
-                {item(tl('Select rows'), false, () => { setOpen(false); onSelectMode() })}
               </section>
             </div>
             <section class="board-menu-section self-start min-w-0">
@@ -1423,7 +1420,11 @@ export function Dashboard({ listId = null }) {
   })
   const [sparkWin, setSparkWinState] = useState(() => {
     const saved = localStorage.getItem('dashboard_spark_window_v1')
-    return isSparkWindow(saved) ? saved : DEFAULT_WINDOW
+    const normalized = normalizeSparkWindow(saved)
+    if (saved && saved !== normalized) {
+      localStorage.setItem('dashboard_spark_window_v1', normalized)
+    }
+    return normalized
   })
   const intradaySparks = useIntradaySparks(watchlist, sparkWin === 'DAY' && spark !== 'off')
   // sort is remembered PER LIST — a momentum list can live sorted by %
@@ -1514,8 +1515,7 @@ export function Dashboard({ listId = null }) {
         <div class="dashboard-controls flex items-center gap-2 min-w-0 shrink-0">
           <BoardMenu sort={sort} setSort={setSort} setViewMode={setViewMode}
             spark={spark} setSpark={setSpark} sparkWin={sparkWin} setSparkWin={setSparkWin}
-            lists={namedWatchlists} listId={activeList?.id || null}
-            onSelectMode={() => setSelecting(true)} />
+            lists={namedWatchlists} listId={activeList?.id || null} />
           {activeList && (
             <div class="min-w-0 mr-1">
               <div class="font-mono text-[8px] uppercase tracking-wider text-muted">{tl('Watchlist')}</div>
@@ -1533,12 +1533,22 @@ export function Dashboard({ listId = null }) {
             </button>
           </div>
           <TickerSearch filter={filter} setFilter={setFilter} activeList={activeList} />
+          <button data-select-trigger type="button" aria-pressed={selecting}
+            title={tl('Select rows')}
+            onClick={() => { if (selecting) endSelect(); else setSelecting(true) }}
+            class={`board-control h-[26px] shrink-0 rounded-lg border px-2 font-anth text-[10px] transition-colors ${
+              selecting
+                ? 'border-accent/60 bg-accent-soft text-accent'
+                : 'text-ink-2 hover:text-accent hover:border-accent/50'
+            }`}>
+            {tl('Select')}
+          </button>
         </div>
 
-        {/* batch trigger sits left of the sector strip; while active the
-            strip yields its slot to the action bar (Jeff 2026-08-06) */}
+        {/* Align the batch tray with the board, not the widget rail, so the
+            controls visually belong to the rows they operate on. */}
         {selecting ? (
-          <div class="ml-auto flex items-center gap-1.5 font-mono text-[10px] whitespace-nowrap overflow-x-auto no-scrollbar">
+          <div data-select-actions class="ml-auto lg:mr-[238px] flex items-center gap-1.5 font-mono text-[10px] whitespace-nowrap overflow-x-auto no-scrollbar">
             <span class="text-muted">{selected.size} {tl('selected')}</span>
             <button onClick={() => setSelected(new Set(viewMode === 'flat' ? flatRows.map((r) => r.symbol) : visibleManual))}
               class="px-2 py-0.5 rounded border border-line text-ink-2 hover:border-accent hover:text-accent">
@@ -1571,7 +1581,7 @@ export function Dashboard({ listId = null }) {
           1024 keeps it alive through two more notches (115%, 125%) on a 1376px
           CSS viewport before genuinely running out of room. */}
       <div class="grid gap-2 lg:grid-cols-[1fr_230px] min-w-0">
-        <section class="@container bg-surface-1 border border-line rounded-xl overflow-hidden min-w-0">
+        <section data-watchlist-board class="@container bg-surface-1 border border-line rounded-xl overflow-hidden min-w-0">
           {reordering ? (
             <ReorderList watchlist={watchlist} quotes={quotes}
               onMove={nudgeSymbol} onPlace={dropSymbol} onRemove={removeSymbol}
