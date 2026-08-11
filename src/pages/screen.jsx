@@ -10,21 +10,29 @@ import { fmtPrice, fmtPct, fmtBig, fmtRatio, fmtFracPct } from '../lib/format.js
 import { tl, t as tt } from '../lib/i18n.js'
 import { FlashMetric, FlashPrice } from '../components/Fig.jsx'
 import { Loading } from '../components/Loading.jsx'
-import { BUCKETS } from '../lib/symbols.js'
+import { BUCKETS, SYMBOL_RE } from '../lib/symbols.js'
 import { isWatched, watch, unwatch } from '../lib/watchlist.js'
 import { loadScreens, saveScreen, deleteScreen, passesScreenFilters } from '../lib/screens.js'
 
 const DEFAULT_SYMBOLS = 'AAPL MSFT NVDA GOOG AMZN SPY'
 const LINE_COLORS = ['#f59e0b', '#22d3ee', '#3fb950', '#f85149', '#a78bfa', '#ec4899', '#e7ecf3', '#79828d']
 
+// Eight series is where the compare chart, the correlation grid and the
+// valuation table all stay readable — but the cap used to eat symbol nine
+// without a word, so a pasted 15-name list silently screened the first eight.
+const MAX_SCREEN_SYMBOLS = 8
+
+/** @returns {{symbols: string[], dropped: number}} */
 function parseSymbols(raw) {
-  return [...new Set(
+  const unique = [...new Set(
     raw
       .toUpperCase()
       .split(/[\s,]+/)
       .map((s) => s.trim())
-      .filter((s) => /^[A-Z0-9.^=-]{1,12}$/.test(s)),
-  )].slice(0, 8)
+      .filter((s) => SYMBOL_RE.test(s)),
+  )]
+  const kept = unique.slice(0, MAX_SCREEN_SYMBOLS)
+  return { symbols: kept, dropped: unique.length - kept.length }
 }
 
 function useHistories(symbols) {
@@ -42,7 +50,7 @@ function useHistories(symbols) {
   return data
 }
 
-function SymbolInput({ value, onChange }) {
+function SymbolInput({ value, onChange, dropped }) {
   const [draft, setDraft] = useState(value)
   useEffect(() => setDraft(value), [value])
   return (
@@ -65,6 +73,14 @@ function SymbolInput({ value, onChange }) {
       >
         {tl('Run')}
       </button>
+      {/* same "+N" overflow counter the watchlist chip preview uses, so the
+          cap reads as "there is more" rather than as an error */}
+      {dropped > 0 && (
+        <span class="self-center font-mono text-[10px] text-muted whitespace-nowrap"
+          title={tt('screen.cap', { max: MAX_SCREEN_SYMBOLS })}>
+          +{dropped} {tl('dropped')}
+        </span>
+      )}
     </form>
   )
 }
@@ -513,7 +529,7 @@ function PresetRow({ current, onLoad }) {
 export function Screen({ route }) {
   const view = route.sub || 'screen'
   const [raw, setRaw] = useState(() => localStorage.getItem('screen_symbols') || DEFAULT_SYMBOLS)
-  const symbols = useMemo(() => parseSymbols(raw), [raw])
+  const { symbols, dropped } = useMemo(() => parseSymbols(raw), [raw])
   const hist = useHistories(symbols)
 
   const update = (v) => {
@@ -523,7 +539,7 @@ export function Screen({ route }) {
 
   return (
     <div class="flex-1 p-3 select-text min-w-0">
-      <SymbolInput value={raw} onChange={update} />
+      <SymbolInput value={raw} onChange={update} dropped={dropped} />
       <PresetRow current={raw} onLoad={update} />
       {view === 'screen' && <ScreenTable symbols={symbols} hist={hist} />}
       {view === 'compare' && <Compare symbols={symbols} hist={hist} />}

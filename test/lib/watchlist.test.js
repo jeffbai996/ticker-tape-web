@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { getWatchlist, watch, unwatch, isWatched, onWatchlistChange } from '../../src/lib/watchlist.js'
+import {
+  getWatchlist, watch, unwatch, isWatched, onWatchlistChange,
+  isWatchlistFull, replaceWatchlist, MAX_WATCHLIST,
+} from '../../src/lib/watchlist.js'
 import { WATCHLIST } from '../../src/lib/symbols.js'
 
 beforeEach(() => localStorage.clear())
@@ -24,6 +27,20 @@ describe('watchlist', () => {
     expect(watch('<script>')).toBeNull()
     expect(watch('')).toBeNull()
     expect(watch(WATCHLIST[0])).toBeNull() // already present
+  })
+
+  it('reports when the list is full so a caller can say why an add failed', () => {
+    // watch() returns null for invalid / duplicate / full alike; the UI needs
+    // to tell "not a symbol" apart from "no room left".
+    expect(isWatchlistFull()).toBe(false)
+    const filler = Array.from({ length: MAX_WATCHLIST }, (_, i) => `TST${i}`)
+    replaceWatchlist(filler)
+    expect(getWatchlist()).toHaveLength(MAX_WATCHLIST)
+    expect(isWatchlistFull()).toBe(true)
+    expect(watch('NVDA')).toBeNull()
+    // the module memoizes the list, so localStorage.clear() alone would leak
+    // this 60-name filler into the tests that follow
+    replaceWatchlist([...WATCHLIST])
   })
 
   it('removes and reports missing symbols', () => {

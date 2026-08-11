@@ -2,12 +2,12 @@
 // browser; falls back to the generic default set. Symbols added here drive
 // the sidebar rail, the tape, the dashboard's Custom bucket, and the heatmap.
 
-import { WATCHLIST as DEFAULT_WATCHLIST } from './symbols.js'
+import { WATCHLIST as DEFAULT_WATCHLIST, SYMBOL_RE } from './symbols.js'
 import { moveInList } from './watchorder.js'
 
 const KEY = 'watchlist_v1'
-const SYMBOL_RE = /^[A-Z0-9.^=-]{1,12}$/
 const MAX = 60
+export const MAX_WATCHLIST = MAX
 
 const listeners = new Set()
 
@@ -33,6 +33,12 @@ function save(list) {
     localStorage.setItem(KEY, JSON.stringify(list))
   } catch { /* best-effort */ }
   for (const fn of listeners) fn(list)
+}
+
+/** watch() collapses invalid / duplicate / full into one null, which left the
+ *  add forms guessing and reporting "not a symbol" for a full board. */
+export function isWatchlistFull() {
+  return getWatchlist().length >= MAX
 }
 
 export function isWatched(symbol) {

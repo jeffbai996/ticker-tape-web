@@ -2,9 +2,9 @@ import { useState } from 'preact/hooks'
 import { useNamedWatchlists, useQuotes, useWatchlist } from '../hooks.js'
 import {
   addWatchlistSymbol, createWatchlist, removeWatchlist, removeWatchlistSymbol,
-  renameWatchlist,
+  renameWatchlist, isNamedWatchlistFull, MAX_WATCHLIST_SYMBOLS,
 } from '../lib/watchlists.js'
-import { unwatch, watch } from '../lib/watchlist.js'
+import { unwatch, watch, isWatchlistFull, MAX_WATCHLIST } from '../lib/watchlist.js'
 import { useEarningsDays } from './dashboard.jsx'
 import { fmtPct } from '../lib/format.js'
 import { pulseStats } from '../lib/pulse.js'
@@ -111,6 +111,7 @@ function WatchlistCard({ item, quotes, earnDays, allLists, primary = false }) {
   const [name, setName] = useState(item.name)
   const [managing, setManaging] = useState(false)
   const [exportState, setExportState] = useState('idle')
+  const [notice, setNotice] = useState('')
   const others = allLists.filter((l) => l.id !== item.id)
   const [dest, setDest] = useState('')
   const destId = dest || others[0]?.id || ''
@@ -118,12 +119,29 @@ function WatchlistCard({ item, quotes, earnDays, allLists, primary = false }) {
     ? watch(symbol) : addWatchlistSymbol(target, symbol)
   const dropFrom = (symbol) => item.id === 'main'
     ? unwatch(symbol) : removeWatchlistSymbol(item.id, symbol)
-  const send = (symbol) => { if (destId) { addTo(destId, symbol); dropFrom(symbol) } }
+  const destFull = () => destId === 'main' ? isWatchlistFull() : isNamedWatchlistFull(destId)
+  // send is add-then-drop, so a destination that refuses the add used to lose
+  // the ticker outright. A full destination now stops the move and says so.
+  const send = (symbol) => {
+    if (!destId) return
+    if (!addTo(destId, symbol) && destFull()) {
+      setNotice(tt('watchlists.full', {
+        max: destId === 'main' ? MAX_WATCHLIST : MAX_WATCHLIST_SYMBOLS,
+      }))
+      setTimeout(() => setNotice(''), 2500)
+      return
+    }
+    dropFrom(symbol)
+  }
   const exportSymbols = async () => {
     const text = item.symbols.join(' ')
     const flash = () => {
       setExportState('done')
       setTimeout(() => setExportState('idle'), 1500)
+    }
+    const fail = () => {
+      setExportState('error')
+      setTimeout(() => setExportState('idle'), 2500)
     }
     const endpoint = wireUrl()
     if (endpoint) {
@@ -132,8 +150,7 @@ function WatchlistCard({ item, quotes, earnDays, allLists, primary = false }) {
         await pushWatchlistToWire(endpoint, item.symbols)
         flash()
       } catch {
-        setExportState('error')
-        setTimeout(() => setExportState('idle'), 2500)
+        fail()
       }
       return
     }
@@ -147,7 +164,9 @@ function WatchlistCard({ item, quotes, earnDays, allLists, primary = false }) {
       ta.style.opacity = '0'
       document.body.appendChild(ta)
       ta.select()
-      try { if (document.execCommand('copy')) flash() } catch { /* no clipboard at all */ }
+      // a false return is the same dead end as a throw — both used to leave
+      // the button sitting on 'idle', reading as "nothing happened"
+      try { if (document.execCommand('copy')) flash(); else fail() } catch { fail() }
       ta.remove()
     }
     if (navigator.clipboard?.writeText) {
@@ -199,6 +218,7 @@ function WatchlistCard({ item, quotes, earnDays, allLists, primary = false }) {
           <span class="text-[9px]">{tl('→ moves · ✕ removes')}</span>
         </div>
       )}
+      {notice && <div class="font-anth text-[10px] text-down">{notice}</div>}
       <SymbolPreview symbols={item.symbols} quotes={quotes} managing={managing}
         onSend={send} onRemove={dropFrom} />
 

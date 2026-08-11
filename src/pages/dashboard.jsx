@@ -16,15 +16,22 @@ import {
   getGroupPrefs, isCollapsed, moveGroup, onGroupsChange, orderGroups,
   toggleCollapsed,
 } from '../lib/catgroups.js'
-import { isWatched, moveSymbol, placeSymbol, unwatch, watch } from '../lib/watchlist.js'
-import { addWatchlistSymbol, moveWatchlistSymbol, removeWatchlistSymbol } from '../lib/watchlists.js'
+import {
+  isWatched, moveSymbol, placeSymbol, unwatch, watch, isWatchlistFull, MAX_WATCHLIST,
+} from '../lib/watchlist.js'
+import {
+  addWatchlistSymbol, moveWatchlistSymbol, removeWatchlistSymbol,
+  isNamedWatchlistFull, MAX_WATCHLIST_SYMBOLS,
+} from '../lib/watchlists.js'
 import { loadUserGroups, onUserGroupsChange } from '../lib/usergroups.js'
 import { groupHeat, rankAlerts, rangeExtremes } from '../lib/railstats.js'
 import { conditionText, loadAlerts, onAlertsChange } from '../lib/alerts.js'
 import { groupDashboardRows, quoteSpread, selectFlatRows, boardBreadth, dropSlot, resolveDrop } from '../lib/dashboardRows.js'
 import { searchSymbols } from '../lib/symbolSearch.js'
 import { venueFlag } from '../lib/venueFlag.js'
-import { fmtPrice, fmtPriceBare, fmtPct, fmtChange, fmtVol, rangePos } from '../lib/format.js'
+import {
+  fmtPrice, fmtPriceBare, fmtPct, fmtPctPlain, fmtChange, fmtVol, fmtFracPct, rangePos,
+} from '../lib/format.js'
 import { Histo } from '../components/Histo.jsx'
 import { Spark } from '../components/Spark.jsx'
 import { SPARK_TYPES, DEFAULT_SPARK, isSparkType,
@@ -33,7 +40,7 @@ import { SPARK_TYPES, DEFAULT_SPARK, isSparkType,
 import { Marquee } from '../components/Marquee.jsx'
 import { FlashMetric, FlashPrice } from '../components/Fig.jsx'
 import { Empty } from '../components/Loading.jsx'
-import { tl } from '../lib/i18n.js'
+import { t as tt, tl } from '../lib/i18n.js'
 import { extendedLabelClass } from '../lib/extendedHours.js'
 
 const DAY = 86_400_000
@@ -393,7 +400,7 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
                       the ext annotation just updates. */}
                   <span class="text-ink-2 font-semibold text-[12px] max-sm:text-[11px]">{fmtPriceBare(q.extPrice)}</span>{' '}
                   <span class={`font-normal ${extUp ? 'text-up' : 'text-down'}`}>
-                    {extUp ? '▲' : '▼'}{Math.abs(q.extPct ?? 0).toFixed(1)}%
+                    {extUp ? '▲' : '▼'}{fmtPctPlain(Math.abs(q.extPct ?? 0))}
                   </span>
                 </span>
               ) : marketState(new Date()).state !== 'open' ? (
@@ -465,7 +472,7 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
               <span class="hidden @min-[820px]:flex items-baseline gap-1 mr-1">
                 <span class="text-accent/60 text-[9px] w-6 text-right">{hasRange ? 'RNG' : ''}</span>
                 <span class="text-ink-2 font-normal w-[2.6rem] text-right">
-                  {hasRange ? `${(((q.dayHigh - q.dayLow) / q.price) * 100).toFixed(1)}%` : ''}
+                  {hasRange ? fmtFracPct((q.dayHigh - q.dayLow) / q.price, 1) : ''}
                 </span>
               </span>
               <span class="text-accent/60 text-[9px] w-6 text-right">{avgVol != null ? 'AVG' : ''}</span>
@@ -817,7 +824,7 @@ function AddWidget() {
  *  command bar's `w SYM` — neither reads as a control, and the sidebar is
  *  hidden entirely below 768px (Jeff 2026-08-04: "not very obvious where to
  *  add tickers"). Mirrors AddWidget's dashed-button → inline-form idiom. */
-function AddSymbolRow({ onAdd, isPresent }) {
+function AddSymbolRow({ onAdd, isPresent, isFull, cap }) {
   const [open, setOpen] = useState(false)
   const [sym, setSym] = useState('')
   const [err, setErr] = useState('')
@@ -851,11 +858,16 @@ function AddSymbolRow({ onAdd, isPresent }) {
   // a successful add RESETS the form instead of closing it — mass-adding
   // tickers shouldn't cost a click per symbol (Jeff 2026-08-09); esc/✕ closes
   const added = () => { setSym(''); setErr(''); setHits(null); setActive(-1); input.current?.focus() }
+  // The mutator returns one null for invalid / duplicate / list-full alike.
+  // "not a symbol: NVDA" on a full board was actively misleading.
+  const refusal = (v) => isPresent(v) ? `${v} ${tl('already on the list')}`
+    : isFull() ? tt('watchlists.full', { max: cap })
+    : `${tl('not a symbol')}: ${v}`
   const commit = (raw) => {
     const v = String(raw || '').trim().toUpperCase()
     if (!v) return close()
     if (onAdd(v)) return added()
-    setErr(isPresent(v) ? `${v} ${tl('already on the list')}` : `${tl('not a symbol')}: ${v}`)
+    setErr(refusal(v))
   }
   // ↑/↓ walk the dropdown, Enter takes the highlighted hit — with nothing
   // highlighted Enter still submits whatever was typed, so a known ticker
@@ -875,8 +887,7 @@ function AddSymbolRow({ onAdd, isPresent }) {
     const v = sym.trim().toUpperCase()
     if (!v) return close()
     if (onAdd(v)) return added()
-    // The mutator returns null for invalid / duplicate / list-full — say which.
-    setErr(isPresent(v) ? `${v} ${tl('already on the list')}` : `${tl('not a symbol')}: ${v}`)
+    setErr(refusal(v))
   }
   if (!open) {
     return (
@@ -1350,6 +1361,9 @@ const GLASS_ICON = (
 function TickerSearch({ filter, setFilter, activeList }) {
   const [hits, setHits] = useState(null)
   const [open, setOpen] = useState(false)
+  // [+] and ☆ both just dropped the mutator's null on the floor, so tapping
+  // either on a full board did nothing at all, with no explanation.
+  const [notice, setNotice] = useState('')
   // The box now rests folded to just the glass and blooms open on click —
   // at rest it was eating a third of the toolbar the sector strip wants
   // (Jeff 2026-08-06: "shorten the search bar usually until clicked").
@@ -1404,15 +1418,28 @@ function TickerSearch({ filter, setFilter, activeList }) {
             const inCur = activeList
               ? activeList.symbols.includes(h.symbol)
               : isWatched(h.symbol)
+            const full = () => activeList
+              ? isNamedWatchlistFull(activeList.id)
+              : isWatchlistFull()
+            const fullCap = activeList ? MAX_WATCHLIST_SYMBOLS : MAX_WATCHLIST
+            const refused = (added) => {
+              setNotice(!added && full() ? tt('watchlists.full', { max: fullCap }) : '')
+            }
             const toggleCur = () => {
-              if (activeList) {
-                if (inCur) removeWatchlistSymbol(activeList.id, h.symbol)
-                else addWatchlistSymbol(activeList.id, h.symbol)
-              } else if (inCur) unwatch(h.symbol)
-              else watch(h.symbol)
+              if (inCur) {
+                setNotice('')
+                if (activeList) removeWatchlistSymbol(activeList.id, h.symbol)
+                else unwatch(h.symbol)
+                return
+              }
+              refused(activeList ? addWatchlistSymbol(activeList.id, h.symbol) : watch(h.symbol))
             }
             const starred = isWatched(h.symbol)
-            const toggleStar = () => { if (starred) unwatch(h.symbol); else watch(h.symbol) }
+            const toggleStar = () => {
+              if (starred) { setNotice(''); unwatch(h.symbol); return }
+              setNotice(!watch(h.symbol) && isWatchlistFull()
+                ? tt('watchlists.full', { max: MAX_WATCHLIST }) : '')
+            }
             return (
               <div key={h.symbol}
                 class="flex items-baseline gap-2 px-2.5 py-1.5 border-t border-line/60 first:border-0 hover:bg-accent-soft cursor-pointer"
@@ -1442,6 +1469,9 @@ function TickerSearch({ filter, setFilter, activeList }) {
               </div>
             )
           })}
+          {notice && (
+            <div class="border-t border-line/60 px-2.5 py-1 font-anth text-[10px] text-down">{notice}</div>
+          )}
         </div>
       )}
     </div>
@@ -1524,6 +1554,9 @@ export function Dashboard({ listId = null }) {
   const removeSymbol = activeList
     ? (symbol) => removeWatchlistSymbol(activeList.id, symbol)
     : unwatch
+  // whichever list the board is pointed at owns the cap the add row reports
+  const listFull = activeList ? () => isNamedWatchlistFull(activeList.id) : isWatchlistFull
+  const listCap = activeList ? MAX_WATCHLIST_SYMBOLS : MAX_WATCHLIST
   const isPresent = (symbol) => watchlist.includes(String(symbol || '').trim().toUpperCase())
   const [revealedSym, setRevealedSym] = useState(null)
   const toggleReveal = (sym) => setRevealedSym((cur) => (cur === sym ? null : sym))
@@ -1771,7 +1804,7 @@ export function Dashboard({ listId = null }) {
           {!watchlist.length && (
             <Empty label={tl('empty watchlist — add the first ticker below')} />
           )}
-          <AddSymbolRow onAdd={addSymbol} isPresent={isPresent} />
+          <AddSymbolRow onAdd={addSymbol} isPresent={isPresent} isFull={listFull} cap={listCap} />
         </section>
         <div class="flex flex-col gap-3 min-w-0">
           {widgets.map((w) => (

@@ -29,12 +29,6 @@ function extractSymbols(text) {
   return [...new Set(found)]
 }
 
-const listeners = new Set()
-export function onJournalChange(fn) {
-  listeners.add(fn)
-  return () => listeners.delete(fn)
-}
-
 export function loadJournal() {
   try {
     const raw = JSON.parse(localStorage.getItem(KEY))
@@ -47,7 +41,6 @@ function persist(list) {
   try {
     localStorage.setItem(KEY, JSON.stringify(list.slice(-MAX_ENTRIES)))
   } catch { /* best-effort */ }
-  for (const fn of listeners) fn(list)
 }
 
 export function addJournalEntry(text) {
