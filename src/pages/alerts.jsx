@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'preact/hooks'
 import {
-  loadAlerts, addAlert, removeAlert, rearmAlert, onAlertsChange, conditionText,
+  loadAlerts, addAlert, updateAlert, removeAlert, rearmAlert, onAlertsChange, conditionDetail,
   getAlertDeliveryPrefs, setAlertDeliveryPrefs, setAlertDelivery,
 } from '../lib/alerts.js'
 import {
@@ -30,12 +30,28 @@ function consumeAlertPrefill() {
   } catch { return {} }
 }
 
-function AddForm({ destinations, prefs }) {
+/** Validation messages are thrown in English (they're library-internal); the
+ *  page translates at display, the same shape the rest of the UI uses. */
+function alertErrorText(err) {
+  const message = String(err?.message || err)
+  const unknownType = message.match(/^unknown alert type: (.+)$/)
+  if (unknownType) return `${tl('unknown alert type')}: ${unknownType[1]}`
+  return tl(message)
+}
+
+/** One form for both add and edit — the edit path remounts it with the alert's
+ *  values (see `key` at the call site), so there's no second layout to keep in
+ *  sync. Delivery is add-only: an existing alert's channel lives in its row. */
+function AlertForm({ destinations, prefs, editing, onDone }) {
   const [prefill] = useState(consumeAlertPrefill)
-  const [symbol, setSymbol] = useState(() => String(prefill.symbol || '').toUpperCase())
-  const [type, setType] = useState('price')
-  const [operator, setOperator] = useState('>')
-  const [value, setValue] = useState(() => (prefill.value != null ? String(prefill.value) : ''))
+  const [symbol, setSymbol] = useState(() =>
+    String(editing?.symbol || prefill.symbol || '').toUpperCase())
+  const [type, setType] = useState(() => editing?.type || 'price')
+  const [operator, setOperator] = useState(() => editing?.operator || '>')
+  const [value, setValue] = useState(() => {
+    const seed = editing ? editing.value : prefill.value
+    return seed != null ? String(seed) : ''
+  })
   const [error, setError] = useState(null)
   const [delivery, setDelivery] = useState(prefs)
 
@@ -45,6 +61,11 @@ function AddForm({ destinations, prefs }) {
     e.preventDefault()
     setError(null)
     try {
+      if (editing) {
+        updateAlert(editing.id, { symbol, type, operator, value: Number(value) })
+        onDone()
+        return
+      }
       addAlert({ symbol, type, operator, value: Number(value), delivery })
       setSymbol('')
       setValue('')
@@ -53,12 +74,18 @@ function AddForm({ destinations, prefs }) {
         Notification.requestPermission()
       }
     } catch (err) {
-      setError(String(err.message || err))
+      setError(alertErrorText(err))
     }
   }
 
   return (
-    <form onSubmit={submit} class="bg-surface-1 border border-line rounded-xl p-3 flex flex-wrap items-end gap-2">
+    <form onSubmit={submit} class={`bg-surface-1 border rounded-xl p-3 flex flex-wrap items-end gap-2 ${
+      editing ? 'border-accent' : 'border-line'}`}>
+      {editing && (
+        <span class="w-full font-mono text-[10px] uppercase tracking-wider text-accent">
+          {tl('editing alert')} #{editing.id}
+        </span>
+      )}
       <label class="flex flex-col gap-1">
         <span class="text-[9px] text-muted uppercase tracking-wider">{tl('Symbol')}</span>
         <input class={`${FIELD} w-24 uppercase`} value={symbol}
@@ -84,6 +111,7 @@ function AddForm({ destinations, prefs }) {
         <input class={`${FIELD} w-28`} value={value} inputMode="decimal"
           onInput={(e) => setValue(e.currentTarget.value)} placeholder="0" />
       </label>
+      {!editing && (
       <label class="flex items-center gap-2 px-2 py-1.5 h-[33px] border border-line rounded-md bg-surface-2">
         <input type="checkbox" checked={delivery.enabled}
           disabled={!destinations.length}
@@ -94,7 +122,8 @@ function AddForm({ destinations, prefs }) {
           })} />
         <span class="text-[10px] text-ink-2 whitespace-nowrap">{tt('alerts.delivery.notify')}</span>
       </label>
-      {delivery.enabled && destinations.length > 0 && (
+      )}
+      {!editing && delivery.enabled && destinations.length > 0 && (
         <>
           <label class="flex flex-col gap-1">
             <span class="text-[9px] text-muted uppercase tracking-wider">{tt('alerts.delivery.channel')}</span>
@@ -117,8 +146,14 @@ function AddForm({ destinations, prefs }) {
       )}
       <button type="submit"
         class="font-mono text-[11px] px-3 py-[7px] rounded-md border border-accent text-accent bg-accent-soft hover:bg-accent hover:text-black">
-        {tl('+ Add alert')}
+        {editing ? tl('Save alert') : tl('+ Add alert')}
       </button>
+      {editing && (
+        <button type="button" onClick={onDone}
+          class="font-mono text-[11px] px-3 py-[7px] rounded-md border border-line text-muted hover:text-ink hover:border-line-2">
+          {tl('cancel')}
+        </button>
+      )}
       {error && <span class="font-mono text-[11px] text-down pb-1.5">{error}</span>}
     </form>
   )
@@ -215,6 +250,7 @@ export function Alerts() {
   const [alerts, setAlerts] = useState(loadAlerts)
   const [destinations, setDestinations] = useState([])
   const [prefs, setPrefs] = useState(getAlertDeliveryPrefs)
+  const [editingId, setEditingId] = useState(null)
   useEffect(() => onAlertsChange(() => setAlerts(loadAlerts())), [])
   useEffect(() => {
     let live = true
@@ -228,6 +264,9 @@ export function Alerts() {
 
   const symbols = [...new Set(alerts.map((a) => a.symbol))]
   const live = useQuotes(symbols)
+  // by id, not by object: a delivery toggle rewrites the row and a stale
+  // snapshot would edit against values the user has since changed
+  const editing = alerts.find((a) => a.id === editingId) || null
 
   return (
     <div class="flex-1 p-3 select-text min-w-0">
@@ -240,7 +279,9 @@ export function Alerts() {
 
       <div class="flex flex-col gap-3 max-w-6xl">
         <DeliveryDefaults destinations={destinations} prefs={prefs} setPrefs={setPrefs} />
-        <AddForm destinations={destinations} prefs={prefs} />
+        <AlertForm key={editing ? `edit-${editing.id}` : 'new'}
+          destinations={destinations} prefs={prefs}
+          editing={editing} onDone={() => setEditingId(null)} />
 
         {alerts.length === 0 ? (
           <div class="px-1 font-mono text-[11px] text-muted">{tt('alerts.none')}</div>
@@ -261,10 +302,11 @@ export function Alerts() {
                 {alerts.map((a) => {
                   const q = live[a.symbol]?.quote
                   return (
-                    <tr key={a.id} class="border-t border-line hover:bg-surface-3">
+                    <tr key={a.id} class={`border-t border-line hover:bg-surface-3${
+                      a.id === editingId ? ' bg-surface-3' : ''}`}>
                       <td class="px-3 py-[3px] text-ink whitespace-nowrap">
                         <a href={`#/research/${a.symbol.toLowerCase()}`} class="text-accent hover:underline">{a.symbol}</a>
-                        {' '}{conditionText(a).slice(a.symbol.length + 1)}
+                        {' '}{conditionDetail(a)}
                       </td>
                       <td class="px-2 py-[3px] text-right text-ink-2">{fmtPrice(q?.price)}</td>
                       <td class="px-2 py-[3px] whitespace-nowrap">
@@ -288,7 +330,12 @@ export function Alerts() {
                           <button onClick={() => rearmAlert(a.id)}
                             class="text-accent hover:underline mr-3">{tl('re-arm')}</button>
                         )}
-                        <button onClick={() => removeAlert(a.id)}
+                        <button onClick={() => setEditingId(a.id === editingId ? null : a.id)}
+                          class="text-ink-2 hover:underline mr-3">{tl('edit')}</button>
+                        <button onClick={() => {
+                          if (a.id === editingId) setEditingId(null)
+                          removeAlert(a.id)
+                        }}
                           class="text-down hover:underline">{tl('delete')}</button>
                       </td>
                     </tr>

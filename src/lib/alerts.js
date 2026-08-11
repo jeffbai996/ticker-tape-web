@@ -65,7 +65,9 @@ function save(alerts) {
   emit()
 }
 
-export function addAlert({ symbol, type, operator, value, delivery }) {
+/** Validate + normalize the condition half of an alert. Throws on bad input;
+ *  add and update share it so an edit can never write a shape add would reject. */
+function normalizeCondition({ symbol, type, operator, value }) {
   const sym = (symbol || '').trim().toUpperCase()
   if (!sym) throw new Error('symbol required')
   if (!TYPES.has(type)) throw new Error(`unknown alert type: ${type}`)
@@ -75,16 +77,18 @@ export function addAlert({ symbol, type, operator, value, delivery }) {
   if (!Number.isFinite(v)) throw new Error('value must be a number')
   if (type === 'rsi' && (v < 0 || v > 100)) throw new Error('RSI must be 0-100')
   if (type === 'sma_cross' && (!Number.isInteger(v) || v < 2)) throw new Error('SMA window must be an integer ≥ 2')
+  return { symbol: sym, type, operator, value: v }
+}
+
+export function addAlert({ symbol, type, operator, value, delivery }) {
+  const cond = normalizeCondition({ symbol, type, operator, value })
 
   const alerts = loadAlerts()
   const id = Math.max(0, ...alerts.map((a) => a.id)) + 1
   const created = Date.now()
   const alert = {
     id,
-    symbol: sym,
-    type,
-    operator,
-    value: v,
+    ...cond,
     created,
     triggered: null,
     current: null,
@@ -94,6 +98,36 @@ export function addAlert({ symbol, type, operator, value, delivery }) {
   }
   save([...alerts, alert])
   return alert
+}
+
+/**
+ * Edit an alert's condition in place. Returns the updated alert, or null if the
+ * id is gone. Delivery settings and deliveryId ride along untouched — the row's
+ * delivery controls own those. Changing the condition re-arms a fired alert:
+ * the old trigger was for a question the user just stopped asking. A no-op edit
+ * leaves the fired state alone so re-saving the same values doesn't wipe it.
+ */
+export function updateAlert(id, patch = {}) {
+  const alerts = loadAlerts()
+  const alert = alerts.find((a) => a.id === id)
+  if (!alert) return null
+
+  const cond = normalizeCondition({
+    symbol: patch.symbol ?? alert.symbol,
+    type: patch.type ?? alert.type,
+    operator: patch.operator ?? alert.operator,
+    value: patch.value ?? alert.value,
+  })
+  const changed = ['symbol', 'type', 'operator', 'value'].some((k) => cond[k] !== alert[k])
+  const next = { ...alert, ...cond }
+  if (changed && alert.triggered) {
+    next.triggered = null
+    next.current = null
+    next.deliveryId = newDeliveryId(Date.now(), id)
+    next.deliveryStatus = null
+  }
+  save(alerts.map((a) => (a.id === id ? next : a)))
+  return next
 }
 
 export function removeAlert(id) {
@@ -174,9 +208,14 @@ export function evaluateTechnicalAlerts(alerts, techMap) {
   return out
 }
 
+/** The condition without its symbol, for UIs that render the symbol as a link. */
+export function conditionDetail(a) {
+  if (a.type === 'rsi') return `RSI ${a.operator} ${a.value}`
+  if (a.type === 'sma_cross') return `crosses ${a.operator === '>' ? 'above' : 'below'} SMA${a.value}`
+  if (a.type === 'volume') return `volume > ${a.value}x avg`
+  return `price ${a.operator} ${a.value}`
+}
+
 export function conditionText(a) {
-  if (a.type === 'rsi') return `${a.symbol} RSI ${a.operator} ${a.value}`
-  if (a.type === 'sma_cross') return `${a.symbol} crosses ${a.operator === '>' ? 'above' : 'below'} SMA${a.value}`
-  if (a.type === 'volume') return `${a.symbol} volume > ${a.value}x avg`
-  return `${a.symbol} price ${a.operator} ${a.value}`
+  return `${a.symbol} ${conditionDetail(a)}`
 }

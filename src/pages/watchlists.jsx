@@ -7,6 +7,7 @@ import {
 import { unwatch, watch } from '../lib/watchlist.js'
 import { useEarningsDays } from './dashboard.jsx'
 import { fmtPct } from '../lib/format.js'
+import { pulseStats } from '../lib/pulse.js'
 import { t as tt, tl } from '../lib/i18n.js'
 import { onSyncStatus } from '../lib/cloudsave.js'
 import { wireUrl } from '../lib/wire.js'
@@ -39,14 +40,13 @@ function ListSummary({ symbols, quotes, earnDays }) {
   // stopped meaning anything (Jeff 2026-08-06)
   const ernSoon = symbols.filter((s) => earnDays?.[s] != null
     && earnDays[s] >= 0 && earnDays[s] <= 7).length
-  const moves = symbols
-    .map((symbol) => quotes[symbol]?.quote?.pct)
-    .filter((value) => Number.isFinite(value))
-  const average = moves.length
-    ? moves.reduce((sum, value) => sum + value, 0) / moves.length
-    : null
-  const advancing = moves.filter((value) => value > 0).length
-  const declining = moves.filter((value) => value < 0).length
+  // shared breadth maths (rail Pulse, markets Movers) rather than a third
+  // local variant — note flat names count as advancing there, so adv + dec
+  // now always sums to the list
+  const stats = pulseStats(symbols.map((symbol) => ({ symbol, pct: quotes[symbol]?.quote?.pct })))
+  const average = stats ? stats.avg : null
+  const advancing = stats?.adv ?? 0
+  const declining = stats?.dec ?? 0
 
   return (
     <div class="grid grid-cols-4 gap-1.5">

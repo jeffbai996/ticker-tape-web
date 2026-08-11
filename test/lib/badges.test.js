@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { techBadges, histoBars } from '../../src/lib/badges.js'
-import { pulseStats } from '../../src/lib/pulse.js'
+import { pulseStats, countAdvancers } from '../../src/lib/pulse.js'
 import { parseCommand } from '../../src/lib/commands.js'
 
 describe('techBadges', () => {
@@ -91,6 +91,17 @@ describe('pulseStats', () => {
 
   it('returns null with no priced quotes', () => {
     expect(pulseStats([{ symbol: 'X', pct: null }])).toBeNull()
+  })
+})
+
+describe('countAdvancers', () => {
+  it('counts flat as advancing, matching pulseStats breadth', () => {
+    expect(countAdvancers([1, 0, -0.5, 3])).toBe(3)
+  })
+
+  it('ignores non-finite entries so a missing P&L is neither side', () => {
+    expect(countAdvancers([1, null, undefined, NaN, -2])).toBe(1)
+    expect(countAdvancers([])).toBe(0)
   })
 })
 
