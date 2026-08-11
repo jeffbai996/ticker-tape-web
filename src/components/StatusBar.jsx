@@ -121,7 +121,10 @@ export function StatusBar() {
   // tap triggered it and it fought the native swipe (Jeff 2026-08-06)
 
   useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 1000)
+    // 30s, not 1s: `now` only feeds the session chip + countdown title, and a
+    // per-second re-render of the whole bar was one of the 1Hz layout pokes
+    // behind the zh-zoom shimmer (Jeff 2026-08-11). The clock paints itself.
+    const t = setInterval(() => setNow(new Date()), 30_000)
     return () => clearInterval(t)
   }, [])
 
