@@ -66,7 +66,13 @@ export function subscribe(fn) {
   return () => listeners.delete(fn)
 }
 
+// ?freeze=1 diagnostic: halt every live update notification so a shimmer
+// report can be bisected in one look — still shimmering under freeze means
+// animation/OS-zoom, gone means data-driven repaints (Jeff 2026-08-11).
+const FROZEN = typeof location !== 'undefined' && /[?&]freeze/.test(location.search)
+
 function emit(symbol) {
+  if (FROZEN) return
   for (const fn of listeners) fn(symbol, cache.get(symbol))
 }
 
