@@ -208,35 +208,15 @@ html, body {
   border-radius: 10px;
   background: rgba(231, 236, 243, 0.025);
 }
-.board-menu-sheet-handle {
-  display: none;
-}
-
-@keyframes board-menu-sheet {
-  from { opacity: 0; transform: translateY(12px) scale(0.99); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
+/* Phone: same anchored dropdown as desktop, NOT a bottom sheet — the fixed
+   sheet floated above the bottom nav, detached from the button that opened
+   it, and read as the menu "dropping way down the page" (Jeff 2026-08-11).
+   Only the width math changes: the burger sits ~1rem from the viewport edge,
+   so cap the pop to what still clears the right side. */
 @media (max-width: 639px) {
   .board-menu-pop {
-    position: fixed;
-    top: auto;
-    right: 12px;
-    bottom: calc(4.25rem + env(safe-area-inset-bottom, 0px));
-    left: 12px;
-    width: auto;
+    width: min(30rem, calc(100vw - 2.5rem));
     max-height: min(72vh, 34rem);
-    border-radius: 18px;
-    transform-origin: bottom center;
-    animation-name: board-menu-sheet;
-  }
-  .board-menu-sheet-handle {
-    display: block;
-    width: 34px;
-    height: 3px;
-    margin: 7px auto 1px;
-    border-radius: 999px;
-    background: rgba(231, 236, 243, 0.24);
   }
 }
 
