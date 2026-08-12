@@ -193,7 +193,7 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
       id={`ev-${ev.id}`}
       class={`border-b border-line/30 border-l-2 font-mono transition-colors cursor-pointer ${
         hot ? 'duration-1000 bg-accent text-black border-l-transparent'
-          : `duration-100 ${TIER_EDGE[tier] || 'border-l-transparent'} ${open ? 'bg-surface-1' : 'hover:bg-accent-soft'}`
+          : `duration-100 ${TIER_EDGE[tier] || 'border-l-transparent'} ${open ? 'bg-surface-1' : 'hover:bg-surface-3'}`
       }`}
       onClick={onToggle}
     >
@@ -308,7 +308,7 @@ const FragwireLogo = () => (
 
 function Panel({ title, children, action = null }) {
   return (
-    <section class="border border-line rounded-lg bg-surface overflow-hidden">
+    <section class="shrink-0 border border-line rounded-lg bg-surface overflow-hidden">
       <h3 class="flex items-center px-2.5 py-1 border-b border-line font-mono text-[9.5px] uppercase tracking-[.12em] text-muted">
         {title}
         {action && <span class="ml-auto">{action}</span>}
