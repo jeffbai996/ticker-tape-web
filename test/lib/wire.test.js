@@ -1,5 +1,14 @@
 import { describe, expect, it, beforeEach } from 'vitest'
-import { setWireUrl, wireUrl, demoBackfill, demoEvent, demoToday, demoQuotes, rankEvents, collapseSessions, clusterStories, TYPE_CODE, pubDisplayName, readMinutes } from '../../src/lib/wire.js'
+import { setWireUrl, wireUrl, demoBackfill, demoEvent, demoToday, demoQuotes, rankEvents, collapseSessions, clusterStories, toggleWireArticle, TYPE_CODE, pubDisplayName, readMinutes } from '../../src/lib/wire.js'
+
+describe('wire article accordion', () => {
+  it('replaces the open article and lets the active article close', () => {
+    const current = new Set([11])
+    expect([...toggleWireArticle(current, 22)]).toEqual([22])
+    expect([...current]).toEqual([11])
+    expect([...toggleWireArticle(new Set([22]), 22)]).toEqual([])
+  })
+})
 
 describe('wire endpoint config', () => {
   beforeEach(() => localStorage.clear())

@@ -37,6 +37,13 @@ export function setWireUrl(url) {
   return clean
 }
 
+/** Accordion transition for wire rows. A second article replaces the current
+ * one; tapping the current article closes it. The input set stays untouched so
+ * state updates remain referentially safe. */
+export function toggleWireArticle(current, key) {
+  return current?.has(key) ? new Set() : new Set([key])
+}
+
 // Port fragwire's own UI answers on. Only ever combined with the host the page
 // is ALREADY being served from, so no internal hostname lives in this repo.
 const WIRE_UI_PORT = 8459

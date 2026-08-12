@@ -3,6 +3,7 @@ import {
   wireUrl, setWireUrl, fragwireHome, fetchEvents, fetchUpdates, fetchToday, fetchMeta,
   demoBackfill, demoEvent, demoToday, rankEvents, collapseSessions, clusterStories,
   srcCred, evHeadline, evBody, matchesWireQuery, pubDisplayName, readMinutes,
+  toggleWireArticle,
 } from '../lib/wire.js'
 import { IS_PRIVATE_BUILD } from '../lib/nav.js'
 import { prefetchSymbol } from '../lib/history.js'
@@ -627,11 +628,7 @@ export function Wire({ route }) {
     setReconnect((n) => n + 1)
   }
 
-  const toggleOpen = (id) => setOpenIds((cur) => {
-    const next = new Set(cur)
-    next.has(id) ? next.delete(id) : next.add(id)
-    return next
-  })
+  const toggleOpen = (id) => setOpenIds((cur) => toggleWireArticle(cur, id))
 
   // Land on the linked story: unfilter so it can't be hidden, expand it, and
   // scroll it into view. Once per id — re-renders from the SSE feed must not
@@ -648,7 +645,7 @@ export function Wire({ route }) {
       setFilter('')
       setQuery('')
       setMode('all')
-      setOpenIds((cur) => new Set(cur).add(targetId))
+      setOpenIds(new Set([targetId]))
       requestAnimationFrame(() => {
         document.getElementById(`ev-${targetId}`)
           ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
