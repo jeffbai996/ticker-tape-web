@@ -175,7 +175,7 @@ function WatchlistCard({ item, quotes, earnDays, allLists, primary = false }) {
     }
     legacyCopy()
   }
-  const href = primary ? '#/' : `#/watchlists/${item.id}`
+  const href = primary ? '#/watchlists/main' : `#/watchlists/${item.id}`
   const submit = (event) => {
     event.preventDefault()
     const saved = renameWatchlist(item.id, name)

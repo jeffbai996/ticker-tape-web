@@ -42,6 +42,7 @@ import { FlashMetric, FlashPrice } from '../components/Fig.jsx'
 import { Empty } from '../components/Loading.jsx'
 import { t as tt, tl } from '../lib/i18n.js'
 import { extendedLabelClass } from '../lib/extendedHours.js'
+import { rememberDashboardLanding } from '../lib/dashboardLanding.js'
 
 const DAY = 86_400_000
 const ETF_SKIP = new Set(['SPY', 'QQQ', 'IWM', 'GLD', 'TLT'])
@@ -1278,7 +1279,7 @@ function BoardMenu({ sort, setSort, setViewMode, spark, setSpark, sparkWin, setS
             <div class="flex min-w-0 flex-col gap-1.5">
               <section class="board-menu-section">
                 {head(tl('Watchlist'))}
-                {item(tl('Dashboard'), !listId, () => { setOpen(false); location.hash = '#/' })}
+                {item(tl('Dashboard'), !listId, () => { setOpen(false); location.hash = '#/watchlists/main' })}
                 {lists.map((l) => item(l.name, listId === l.id,
                   () => { setOpen(false); location.hash = `#/watchlists/${l.id}` }))}
               </section>
@@ -1491,6 +1492,7 @@ export function Dashboard({ listId = null }) {
   const namedWatchlists = useNamedWatchlists()
   const activeList = listId ? namedWatchlists.find((item) => item.id === listId) : null
   const watchlist = activeList?.symbols || mainWatchlist
+  useEffect(() => { rememberDashboardLanding(activeList?.id || null) }, [activeList?.id])
   const quotes = useQuotes(watchlist)
   const earnDays = useEarningsDays(watchlist)
   const [widgets, setWidgets] = useState(getWidgets)
