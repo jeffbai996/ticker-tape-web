@@ -49,23 +49,6 @@ function consumePrefill(key) {
   } catch { return null }
 }
 
-// The book moves on fills, not on tab flips — one in-flight pull is shared by
-// every research header for a minute (portfolio.jsx owns the same endpoint).
-const POSITIONS_TTL = 60_000
-let positionsCache = null
-
-function fetchPositions() {
-  const base = wireUrl()
-  if (!base) return Promise.resolve([])
-  if (positionsCache && Date.now() - positionsCache.ts < POSITIONS_TTL) return positionsCache.value
-  const value = fetch(`${base.replace(/\/$/, '')}/api/portfolio`, { signal: AbortSignal.timeout(10_000) })
-    .then((r) => r.json())
-    .then((out) => (out.ok ? out.positions || [] : []))
-    .catch(() => [])
-  positionsCache = { ts: Date.now(), value }
-  return value
-}
-
 /** Snapshot whatever the page already knows about a symbol into a memo
  *  prompt. Fetches are cache-first, so this is cheap at click time. */
 async function buildMemoPrompt(symbol) {
@@ -143,6 +126,7 @@ function Candles({ bars, warmPad, intraday, ticks, tick, onTick, rangeKey, onRan
   const el = useRef(null)
   const chartRef = useRef(null)
   const legendRef = useRef(null)
+  const fittedBarsRef = useRef(null)
   const [ctype, setCtypeState] = useState(() => {
     const saved = localStorage.getItem(OV_TYPE_KEY)
     return OV_TYPES.includes(saved) ? saved : 'candles'
@@ -194,6 +178,7 @@ function Candles({ bars, warmPad, intraday, ticks, tick, onTick, rangeKey, onRan
       : chart.addSeries(ctype === 'area' ? AreaSeries : LineSeries,
           { lineWidth: 2, priceLineVisible: true })
     chartRef.current = { chart, series, type: ctype, extra: [] }
+    fittedBarsRef.current = null
     // crosshair legend: O H L C ±% vol at the top-left, like a real terminal;
     // line/area bars carry only a close, so the legend slims down with them
     chart.subscribeCrosshairMove((param) => {
@@ -239,8 +224,14 @@ function Candles({ bars, warmPad, intraday, ticks, tick, onTick, rangeKey, onRan
     c.chart.priceScale('right').applyOptions({ mode: ov.log ? 1 : 0 })
     c.extra.forEach((sr) => { try { c.chart.removeSeries(sr) } catch { /* gone */ } })
     c.extra = []
+    // lightweight-charts preserves emptied oscillator panes. Without removing
+    // them, every overlay click (SMA, VWAP, etc.) adds another blank pane and
+    // progressively crushes the price chart upward.
+    while (c.chart.panes().length > 1) {
+      c.chart.removePane(c.chart.panes().length - 1)
+    }
     for (const n of [20, 50, 200]) {
-      if (!ov['sma' + n] || bars.length < n) continue
+      if (!ov['sma' + n] || warmed.length < n) continue
       const line = c.chart.addSeries(LineSeries, {
         color: SMA_COLORS[n], lineWidth: 1,
         priceLineVisible: false, lastValueVisible: false,
@@ -326,7 +317,12 @@ function Candles({ bars, warmPad, intraday, ticks, tick, onTick, rangeKey, onRan
       const panes = c.chart.panes()
       for (let i = 1; i < panes.length; i++) panes[i].setHeight(84)
     } catch { /* pane sizing is garnish */ }
-    c.chart.timeScale().fitContent()
+    // Indicator clicks must not reset the user's horizontal zoom. Fit only
+    // when a genuinely new bar window lands (or the chart is recreated).
+    if (fittedBarsRef.current !== bars) {
+      c.chart.timeScale().fitContent()
+      fittedBarsRef.current = bars
+    }
   }, [bars, warmPad, ov, ctype])
 
   return (
@@ -2072,40 +2068,14 @@ function WatchStar({ symbol }) {
     <button
       onClick={() => (watched ? unwatch(symbol) : watch(symbol))}
       title={watched ? 'unwatch' : 'watch'}
-      class={`text-[15px] leading-none ${watched ? 'text-accent' : 'text-muted hover:text-accent'}`}
+      class="inline-flex size-4 shrink-0 items-center justify-center text-accent hover:text-accent-2"
     >
-      {watched ? '★' : '☆'}
+      <svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16"
+        fill={watched ? 'currentColor' : 'none'} stroke="currentColor" stroke-width="1.75"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="m12 2.8 2.85 5.77 6.37.93-4.61 4.49 1.09 6.34L12 17.34l-5.7 2.99 1.09-6.34L2.78 9.5l6.37-.93L12 2.8Z" />
+      </svg>
     </button>
-  )
-}
-
-/** Broker position in the symbol on the header line. Silent when flat, when
- *  the endpoint is down, or when there's no wire at all. */
-function PositionChip({ symbol, price }) {
-  const [pos, setPos] = useState(null)
-  useEffect(() => {
-    let dead = false
-    setPos(null)
-    fetchPositions().then((rows) => {
-      if (dead) return
-      const hit = rows.find((p) => String(p.symbol || '').toUpperCase() === symbol.toUpperCase()
-        && Number(p.shares))
-      setPos(hit || null)
-    })
-    return () => { dead = true }
-  }, [symbol])
-  if (!pos) return null
-  const shares = Number(pos.shares)
-  const avg = Number(pos.avg_cost)
-  const mark = pos.market_price ?? price ?? null
-  const pct = avg > 0 && mark != null ? ((mark / avg) - 1) * 100 : null
-  return (
-    <span class="font-mono text-[10px] px-1.5 py-0.5 rounded border border-line text-muted whitespace-nowrap">
-      {Math.round(shares).toLocaleString('en-US')} sh · avg {fmtPriceBare(avg)}
-      {pct != null && (
-        <> · <span class={pct >= 0 ? 'text-up' : 'text-down'}>{fmtPct(pct)}</span></>
-      )}
-    </span>
   )
 }
 
@@ -2121,9 +2091,9 @@ function AlertButton({ symbol, price }) {
   }
   return (
     <button onClick={go} title={tl('alert on this symbol')}
-      class="inline-flex size-[15px] shrink-0 items-center justify-center text-muted hover:text-accent">
-      <svg aria-hidden="true" viewBox="0 0 24 24" width="15" height="15"
-        fill="none" stroke="currentColor" stroke-width="1.8"
+      class="inline-flex size-4 shrink-0 items-center justify-center text-accent hover:text-accent-2">
+      <svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16"
+        fill="none" stroke="currentColor" stroke-width="1.75"
         stroke-linecap="round" stroke-linejoin="round">
         <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
         <path d="M10 21h4" />
@@ -2294,30 +2264,21 @@ export function Research({ route }) {
 
   return (
     <div class="flex-1 p-3 select-text min-w-0">
-      <div class="flex items-baseline gap-3 px-1 pb-2 flex-wrap">
+      <div class="flex items-center gap-3 px-1 pb-2 flex-nowrap min-w-0 overflow-hidden">
         <h1 class="font-tick font-bold text-lg text-ink">{symbol}</h1>
         <WatchStar symbol={symbol} />
         <AlertButton symbol={symbol} price={q?.price} />
-        <PositionChip symbol={symbol} price={q?.price} />
         {q && (
           <>
             {/* the name owns the middle slack; the quote cluster is one
                 right-aligned unit so it can't sit on top of the name
                 (Jeff 2026-08-05: "even Walmart gets occluded") */}
-            {/* the slack can shrink to zero at tight zooms, which crushed the
-                name to two letters ("Ap…", Jeff 2026-08-06). A readable floor
-                forces the quote cluster to wrap under instead — the header
-                already flex-wraps — and the marquee reveals anything longer. */}
-            <span class="flex-1 min-w-[16ch]">
+            {/* The name gives up space before the quote does. Marquee keeps the
+                full company name available without ever wrapping the header. */}
+            <span class="flex-1 min-w-0">
               <Marquee text={q.name} class="w-full text-[12px] text-muted font-anth" />
             </span>
-            {/* when the header wraps (phones) the quote line starts at the
-                left margin like everything else — ml-auto only makes sense
-                while it shares a line with the name (Jeff 2026-08-06) */}
-            {/* max-sm the cluster may exceed the viewport (AH tail clipped off
-                the right, Jeff 2026-08-06) — let the units wrap; each inner
-                span stays nowrap so a unit never breaks mid-number */}
-            <span class="ml-auto max-sm:ml-0 max-sm:w-full flex items-baseline gap-x-3 gap-y-0.5 shrink-0 whitespace-nowrap max-sm:flex-wrap">
+            <span class="ml-auto flex items-baseline gap-x-3 shrink-0 whitespace-nowrap">
               <span class="font-mono font-bold text-lg text-ink"><FlashPrice price={q.price} fmt={fmtPrice} /></span>
               <span class={`font-mono text-[15px] ${up ? 'text-up' : 'text-down'}`}>
                 <span class="font-semibold"><FlashMetric value={q.change} fmt={fmtChange} /></span>{' '}

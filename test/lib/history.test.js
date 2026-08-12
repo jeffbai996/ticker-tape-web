@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { lastSessionBars, fetchHistory } from '../../src/lib/history.js'
+import { lastSessionBars, fetchHistory, indicatorWarmRange } from '../../src/lib/history.js'
 
 
 describe('lastSessionBars', () => {
@@ -19,6 +19,17 @@ describe('lastSessionBars', () => {
   it('survives empty input', () => {
     expect(lastSessionBars([])).toEqual([])
     expect(lastSessionBars(null)).toEqual([])
+  })
+})
+
+describe('indicatorWarmRange', () => {
+  it('loads enough same-interval history for a 200-period average', () => {
+    expect(indicatorWarmRange('1m')).toBe('5d')
+    expect(indicatorWarmRange('15m')).toBe('1mo')
+    expect(indicatorWarmRange('1h')).toBe('3mo')
+    expect(indicatorWarmRange('4h')).toBe('1y')
+    expect(indicatorWarmRange('1d')).toBe('1y')
+    expect(indicatorWarmRange('1wk')).toBe('5y')
   })
 })
 
@@ -64,5 +75,10 @@ describe('fetchHistory extended hours', () => {
   it('ignores the flag on daily ranges, which have no session split', async () => {
     await fetchHistory('EXTD', '1Y', { prepost: true })
     expect(globalThis.fetch.mock.calls[0][0]).not.toContain('includePrePost')
+  })
+
+  it('fetches a full year to warm a daily SMA 200', async () => {
+    await fetchHistory('WARM200', '1M', { warm: true })
+    expect(globalThis.fetch.mock.calls[0][0]).toContain('range=1y&interval=1d')
   })
 })
