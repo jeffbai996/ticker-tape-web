@@ -29,25 +29,15 @@ export function quoteSpread(quote) {
 
 /** Flat dashboard selection. Numeric sorts are descending so the most active
  * item stays at the top; ties retain the user's manual order. */
-export function selectFlatRows(watchlist, quotes, {
-  filter = '', sort = 'manual', quickFilter = 'all',
-} = {}) {
+export function selectFlatRows(watchlist, quotes, { filter = '', sort = 'manual' } = {}) {
   const needle = filter.trim().toUpperCase()
   const rows = watchlist.map((symbol, index) => ({
     symbol,
     index,
     quote: quotes[symbol]?.quote || null,
-    tech: quotes[symbol]?.tech || null,
-  })).filter(({ symbol, quote, tech }) => {
-    const textMatch = !needle
-      || symbol.includes(needle)
-      || String(quote?.name || '').toUpperCase().includes(needle)
-    if (!textMatch) return false
-    if (quickFilter === 'movers') return Math.abs(quote?.pct ?? 0) >= 2
-    if (quickFilter === 'volume') return (tech?.volRatio ?? 0) >= 1.5
-    if (quickFilter === 'near-high') return tech?.offHigh != null && tech.offHigh >= -5
-    return true
-  })
+  })).filter(({ symbol, quote }) => !needle
+    || symbol.includes(needle)
+    || String(quote?.name || '').toUpperCase().includes(needle))
 
   if (sort === 'manual') return rows
   const value = (row) => {

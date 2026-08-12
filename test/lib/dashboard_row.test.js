@@ -102,6 +102,7 @@ describe('compact dashboard company name', () => {
     expect(dashboard).toContain("setViewMode('flat')")
     expect(dashboard).toContain("{tl('Sectors')}")
     expect(dashboard).toContain("{tl('All')}")
+    expect(dashboard).toMatch(/setViewMode\('flat'\)[\s\S]{0,350}\{tl\('All'\)\}[\s\S]{0,350}setViewMode\('grouped'\)[\s\S]{0,350}\{tl\('Sectors'\)\}/)
     // search rests folded (desktop keeps a readable Search… pill) and
     // animates open on click
     expect(dashboard).toContain("placeholder={`${tl('Search')}…`}")
@@ -186,10 +187,10 @@ describe('compact dashboard company name', () => {
   it('computes the grouped board once per input change, not per quote tick', () => {
     expect(dashboard).toContain('const { visibleManual, ordered } = useMemo(')
     expect(dashboard).toContain("if (viewMode !== 'grouped') return { visibleManual: [], ordered: [] }")
-    expect(dashboard).toContain('const quickFilterKey =')
-    expect(dashboard).toContain("quickFilter, quickFilterKey, groupsRev, groupPrefs.order.join(',')")
+    expect(dashboard).not.toContain('quickFilterKey')
+    expect(dashboard).toContain("[viewMode, watchKey, filter, nameKey, groupsRev, groupPrefs.order.join(',')]")
     // the flat view's numeric sorts stay live, but only while it is on screen
-    expect(dashboard).toContain("selectFlatRows(watchlist, quotes, { filter, sort, quickFilter })")
+    expect(dashboard).toContain("selectFlatRows(watchlist, quotes, { filter, sort })")
   })
 
   it('stops the DAY spark fan-out while the tab is hidden', () => {
@@ -203,32 +204,32 @@ describe('compact dashboard company name', () => {
   it('translates the strings the zh board was still rendering in English', () => {
     expect(dashboard).toContain("title={folded ? tl('expand') : tl('collapse')}")
     expect(dashboard).toContain("title={`${tl('remove')} ${symbol} ${tl('from the board')}`}")
-    expect(dashboard).toContain("title={`${symbol} ${tl('intraday')}`}")
     expect(dashboard).toContain("title={tl('drag to reorder')}")
     // nothing left rendering a bare English literal into a title
     expect(dashboard).not.toMatch(/title="[a-z]/)
   })
 
-  it('keeps autocomplete identity compact and draws a cached intraday spark', () => {
+  it('keeps autocomplete identity compact and draws a cached six-month spark', () => {
     expect(dashboard).toContain('function SearchResultSpark({ symbol })')
-    expect(dashboard).toContain("fetchHistory(symbol, '1D')")
-    expect(dashboard).toContain('<Spark type="line" window="1Y" bars={bars}')
+    expect(dashboard).toContain("fetchHistory(symbol, '6M')")
+    expect(dashboard).toContain('<Spark type="line" window="6M" bars={bars}')
     expect(dashboard).toContain('class="flex items-center gap-2 px-2.5 py-1.5 border-t border-line/60 first:border-0 hover:bg-accent-soft cursor-pointer"')
     expect(dashboard).toContain('class="w-3 h-[9px] rounded-[1px] shrink-0"')
     expect(dashboard).toContain('class="font-mono font-bold text-[10.5px] text-accent shrink-0"')
     expect(dashboard).toContain('<SearchResultSpark symbol={h.symbol} />')
+    expect(dashboard).toContain("title={`${symbol} 6M`}")
     expect(dashboard).toContain('class="ml-auto inline-flex w-16 h-3.5 shrink-0 items-center"')
     expect(dashboard).toContain('class="block w-16 h-3.5"')
   })
 
-  it('replaces redundant breadth with quick board filters', () => {
+  it('uses the menu corner for sector layout controls', () => {
     expect(dashboard).not.toContain('function BreadthPanel')
-    expect(dashboard).toContain('function QuickFilterPanel({ value, onChange, head })')
-    expect(dashboard).toContain("['movers', tl('Movers')]")
-    expect(dashboard).toContain("['volume', tl('Unusual volume')]")
-    expect(dashboard).toContain("['near-high', tl('Near 52w high')]")
-    expect(dashboard).toContain('quickFilter={quickFilter} setQuickFilter={setQuickFilter}')
-    expect(dashboard).toContain("selectFlatRows(watchlist, quotes, { filter, quickFilter })")
+    expect(dashboard).not.toContain('QuickFilterPanel')
+    expect(dashboard).not.toContain('quickFilter')
+    expect(dashboard).toContain('function SectorLayoutPanel({ names, head, onDone })')
+    expect(dashboard).toContain("setGroupsCollapsed(names, false)")
+    expect(dashboard).toContain("setGroupsCollapsed(names, true)")
+    expect(dashboard).toContain('resetGroupOrder()')
   })
 
   it('animates and shades the watchlist toolbar controls as one family', () => {

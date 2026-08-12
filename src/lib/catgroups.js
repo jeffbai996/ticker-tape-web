@@ -44,6 +44,23 @@ export function toggleCollapsed(name) {
   save({ ...prefs, collapsed })
 }
 
+/** Fold or open the sectors currently represented on the board. Preferences
+ * for sectors outside this board are preserved. */
+export function setGroupsCollapsed(names, collapsed) {
+  const prefs = load()
+  const target = new Set(names)
+  const next = collapsed
+    ? [...new Set([...prefs.collapsed, ...names])]
+    : prefs.collapsed.filter((name) => !target.has(name))
+  save({ ...prefs, collapsed: next })
+}
+
+/** Return sectors to their derived order without changing fold state. */
+export function resetGroupOrder() {
+  const prefs = load()
+  save({ ...prefs, order: [] })
+}
+
 /**
  * Pure: apply a saved order to the derived group list. Names present in the
  * order come first in that sequence; anything the order doesn't mention (a
