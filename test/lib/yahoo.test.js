@@ -258,6 +258,29 @@ describe('out-of-order prints never move the tape backwards', () => {
     expect(mergeSnapshotQuote(prev, snap, false).price).toBe(222.70)
   })
 
+  // Overnight the tape is thin: most names go quiet for well over the 90s
+  // stream-freshness window, and v7 has no overnight field at all — its
+  // postMarketPrice is the frozen 20:00 print with no event time of its own.
+  // Letting that snapshot win yanked every silent row back to the close on
+  // the same 30s batch, then jumped it forward again on the next tick.
+  it('a quiet overnight row keeps its live ON print over the frozen batch print', () => {
+    const live = { symbol: 'NVDA', name: 'NVIDIA', price: 222.58, marketTime: 1_000_100,
+                   extLabel: 'ON', extPrice: 219.55, extPct: 1.1, extMarketTime: 1_000_900 }
+    const snap = { symbol: 'NVDA', name: 'NVIDIA', price: 222.58, marketTime: 1_000_100,
+                   extLabel: 'ON', extPrice: 217.20, extPct: -0.4 }
+    const out = mergeSnapshotQuote(live, snap, false)
+    expect(out.extPrice).toBe(219.55)
+    expect(out.extPct).toBe(1.1)
+    expect(out.extMarketTime).toBe(1_000_900)
+  })
+
+  it('still takes the batch ext print when the stream never supplied one', () => {
+    const noExt = { symbol: 'NVDA', name: 'NVIDIA', price: 222.58, marketTime: 1_000_100 }
+    const snap = { symbol: 'NVDA', name: 'NVIDIA', price: 222.58, marketTime: 1_000_100,
+                   extLabel: 'ON', extPrice: 217.20, extPct: -0.4 }
+    expect(mergeSnapshotQuote(noExt, snap, false).extPrice).toBe(217.20)
+  })
+
   it('a late stream tick with an older event time is dropped', () => {
     const out = quoteFromStream(
       { symbol: 'NVDA', price: 222.40, time: 1_000_000_000, marketHours: 1 },
