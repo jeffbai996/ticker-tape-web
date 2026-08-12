@@ -34,12 +34,10 @@ describe('research wire tape', () => {
     expect(research).toContain('onClick={(ev) => ev.stopPropagation()}')
   })
 
-  it('draws the same rows as markers on the overview chart', () => {
-    expect(research).toContain('createSeriesMarkers')
-    expect(research).toContain("position: 'aboveBar'")
-    expect(research).toContain("shape: 'circle', text: WIRE_CODE[e.type] || 'NWS'")
-    // markers re-apply when the range or the chart type changes
-    expect(research).toContain('}, [bars, events, ctype, intraday])')
+  it('keeps wire events in the tape instead of obscuring the overview chart', () => {
+    expect(research).not.toContain('createSeriesMarkers')
+    expect(research).not.toContain("position: 'aboveBar'")
+    expect(research).not.toContain('events={wireRows}')
   })
 })
 
