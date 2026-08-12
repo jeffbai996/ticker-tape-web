@@ -75,4 +75,9 @@ describe('locale state', () => {
     setLocale('fr')
     expect(getLocale()).toBe('en')
   })
+
+  it('does not resize the page when the locale changes', () => {
+    const css = readFileSync(resolve(process.cwd(), 'src/styles/main.css'), 'utf8')
+    expect(css).not.toMatch(/html:lang\(zh-CN\)[^{]*\{[^}]*\bzoom\s*:/)
+  })
 })
