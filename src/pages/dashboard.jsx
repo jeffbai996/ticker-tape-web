@@ -26,7 +26,7 @@ import {
 import { loadUserGroups, onUserGroupsChange } from '../lib/usergroups.js'
 import { groupHeat, rankAlerts, rangeExtremes } from '../lib/railstats.js'
 import { conditionText, loadAlerts, onAlertsChange } from '../lib/alerts.js'
-import { groupDashboardRows, quoteSpread, selectFlatRows, boardBreadth, dropSlot, resolveDrop } from '../lib/dashboardRows.js'
+import { groupDashboardRows, quoteSpread, selectFlatRows, dropSlot, resolveDrop } from '../lib/dashboardRows.js'
 import { searchSymbols } from '../lib/symbolSearch.js'
 import { venueFlag } from '../lib/venueFlag.js'
 import {
@@ -921,10 +921,10 @@ function AddSymbolRow({ onAdd, isPresent, isFull, cap }) {
             <button key={h.symbol} type="button"
               onMouseEnter={() => setActive(i)}
               onClick={() => commit(h.symbol)}
-              class={`w-full flex items-baseline gap-2 px-2.5 py-1.5 border-t border-line/60 first:border-0 text-left ${
+              class={`w-full flex items-center gap-2 px-2.5 py-1.5 border-t border-line/60 first:border-0 text-left ${
                 i === active ? 'bg-accent-soft' : 'hover:bg-accent-soft'}`}>
               {venueFlag(h) && (
-                <img src={venueFlag(h)} alt="" class="w-4 h-3 rounded-[1px] shrink-0 self-center"
+                <img src={venueFlag(h)} alt="" class="w-4 h-3 rounded-[1px] shrink-0"
                   title={h.exch} />
               )}
               <span class="font-mono font-bold text-[11px] text-accent shrink-0">{h.symbol}</span>
@@ -1206,27 +1206,32 @@ function SectorScroller({ watchlist, quotes }) {
   )
 }
 
-/** Fills the menu's spare corner under the spark settings: how the board
- *  leans right now and who's dragging it each way (Jeff 2026-08-11). */
-function BreadthPanel({ rows, head }) {
-  const b = boardBreadth(rows)
-  if (!b) return null
-  const line = (label, r, cls) => (
-    <div class="flex items-baseline justify-between px-2.5 py-0.5 font-mono text-[10px]">
-      <span class="text-muted">{label}</span>
-      <span class={cls}>{r.symbol} {fmtPct(r.pct)}</span>
-    </div>
-  )
+/** The menu's spare corner changes the board instead of repeating its breadth.
+ *  These are feed-backed cuts that are useful while scanning a long list. */
+function QuickFilterPanel({ value, onChange, head }) {
+  const filters = [
+    ['all', tl('All')],
+    ['movers', tl('Movers')],
+    ['volume', tl('Unusual volume')],
+    ['near-high', tl('Near 52w high')],
+  ]
   return (
-    <section class="board-menu-section min-w-0 pb-1.5">
-      {head(tl('Breadth'))}
-      <div class="flex items-baseline justify-between px-2.5 py-0.5 font-mono text-[10px]">
-        <span class="text-up">↑ {b.up}</span>
-        {b.flat > 0 && <span class="text-muted">— {b.flat}</span>}
-        <span class="text-down">↓ {b.down}</span>
+    <section class="board-menu-section min-w-0 pb-2">
+      {head(tl('Quick filter'))}
+      <div class="grid grid-cols-2 gap-1 px-2.5">
+        {filters.map(([id, label]) => (
+          <button key={id} type="button" aria-pressed={value === id}
+            onClick={() => onChange(id)}
+            class={`flex min-w-0 items-center gap-1.5 rounded border px-2 py-1 text-left font-anth text-[10px] ${
+              value === id
+                ? 'border-accent/60 bg-accent-soft text-accent'
+                : 'border-line text-ink-2 hover:border-line-2 hover:text-ink'
+            }`}>
+            <span class={`shrink-0 text-[9px] ${value === id ? '' : 'invisible'}`}>✓</span>
+            <span class="truncate">{label}</span>
+          </button>
+        ))}
       </div>
-      {line(tl('Hi'), b.best, 'text-up')}
-      {line(tl('Lo'), b.worst, 'text-down')}
     </section>
   )
 }
@@ -1235,7 +1240,7 @@ function BreadthPanel({ rows, head }) {
  *  fold into one menu instead of standalone controls
  *  (Jeff 2026-08-06: "saves a ton of space"). */
 function BoardMenu({ sort, setSort, setViewMode, spark, setSpark, sparkWin, setSparkWin,
-                     lists, listId, breadthRows }) {
+                     lists, listId, quickFilter, setQuickFilter }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   useEffect(() => {
@@ -1319,7 +1324,8 @@ function BoardMenu({ sort, setSort, setViewMode, spark, setSpark, sparkWin, setS
                   </>
                 )}
               </section>
-              <BreadthPanel rows={breadthRows} head={head} />
+              <QuickFilterPanel value={quickFilter}
+                onChange={(value) => { setQuickFilter(value); setOpen(false) }} head={head} />
             </div>
           </div>
         </div>
@@ -1345,8 +1351,8 @@ function SearchResultSpark({ symbol }) {
     return () => { dead = true }
   }, [symbol])
   return (
-    <span class="ml-auto w-16 h-3.5 shrink-0" title={`${symbol} ${tl('intraday')}`}>
-      <Spark type="line" window="1Y" bars={bars} width={64} height={14} class="w-16 h-3.5" />
+    <span class="ml-auto inline-flex w-16 h-3.5 shrink-0 items-center" title={`${symbol} ${tl('intraday')}`}>
+      <Spark type="line" window="1Y" bars={bars} width={64} height={14} class="block w-16 h-3.5" />
     </span>
   )
 }
@@ -1451,10 +1457,10 @@ function TickerSearch({ filter, setFilter, activeList }) {
             }
             return (
               <div key={h.symbol}
-                class="flex items-baseline gap-2 px-2.5 py-1.5 border-t border-line/60 first:border-0 hover:bg-accent-soft cursor-pointer"
+                class="flex items-center gap-2 px-2.5 py-1.5 border-t border-line/60 first:border-0 hover:bg-accent-soft cursor-pointer"
                 onClick={() => { setOpen(false); setFilter(''); location.hash = `#/research/${h.symbol.toLowerCase()}` }}>
                 {venueFlag(h) && (
-                  <img src={venueFlag(h)} alt="" class="w-3 h-[9px] rounded-[1px] shrink-0 self-center"
+                  <img src={venueFlag(h)} alt="" class="w-3 h-[9px] rounded-[1px] shrink-0"
                     title={h.exch} />
                 )}
                 <span class="font-mono font-bold text-[10.5px] text-accent shrink-0">{h.symbol}</span>
@@ -1519,6 +1525,7 @@ export function Dashboard({ listId = null }) {
   const [sort, setSortState] = useState(() => localStorage.getItem(sortKey) || 'manual')
   useEffect(() => { setSortState(localStorage.getItem(sortKey) || 'manual') }, [sortKey])
   const [filter, setFilter] = useState('')
+  const [quickFilter, setQuickFilter] = useState('all')
   const setViewMode = (mode) => {
     setViewModeState(mode)
     localStorage.setItem('dashboard_view_mode_v1', mode)
@@ -1545,17 +1552,27 @@ export function Dashboard({ listId = null }) {
   // quote, and names land once per symbol — key on WHICH names exist, not on
   // the tick that changed a price.
   const nameKey = filter ? watchlist.filter((s) => quotes[s]?.quote?.name).join(',') : ''
+  // The default board remains detached from quote ticks. Active quick filters
+  // opt into only the feed fields their predicate needs.
+  const quickFilterKey = quickFilter === 'movers'
+    ? watchlist.map((s) => quotes[s]?.quote?.pct ?? '').join(',')
+    : quickFilter === 'volume'
+      ? watchlist.map((s) => quotes[s]?.tech?.volRatio ?? '').join(',')
+      : quickFilter === 'near-high'
+        ? watchlist.map((s) => quotes[s]?.tech?.offHigh ?? '').join(',')
+        : ''
   // Grouping is pure list math: it doesn't move when a price does, and in flat
   // view nothing consumes it at all. It used to re-run on every quote tick in
   // both views, which on a 30-name board is the single hottest thing here.
   const { visibleManual, ordered } = useMemo(() => {
     if (viewMode !== 'grouped') return { visibleManual: [], ordered: [] }
-    const rows = selectFlatRows(watchlist, quotes, { filter }).map((row) => row.symbol)
+    const rows = selectFlatRows(watchlist, quotes, { filter, quickFilter }).map((row) => row.symbol)
     return { visibleManual: rows, ordered: orderGroups(groupDashboardRows(rows, loadUserGroups()), groupPrefs.order) }
-  }, [viewMode, watchKey, filter, nameKey, groupsRev, groupPrefs.order.join(',')])
+  }, [viewMode, watchKey, filter, nameKey, quickFilter, quickFilterKey, groupsRev, groupPrefs.order.join(',')])
   // The flat view's numeric sorts genuinely re-rank on every tick, so this one
   // stays live — it just no longer runs while the grouped view is on screen.
-  const flatRows = viewMode === 'flat' ? selectFlatRows(watchlist, quotes, { filter, sort }) : []
+  const flatRows = viewMode === 'flat'
+    ? selectFlatRows(watchlist, quotes, { filter, sort, quickFilter }) : []
   const names = ordered.map((g) => g.name)
   useEffect(() => onWidgetsChange((w) => setWidgets([...w])), [])
   const addSymbol = activeList
@@ -1692,7 +1709,7 @@ export function Dashboard({ listId = null }) {
           <BoardMenu sort={sort} setSort={setSort} setViewMode={setViewMode}
             spark={spark} setSpark={setSpark} sparkWin={sparkWin} setSparkWin={setSparkWin}
             lists={namedWatchlists} listId={activeList?.id || null}
-            breadthRows={watchlist.map((s) => ({ symbol: s, pct: quotes[s]?.quote?.pct }))} />
+            quickFilter={quickFilter} setQuickFilter={setQuickFilter} />
           {activeList && (
             <div class="min-w-0 mr-1">
               <div class="font-mono text-[8px] uppercase tracking-wider text-muted">{tl('Watchlist')}</div>
@@ -1729,37 +1746,35 @@ export function Dashboard({ listId = null }) {
           </button>
         </div>
 
-        {/* Align the batch tray with the board, not the widget rail, so the
-            controls visually belong to the rows they operate on. */}
-        {selecting ? (
-          <div data-select-actions class="ml-auto lg:mr-[238px] flex items-center gap-1.5 font-mono text-[10px] whitespace-nowrap overflow-x-auto no-scrollbar">
-            <span class="text-muted">{selected.size} {tl('selected')}</span>
-            <button onClick={() => setSelected(new Set(viewMode === 'flat' ? flatRows.map((r) => r.symbol) : visibleManual))}
-              class="px-2 py-0.5 rounded border border-line text-ink-2 hover:border-accent hover:text-accent">
-              {tl('select all')}
-            </button>
-            <button onClick={batchTop} disabled={!selected.size}
-              class="px-2 py-0.5 rounded border border-line text-ink-2 hover:border-accent hover:text-accent disabled:opacity-40 disabled:pointer-events-none">
-              {tl('top')}
-            </button>
-            <button onClick={batchRemove} disabled={!selected.size}
-              class="px-2 py-0.5 rounded border border-line text-ink-2 hover:border-down hover:text-down disabled:opacity-40 disabled:pointer-events-none">
-              {tl('remove')}
-            </button>
-            <button onClick={endSelect}
-              class="px-2 py-0.5 rounded border border-accent text-accent hover:bg-accent hover:text-black font-semibold">
-              {tl('done')}
-            </button>
-          </div>
-        ) : (
-          <div class="flex items-center gap-2 min-w-0 flex-1 ml-auto">
-            {/* Thesis strip: bucket averages at a glance. One swipeable line at
-                every width — it wrapped to four lines of prime real estate
-                (Jeff 2026-08-04: "keep it all on one line somehow"). */}
-            <SectorScroller watchlist={watchlist} quotes={quotes} />
-          </div>
-        )}
+        <div class="flex items-center gap-2 min-w-0 flex-1 ml-auto">
+          {/* Thesis strip remains useful context while rows are selected; the
+              batch controls float independently instead of replacing it. */}
+          <SectorScroller watchlist={watchlist} quotes={quotes} />
+        </div>
       </div>
+
+      {selecting && (
+        <div data-select-actions role="toolbar" aria-label={tl('Selection actions')}
+          class="selection-island fixed left-1/2 bottom-[calc(env(safe-area-inset-bottom)+3.25rem)] md:bottom-10 z-50 -translate-x-1/2 flex max-w-[calc(100vw-1.5rem)] items-center gap-1.5 overflow-x-auto whitespace-nowrap rounded-xl border border-line-2 bg-surface-1/95 px-2.5 py-2 font-mono text-[10px] shadow-[0_10px_32px_rgba(0,0,0,0.72)] backdrop-blur no-scrollbar">
+          <span class="text-muted">{selected.size} {tl('selected')}</span>
+          <button onClick={() => setSelected(new Set(viewMode === 'flat' ? flatRows.map((r) => r.symbol) : visibleManual))}
+            class="px-2 py-0.5 rounded border border-line text-ink-2 hover:border-accent hover:text-accent">
+            {tl('select all')}
+          </button>
+          <button onClick={batchTop} disabled={!selected.size}
+            class="px-2 py-0.5 rounded border border-line text-ink-2 hover:border-accent hover:text-accent disabled:opacity-40 disabled:pointer-events-none">
+            {tl('top')}
+          </button>
+          <button onClick={batchRemove} disabled={!selected.size}
+            class="px-2 py-0.5 rounded border border-line text-ink-2 hover:border-down hover:text-down disabled:opacity-40 disabled:pointer-events-none">
+            {tl('remove')}
+          </button>
+          <button onClick={endSelect}
+            class="px-2 py-0.5 rounded border border-accent text-accent hover:bg-accent hover:text-black font-semibold">
+            {tl('done')}
+          </button>
+        </div>
+      )}
 
       {/* lg (1024px) not xl: the rail used to vanish one browser-zoom notch in.
           1024 keeps it alive through two more notches (115%, 125%) on a 1376px
