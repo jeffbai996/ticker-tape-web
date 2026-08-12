@@ -88,7 +88,15 @@ function useHashRoute() {
   useEffect(() => {
     const onChange = () => setRoute(parseHash(location.hash))
     addEventListener('hashchange', onChange)
-    return () => removeEventListener('hashchange', onChange)
+    // Safari standalone/PWA history controls can report a same-document back
+    // traversal through popstate. Listen to both route signals; setting the
+    // same parsed route twice is harmless, while missing popstate leaves the
+    // old page painted under the new hash.
+    addEventListener('popstate', onChange)
+    return () => {
+      removeEventListener('hashchange', onChange)
+      removeEventListener('popstate', onChange)
+    }
   }, [])
   return route
 }

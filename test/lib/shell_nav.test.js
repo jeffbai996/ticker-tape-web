@@ -23,6 +23,18 @@ describe('watchlist navigation', () => {
   })
 })
 
+describe('route history', () => {
+  const app = source('src/app.jsx')
+
+  it('updates the shell for browser and standalone-app back navigation', () => {
+    expect(app).toContain("addEventListener('hashchange', onChange)")
+    expect(app).toContain("addEventListener('popstate', onChange)")
+    expect(app).toContain("removeEventListener('popstate', onChange)")
+    expect(app).not.toContain('history.pushState')
+    expect(app).not.toContain('history.replaceState')
+  })
+})
+
 describe('watchlists surface', () => {
   const page = source('src/pages/watchlists.jsx')
   const pages = source('src/pages/index.jsx')
