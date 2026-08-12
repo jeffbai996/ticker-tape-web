@@ -79,6 +79,13 @@ body {
   }
 }
 
+/* A wire headline is a clickable div rather than a link or button. Give the
+   full row a deliberately visible pointer and keyboard-interaction state. */
+[data-wire-row]:hover,
+[data-wire-row]:focus-within {
+  background-color: #29292f !important;
+}
+
 /* The app is a fixed h-dvh shell; only inner containers scroll. Without this
    iOS Safari chains an inner scroller's end onto the BODY and drags the whole
    app past its own bottom nav into blank page (Jeff 2026-08-06). */
