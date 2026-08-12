@@ -49,29 +49,6 @@ function consumePrefill(key) {
   } catch { return null }
 }
 
-// Wire event type → the three-letter code used by the mini tape.
-const WIRE_CODE = {
-  earnings_release: 'ERN', filing: 'FIL', headline: 'NWS', macro_print: 'ECO',
-  price_move: 'PX', digest: 'DIG', transcript_chunk: 'LIV', brief: 'BRF',
-}
-
-/** The last events fragwire caught on a symbol, fetched once per symbol for
- *  the mini tape beneath the overview chart. */
-function useSymbolWire(symbol) {
-  const [rows, setRows] = useState(() => peekSymbolWire(symbol) ?? null)
-  const base = wireUrl()
-  useEffect(() => {
-    let dead = false
-    setRows(peekSymbolWire(symbol) ?? null)
-    if (!base || !symbol) return undefined
-    fetchSymbolWire(base, symbol)
-      .then((events) => { if (!dead) setRows(events) })
-      .catch(() => { if (!dead) setRows([]) })
-    return () => { dead = true }
-  }, [symbol, base])
-  return base ? rows : null
-}
-
 // The book moves on fills, not on tab flips — one in-flight pull is shared by
 // every research header for a minute (portfolio.jsx owns the same endpoint).
 const POSITIONS_TTL = 60_000
@@ -1981,9 +1958,23 @@ function SymbolPrompt() {
 
 // Dense symbol tape under the DES band — the overview's dead zone becomes
 // the last 10 things fragwire caught on this name. Hidden when no wire.
-function WireMini({ symbol, rows }) {
-  if (!wireUrl() || !rows?.length) return null
-  const CODE = WIRE_CODE
+function WireMini({ symbol }) {
+  const [rows, setRows] = useState(() => peekSymbolWire(symbol) ?? null)
+  const base = wireUrl()
+  useEffect(() => {
+    let dead = false
+    setRows(peekSymbolWire(symbol) ?? null)
+    if (!base || !symbol) return undefined
+    fetchSymbolWire(base, symbol)
+      .then((events) => { if (!dead) setRows(events) })
+      .catch(() => { if (!dead) setRows([]) })
+    return () => { dead = true }
+  }, [symbol, base])
+  if (!base || !rows?.length) return null
+  const CODE = {
+    earnings_release: 'ERN', filing: 'FIL', headline: 'NWS', macro_print: 'ECO',
+    price_move: 'PX', digest: 'DIG', transcript_chunk: 'LIV', brief: 'BRF',
+  }
   return (
     <div class="border-t border-line">
       <div class="flex items-baseline gap-2 px-3 pt-1.5 pb-0.5">
@@ -2207,8 +2198,6 @@ export function Research({ route }) {
   // Header quote comes from the live 1D feed — a multi-month chart fetch
   // reports change vs the range START (chartPreviousClose), not yesterday.
   const live = useQuotes(symbol ? [symbol] : [])
-  // one wire pull feeds the mini tape beneath the overview chart
-  const wireRows = useSymbolWire(symbol)
   // the mobile rail's state lives above the no-symbol early return so the
   // hook order can't shift when the landing page renders instead
   const [railOpen, setRailOpen] = useState(false)
@@ -2425,7 +2414,7 @@ export function Research({ route }) {
             )}
             </div>
             <DesBand symbol={symbol} bars={hist?.bars} />
-            <WireMini symbol={symbol} rows={wireRows} />
+            <WireMini symbol={symbol} />
             {/* when the right rail runs longer, the column keeps its ruling
                 instead of ending mid-air (Jeff 2026-08-04) */}
             <div class="flex-1 min-h-0 border-t border-line bg-[repeating-linear-gradient(180deg,transparent,transparent_27px,var(--color-line)_27px,var(--color-line)_28px)]" />
