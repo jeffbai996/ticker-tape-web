@@ -22,8 +22,12 @@ import { FlashMetric, FlashPrice } from '../components/Fig.jsx'
 import { hrefFor } from '../lib/route.js'
 import { sessionMeter } from '../lib/format.js'
 import { extendedLabelClass } from '../lib/extendedHours.js'
+import { Spark } from '../components/Spark.jsx'
+import {
+  MARKET_VISUALS, MARKET_VISUAL_WINDOWS, loadMarketVisualPrefs, saveMarketVisualPrefs,
+} from '../lib/marketVisuals.js'
 
-/** The day's session on one 56px track: the grey rail is today's range, the
+/** The day's session on one labeled track: the grey rail is today's range, the
  *  coloured span is the distance travelled from yesterday's close to the last
  *  trade, the hairline is that close and the bright tick is price now.
  *
@@ -40,24 +44,38 @@ function DayMeter({ q }) {
     + (q.prevClose != null ? ` · ${tl('prev close')} ${fmtPrice(q.prevClose)}` : '')
     + (m.gap ? ` · ${tl('gap')}` : '')
   return (
-    <span class="relative block w-14 h-[7px]" title={title}>
-      <span class="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[3px] bg-line rounded-full" />
-      {/* travelled span — zero-width on a flat tape, so a dead row looks dead */}
-      <span class={`absolute top-1/2 -translate-y-1/2 h-[3px] rounded-full ${tone} opacity-70`}
-            style={{ left: pct(m.from), width: pct(Math.max(0, m.to - m.from)) }} />
-      {m.prevPos != null && (
-        <span class="absolute top-1/2 -translate-y-1/2 w-px h-[5px] bg-muted/70"
-              style={{ left: pct(m.prevPos) }} />
-      )}
-      <span class={`absolute top-1/2 -translate-y-1/2 w-[3px] h-[7px] rounded-sm ${tone}`}
-            style={{ left: `calc(${pct(m.pos)} - 1.5px)` }} />
+    <span class="grid grid-cols-[10px_1fr_10px] items-center gap-1 w-[88px] h-[14px]"
+          role="img" aria-label={title} title={title}>
+      <span class="font-mono text-[7px] leading-none text-muted">{tl('Lo')}</span>
+      <span class="relative block h-[11px]">
+        <span class="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[4px] bg-line-2 rounded-full" />
+        {/* travelled span — zero-width on a flat tape, so a dead row looks dead */}
+        <span class={`absolute top-1/2 -translate-y-1/2 h-[4px] rounded-full ${tone} opacity-80`}
+              style={{ left: pct(m.from), width: pct(Math.max(0, m.to - m.from)) }} />
+        {m.prevPos != null && (
+          <span class="absolute top-1/2 -translate-y-1/2 w-[2px] h-[9px] bg-ink-2/75"
+                style={{ left: `calc(${pct(m.prevPos)} - 1px)` }} />
+        )}
+        <span class={`absolute top-1/2 -translate-y-1/2 w-[5px] h-[11px] rounded-sm ${tone}`}
+              style={{ left: `calc(${pct(m.pos)} - 2.5px)` }} />
+      </span>
+      <span class="font-mono text-[7px] leading-none text-muted text-right">{tl('Hi')}</span>
     </span>
+  )
+}
+
+function MarketVisual({ visual, window, data }) {
+  if (visual === 'session') return <DayMeter q={data?.quote} />
+  if (visual === 'off') return null
+  return (
+    <Spark type={visual} window={window} bars={data?.histo}
+      width={88} height={20} class="w-[88px] h-5" />
   )
 }
 
 /** A yield spread computed from two rows above it — inverted curves are the
  *  point, so the sign gets the colour rather than the day's direction. */
-function SpreadRow({ label, hint, spread, quotes, withUnits = false }) {
+function SpreadRow({ label, hint, spread, quotes, withUnits = false, visual = null }) {
   const [a, b] = spread
   const qa = quotes[a]?.quote?.price
   const qb = quotes[b]?.quote?.price
@@ -79,12 +97,15 @@ function SpreadRow({ label, hint, spread, quotes, withUnits = false }) {
           row's bottom border — so the separator line just stopped partway
           across, which reads as a phantom column starting at the sparkline
           (Jeff 2026-08-07). */}
-      <td colSpan={withUnits ? 4 : 3} />
+      <td colSpan={visual == null
+        ? (withUnits ? 4 : 3)
+        : withUnits ? (visual === 'off' ? 2 : 3) : (visual === 'off' ? 1 : 2)} />
     </tr>
   )
 }
 
-function QuoteRow({ label, symbol, data, unit, withUnits = false }) {
+function QuoteRow({ label, symbol, data, unit, withUnits = false,
+                    visual = null, visualWindow = null }) {
   const q = data?.quote
   const up = (q?.pct ?? 0) >= 0
   const tone = q ? (up ? 'text-up' : 'text-down') : 'text-muted'
@@ -107,17 +128,25 @@ function QuoteRow({ label, symbol, data, unit, withUnits = false }) {
       <td class={`px-2 py-[3px] font-mono text-[11px] text-right w-16 ${tone}`}>
         {q ? <FlashMetric value={q.pct} fmt={fmtPct} /> : ''}
       </td>
-      <td class="px-2 py-[3px] hidden @[380px]:table-cell w-14"><DayMeter q={q} /></td>
-      <td class="px-2 py-[3px] hidden @[460px]:table-cell">
-        <Histo bars={data?.histo} width={84} class="w-[84px] @max-[560px]:w-[52px]" />
-      </td>
+      {visual == null ? (
+        <>
+          <td class="px-2 py-[3px] hidden @[380px]:table-cell w-14"><DayMeter q={q} /></td>
+          <td class="px-2 py-[3px] hidden @[460px]:table-cell">
+            <Histo bars={data?.histo} width={84} class="w-[84px] @max-[560px]:w-[52px]" />
+          </td>
+        </>
+      ) : visual !== 'off' ? (
+        <td class="pl-1 pr-2 py-[3px] hidden @[380px]:table-cell w-[98px]">
+          <MarketVisual visual={visual} window={visualWindow} data={data} />
+        </td>
+      ) : null}
     </tr>
   )
 }
 
 const groupId = (name) => `market-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
 
-function GroupCard({ name, items, quotes, withUnits }) {
+function GroupCard({ name, items, quotes, withUnits, visual = null, visualWindow = null }) {
   const pcts = items.filter((i) => !i.spread)
     .map((i) => quotes[i.symbol]?.quote?.pct).filter((v) => v != null)
   const avg = pcts.length ? pcts.reduce((a, b) => a + b, 0) / pcts.length : null
@@ -141,7 +170,7 @@ function GroupCard({ name, items, quotes, withUnits }) {
         <tbody>
           {items.map((it) => (it.spread ? (
             <SpreadRow key={it.label} label={tl(it.label)} hint={tl(it.hint)}
-                       spread={it.spread} quotes={quotes} withUnits={withUnits} />
+                       spread={it.spread} quotes={quotes} withUnits={withUnits} visual={visual} />
           ) : (
             <QuoteRow
               key={it.symbol}
@@ -150,6 +179,8 @@ function GroupCard({ name, items, quotes, withUnits }) {
               unit={it.unit}
               withUnits={withUnits}
               data={quotes[it.symbol]}
+              visual={visual}
+              visualWindow={visualWindow}
             />
           )))}
         </tbody>
@@ -158,9 +189,40 @@ function GroupCard({ name, items, quotes, withUnits }) {
   )
 }
 
-function MarketJumpBar() {
+function MarketVisualPicker({ visual, window, onVisual, onWindow }) {
+  const field = 'appearance-none rounded-full border border-line bg-surface-1 py-1 pl-2.5 pr-6 font-anth text-[10px] text-ink-2 outline-none hover:border-accent/50 focus:border-accent/70'
+  return (
+    <div class="flex shrink-0 items-center gap-1">
+      <span class="font-anth text-[9px] uppercase tracking-wider text-muted">{tl('Visual')}</span>
+      <span class="relative">
+        <select value={visual} onChange={(e) => onVisual(e.currentTarget.value)}
+          aria-label={tl('Row visual')} class={field}>
+          {MARKET_VISUALS.map((item) => (
+            <option key={item.id} value={item.id}>{tl(item.label)}</option>
+          ))}
+        </select>
+        <span class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[8px] text-muted">▾</span>
+      </span>
+      {visual !== 'session' && visual !== 'off' && (
+        <span class="relative">
+          <select value={window} onChange={(e) => onWindow(e.currentTarget.value)}
+            aria-label={tl('Window')} class={`${field} font-mono pl-2 pr-5`}>
+            {MARKET_VISUAL_WINDOWS.map((item) => (
+              <option key={item.id} value={item.id}>{item.id}</option>
+            ))}
+          </select>
+          <span class="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-[8px] text-muted">▾</span>
+        </span>
+      )}
+    </div>
+  )
+}
+
+function MarketJumpBar({ visual, window, onVisual, onWindow }) {
   return (
     <nav class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-2" aria-label={tl('Market groups')}>
+      <MarketVisualPicker visual={visual} window={window} onVisual={onVisual} onWindow={onWindow} />
+      <span class="h-4 w-px bg-line shrink-0 mx-1" aria-hidden="true" />
       <span class="font-anth text-[9px] uppercase tracking-wider text-muted shrink-0 mr-1">{tl('Jump to')}</span>
       {MARKET_GROUPS.map((group) => (
         <button key={group.name} type="button"
@@ -210,16 +272,27 @@ function RelativeSignals() {
 function Overview() {
   const symbols = MARKET_GROUPS.flatMap((g) => g.items.map((i) => i.symbol)).filter(Boolean)
   const quotes = useQuotes(symbols)
+  const [visualPrefs, setVisualPrefs] = useState(loadMarketVisualPrefs)
+  const chooseVisual = (patch) => {
+    setVisualPrefs((current) => {
+      const next = { ...current, ...patch }
+      saveMarketVisualPrefs(globalThis.localStorage, next)
+      return next
+    })
+  }
   return (
     <div>
-      <MarketJumpBar />
+      <MarketJumpBar visual={visualPrefs.visual} window={visualPrefs.window}
+        onVisual={(visual) => chooseVisual({ visual })}
+        onWindow={(window) => chooseVisual({ window })} />
       {/* CSS columns, not a grid: a grid row is as tall as its tallest card,
           so a 2-row Canada beside a 10-row Asia-Pacific left a slab of black
           under it. Columns pack each card against the one above (Jeff
           2026-08-06: "no need to align the boxes like that"). */}
       <div class="md:columns-2 xl:columns-3 min-[1800px]:columns-4 gap-2 [&>*]:mb-2 md:[&>*]:break-inside-avoid">
         {MARKET_GROUPS.map((g) => (
-          <GroupCard key={g.name} name={g.name} items={g.items} quotes={quotes} />
+          <GroupCard key={g.name} name={g.name} items={g.items} quotes={quotes}
+            visual={visualPrefs.visual} visualWindow={visualPrefs.window} />
         ))}
         <RelativeSignals />
       </div>
