@@ -37,7 +37,10 @@ describe('research wire tape', () => {
   it('keeps wire events in the tape instead of obscuring the overview chart', () => {
     expect(research).not.toContain('createSeriesMarkers')
     expect(research).not.toContain("position: 'aboveBar'")
-    expect(research).not.toContain('events={wireRows}')
+    expect(research).not.toContain('useSymbolWire')
+    expect(research).not.toContain('<WireMini symbol={symbol} rows=')
+    expect(research).toContain('function WireMini({ symbol })')
+    expect(research).toContain('fetchSymbolWire(base, symbol)')
   })
 })
 
