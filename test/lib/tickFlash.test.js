@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import {
   TICK_FLASH_MS,
   metricFlashDirection,
@@ -37,5 +39,19 @@ describe('tickFlashDirection', () => {
   it('keeps every metric quiet during hidden and resume-baseline updates', () => {
     expect(metricFlashDirection(1, 2, { kind: 'change', hidden: true })).toBeNull()
     expect(metricFlashDirection(100, 101, { kind: 'high', baselinePending: true })).toBeNull()
+  })
+
+  it('keeps percentage figures as colored text without inverse-video boxes', () => {
+    const files = [
+      'src/components/Tape.jsx',
+      'src/pages/dashboard.jsx',
+      'src/pages/markets.jsx',
+      'src/pages/research.jsx',
+      'src/pages/screen.jsx',
+    ].map((file) => readFileSync(resolve(process.cwd(), file), 'utf8')).join('\n')
+
+    expect(files).not.toMatch(/<FlashMetric[^>]+fmt=\{fmtPct\}/)
+    expect(files).toContain('<FlashPrice price={q.price} fmt={fmtPrice} />')
+    expect(files).toContain('<FlashMetric value={q.change} fmt={fmtChange} />')
   })
 })

@@ -64,7 +64,8 @@ describe('compact dashboard company name', () => {
 
   it('paints daily change and only newly printed day extremes', () => {
     expect(dashboard).toContain('<FlashMetric value={q.change} fmt={fmtAbsChange} kind="change" />')
-    expect(dashboard).toContain('<FlashMetric value={q.pct} fmt={fmtPct} kind="change" />')
+    expect(dashboard).toContain('{fmtPct(q.pct)}')
+    expect(dashboard).not.toContain('<FlashMetric value={q.pct} fmt={fmtPct} kind="change" />')
     expect(dashboard).toContain('<FlashMetric value={lo} fmt={fmtPriceBare} kind="low" />')
     expect(dashboard).toContain('<FlashMetric value={hi} fmt={fmtPriceBare} kind="high" />')
   })

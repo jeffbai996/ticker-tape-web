@@ -388,7 +388,7 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
                 <span class={`${up ? 'text-up' : 'text-down'} whitespace-nowrap @min-[820px]:min-w-[7.7rem] shrink-0`}>
                   {up ? '▲' : '▼'} <FlashMetric value={q.change} fmt={fmtAbsChange} kind="change" />{' '}
                   <span class="font-normal text-[11px] max-sm:text-[10px]">
-                    (<FlashMetric value={q.pct} fmt={fmtPct} kind="change" />)
+                    ({fmtPct(q.pct)})
                   </span>
                 </span>
               )}
