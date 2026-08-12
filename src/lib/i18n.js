@@ -15,8 +15,8 @@ try {
   if (LOCALES.includes(saved)) locale = saved
 } catch { /* no storage — stay en */ }
 
-// the stylesheet keys CJK-specific tuning off :lang(zh) — hanzi at the UI's
-// 10–11px sizes reads smaller than Latin at the same box, so zh gets a nudge
+// Stamp the document language for semantics and native browser behavior. The
+// locale deliberately does not resize the page; users control page zoom.
 function reflectLang(l) {
   try { document.documentElement.lang = l === 'zh' ? 'zh-CN' : 'en' } catch { /* SSR/tests */ }
 }
