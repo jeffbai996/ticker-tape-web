@@ -22,9 +22,9 @@ describe('dashboard categories', () => {
 
 describe('flat dashboard rows', () => {
   const quotes = {
-    AAPL: { quote: { name: 'Apple Inc.', price: 200, pct: 1, bid: 199.98, ask: 200.02 } },
-    MSFT: { quote: { name: 'Microsoft Corp.', price: 400, pct: -2, bid: 399.9, ask: 400.1 } },
-    NVDA: { quote: { name: 'NVIDIA Corp.', price: 150, pct: 3, bid: 149.99, ask: 150 } },
+    AAPL: { quote: { name: 'Apple Inc.', price: 200, pct: 1, bid: 199.98, ask: 200.02 }, tech: { volRatio: 1.1, offHigh: -2 } },
+    MSFT: { quote: { name: 'Microsoft Corp.', price: 400, pct: -2, bid: 399.9, ask: 400.1 }, tech: { volRatio: 1.8, offHigh: -9 } },
+    NVDA: { quote: { name: 'NVIDIA Corp.', price: 150, pct: 3, bid: 149.99, ask: 150 }, tech: { volRatio: 0.8, offHigh: -4 } },
   }
 
   it('keeps saved order and filters by ticker or company name', () => {
@@ -41,6 +41,18 @@ describe('flat dashboard rows', () => {
     expect(selectFlatRows(syms, quotes, { sort: 'price' }).map((r) => r.symbol)).toEqual(['MSFT', 'AAPL', 'NVDA'])
     expect(selectFlatRows(syms, quotes, { sort: 'spread' }).map((r) => r.symbol)).toEqual(['MSFT', 'AAPL', 'NVDA'])
     expect(quoteSpread(quotes.AAPL.quote)).toBeCloseTo(0.04)
+  })
+
+  it('quick-filters movers, unusual volume, and names near their 52-week high', () => {
+    const syms = ['MSFT', 'AAPL', 'NVDA']
+    expect(selectFlatRows(syms, quotes, { quickFilter: 'movers' }).map((r) => r.symbol))
+      .toEqual(['MSFT', 'NVDA'])
+    expect(selectFlatRows(syms, quotes, { quickFilter: 'volume' }).map((r) => r.symbol))
+      .toEqual(['MSFT'])
+    expect(selectFlatRows(syms, quotes, { quickFilter: 'near-high' }).map((r) => r.symbol))
+      .toEqual(['AAPL', 'NVDA'])
+    expect(selectFlatRows(syms, quotes, { quickFilter: 'unknown' }).map((r) => r.symbol))
+      .toEqual(syms)
   })
 })
 

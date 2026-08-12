@@ -119,14 +119,14 @@ export function Palette({ onClose }) {
               key={`${entry.kind}:${entry.label}`}
               onClick={() => go(entry)}
               onMouseEnter={() => setSelected(i)}
-              class={`w-full flex items-baseline gap-3 px-4 py-2 text-left font-mono text-[12px] ${
+              class={`w-full flex items-center gap-3 px-4 py-2 text-left font-mono text-[12px] ${
                 i === sel ? 'bg-accent-soft text-accent' : 'text-ink hover:bg-surface-3'
               }`}
             >
               <span class="text-[9px] uppercase tracking-wider text-muted w-12 shrink-0">
                 {entry.source || TAGS[entry.kind]}
               </span>
-              {entry.flag && <img src={entry.flag} alt="" class="w-4 h-3 rounded-[1px] shrink-0 self-center" />}
+              {entry.flag && <img src={entry.flag} alt="" class="w-4 h-3 rounded-[1px] shrink-0" />}
               <span class="font-bold">{entry.label}</span>
               {entry.detail && <span class="text-[10px] text-muted truncate">{entry.detail}</span>}
             </button>
