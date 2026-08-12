@@ -26,6 +26,12 @@ describe('research header', () => {
     expect(research).toContain("sessionStorage.setItem('alert_prefill'")
     expect(research).toContain("location.hash = '#/alerts'")
   })
+
+  it('uses a restrained current-color bell instead of an alarm emoji', () => {
+    expect(research).not.toContain('>⏰</button>')
+    expect(research).toContain('aria-hidden="true" viewBox="0 0 24 24" width="15" height="15"')
+    expect(research).toContain('fill="none" stroke="currentColor" stroke-width="1.8"')
+  })
 })
 
 describe('research wire tape', () => {
@@ -65,6 +71,11 @@ describe('research tabs and keys', () => {
 
   it('closes the mobile rail on Escape', () => {
     expect(research).toContain('useEscape(() => setRailOpen(false), railOpen)')
+  })
+
+  it('requests the broker dividend report with its supported single scope', () => {
+    expect(research).toContain('/api/ibkr/dividends?scope=single&symbol=')
+    expect(research).not.toContain('/api/ibkr/dividends?scope=symbol&symbol=')
   })
 })
 
