@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { createChart, CandlestickSeries, HistogramSeries, createSeriesMarkers } from 'lightweight-charts'
+import { createChart, CandlestickSeries, HistogramSeries } from 'lightweight-charts'
 import { useEscape, useQuotes } from '../hooks.js'
 import { fetchDividends as fetchDivHistory, fetchHistory, fetchNews, fetchSplits, peekHistory, RANGES } from '../lib/history.js'
 import { fetchFinancials, statementRows } from '../lib/financials.js'
@@ -49,15 +49,14 @@ function consumePrefill(key) {
   } catch { return null }
 }
 
-// Wire event type → the three-letter code the tape and the chart markers both
-// speak. Shared so a marker can never disagree with the row beneath it.
+// Wire event type → the three-letter code used by the mini tape.
 const WIRE_CODE = {
   earnings_release: 'ERN', filing: 'FIL', headline: 'NWS', macro_print: 'ECO',
   price_move: 'PX', digest: 'DIG', transcript_chunk: 'LIV', brief: 'BRF',
 }
 
-/** The last events fragwire caught on a symbol, fetched once per symbol and
- *  shared by the mini tape and the overview chart's markers. */
+/** The last events fragwire caught on a symbol, fetched once per symbol for
+ *  the mini tape beneath the overview chart. */
 function useSymbolWire(symbol) {
   const [rows, setRows] = useState(() => peekSymbolWire(symbol) ?? null)
   const base = wireUrl()
@@ -163,7 +162,7 @@ const OV_TYPE_KEY = 'research_ov_type'
 const OV_TYPES = ['candles', 'line', 'area']
 
 function Candles({ bars, warmPad, intraday, ticks, tick, onTick, rangeKey, onRange,
-                   ext = false, onExt, canExt = false, events = null }) {
+                   ext = false, onExt, canExt = false }) {
   const el = useRef(null)
   const chartRef = useRef(null)
   const legendRef = useRef(null)
@@ -351,36 +350,6 @@ function Candles({ bars, warmPad, intraday, ticks, tick, onTick, rangeKey, onRan
     } catch { /* pane sizing is garnish */ }
     c.chart.timeScale().fitContent()
   }, [bars, warmPad, ov, ctype])
-
-  // Wire events pinned to the price line. lightweight-charts places a marker
-  // by matching the series' own time scale, so each event snaps back to the
-  // last bar at or before it; anything older than the window is dropped
-  // rather than thrown (2026-08-10).
-  useEffect(() => {
-    const c = chartRef.current
-    if (!c) return
-    const times = bars?.map((b) => b.time) || []
-    const marks = []
-    for (const e of events || []) {
-      const ts = Number(e?.ts_event)
-      if (!times.length || !Number.isFinite(ts) || ts < times[0]) continue
-      let lo = 0; let hi = times.length - 1; let at = -1
-      while (lo <= hi) {
-        const mid = (lo + hi) >> 1
-        if (times[mid] <= ts) { at = mid; lo = mid + 1 } else hi = mid - 1
-      }
-      if (at < 0) continue
-      marks.push({
-        time: times[at], position: 'aboveBar', color: '#79828d',
-        shape: 'circle', text: WIRE_CODE[e.type] || 'NWS',
-      })
-    }
-    marks.sort((a, b) => a.time - b.time)
-    try {
-      c.markers ||= createSeriesMarkers(c.series)
-      c.markers.setMarkers(marks)
-    } catch { /* series type without marker support — the chart is fine bare */ }
-  }, [bars, events, ctype, intraday])
 
   return (
     <div>
@@ -2238,7 +2207,7 @@ export function Research({ route }) {
   // Header quote comes from the live 1D feed — a multi-month chart fetch
   // reports change vs the range START (chartPreviousClose), not yesterday.
   const live = useQuotes(symbol ? [symbol] : [])
-  // one wire pull feeds both the mini tape and the chart's markers
+  // one wire pull feeds the mini tape beneath the overview chart
   const wireRows = useSymbolWire(symbol)
   // the mobile rail's state lives above the no-symbol early return so the
   // hook order can't shift when the landing page renders instead
@@ -2448,8 +2417,7 @@ export function Research({ route }) {
               <Candles bars={hist.bars} warmPad={warmPad} intraday={hist.intraday}
                 ticks={activeRange?.ticks} tick={tick || activeRange?.interval} onTick={setTick}
                 rangeKey={rangeKey} onRange={selectRange}
-                ext={ovExt} onExt={setOvExt} canExt={!!activeRange?.intraday}
-                events={wireRows} />
+                ext={ovExt} onExt={setOvExt} canExt={!!activeRange?.intraday} />
             ) : (
               <div class="h-[380px] flex items-center justify-center font-mono text-[11px] text-muted">
                 {err ? 'no chart' : 'loading…'}
