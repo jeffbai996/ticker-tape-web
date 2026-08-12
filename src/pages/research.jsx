@@ -2306,7 +2306,7 @@ export function Research({ route }) {
               <span class="font-mono font-bold text-lg text-ink"><FlashPrice price={q.price} fmt={fmtPrice} /></span>
               <span class={`font-mono text-[15px] ${up ? 'text-up' : 'text-down'}`}>
                 <span class="font-semibold"><FlashMetric value={q.change} fmt={fmtChange} /></span>{' '}
-                <span class="font-normal"><FlashMetric value={q.pct} fmt={fmtPct} /></span>
+                <span class="font-normal">{fmtPct(q.pct)}</span>
               </span>
               {q.volume != null && (
                 <span class="font-mono text-[11px] text-muted">vol {fmtVol(q.volume)}</span>

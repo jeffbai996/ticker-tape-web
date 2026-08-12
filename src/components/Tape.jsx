@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { useQuotes, useWatchlist } from '../hooks.js'
 import { fmtPrice, fmtPct } from '../lib/format.js'
-import { FlashPrice, FlashMetric } from './Fig.jsx'
+import { FlashPrice } from './Fig.jsx'
 import { hrefFor } from '../lib/route.js'
 import { marqueeCopies } from '../lib/marquee.js'
 import { tapeBadge, tapeEntries } from '../lib/tape.js'
@@ -185,7 +185,7 @@ export function Tape() {
                   <span class="text-ink font-bold font-tick text-[10px]">{symbol}</span>
                   <span class="text-ink-2 font-semibold">{q ? <FlashPrice price={q.price} fmt={fmtPrice} /> : '—'}</span>
                   <span class={`text-[10px] ${q ? (up ? 'text-up' : 'text-down') : 'text-muted'}`}>
-                    {q ? <FlashMetric value={q.pct} fmt={fmtPct} kind="change" /> : '—'}
+                    {q ? fmtPct(q.pct) : '—'}
                   </span>
                   {/* the % glyph carries almost no right side bearing, so an
                       equal gap reads tighter on the label's left than its

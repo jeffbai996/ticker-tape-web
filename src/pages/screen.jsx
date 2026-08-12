@@ -8,7 +8,7 @@ import { macd, rsi, sma } from '../lib/indicators.js'
 import { dailyReturns, pearson, normalize } from '../lib/stats.js'
 import { fmtPrice, fmtPct, fmtBig, fmtRatio, fmtFracPct } from '../lib/format.js'
 import { tl, t as tt } from '../lib/i18n.js'
-import { FlashMetric, FlashPrice } from '../components/Fig.jsx'
+import { FlashPrice } from '../components/Fig.jsx'
 import { Loading } from '../components/Loading.jsx'
 import { BUCKETS, SYMBOL_RE } from '../lib/symbols.js'
 import { isWatched, watch, unwatch } from '../lib/watchlist.js'
@@ -153,7 +153,7 @@ function ScreenTable({ symbols, hist }) {
                 <td class="px-3 py-[3px] font-bold text-accent">{sym}</td>
                 <td class="px-2 py-[3px] text-right text-ink">{q ? <FlashPrice price={price} fmt={fmtPrice} /> : '…'}</td>
                 <td class={`px-2 py-[3px] text-right ${dayUp ? 'text-up' : 'text-down'}`}>
-                  {q ? <FlashMetric value={q.pct} fmt={fmtPct} /> : ''}
+                  {q ? fmtPct(q.pct) : ''}
                 </td>
                 <td class={`px-2 py-[3px] text-right ${r == null ? 'text-muted' : r >= 70 ? 'text-down' : r <= 30 ? 'text-up' : 'text-ink'}`}>
                   {r == null ? '—' : r.toFixed(1)}

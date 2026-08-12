@@ -126,7 +126,7 @@ function QuoteRow({ label, symbol, data, unit, withUnits = false,
         {q ? <FlashMetric value={q.change} fmt={fmtChange} /> : ''}
       </td>
       <td class={`px-2 py-[3px] font-mono text-[11px] text-right w-16 ${tone}`}>
-        {q ? <FlashMetric value={q.pct} fmt={fmtPct} /> : ''}
+        {q ? fmtPct(q.pct) : ''}
       </td>
       {visual == null ? (
         <>
