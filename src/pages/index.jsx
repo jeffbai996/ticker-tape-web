@@ -8,6 +8,8 @@ import { Alerts } from './alerts.jsx'
 import { Portfolio } from './portfolio.jsx'
 import { Chat } from './chat.jsx'
 import { IS_PRIVATE_BUILD } from '../lib/nav.js'
+import { useNamedWatchlists } from '../hooks.js'
+import { resolveDashboardLanding } from '../lib/dashboardLanding.js'
 
 function ChatUnavailable() {
   return (
@@ -45,12 +47,17 @@ const PAGES = {
   },
 }
 
+function LandingDashboard() {
+  const lists = useNamedWatchlists()
+  return <Dashboard listId={resolveDashboardLanding(lists)} />
+}
+
 export function Page({ route }) {
   if (route.section === 'dashboard') {
-    return <Dashboard />
+    return <LandingDashboard />
   }
   if (route.section === 'watchlists') return route.sub
-    ? <Dashboard listId={route.sub} />
+    ? <Dashboard listId={route.sub === 'main' ? null : route.sub} />
     : <WatchlistsPage />
   if (route.section === 'brief') return <Brief />
   if (route.section === 'markets') return <Markets route={route} />

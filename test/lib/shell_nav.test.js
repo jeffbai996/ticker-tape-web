@@ -25,6 +25,8 @@ describe('watchlist navigation', () => {
 
 describe('watchlists surface', () => {
   const page = source('src/pages/watchlists.jsx')
+  const pages = source('src/pages/index.jsx')
+  const dashboard = source('src/pages/dashboard.jsx')
 
   it('shows live list detail, ticker previews, and explicit management actions', () => {
     expect(page).toContain('average move')
@@ -42,6 +44,13 @@ describe('watchlists surface', () => {
     expect(page).toContain("tt('watchlists.delete_confirm'")
     expect(page).not.toContain('Use a unique watchlist name.')
     expect(page).not.toContain('Delete watchlist “')
+  })
+
+  it('restores the last dashboard list locally and keeps main explicit', () => {
+    expect(pages).toContain('<LandingDashboard />')
+    expect(dashboard).toContain('rememberDashboardLanding(activeList?.id || null)')
+    expect(dashboard).toContain("location.hash = '#/watchlists/main'")
+    expect(page).toContain("const href = primary ? '#/watchlists/main'")
   })
 })
 
