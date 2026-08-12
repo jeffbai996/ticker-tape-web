@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
-  getGroupPrefs, isCollapsed, moveGroup, orderGroups, toggleCollapsed,
+  getGroupPrefs, isCollapsed, moveGroup, orderGroups, resetGroupOrder,
+  setGroupsCollapsed, toggleCollapsed,
 } from '../src/lib/catgroups.js'
 
 const NAMES = ['Megacaps', 'Semis & AI', 'Financials']
@@ -46,6 +47,14 @@ describe('collapse', () => {
     toggleCollapsed('Megacaps')
     expect(getGroupPrefs().collapsed).toEqual(['Financials'])
   })
+
+  it('expands and collapses the visible sector set in one saved update', () => {
+    toggleCollapsed('Offscreen')
+    setGroupsCollapsed(['Megacaps', 'Financials'], true)
+    expect(getGroupPrefs().collapsed).toEqual(['Offscreen', 'Megacaps', 'Financials'])
+    setGroupsCollapsed(['Megacaps', 'Financials'], false)
+    expect(getGroupPrefs().collapsed).toEqual(['Offscreen'])
+  })
 })
 
 describe('moveGroup', () => {
@@ -71,5 +80,12 @@ describe('moveGroup', () => {
     moveGroup('Crypto', -1, [...NAMES, 'Crypto'])    // 4th appears later
     expect(getGroupPrefs().order).toContain('Crypto')
     expect(getGroupPrefs().order).toHaveLength(4)
+  })
+
+  it('restores natural order without changing collapsed sectors', () => {
+    moveGroup('Financials', -1, NAMES)
+    toggleCollapsed('Megacaps')
+    resetGroupOrder()
+    expect(getGroupPrefs()).toEqual({ collapsed: ['Megacaps'], order: [] })
   })
 })

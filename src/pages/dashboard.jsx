@@ -14,7 +14,7 @@ import {
 } from '../lib/widgets.js'
 import {
   getGroupPrefs, isCollapsed, moveGroup, onGroupsChange, orderGroups,
-  toggleCollapsed,
+  resetGroupOrder, setGroupsCollapsed, toggleCollapsed,
 } from '../lib/catgroups.js'
 import {
   isWatched, moveSymbol, placeSymbol, unwatch, watch, isWatchlistFull, MAX_WATCHLIST,
@@ -1206,29 +1206,23 @@ function SectorScroller({ watchlist, quotes }) {
   )
 }
 
-/** The menu's spare corner changes the board instead of repeating its breadth.
- *  These are feed-backed cuts that are useful while scanning a long list. */
-function QuickFilterPanel({ value, onChange, head }) {
-  const filters = [
-    ['all', tl('All')],
-    ['movers', tl('Movers')],
-    ['volume', tl('Unusual volume')],
-    ['near-high', tl('Near 52w high')],
+/** The menu's spare corner operates on the sector board itself. */
+function SectorLayoutPanel({ names, head, onDone }) {
+  const actions = [
+    ['＋', tl('expand all'), () => setGroupsCollapsed(names, false)],
+    ['−', tl('collapse all'), () => setGroupsCollapsed(names, true)],
+    ['↺', tl('reset order'), () => resetGroupOrder()],
   ]
   return (
     <section class="board-menu-section min-w-0 pb-2">
-      {head(tl('Quick filter'))}
-      <div class="grid grid-cols-2 gap-1 px-2.5">
-        {filters.map(([id, label]) => (
-          <button key={id} type="button" aria-pressed={value === id}
-            onClick={() => onChange(id)}
-            class={`flex min-w-0 items-center gap-1.5 rounded border px-2 py-1 text-left font-anth text-[10px] ${
-              value === id
-                ? 'border-accent/60 bg-accent-soft text-accent'
-                : 'border-line text-ink-2 hover:border-line-2 hover:text-ink'
-            }`}>
-            <span class={`shrink-0 text-[9px] ${value === id ? '' : 'invisible'}`}>✓</span>
-            <span class="truncate">{label}</span>
+      {head(tl('Sectors'))}
+      <div class="px-1 pb-0.5">
+        {actions.map(([icon, label, run]) => (
+          <button key={label} type="button"
+            onClick={() => { run(); onDone() }}
+            class="flex w-full items-center gap-2 whitespace-nowrap rounded px-2 py-1 text-left font-anth text-[10px] text-ink-2 hover:bg-accent-soft hover:text-accent">
+            <span class="w-3 shrink-0 text-center font-mono text-[10px] text-muted">{icon}</span>
+            <span>{label}</span>
           </button>
         ))}
       </div>
@@ -1240,7 +1234,7 @@ function QuickFilterPanel({ value, onChange, head }) {
  *  fold into one menu instead of standalone controls
  *  (Jeff 2026-08-06: "saves a ton of space"). */
 function BoardMenu({ sort, setSort, setViewMode, spark, setSpark, sparkWin, setSparkWin,
-                     lists, listId, quickFilter, setQuickFilter }) {
+                     lists, listId, sectorNames }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   useEffect(() => {
@@ -1324,8 +1318,7 @@ function BoardMenu({ sort, setSort, setViewMode, spark, setSpark, sparkWin, setS
                   </>
                 )}
               </section>
-              <QuickFilterPanel value={quickFilter}
-                onChange={(value) => { setQuickFilter(value); setOpen(false) }} head={head} />
+              <SectorLayoutPanel names={sectorNames} head={head} onDone={() => setOpen(false)} />
             </div>
           </div>
         </div>
@@ -1342,7 +1335,7 @@ function SearchResultSpark({ symbol }) {
   useEffect(() => {
     let dead = false
     setBars(null)
-    fetchHistory(symbol, '1D')
+    fetchHistory(symbol, '6M')
       .then((history) => {
         if (dead) return
         setBars(historyBarsToSparkBars(history.bars))
@@ -1351,8 +1344,8 @@ function SearchResultSpark({ symbol }) {
     return () => { dead = true }
   }, [symbol])
   return (
-    <span class="ml-auto inline-flex w-16 h-3.5 shrink-0 items-center" title={`${symbol} ${tl('intraday')}`}>
-      <Spark type="line" window="1Y" bars={bars} width={64} height={14} class="block w-16 h-3.5" />
+    <span class="ml-auto inline-flex w-16 h-3.5 shrink-0 items-center" title={`${symbol} 6M`}>
+      <Spark type="line" window="6M" bars={bars} width={64} height={14} class="block w-16 h-3.5" />
     </span>
   )
 }
@@ -1525,7 +1518,6 @@ export function Dashboard({ listId = null }) {
   const [sort, setSortState] = useState(() => localStorage.getItem(sortKey) || 'manual')
   useEffect(() => { setSortState(localStorage.getItem(sortKey) || 'manual') }, [sortKey])
   const [filter, setFilter] = useState('')
-  const [quickFilter, setQuickFilter] = useState('all')
   const setViewMode = (mode) => {
     setViewModeState(mode)
     localStorage.setItem('dashboard_view_mode_v1', mode)
@@ -1552,27 +1544,20 @@ export function Dashboard({ listId = null }) {
   // quote, and names land once per symbol — key on WHICH names exist, not on
   // the tick that changed a price.
   const nameKey = filter ? watchlist.filter((s) => quotes[s]?.quote?.name).join(',') : ''
-  // The default board remains detached from quote ticks. Active quick filters
-  // opt into only the feed fields their predicate needs.
-  const quickFilterKey = quickFilter === 'movers'
-    ? watchlist.map((s) => quotes[s]?.quote?.pct ?? '').join(',')
-    : quickFilter === 'volume'
-      ? watchlist.map((s) => quotes[s]?.tech?.volRatio ?? '').join(',')
-      : quickFilter === 'near-high'
-        ? watchlist.map((s) => quotes[s]?.tech?.offHigh ?? '').join(',')
-        : ''
+  const sectorNames = useMemo(() =>
+    groupDashboardRows(watchlist, loadUserGroups()).map((group) => group.name),
+  [watchKey, groupsRev])
   // Grouping is pure list math: it doesn't move when a price does, and in flat
   // view nothing consumes it at all. It used to re-run on every quote tick in
   // both views, which on a 30-name board is the single hottest thing here.
   const { visibleManual, ordered } = useMemo(() => {
     if (viewMode !== 'grouped') return { visibleManual: [], ordered: [] }
-    const rows = selectFlatRows(watchlist, quotes, { filter, quickFilter }).map((row) => row.symbol)
+    const rows = selectFlatRows(watchlist, quotes, { filter }).map((row) => row.symbol)
     return { visibleManual: rows, ordered: orderGroups(groupDashboardRows(rows, loadUserGroups()), groupPrefs.order) }
-  }, [viewMode, watchKey, filter, nameKey, quickFilter, quickFilterKey, groupsRev, groupPrefs.order.join(',')])
+  }, [viewMode, watchKey, filter, nameKey, groupsRev, groupPrefs.order.join(',')])
   // The flat view's numeric sorts genuinely re-rank on every tick, so this one
   // stays live — it just no longer runs while the grouped view is on screen.
-  const flatRows = viewMode === 'flat'
-    ? selectFlatRows(watchlist, quotes, { filter, sort, quickFilter }) : []
+  const flatRows = viewMode === 'flat' ? selectFlatRows(watchlist, quotes, { filter, sort }) : []
   const names = ordered.map((g) => g.name)
   useEffect(() => onWidgetsChange((w) => setWidgets([...w])), [])
   const addSymbol = activeList
@@ -1709,7 +1694,7 @@ export function Dashboard({ listId = null }) {
           <BoardMenu sort={sort} setSort={setSort} setViewMode={setViewMode}
             spark={spark} setSpark={setSpark} sparkWin={sparkWin} setSparkWin={setSparkWin}
             lists={namedWatchlists} listId={activeList?.id || null}
-            quickFilter={quickFilter} setQuickFilter={setQuickFilter} />
+            sectorNames={sectorNames} />
           {activeList && (
             <div class="min-w-0 mr-1">
               <div class="font-mono text-[8px] uppercase tracking-wider text-muted">{tl('Watchlist')}</div>
@@ -1717,13 +1702,13 @@ export function Dashboard({ listId = null }) {
             </div>
           )}
           <div class={`${activeList ? 'ml-auto' : ''} board-control inline-flex rounded-lg border p-0.5 shrink-0`}>
-            <button onClick={() => setViewMode('grouped')}
-              class={`px-2 py-0.5 rounded-md font-anth text-[10px] transition-colors ${viewMode === 'grouped' ? 'bg-accent-soft text-accent shadow-sm' : 'text-muted hover:text-ink'}`}>
-              {tl('Sectors')}
-            </button>
             <button onClick={() => setViewMode('flat')}
               class={`px-2 py-0.5 rounded-md font-anth text-[10px] transition-colors ${viewMode === 'flat' ? 'bg-accent-soft text-accent shadow-sm' : 'text-muted hover:text-ink'}`}>
               {tl('All')}
+            </button>
+            <button onClick={() => setViewMode('grouped')}
+              class={`px-2 py-0.5 rounded-md font-anth text-[10px] transition-colors ${viewMode === 'grouped' ? 'bg-accent-soft text-accent shadow-sm' : 'text-muted hover:text-ink'}`}>
+              {tl('Sectors')}
             </button>
           </div>
           <TickerSearch filter={filter} setFilter={setFilter} activeList={activeList} />

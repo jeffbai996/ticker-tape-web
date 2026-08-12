@@ -35,6 +35,7 @@ export const BUCKETS = [
   { name: 'Semis', symbols: [
     'NVDA', 'AMD', 'INTC', 'TSM', 'MSFT', 'QCOM', 'MU', 'AMAT', 'GOOGL',
     'ASML', 'KLAC', 'MRVL', 'ARM', 'TXN', 'ADI', 'NXPI', 'ON', 'MCHP', 'SMCI', 'SNDK',
+    'SKHY', '000660.KS',
   ] },
   { name: 'Software & AI', symbols: [
     'PLTR', 'CRM', 'ORCL', 'ADBE', 'NOW', 'SNOW', 'MDB', 'DDOG', 'NET',
@@ -50,7 +51,7 @@ export const BUCKETS = [
   { name: 'Health', symbols: [
     'LLY', 'UNH', 'JNJ', 'PFE', 'MRK', 'ABBV', 'TMO', 'AMGN', 'NVO', 'ISRG',
   ] },
-  { name: 'Staples', symbols: ['PG', 'KO', 'PEP', 'MCD', 'WMT', 'COST', 'TGT', 'CL'] },
+  { name: 'Staples', symbols: ['PG', 'KO', 'PEP', 'MCD', 'WMT', 'COST', 'TGT', 'CL', 'ADM'] },
   { name: 'Energy & Industrials', symbols: [
     'XOM', 'CVX', 'COP', 'SLB', 'CAT', 'BA', 'GE', 'DE', 'HON', 'LMT', 'RTX', 'UNP',
   ] },
