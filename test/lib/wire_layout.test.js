@@ -17,6 +17,15 @@ describe('wire workbench sizing', () => {
     expect(src).toContain('min-h-0 overflow-y-auto overscroll-contain')
   })
 
+  it('keeps every rail panel at its full height so the rail scrolls instead of clipping', () => {
+    expect(src).toContain('<section class="shrink-0 border border-line rounded-lg bg-surface overflow-hidden">')
+  })
+
+  it('gives closed headlines an unmistakable row hover state', () => {
+    expect(src).toContain("open ? 'bg-surface-1' : 'hover:bg-surface-3'")
+    expect(src).not.toContain("open ? 'bg-surface-1' : 'hover:bg-accent-soft'")
+  })
+
   it('grows fluidly and keeps the original LG stacking threshold', () => {
     expect(src).toContain('w-[clamp(260px,24vw,340px)]')
     expect(src).toContain('max-lg:w-full max-lg:overflow-visible')
