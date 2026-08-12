@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 const read = (p) => readFileSync(resolve(process.cwd(), p), 'utf8')
 const research = read('src/pages/research.jsx')
+const chartSuite = read('src/components/ChartSuite.jsx')
 const app = read('src/app.jsx')
 const alerts = read('src/pages/alerts.jsx')
 const markets = read('src/pages/markets.jsx')
@@ -77,6 +78,22 @@ describe('research DES band', () => {
     expect(research).toContain("import { quoteSpread } from '../lib/dashboardRows.js'")
     expect(research).toContain("label={tl('Bid/Ask · SPR')}")
     expect(research).toContain("label={tl('% off 52w high')}")
+  })
+})
+
+describe('chart control continuity', () => {
+  it('keeps the overview chart mounted while range, bar, or EXT data loads', () => {
+    expect(research).toContain("const [hist, setHist] = useState(null)\n  const histSymbolRef = useRef(symbol)\n  const [warmPad, setWarmPad] = useState(null)")
+    expect(research).toContain('const seed = peekHistory(symbol, rangeKey, { interval: tick, prepost: ovExt })')
+    expect(research).toContain('if (seed) setHist(seed)')
+    expect(research).not.toContain("setHist(peekHistory(symbol, rangeKey, { interval: tick, prepost: ovExt }) ?? null)")
+  })
+
+  it('only clears the full chart when its symbol actually changes', () => {
+    expect(chartSuite).toContain("barsSymbolRef.current = null\n    setBars(null)\n    setState('loading')\n  }, [symbol])")
+    expect(chartSuite).not.toContain("setState('loading')\n    setBars(null)\n    fetchHistory")
+    expect(chartSuite).not.toContain('}, [bars, cmpBars, cmp, prefs, intraday])')
+    expect(chartSuite).toContain('prefs.type, prefs.log, prefs.ov, prefs.panes, intraday]')
   })
 })
 

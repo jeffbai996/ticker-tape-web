@@ -37,7 +37,7 @@ import { memoPrompt, BRIEFING_SYSTEM } from '../lib/briefing.js'
 import { AiReport, MdLite } from '../components/AiReport.jsx'
 import { ChartSuite } from '../components/ChartSuite.jsx'
 import { emaSeries, macdSeries, trimToWindow, warmedBars } from '../lib/chartmath.js'
-import { boundedTimeScale } from '../lib/chartview.js'
+import { boundedTimeScale, marketTimeLabel } from '../lib/chartview.js'
 import { extendedLabelClass } from '../lib/extendedHours.js'
 
 /** Read-and-clear a command-bar ride-along (chart range, options expiry). */
@@ -176,6 +176,7 @@ function Candles({ bars, warmPad, intraday, ticks, tick, onTick, rangeKey, onRan
         horzLines: { color: 'rgba(255,255,255,0.05)' },
       },
       rightPriceScale: { borderColor: 'rgba(255,255,255,0.10)' },
+      localization: intraday ? { timeFormatter: marketTimeLabel } : undefined,
       timeScale: boundedTimeScale(intraday),
       crosshair: { mode: 0 },
     })
@@ -2173,6 +2174,7 @@ export function Research({ route }) {
     return () => window.removeEventListener('tape:chart-range', onRange)
   }, [])
   const [hist, setHist] = useState(null)
+  const histSymbolRef = useRef(symbol)
   const [warmPad, setWarmPad] = useState(null)
   const [err, setErr] = useState(null)
   // intraday tick override (1D: 1m/2m/5m/15m, 5D: 5m…1h) — the default 5m
@@ -2205,19 +2207,25 @@ export function Research({ route }) {
 
   useEffect(() => {
     if (!symbol) return
+    let dead = false
+    const symbolChanged = histSymbolRef.current !== symbol
+    histSymbolRef.current = symbol
     // stale-while-revalidate: paint the last bars for this range immediately
     // and let the fetch below replace them (2026-08-10)
-    setHist(peekHistory(symbol, rangeKey, { interval: tick, prepost: ovExt }) ?? null)
+    const seed = peekHistory(symbol, rangeKey, { interval: tick, prepost: ovExt })
+    if (seed) setHist(seed)
+    else if (symbolChanged) setHist(null)
     setErr(null)
     fetchHistory(symbol, rangeKey, { interval: tick, prepost: ovExt })
-      .then(setHist)
-      .catch((e) => setErr(String(e.message || e)))
+      .then((next) => { if (!dead) setHist(next) })
+      .catch((e) => { if (!dead) setErr(String(e.message || e)) })
     // warm-up bars for the oscillators; failure is silent — indicators just
     // start where they used to
-    setWarmPad(null)
+    if (symbolChanged) setWarmPad(null)
     fetchHistory(symbol, rangeKey, { warm: true, interval: tick, prepost: ovExt })
-      .then((h) => setWarmPad(h.bars))
+      .then((h) => { if (!dead) setWarmPad(h.bars) })
       .catch(() => {})
+    return () => { dead = true }
   }, [symbol, rangeKey, tick, ovExt])
 
   // bloomberg speed keys: the tab numbers are commands — press 3, land on
