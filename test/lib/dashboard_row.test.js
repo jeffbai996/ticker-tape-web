@@ -119,9 +119,19 @@ describe('compact dashboard company name', () => {
     expect(dashboard).not.toContain('manage lists')
   })
 
-  it('anchors batch actions over the watchlist instead of the widget rail', () => {
-    expect(dashboard).toContain('data-select-actions')
-    expect(dashboard).toContain('lg:mr-[238px]')
+  it('keeps sectors visible while selection actions float above the viewport edge', () => {
+    const toolbarStart = dashboard.indexOf('<div class="dashboard-toolbar')
+    const toolbarEnd = dashboard.indexOf('{selecting && (', toolbarStart)
+    const toolbar = dashboard.slice(toolbarStart, toolbarEnd)
+
+    expect(toolbar).toContain('<SectorScroller watchlist={watchlist} quotes={quotes} />')
+    expect(toolbar).not.toContain('data-select-actions')
+    expect(dashboard).toContain('data-select-actions role="toolbar"')
+    expect(dashboard).toContain('selection-island fixed left-1/2')
+    expect(dashboard).toContain('-translate-x-1/2')
+    expect(dashboard).toContain('bottom-[calc(env(safe-area-inset-bottom)+3.25rem)] md:bottom-10')
+    expect(dashboard).toContain('z-50')
+    expect(dashboard).not.toContain('lg:mr-[238px]')
   })
 
   // 2026-08-11: reordering is a thing you do to the rows, not a separate mode.
@@ -175,9 +185,10 @@ describe('compact dashboard company name', () => {
   it('computes the grouped board once per input change, not per quote tick', () => {
     expect(dashboard).toContain('const { visibleManual, ordered } = useMemo(')
     expect(dashboard).toContain("if (viewMode !== 'grouped') return { visibleManual: [], ordered: [] }")
-    expect(dashboard).toContain('[viewMode, watchKey, filter, nameKey, groupsRev, groupPrefs.order.join(\',\')]')
+    expect(dashboard).toContain('const quickFilterKey =')
+    expect(dashboard).toContain("quickFilter, quickFilterKey, groupsRev, groupPrefs.order.join(',')")
     // the flat view's numeric sorts stay live, but only while it is on screen
-    expect(dashboard).toContain("const flatRows = viewMode === 'flat' ? selectFlatRows(watchlist, quotes, { filter, sort }) : []")
+    expect(dashboard).toContain("selectFlatRows(watchlist, quotes, { filter, sort, quickFilter })")
   })
 
   it('stops the DAY spark fan-out while the tab is hidden', () => {
@@ -201,9 +212,22 @@ describe('compact dashboard company name', () => {
     expect(dashboard).toContain('function SearchResultSpark({ symbol })')
     expect(dashboard).toContain("fetchHistory(symbol, '1D')")
     expect(dashboard).toContain('<Spark type="line" window="1Y" bars={bars}')
-    expect(dashboard).toContain('class="w-3 h-[9px] rounded-[1px] shrink-0 self-center"')
+    expect(dashboard).toContain('class="flex items-center gap-2 px-2.5 py-1.5 border-t border-line/60 first:border-0 hover:bg-accent-soft cursor-pointer"')
+    expect(dashboard).toContain('class="w-3 h-[9px] rounded-[1px] shrink-0"')
     expect(dashboard).toContain('class="font-mono font-bold text-[10.5px] text-accent shrink-0"')
     expect(dashboard).toContain('<SearchResultSpark symbol={h.symbol} />')
+    expect(dashboard).toContain('class="ml-auto inline-flex w-16 h-3.5 shrink-0 items-center"')
+    expect(dashboard).toContain('class="block w-16 h-3.5"')
+  })
+
+  it('replaces redundant breadth with quick board filters', () => {
+    expect(dashboard).not.toContain('function BreadthPanel')
+    expect(dashboard).toContain('function QuickFilterPanel({ value, onChange, head })')
+    expect(dashboard).toContain("['movers', tl('Movers')]")
+    expect(dashboard).toContain("['volume', tl('Unusual volume')]")
+    expect(dashboard).toContain("['near-high', tl('Near 52w high')]")
+    expect(dashboard).toContain('quickFilter={quickFilter} setQuickFilter={setQuickFilter}')
+    expect(dashboard).toContain("selectFlatRows(watchlist, quotes, { filter, quickFilter })")
   })
 
   it('animates and shades the watchlist toolbar controls as one family', () => {
