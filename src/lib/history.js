@@ -29,6 +29,17 @@ export const RANGES = [
 
 const NEWS_TTL = 10 * 60_000
 
+// A warm fetch must cover the longest overlay, not merely RSI/MACD. Keep the
+// interval unchanged so "SMA 200" always means 200 of the bars being drawn.
+// These pairs stay inside Yahoo's interval lookback limits while yielding at
+// least 200 regular-session observations.
+export function indicatorWarmRange(interval, fallback = null) {
+  return ({
+    '1m': '5d', '2m': '1mo', '5m': '1mo', '15m': '1mo', '30m': '1mo',
+    '1h': '3mo', '4h': '1y', '1d': '1y', '1wk': '5y', '1mo': 'max', '3mo': 'max',
+  })[interval] || fallback
+}
+
 // Persisted across refreshes: history bars are the heavy fetches, so serving
 // them from the last snapshot within TTL makes navigation/refresh instant.
 const cache = createPCache('hist_cache_v1', { max: 48 })
@@ -70,8 +81,9 @@ function target(symbol, rangeKey, { warm = false, interval = null, prepost = fal
   const iv = interval || r.interval
   // the extended session is a DIFFERENT series, so it gets its own cache key
   const ext = prepost && r.intraday
-  const key = `h:${symbol}:${r.key}${iv !== r.interval ? `:${iv}` : ''}${ext ? ':ext' : ''}${warm ? ':warm' : ''}`
-  return { r, iv, ext, key }
+  const warmRange = warm ? indicatorWarmRange(iv, r.warm) : null
+  const key = `h:${symbol}:${r.key}${iv !== r.interval ? `:${iv}` : ''}${ext ? ':ext' : ''}${warm ? `:warm:${warmRange}` : ''}`
+  return { r, iv, ext, key, warmRange }
 }
 
 /** Last-known bars for a range, synchronously and TTL-blind. Research subviews
@@ -83,9 +95,9 @@ export function peekHistory(symbol, rangeKey, opts = {}) {
 
 export function fetchHistory(symbol, rangeKey, opts = {}) {
   const { warm = false } = opts
-  const { r, iv, ext, key } = target(symbol, rangeKey, opts)
+  const { r, iv, ext, key, warmRange } = target(symbol, rangeKey, opts)
   if (warm && !r.warm) return Promise.resolve({ bars: [] })
-  const range = warm ? r.warm : r.range
+  const range = warm ? warmRange : r.range
   return cached(key, r.ttl, async () => {
     const result = await fetchChart(symbol, range, iv, ext)
     let bars = barsFromChart(result)
