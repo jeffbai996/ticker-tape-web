@@ -10,16 +10,10 @@ const alerts = read('src/pages/alerts.jsx')
 const markets = read('src/pages/markets.jsx')
 
 describe('research header', () => {
-  it('reads the broker book from the same endpoint the portfolio page uses', () => {
-    expect(research).toContain("fetch(`${base.replace(/\\/$/, '')}/api/portfolio`")
-    expect(research).toContain('const POSITIONS_TTL = 60_000')
-    // one shared in-flight promise, not a fetch per header render
-    expect(research).toContain('positionsCache = { ts: Date.now(), value }')
-  })
-
-  it('hides the position chip when flat or when the wire is down', () => {
-    expect(research).toContain('if (!pos) return null')
-    expect(research).toContain("if (!base) return Promise.resolve([])")
+  it('keeps portfolio holdings out of the quote header', () => {
+    expect(research).not.toContain('function PositionChip(')
+    expect(research).not.toContain('<PositionChip ')
+    expect(research).not.toContain('/api/portfolio')
   })
 
   it('hands the current price to the alerts form through sessionStorage', () => {
@@ -27,10 +21,16 @@ describe('research header', () => {
     expect(research).toContain("location.hash = '#/alerts'")
   })
 
-  it('uses a restrained current-color bell instead of an alarm emoji', () => {
+  it('uses matching icon boxes and strokes for watch and alert controls', () => {
     expect(research).not.toContain('>⏰</button>')
-    expect(research).toContain('aria-hidden="true" viewBox="0 0 24 24" width="15" height="15"')
-    expect(research).toContain('fill="none" stroke="currentColor" stroke-width="1.8"')
+    expect(research.match(/viewBox="0 0 24 24" width="16" height="16"/g)).toHaveLength(2)
+    expect(research.match(/stroke="currentColor" stroke-width="1.75"/g)).toHaveLength(2)
+    expect(research.match(/inline-flex size-4 shrink-0 items-center justify-center/g)).toHaveLength(2)
+  })
+
+  it('keeps the complete quote header on one line', () => {
+    expect(research).toContain('class="flex items-center gap-3 px-1 pb-2 flex-nowrap min-w-0 overflow-hidden"')
+    expect(research).not.toContain('max-sm:w-full flex items-baseline')
   })
 })
 
@@ -105,6 +105,21 @@ describe('chart control continuity', () => {
     expect(chartSuite).not.toContain("setState('loading')\n    setBars(null)\n    fetchHistory")
     expect(chartSuite).not.toContain('}, [bars, cmpBars, cmp, prefs, intraday])')
     expect(chartSuite).toContain('prefs.type, prefs.log, prefs.ov, prefs.panes, intraday]')
+  })
+
+  it('removes empty oscillator panes before rebuilding overlays', () => {
+    expect(research).toContain('while (c.chart.panes().length > 1)')
+    expect(research).toContain('c.chart.removePane(c.chart.panes().length - 1)')
+  })
+
+  it('lets warmed history satisfy long moving averages', () => {
+    expect(research).toContain("if (!ov['sma' + n] || warmed.length < n) continue")
+    expect(research).not.toContain("if (!ov['sma' + n] || bars.length < n) continue")
+  })
+
+  it('does not refit the time axis for an overlay-only toggle', () => {
+    expect(research).toContain('if (fittedBarsRef.current !== bars)')
+    expect(research).toContain('fittedBarsRef.current = bars')
   })
 })
 
