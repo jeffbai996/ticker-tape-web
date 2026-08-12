@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import fs from 'node:fs'
 
 const src = fs.readFileSync('src/pages/wire.jsx', 'utf8')
+const css = fs.readFileSync('src/styles/main.css', 'utf8')
 
 describe('wire workbench sizing', () => {
   it('pins the desktop workspace and scrolls the feed instead of the page', () => {
@@ -22,8 +23,11 @@ describe('wire workbench sizing', () => {
   })
 
   it('gives closed headlines an unmistakable row hover state', () => {
-    expect(src).toContain("open ? 'bg-surface-1' : 'hover:bg-surface-3'")
-    expect(src).not.toContain("open ? 'bg-surface-1' : 'hover:bg-accent-soft'")
+    expect(src).toContain('data-wire-row')
+    expect(src).not.toContain("open ? 'bg-surface-1' : 'hover:bg-surface-3'")
+    expect(css).toContain('[data-wire-row]:hover,')
+    expect(css).toContain('[data-wire-row]:focus-within')
+    expect(css).toContain('background-color: #29292f !important;')
   })
 
   it('grows fluidly and keeps the original LG stacking threshold', () => {

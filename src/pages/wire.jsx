@@ -190,10 +190,11 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
   const body = evBody(ev, loc)
   return (
     <div
+      data-wire-row
       id={`ev-${ev.id}`}
       class={`border-b border-line/30 border-l-2 font-mono transition-colors cursor-pointer ${
         hot ? 'duration-1000 bg-accent text-black border-l-transparent'
-          : `duration-100 ${TIER_EDGE[tier] || 'border-l-transparent'} ${open ? 'bg-surface-1' : 'hover:bg-surface-3'}`
+          : `duration-100 ${TIER_EDGE[tier] || 'border-l-transparent'} ${open ? 'bg-surface-1' : ''}`
       }`}
       onClick={onToggle}
     >
