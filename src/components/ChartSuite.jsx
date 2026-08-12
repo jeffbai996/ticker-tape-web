@@ -10,7 +10,7 @@ import { fetchHistory, RANGES } from '../lib/history.js'
 import { smaSeries, emaSeries, rsiSeries, macdSeries, bollingerSeries,
          normalizedSeries } from '../lib/chartmath.js'
 import { vwapSeries } from '../lib/vwap.js'
-import { boundedTimeScale, trendlinePrimitive, projectSegment } from '../lib/chartview.js'
+import { boundedTimeScale, marketTimeLabel, trendlinePrimitive, projectSegment } from '../lib/chartview.js'
 import { nearestDrawing } from '../lib/chartmath.js'
 import { loadDrawings, addDrawing, removeDrawing, clearDrawings } from '../lib/chartDrawings.js'
 import { fmtPrice } from '../lib/format.js'
@@ -67,6 +67,7 @@ export function ChartSuite({ symbol }) {
   const [cmpDraft, setCmpDraft] = useState('')
   const [state, setState] = useState('loading')
   const [bars, setBars] = useState(null)
+  const barsSymbolRef = useRef(null)
   const [cmpBars, setCmpBars] = useState(null)
   const [intraday, setIntraday] = useState(false)
   // Drawings live outside the chart-building effect: adding a line must not
@@ -121,23 +122,32 @@ export function ChartSuite({ symbol }) {
   const setTick = (v) => setP({ ticks: { ...prefs.ticks, [prefs.range]: v } })
 
   useEffect(() => {
-    let dead = false
-    setState('loading')
+    barsSymbolRef.current = null
     setBars(null)
+    setState('loading')
+  }, [symbol])
+
+  useEffect(() => {
+    let dead = false
+    if (barsSymbolRef.current !== symbol) setState('loading')
     fetchHistory(symbol, prefs.range, { prepost: !!prefs.ext, interval: tick })
       .then((h) => {
         if (dead) return
+        barsSymbolRef.current = symbol
         setBars(h.bars)
         setIntraday(!!h.intraday)
         setState(h.bars.length ? 'ok' : 'empty')
       })
-      .catch(() => { if (!dead) setState('error') })
+      .catch(() => {
+        if (!dead && barsSymbolRef.current !== symbol) setState('error')
+      })
     return () => { dead = true }
   }, [symbol, prefs.range, prefs.ext, tick])
 
+  useEffect(() => { setCmpBars(null) }, [cmp, symbol])
+
   useEffect(() => {
     let dead = false
-    setCmpBars(null)
     if (!cmp) return
     // same interval as the primary series, or the two would not line up
     fetchHistory(cmp, prefs.range, { prepost: !!prefs.ext, interval: tick })
@@ -150,6 +160,7 @@ export function ChartSuite({ symbol }) {
     if (!el.current || !bars || !bars.length) return
     const chart = createChart(el.current, {
       ...CHART_OPTS,
+      localization: intraday ? { timeFormatter: marketTimeLabel } : undefined,
       timeScale: boundedTimeScale(intraday),
       rightPriceScale: {
         ...CHART_OPTS.rightPriceScale,
@@ -274,7 +285,7 @@ export function ChartSuite({ symbol }) {
       if (seriesRef.current === priceSeries) seriesRef.current = null
       chart.remove()
     }
-  }, [bars, cmpBars, cmp, prefs, intraday])
+  }, [bars, cmpBars, cmp, prefs.type, prefs.log, prefs.ov, prefs.panes, intraday])
 
   // Reload annotations when the symbol changes, and drop any half-finished
   // gesture — a pending trendline point belongs to the chart you left.

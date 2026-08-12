@@ -1,3 +1,17 @@
+const MARKET_TIME = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'America/New_York',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+})
+
+/** Yahoo bar timestamps are Unix seconds (UTC). The terminal's intraday clock
+ * is exchange time, independent of the browser/device timezone. */
+export function marketTimeLabel(time) {
+  if (typeof time !== 'number' || !Number.isFinite(time)) return ''
+  return MARKET_TIME.format(new Date(time * 1000))
+}
+
 // Keep the viewport attached to real bars. lightweight-charts otherwise lets
 // wheel zoom and drag create arbitrary empty logical bars beyond both edges.
 export function boundedTimeScale(timeVisible = false) {
@@ -9,6 +23,7 @@ export function boundedTimeScale(timeVisible = false) {
     fixLeftEdge: true,
     fixRightEdge: true,
     lockVisibleTimeRangeOnResize: true,
+    tickMarkFormatter: timeVisible ? marketTimeLabel : undefined,
   }
 }
 
