@@ -123,6 +123,26 @@ export function quoteFromStream(tick, previous = {}) {
   }
 }
 
+/** A streamed extended-session print carries its own event time; v7 has no
+ *  overnight field at all, so its postMarketPrice is the frozen 20:00 close
+ *  with no event time to judge it by. Overnight the tape is thin enough that
+ *  most rows go quiet past STREAM_FRESH_MS, and without this the 30s batch
+ *  dragged every silent row back to the close in one synchronized step, then
+ *  the next tick jumped it forward again. Session naming stays the batch's
+ *  job; only the number and its event time are held. */
+function liveExtendedPrint(previous, snapshot) {
+  if (previous?.extMarketTime == null) return null
+  if (snapshot?.extMarketTime != null
+      && snapshot.extMarketTime >= previous.extMarketTime) return null
+  return {
+    extLabel: snapshot?.extLabel ?? previous.extLabel,
+    extPrice: previous.extPrice,
+    extPct: previous.extPct,
+    extChange: previous.extChange,
+    extMarketTime: previous.extMarketTime,
+  }
+}
+
 /** A snapshot enriches range/name data but cannot rewind a fresh live print. */
 export function mergeSnapshotQuote(previous, snapshot, streamIsFresh) {
   // An out-of-order print must never move the tape backwards: the REST batch
@@ -132,7 +152,10 @@ export function mergeSnapshotQuote(previous, snapshot, streamIsFresh) {
   // freshness heuristics.
   const regressed = previous?.marketTime != null && snapshot?.marketTime != null
     && snapshot.marketTime < previous.marketTime
-  if (!(streamIsFresh || regressed) || !previous) return snapshot
+  if (!(streamIsFresh || regressed) || !previous) {
+    const ext = liveExtendedPrint(previous, snapshot)
+    return ext ? { ...snapshot, ...ext } : snapshot
+  }
   return {
     ...snapshot,
     name: snapshot.name || previous.name || '',
