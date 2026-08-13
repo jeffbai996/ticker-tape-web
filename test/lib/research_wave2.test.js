@@ -51,6 +51,21 @@ describe('research wire tape', () => {
   })
 })
 
+describe('research overview rail', () => {
+  it('makes the strongest fundamental recommendation a visible badge', () => {
+    expect(research).toContain("f.recommendationKey === 'strong_buy' ? 'border-up/60 bg-up/10 px-2 py-1 text-[11px]' : 'border-line px-1.5 py-0.5 text-[10px]'")
+  })
+
+  it('labels the separate news feed and uses Anthropic Sans headlines', () => {
+    expect(research).toContain("tl('News feed')")
+    expect(research).toContain('class="font-anth text-[12px] text-ink leading-snug"')
+  })
+
+  it('does not draw decorative empty rows below the data tape', () => {
+    expect(research).not.toContain('repeating-linear-gradient(180deg')
+  })
+})
+
 describe('research tabs and keys', () => {
   it('exposes the dividends view the router already accepted', () => {
     expect(research).toContain("{ id: 'dividends', label: tl('Dividends')")
@@ -93,6 +108,17 @@ describe('research DES band', () => {
 })
 
 describe('chart control continuity', () => {
+  it('derives time-of-day ticks from the selected window, not bar resolution', () => {
+    expect(research).toContain('timeAxis={!!activeRange?.intraday}')
+    expect(research).toContain('localization: timeAxis ? { timeFormatter: marketTimeLabel } : undefined')
+    expect(research).toContain('timeScale: boundedTimeScale(timeAxis)')
+    expect(research).not.toContain('localization: intraday ? { timeFormatter: marketTimeLabel } : undefined')
+    expect(chartSuite).toContain('const timeAxis = !!activeRange?.intraday')
+    expect(chartSuite).toContain('localization: timeAxis ? { timeFormatter: marketTimeLabel } : undefined')
+    expect(chartSuite).toContain('timeScale: boundedTimeScale(timeAxis)')
+    expect(chartSuite).not.toContain('localization: intraday ? { timeFormatter: marketTimeLabel } : undefined')
+  })
+
   it('keeps the overview chart mounted while range, bar, or EXT data loads', () => {
     expect(research).toContain("const [hist, setHist] = useState(null)\n  const histSymbolRef = useRef(symbol)\n  const [warmPad, setWarmPad] = useState(null)")
     expect(research).toContain('const seed = peekHistory(symbol, rangeKey, { interval: tick, prepost: ovExt })')
@@ -104,7 +130,7 @@ describe('chart control continuity', () => {
     expect(chartSuite).toContain("barsSymbolRef.current = null\n    setBars(null)\n    setState('loading')\n  }, [symbol])")
     expect(chartSuite).not.toContain("setState('loading')\n    setBars(null)\n    fetchHistory")
     expect(chartSuite).not.toContain('}, [bars, cmpBars, cmp, prefs, intraday])')
-    expect(chartSuite).toContain('prefs.type, prefs.log, prefs.ov, prefs.panes, intraday]')
+    expect(chartSuite).toContain('prefs.type, prefs.log, prefs.ov, prefs.panes, intraday, timeAxis]')
   })
 
   it('removes empty oscillator panes before rebuilding overlays', () => {

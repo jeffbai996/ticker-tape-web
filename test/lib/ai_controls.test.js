@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { reportModelLabel } from '../../src/lib/modelLabel.js'
 
 const source = (path) => readFileSync(resolve(process.cwd(), path), 'utf8')
 
@@ -12,6 +13,13 @@ describe('AI generation controls', () => {
     expect(report).toContain("aria-label={`${tl('Thinking effort')}: ${level}`}")
     expect(report).toContain("effort === level")
     expect(report).toContain("'bg-accent text-black font-bold'")
+  })
+
+  it('shows concise report model names without provider families', () => {
+    expect(reportModelLabel('Claude Opus 5')).toBe('Opus 5')
+    expect(reportModelLabel('Gemini Flash 3.6')).toBe('Flash 3.6')
+    expect(reportModelLabel('GPT 5.6 Sol')).toBe('GPT 5.6 Sol')
+    expect(report).toContain('{reportModelLabel(m.label)}')
   })
 })
 

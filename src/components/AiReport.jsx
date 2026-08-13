@@ -6,6 +6,7 @@ import { IS_PRIVATE_BUILD } from '../lib/nav.js'
 import { saveReport } from '../lib/archive.js'
 import { getLocale, tl } from '../lib/i18n.js'
 import { LENGTHS, TONES, applyAiPreferences, loadDials, saveDials } from '../lib/aidials.js'
+import { reportModelLabel } from '../lib/modelLabel.js'
 
 // One-click AI synthesis panel: build a prompt, stream the answer, offer
 // copy/download. On a wire build the writer is picked from the subscription
@@ -284,7 +285,7 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
                 class="bg-transparent pr-1 font-anth text-[10px] font-semibold text-ink outline-none cursor-pointer max-w-[150px]"
               >
                 {models.map((m) => (
-                  <option key={m.key} value={m.key}>{m.label}</option>
+                  <option key={m.key} value={m.key}>{reportModelLabel(m.label)}</option>
                 ))}
               </select>
             </label>

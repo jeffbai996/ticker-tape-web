@@ -45,6 +45,12 @@ describe('tl', () => {
     expect(tl('Watchlist name')).toBe('自选股名称')
   })
 
+  it('distinguishes the overview news feed from the wire in Chinese', () => {
+    setLocale('zh')
+    expect(tl('News feed')).toBe('新闻源')
+    expect(tl('Wire')).toBe('快讯')
+  })
+
   it('covers every literal UI label routed through tl', () => {
     const root = resolve(process.cwd(), 'src')
     const files = readdirSync(root, { recursive: true })

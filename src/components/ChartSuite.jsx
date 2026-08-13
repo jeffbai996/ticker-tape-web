@@ -113,6 +113,7 @@ export function ChartSuite({ symbol }) {
   const togglePane = (k) => setP({ panes: { ...prefs.panes, [k]: !prefs.panes[k] } })
 
   const activeRange = RANGES.find((r) => r.key === prefs.range)
+  const timeAxis = !!activeRange?.intraday
   // null means "the range's own default interval". Validated against the
   // current range's list so a stored tick from another window can't leak
   // through and ask Yahoo for a pair it rejects.
@@ -160,8 +161,8 @@ export function ChartSuite({ symbol }) {
     if (!el.current || !bars || !bars.length) return
     const chart = createChart(el.current, {
       ...CHART_OPTS,
-      localization: intraday ? { timeFormatter: marketTimeLabel } : undefined,
-      timeScale: boundedTimeScale(intraday),
+      localization: timeAxis ? { timeFormatter: marketTimeLabel } : undefined,
+      timeScale: boundedTimeScale(timeAxis),
       rightPriceScale: {
         ...CHART_OPTS.rightPriceScale,
         mode: prefs.log && !cmp ? 1 : 0,
@@ -285,7 +286,7 @@ export function ChartSuite({ symbol }) {
       if (seriesRef.current === priceSeries) seriesRef.current = null
       chart.remove()
     }
-  }, [bars, cmpBars, cmp, prefs.type, prefs.log, prefs.ov, prefs.panes, intraday])
+  }, [bars, cmpBars, cmp, prefs.type, prefs.log, prefs.ov, prefs.panes, intraday, timeAxis])
 
   // Reload annotations when the symbol changes, and drop any half-finished
   // gesture — a pending trendline point belongs to the chart you left.

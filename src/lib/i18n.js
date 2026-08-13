@@ -257,7 +257,7 @@ const LABELS = {
   Calendar: '财经日历', Compare: '对比', Correlation: '相关性', Valuation: '估值',
   // Research tabs + panels
   Intraday: '日内', Options: '期权', Insider: '内部交易',
-  Technicals: '技术指标', Fundamentals: '基本面', News: '新闻',
+  Technicals: '技术指标', Fundamentals: '基本面', News: '新闻', 'News feed': '新闻源',
   Calls: '看涨', Puts: '看跌',
   // Status bar
   OPEN: '盘中', CLOSED: '休市', PRE: '盘前', POST: '盘后', AH: '盘后', HOLIDAY: '休市日',

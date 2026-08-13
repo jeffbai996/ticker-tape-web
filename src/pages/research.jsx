@@ -121,7 +121,7 @@ function rollingSma(bars, n) {
 const OV_TYPE_KEY = 'research_ov_type'
 const OV_TYPES = ['candles', 'line', 'area']
 
-function Candles({ bars, warmPad, intraday, ticks, tick, onTick, rangeKey, onRange,
+function Candles({ bars, warmPad, intraday, timeAxis, ticks, tick, onTick, rangeKey, onRange,
                    ext = false, onExt, canExt = false }) {
   const el = useRef(null)
   const chartRef = useRef(null)
@@ -160,8 +160,11 @@ function Candles({ bars, warmPad, intraday, ticks, tick, onTick, rangeKey, onRan
         horzLines: { color: 'rgba(255,255,255,0.05)' },
       },
       rightPriceScale: { borderColor: 'rgba(255,255,255,0.10)' },
-      localization: intraday ? { timeFormatter: marketTimeLabel } : undefined,
-      timeScale: boundedTimeScale(intraday),
+      // Bar resolution and window scale are separate. A 1Y window drawn with
+      // 1h candles still needs calendar dates on the x-axis, not "09:30" for
+      // every session; only the true 1D/5D windows use exchange-time labels.
+      localization: timeAxis ? { timeFormatter: marketTimeLabel } : undefined,
+      timeScale: boundedTimeScale(timeAxis),
       crosshair: { mode: 0 },
     })
     const series = ctype === 'candles'
@@ -201,7 +204,7 @@ function Candles({ bars, warmPad, intraday, ticks, tick, onTick, rangeKey, onRan
         (b.volume ? ` <span style="color:#79828d">V</span> ${fmtVol(b.volume)}` : '')
     })
     return () => chart.remove()
-  }, [intraday, ctype])
+  }, [timeAxis, ctype])
 
   useEffect(() => {
     const c = chartRef.current
@@ -506,10 +509,12 @@ function Fundamentals({ symbol }) {
 
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
-      <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2 flex items-baseline gap-2">
+      <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2 flex items-center gap-2">
         <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Fundamentals')}</h2>
         {f?.recommendationKey && (
-          <span class={`font-mono text-[10px] uppercase ${ratingTone(f.recommendationKey)}`}>{f.recommendationKey.replace('_', ' ')}</span>
+          <span class={`font-mono leading-none uppercase tracking-wide rounded border ${ratingTone(f.recommendationKey)} ${
+            f.recommendationKey === 'strong_buy' ? 'border-up/60 bg-up/10 px-2 py-1 text-[11px]' : 'border-line px-1.5 py-0.5 text-[10px]'
+          }`}>{f.recommendationKey.replace('_', ' ')}</span>
         )}
       </header>
       {!f && <Loading label={tt('common.loading')} minH={345} />}
@@ -548,7 +553,7 @@ function News({ symbol }) {
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
       <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-        <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{tl('News')}</h2>
+        <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{tl('News feed')}</h2>
       </header>
       {items == null && <Loading label={tt('common.loading')} minH={240} />}
       {items?.length === 0 && <div class="px-3 py-3 text-[11px] text-muted font-mono">{tl('no headlines')}</div>}
@@ -560,7 +565,7 @@ function News({ symbol }) {
           rel="noopener noreferrer"
           class="block px-3 py-2 border-b border-line last:border-0 hover:bg-surface-3"
         >
-          <div class="text-[12px] text-ink leading-snug">{n.title}</div>
+          <div class="font-anth text-[12px] text-ink leading-snug">{n.title}</div>
           <div class="font-mono text-[10px] text-muted mt-0.5">
             {n.publisher}
             {n.time && ` · ${new Date(n.time).toLocaleDateString(getLocale() === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric' })}`}
@@ -2380,6 +2385,7 @@ export function Research({ route }) {
             <div class="p-2 pb-0">
             {hist ? (
               <Candles bars={hist.bars} warmPad={warmPad} intraday={hist.intraday}
+                timeAxis={!!activeRange?.intraday}
                 ticks={activeRange?.ticks} tick={tick || activeRange?.interval} onTick={setTick}
                 rangeKey={rangeKey} onRange={selectRange}
                 ext={ovExt} onExt={setOvExt} canExt={!!activeRange?.intraday} />
@@ -2391,9 +2397,6 @@ export function Research({ route }) {
             </div>
             <DesBand symbol={symbol} bars={hist?.bars} />
             <WireMini symbol={symbol} />
-            {/* when the right rail runs longer, the column keeps its ruling
-                instead of ending mid-air (Jeff 2026-08-04) */}
-            <div class="flex-1 min-h-0 border-t border-line bg-[repeating-linear-gradient(180deg,transparent,transparent_27px,var(--color-line)_27px,var(--color-line)_28px)]" />
           </section>
           <div class="max-lg:hidden flex flex-col gap-3 min-w-0">{rail}</div>
           {/* below lg the rail lives behind a right-edge grip: a slide-over
