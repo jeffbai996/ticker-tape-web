@@ -32,6 +32,12 @@ describe('research header', () => {
     expect(research).toContain('class="flex items-center gap-3 px-1 pb-2 flex-nowrap min-w-0 overflow-hidden"')
     expect(research).not.toContain('max-sm:w-full flex items-baseline')
   })
+
+  it('shows the company name only when the research canvas has ample room', () => {
+    expect(research).toContain('class="@container flex-1 p-3 select-text min-w-0"')
+    expect(research).toContain('class="hidden @min-[1180px]:block @min-[1180px]:flex-1 min-w-0"')
+    expect(research).not.toContain('<span class="flex-1 min-w-0">\n              <Marquee text={q.name}')
+  })
 })
 
 describe('research wire tape', () => {
