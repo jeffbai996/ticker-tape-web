@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach } from 'vitest'
-import { setWireUrl, wireUrl, demoBackfill, demoEvent, demoToday, demoQuotes, rankEvents, collapseSessions, clusterStories, toggleWireArticle, TYPE_CODE, pubDisplayName, readMinutes } from '../../src/lib/wire.js'
+import { setWireUrl, wireUrl, calendarSubscriptionUrl, demoBackfill, demoEvent, demoToday, demoQuotes, rankEvents, collapseSessions, clusterStories, toggleWireArticle, TYPE_CODE, pubDisplayName, readMinutes } from '../../src/lib/wire.js'
 
 describe('wire article accordion', () => {
   it('replaces the open article and lets the active article close', () => {
@@ -26,6 +26,11 @@ describe('wire endpoint config', () => {
     setWireUrl('http://my-wire.local:8095')
     setWireUrl('')
     expect(wireUrl()).toBe('')
+  })
+
+  it('builds a calendar subscription URL from the configured wire', () => {
+    setWireUrl('https://wire.example.com:8459')
+    expect(calendarSubscriptionUrl()).toBe('webcal://wire.example.com:8459/calendar.ics')
   })
 })
 
