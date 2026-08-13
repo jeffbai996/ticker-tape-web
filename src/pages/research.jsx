@@ -2268,19 +2268,17 @@ export function Research({ route }) {
   )
 
   return (
-    <div class="flex-1 p-3 select-text min-w-0">
+    <div class="@container flex-1 p-3 select-text min-w-0">
       <div class="flex items-center gap-3 px-1 pb-2 flex-nowrap min-w-0 overflow-hidden">
         <h1 class="font-tick font-bold text-lg text-ink">{symbol}</h1>
         <WatchStar symbol={symbol} />
         <AlertButton symbol={symbol} price={q?.price} />
         {q && (
           <>
-            {/* the name owns the middle slack; the quote cluster is one
-                right-aligned unit so it can't sit on top of the name
-                (Jeff 2026-08-05: "even Walmart gets occluded") */}
-            {/* The name gives up space before the quote does. Marquee keeps the
-                full company name available without ever wrapping the header. */}
-            <span class="flex-1 min-w-0">
+            {/* Names are useful only when they occupy genuine spare canvas.
+                At tighter viewport/zoom levels the symbol is the identity;
+                reserving even a shrinking name gutter crowds the quote. */}
+            <span class="hidden @min-[1180px]:block @min-[1180px]:flex-1 min-w-0">
               <Marquee text={q.name} class="w-full text-[12px] text-muted font-anth" />
             </span>
             <span class="ml-auto flex items-baseline gap-x-3 shrink-0 whitespace-nowrap">
