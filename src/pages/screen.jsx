@@ -546,6 +546,91 @@ export function Screen({ route }) {
       {view === 'technicals' && <TechScreen symbols={symbols} hist={hist} />}
       {view === 'correlation' && <Correlation symbols={symbols} hist={hist} />}
       {view === 'valuation' && <Valuation symbols={symbols} />}
+      {view === 'dividends' && <DividendScreen symbols={symbols} />}
     </div>
+  )
+}
+
+/** Income view over the screen set: who pays, how much, and when the next
+ *  ex-date lands. Payers sort by yield; non-payers sink to a grey tail so a
+ *  growth-heavy list still reads instead of showing a wall of dashes. */
+function DividendScreen({ symbols }) {
+  const [funds, setFunds] = useState({})
+
+  useEffect(() => {
+    let alive = true
+    setFunds({})
+    for (const sym of symbols) {
+      fetchFundamentals(sym)
+        .then((f) => alive && setFunds((d) => ({ ...d, [sym]: f })))
+        .catch(() => alive && setFunds((d) => ({ ...d, [sym]: { error: true } })))
+    }
+    return () => { alive = false }
+  }, [symbols.join(',')])
+
+  const ready = symbols.filter((s) => funds[s] && !funds[s].error)
+  // funds report 'yield' where stocks report 'dividendYield'
+  const dy = (f) => f.dividendYield ?? f.yield
+  const payers = ready
+    .filter((s) => dy(funds[s]) != null)
+    .sort((a, b) => (dy(funds[b]) || 0) - (dy(funds[a]) || 0))
+  const silent = ready.filter((s) => dy(funds[s]) == null)
+  const maxYield = Math.max(...payers.map((s) => dy(funds[s]) || 0), 0.0001)
+  const exDate = (f) => f.exDividendDate
+    ? new Date(f.exDividendDate * 1000).toISOString().slice(0, 10) : '—'
+  // an ex-date within the next two weeks is actionable, not archival
+  const exSoon = (f) => f.exDividendDate
+    && f.exDividendDate * 1000 > Date.now()
+    && f.exDividendDate * 1000 < Date.now() + 14 * 86_400_000
+
+  return (
+    <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full border-collapse font-mono text-[11px]">
+          <thead>
+            <tr class="text-[9px] text-muted uppercase tracking-wider bg-surface-2/60">
+              <th class="px-3 py-1.5 text-left">{tl('Symbol')}</th>
+              <th class="px-3 py-1.5 text-right">{tl('Yield')}</th>
+              <th class="px-3 py-1.5 text-left max-sm:hidden"></th>
+              <th class="px-3 py-1.5 text-right">{tl('Rate')}/yr</th>
+              <th class="px-3 py-1.5 text-right max-sm:hidden">{tl('Payout')}</th>
+              <th class="px-3 py-1.5 text-right">{tl('Ex-date')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {payers.map((s) => {
+              const f = funds[s]
+              const pct = Math.round(((dy(f) || 0) / maxYield) * 100)
+              return (
+                <tr key={s} class="border-t border-line hover:bg-surface-3">
+                  <td class="px-3 py-[3px]">
+                    <a href={`#/research/${s.toLowerCase()}/dividends`} class="text-ink font-bold hover:text-accent hover:no-underline">{s}</a>
+                  </td>
+                  <td class="px-3 py-[3px] text-right text-ink">{fmtFracPct(dy(f))}</td>
+                  <td class="px-1 py-[3px] max-sm:hidden w-24">
+                    {/* comparative bar: yield against the best in view */}
+                    <div class="h-[5px] rounded-full bg-accent/50" style={{ width: `${Math.max(4, pct)}%` }} />
+                  </td>
+                  <td class="px-3 py-[3px] text-right text-ink-2">{f.dividendRate != null ? fmtPrice(f.dividendRate) : '—'}</td>
+                  <td class="px-3 py-[3px] text-right text-ink-2 max-sm:hidden">{f.payoutRatio != null ? fmtFracPct(f.payoutRatio) : '—'}</td>
+                  <td class={`px-3 py-[3px] text-right ${exSoon(f) ? 'text-accent font-bold' : 'text-muted'}`}>{exDate(f)}</td>
+                </tr>
+              )
+            })}
+            {silent.map((s) => (
+              <tr key={s} class="border-t border-line text-muted">
+                <td class="px-3 py-[3px]">
+                  <a href={`#/research/${s.toLowerCase()}`} class="hover:text-ink hover:no-underline">{s}</a>
+                </td>
+                <td class="px-3 py-[3px] text-right" colSpan={5}>{tl('no dividend')}</td>
+              </tr>
+            ))}
+            {!ready.length && (
+              <tr><td class="px-3 py-2 text-muted animate-pulse" colSpan={6}>{tl('loading…')}</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
   )
 }
