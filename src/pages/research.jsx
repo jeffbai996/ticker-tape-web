@@ -2143,7 +2143,8 @@ export function Research({ route }) {
   const [rangeKey, setRangeKey] = useState(() => {
     const prefill = consumePrefill('chart_range')
     const saved = localStorage.getItem('research_overview_range_v1')
-    const candidate = prefill || saved || '6M'
+    const prior = prefill || saved
+    const candidate = prior === '1D' ? '2D' : (prior || '6M')
     return RANGES.some((range) => range.key === candidate) ? candidate : '6M'
   })
   const selectRange = (nextRange) => {

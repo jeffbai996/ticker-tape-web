@@ -15,7 +15,10 @@ import { createPCache } from './pcache.js'
 // endpoint rather than inferred: 1m dies past ~7 days (1mo@1m is a 422), which
 // is why 5D starts at 2m — its warm window is 1mo and would fail at 1m.
 export const RANGES = [
-  { key: '1D', range: '1d', interval: '5m', intraday: true, ttl: 60_000, warm: '5d', ticks: ['1m', '2m', '5m', '15m', '30m', '1h'] },
+  // Two exchange sessions, not two calendar days. A current-day `1d` query
+  // has only three 1m candles at 04:02 ET; pulling 5d and keeping the newest
+  // two ET sessions preserves the prior close/open context across weekends.
+  { key: '2D', range: '5d', interval: '5m', intraday: true, sessions: 2, ttl: 60_000, warm: '5d', ticks: ['1m', '2m', '5m', '15m', '30m', '1h'] },
   { key: '5D', range: '5d', interval: '15m', intraday: true, ttl: 5 * 60_000, warm: '1mo', ticks: ['2m', '5m', '15m', '30m', '1h'] },
   { key: '1M', range: '1mo', interval: '1d', ttl: 10 * 60_000, warm: '3mo', ticks: ['30m', '1h', '4h', '1d'] },
   { key: '3M', range: '3mo', interval: '1d', ttl: 10 * 60_000, warm: '6mo', ticks: ['1h', '4h', '1d'] },
@@ -26,6 +29,13 @@ export const RANGES = [
   { key: '5Y', range: '5y', interval: '1wk', ttl: 30 * 60_000, warm: '10y', ticks: ['1d', '1wk', '1mo'] },
   { key: 'MAX', range: 'max', interval: '1wk', ttl: 60 * 60_000, ticks: ['1wk', '1mo', '3mo'] },
 ]
+
+// Internal compatibility for quote/spark consumers that genuinely ask for
+// the newest session. It stays out of the visible chart toolbar.
+const ONE_SESSION = {
+  key: '1D', range: '1d', interval: '5m', intraday: true, sessions: 1,
+  ttl: 60_000, warm: '5d', ticks: ['1m', '2m', '5m', '15m', '30m', '1h'],
+}
 
 const NEWS_TTL = 10 * 60_000
 
@@ -55,12 +65,17 @@ async function cached(key, ttl, fn) {
 /** Bars that belong to the newest session present in an intraday set —
  *  Yahoo's 1d window intermittently answers with a quote and ZERO bars
  *  while 5d still carries today's prints (2026-08-06, blank 1D chart). */
-export function lastSessionBars(bars) {
+export function latestSessionBars(bars, count = 1) {
   if (!bars?.length) return []
   const day = (t) => new Date(t * 1000).toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
-  const last = day(bars[bars.length - 1].time)
-  return bars.filter((b) => day(b.time) === last)
+  const wanted = new Set()
+  for (let i = bars.length - 1; i >= 0 && wanted.size < count; i--) {
+    wanted.add(day(bars[i].time))
+  }
+  return bars.filter((b) => wanted.has(day(b.time)))
 }
+
+export const lastSessionBars = (bars) => latestSessionBars(bars, 1)
 
 async function fetchChart(symbol, range, interval, prepost = false) {
   // includePrePost widens an intraday window to 04:00–20:00 ET; daily and
@@ -77,7 +92,7 @@ async function fetchChart(symbol, range, interval, prepost = false) {
 // One place that decides what a request resolves to, so the fetch and the
 // synchronous peek below can never key the same series differently.
 function target(symbol, rangeKey, { warm = false, interval = null, prepost = false } = {}) {
-  const r = RANGES.find((x) => x.key === rangeKey) || RANGES[2]
+  const r = (rangeKey === '1D' ? ONE_SESSION : RANGES.find((x) => x.key === rangeKey)) || RANGES[2]
   const iv = interval || r.interval
   // the extended session is a DIFFERENT series, so it gets its own cache key
   const ext = prepost && r.intraday
@@ -101,11 +116,12 @@ export function fetchHistory(symbol, rangeKey, opts = {}) {
   return cached(key, r.ttl, async () => {
     const result = await fetchChart(symbol, range, iv, ext)
     let bars = barsFromChart(result)
+    if (!warm && r.sessions) bars = latestSessionBars(bars, r.sessions)
     // an empty intraday answer is a Yahoo hiccup, not a market holiday —
     // pull the wider window and keep only the newest session
     if (!bars.length && !warm && r.intraday && r.warm) {
       const wide = await fetchChart(symbol, r.warm, iv, ext).catch(() => null)
-      if (wide) bars = lastSessionBars(barsFromChart(wide))
+      if (wide) bars = latestSessionBars(barsFromChart(wide), r.sessions || 1)
       if (!bars.length) throw new Error(`history ${symbol}: no bars`)
     }
     // a sub-daily tick on a daily range still needs the intraday time axis

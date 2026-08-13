@@ -36,7 +36,11 @@ const DEFAULTS = {
 }
 
 function loadPrefs() {
-  try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(KEY) || '{}') } }
+  try {
+    const saved = JSON.parse(localStorage.getItem(KEY) || '{}')
+    if (saved.range === '1D') saved.range = '2D'
+    return { ...DEFAULTS, ...saved }
+  }
   catch { return { ...DEFAULTS } }
 }
 
