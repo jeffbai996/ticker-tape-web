@@ -53,6 +53,7 @@ export const NAV = [
       { id: 'technicals', label: 'Technicals' },
       { id: 'correlation', label: 'Correlation' },
       { id: 'valuation', label: 'Valuation' },
+      { id: 'dividends', label: 'Dividends' },
     ],
   },
   { id: 'alerts', label: 'Alerts', subs: [] },

@@ -600,6 +600,13 @@ const LABELS = {
   'drag to resize': '拖动调整高度', 'type command or symbol…  (h = help)': '输入命令或代码…（h = 帮助）',
   'focus console': '按 / 随时聚焦控制台', 'report model': '生成此报告的订阅模型',
   'reset full history': '重置为全部历史', Strike: '行权价', Bid: '买价', Ask: '卖价', IV: '隐波', Vol: '成交量', OI: '未平仓量',
+  // options ladder (2026-08-13)
+  spot: '现价', straddle: '跨式', ATM: '平值', 'market prices a': '市场定价',
+  'move by': '波动幅度，截至', 'loading chain…': '期权链加载中…',
+  // dividends sweep (2026-08-13)
+  'Payment history': '派息历史', 'Ex-date': '除息日', Amount: '每股金额',
+  Splits: '拆股', 'partial year — 5y window': '不完整年份 — 5年窗口',
+  Rate: '年派息', Payout: '派息率', 'no dividend': '无股息',
   'loading chain…': '正在加载期权链…', EXPIRY: '到期日', 'no intraday data': '暂无日内数据',
   Functions: '功能', Recent: '最近访问', 'From the terminal': '终端快捷方式', GO: '打开',
   'full command list': '完整命令列表', 'watch — full list': '加入自选 — 完整列表',

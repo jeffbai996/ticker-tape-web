@@ -10,7 +10,9 @@ const MODULES = 'summaryDetail,defaultKeyStatistics,financialData'
 const TTL = 60 * 60_000
 
 const FIELDS = {
-  summaryDetail: ['trailingPE', 'dividendYield', 'dividendRate', 'exDividendDate', 'payoutRatio', 'beta', 'marketCap', 'fiftyTwoWeekLow', 'fiftyTwoWeekHigh', 'volume', 'averageVolume', 'open', 'previousClose'],
+  // 'yield' is the ETF twin of dividendYield — funds report only it, so
+  // dividend surfaces read dividendYield ?? yield or SPY shows "no dividend"
+  summaryDetail: ['trailingPE', 'dividendYield', 'dividendRate', 'exDividendDate', 'payoutRatio', 'beta', 'marketCap', 'fiftyTwoWeekLow', 'fiftyTwoWeekHigh', 'volume', 'averageVolume', 'open', 'previousClose', 'yield'],
   defaultKeyStatistics: ['forwardPE', 'pegRatio', 'enterpriseToEbitda', 'shortPercentOfFloat', 'priceToBook', 'enterpriseValue', 'sharesOutstanding', 'floatShares'],
   financialData: [
     'grossMargins', 'operatingMargins', 'profitMargins', 'returnOnEquity',

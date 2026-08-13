@@ -576,77 +576,170 @@ function News({ symbol }) {
   )
 }
 
-function OptionSide({ title, rows, spot, t, type }) {
-  // Relative IV heat: hot = top quartile within the visible side. A static
-  // threshold can't work across names — 40% IV is sleepy on some, wild on others.
-  const ivs = rows.map((r) => r.iv).filter((v) => v != null).sort((a, b) => a - b)
-  const ivHot = ivs.length >= 8 ? ivs[Math.floor(ivs.length * 0.75)] : null
-  const maxOi = Math.max(...rows.map((r) => r.oi || 0), 1)
-  // First strike at/above spot — the amber rule sits on this row's top edge.
+/** Mid price; falls back to last when the book is empty (after hours). */
+function optMid(c) {
+  if (c?.bid != null && c?.ask != null && (c.bid || c.ask)) return (c.bid + c.ask) / 2
+  return c?.last ?? null
+}
+
+/** ATM straddle at the strike nearest spot — the market's own move estimate. */
+function straddleSummary(chain) {
+  if (chain?.spot == null) return null
+  const strikes = chain.calls
+    .map((c) => c.strike)
+    .filter((k) => chain.puts.some((p) => p.strike === k))
+  if (!strikes.length) return null
+  const k = strikes.reduce((a, b) =>
+    Math.abs(b - chain.spot) < Math.abs(a - chain.spot) ? b : a)
+  const cm = optMid(chain.calls.find((c) => c.strike === k))
+  const pm = optMid(chain.puts.find((p) => p.strike === k))
+  if (cm == null || pm == null) return null
+  return { strike: k, price: cm + pm, movePct: ((cm + pm) / chain.spot) * 100 }
+}
+
+function ExpiryPills({ expirations, active, onPick }) {
+  const now = Date.now()
+  return (
+    <div class="flex gap-1 overflow-x-auto no-scrollbar min-w-0">
+      {expirations.map((x) => {
+        const dte = Math.max(0, Math.round((x * 1000 - now) / 86_400_000))
+        const iso = new Date(x * 1000).toISOString()
+        return (
+          <button
+            key={x}
+            onClick={() => onPick(x)}
+            class={`shrink-0 px-2 py-0.5 rounded-md border font-mono text-[10px] leading-tight ${
+              x === active
+                ? 'border-accent-2 text-accent-2 bg-accent-2-soft'
+                : 'border-white/25 text-muted hover:text-ink hover:bg-surface-3'
+            }`}
+          >
+            {/* month-day carries near expiries; LEAPs need the year */}
+            {dte > 300 ? iso.slice(2, 10) : iso.slice(5, 10)}
+            <span class="ml-1 text-[8.5px] opacity-70">{dte}d</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/** One butterfly ladder: calls mirrored on the left, puts on the right, the
+ *  strike column as the shared spine. Rows join by strike so the eye reads
+ *  one market instead of two tables that happen to be siblings. */
+function OptionsLadder({ chain, t }) {
+  const spot = chain.spot
+  const byStrike = new Map()
+  for (const c of chain.calls) byStrike.set(c.strike, { strike: c.strike, call: c })
+  for (const p of chain.puts) {
+    const row = byStrike.get(p.strike) || { strike: p.strike }
+    row.put = p
+    byStrike.set(p.strike, row)
+  }
+  let rows = [...byStrike.values()].sort((a, b) => a.strike - b.strike)
+  // ±12 strikes around spot keeps the ladder one screen tall
+  if (spot != null) {
+    const idx = rows.findIndex((r) => r.strike >= spot)
+    const lo = Math.max(0, (idx === -1 ? rows.length : idx) - 12)
+    rows = rows.slice(lo, lo + 24)
+  }
   const crossIdx = spot != null ? rows.findIndex((r) => r.strike >= spot) : -1
+  // Relative IV heat per side: hot = top quartile in view. A static threshold
+  // can't work across names — 40% IV is sleepy on some, wild on others.
+  const heat = (side) => {
+    const ivs = rows.map((r) => r[side]?.iv).filter((v) => v != null).sort((a, b) => a - b)
+    return ivs.length >= 8 ? ivs[Math.floor(ivs.length * 0.75)] : null
+  }
+  const ivHot = { call: heat('call'), put: heat('put') }
+  const maxOi = Math.max(...rows.flatMap((r) => [r.call?.oi || 0, r.put?.oi || 0]), 1)
+
+  const sideTds = (row, side) => {
+    const c = row[side]
+    const itm = spot != null
+      && (side === 'call' ? row.strike < spot : row.strike > spot)
+    const wash = itm ? 'bg-accent-soft/30' : ''
+    const delta = c ? bsDelta({ spot, strike: row.strike, t, iv: c.iv, type: side }) : null
+    const ad = delta != null ? Math.abs(delta) : null
+    // Hierarchy by tradability: the 0.35–0.65 belly pops, deep ITM reads
+    // solid, far OTM recedes.
+    const deltaCls =
+      ad == null ? 'text-muted'
+      : ad >= 0.35 && ad <= 0.65 ? 'text-accent'
+      : ad > 0.85 ? 'text-ink' : 'text-muted'
+    const hotIv = ivHot[side] != null && c?.iv != null && c.iv >= ivHot[side]
+    const unusual = c?.volume != null && c?.oi > 0 && c.volume > c.oi
+    const oiPct = Math.round(((c?.oi || 0) / maxOi) * 100)
+    // OI depth grows outward from the strike spine, mirrored per side.
+    // rgba is --color-accent at 0.10; inline because a per-row percent
+    // can't be a Tailwind class.
+    const oiFill = c?.oi
+      ? { background: `linear-gradient(to ${side === 'call' ? 'left' : 'right'}, rgba(245,158,11,0.10) ${oiPct}%, transparent ${oiPct}%)` }
+      : undefined
+    const cells = [
+      <td key="oi" class={`px-2 py-[2px] text-right text-muted max-lg:hidden ${wash}`} style={oiFill}>{c?.oi ?? '—'}</td>,
+      <td key="vol" class={`px-2 py-[2px] text-right max-lg:hidden ${unusual ? 'text-accent font-bold' : 'text-muted'} ${wash}`}>{c?.volume ?? '—'}</td>,
+      <td key="delta" class={`px-2 py-[2px] text-right ${deltaCls} ${wash}`}>{delta != null ? delta.toFixed(2) : '—'}</td>,
+      <td key="iv" class={`px-2 py-[2px] text-right max-sm:hidden ${hotIv ? 'text-accent' : 'text-ink-2'} ${wash}`}>{fmtFracPct(c?.iv, 0)}</td>,
+      <td key="bid" class={`px-2 py-[2px] text-right text-up/90 ${wash}`}>{c?.bid != null ? fmtPrice(c.bid) : '—'}</td>,
+      <td key="ask" class={`px-2 py-[2px] text-right text-down/90 ${wash}`}>{c?.ask != null ? fmtPrice(c.ask) : '—'}</td>,
+    ]
+    return side === 'call' ? cells : cells.reverse()
+  }
+
+  const head = (side) => {
+    const cells = [
+      <th key="oi" class="px-2 py-1.5 text-right max-lg:hidden">{tl('OI')}</th>,
+      <th key="vol" class="px-2 py-1.5 text-right max-lg:hidden">{tl('Vol')}</th>,
+      <th key="delta" class="px-2 py-1.5 text-right">Δ</th>,
+      <th key="iv" class="px-2 py-1.5 text-right max-sm:hidden">{tl('IV')}</th>,
+      <th key="bid" class="px-2 py-1.5 text-right">{tl('Bid')}</th>,
+      <th key="ask" class="px-2 py-1.5 text-right">{tl('Ask')}</th>,
+    ]
+    return side === 'call' ? cells : cells.reverse()
+  }
+
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden min-w-0">
-      <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-        <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{title}</h2>
+      <header class="flex items-center justify-between px-2.5 py-1 border-b border-line-2 bg-surface-2">
+        <h2 class="font-anth font-bold text-[11px] tracking-wider text-up uppercase">{tl('Calls')}</h2>
+        {spot != null && (
+          <span class="font-mono text-[10px] text-muted">{tl('spot')} {fmtPrice(spot)}</span>
+        )}
+        <h2 class="font-anth font-bold text-[11px] tracking-wider text-down uppercase">{tl('Puts')}</h2>
       </header>
       <div class="overflow-x-auto">
-        <table class="w-full border-collapse font-mono text-[11px]">
+        <table class="w-full border-collapse font-mono text-[10.5px]">
           <thead>
             <tr class="text-[9px] text-muted uppercase tracking-wider bg-surface-2/60">
-              <th class="px-2 py-1.5 text-right">{tl('Strike')}</th>
-              {/* Last goes first on phones: bid/ask carry the live market. */}
-              <th class="px-2 py-1.5 text-right max-sm:hidden">{tl('Last')}</th>
-              <th class="px-2 py-1.5 text-right">{tl('Bid')}</th>
-              <th class="px-2 py-1.5 text-right">{tl('Ask')}</th>
-              <th class="px-2 py-1.5 text-right">{tl('IV')}</th>
-              <th class="px-2 py-1.5 text-right">Δ</th>
-              <th class="px-2 py-1.5 text-right">{tl('Vol')}</th>
-              <th class="px-2 py-1.5 text-right">{tl('OI')}</th>
+              {head('call')}
+              <th class="px-2.5 py-1.5 text-center text-ink bg-surface-2">{tl('Strike')}</th>
+              {head('put')}
             </tr>
           </thead>
           <tbody>
-            {rows.map((c, i) => {
-              const delta = bsDelta({ spot, strike: c.strike, t, iv: c.iv, type })
-              const ad = delta != null ? Math.abs(delta) : null
-              // Hierarchy by tradability: the 0.35–0.65 belly pops, deep ITM
-              // reads solid, far OTM recedes.
-              const deltaCls =
-                ad == null ? 'text-muted'
-                : ad >= 0.35 && ad <= 0.65 ? 'text-accent'
-                : ad > 0.85 ? 'text-ink' : 'text-muted'
-              const hotIv = ivHot != null && c.iv != null && c.iv >= ivHot
-              const unusual = c.volume != null && c.oi > 0 && c.volume > c.oi
-              const oiPct = Math.round(((c.oi || 0) / maxOi) * 100)
-              return (
-                <tr
-                  key={c.strike}
-                  class={`border-t ${i === crossIdx ? 'border-accent/60' : 'border-line'} ${c.itm ? 'bg-accent-soft/40' : ''} hover:bg-surface-3`}
-                >
-                  <td class="px-2 py-[3px] text-right font-bold text-ink">{fmtPrice(c.strike)}</td>
-                  <td class="px-2 py-[3px] text-right text-ink max-sm:hidden">{c.last != null ? fmtPrice(c.last) : '—'}</td>
-                  <td class="px-2 py-[3px] text-right text-up/90">{c.bid != null ? fmtPrice(c.bid) : '—'}</td>
-                  <td class="px-2 py-[3px] text-right text-down/90">{c.ask != null ? fmtPrice(c.ask) : '—'}</td>
-                  <td class={`px-2 py-[3px] text-right ${hotIv ? 'text-accent' : 'text-ink-2'}`}>
-                    {fmtFracPct(c.iv, 0)}
+            {rows.map((row, i) => (
+              <>
+                {i === crossIdx && i > 0 && (
+                  <tr key={`spot-${row.strike}`}>
+                    <td colSpan={13} class="p-0 border-0">
+                      <div class="relative h-[13px]">
+                        <div class="absolute inset-x-0 top-1/2 border-t border-accent/60" />
+                        <span class="absolute left-1/2 -translate-x-1/2 top-0 px-1.5 bg-surface-1 font-mono text-[9px] leading-[13px] text-accent">
+                          {fmtPrice(spot)}
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                <tr key={row.strike} class="border-t border-line hover:bg-surface-3">
+                  {sideTds(row, 'call')}
+                  <td class="px-2.5 py-[2px] text-center font-bold text-ink bg-surface-2/60 border-x border-line-2">
+                    {fmtPrice(row.strike)}
                   </td>
-                  <td class={`px-2 py-[3px] text-right ${deltaCls}`}>
-                    {delta != null ? delta.toFixed(2) : '—'}
-                  </td>
-                  <td class={`px-2 py-[3px] text-right ${unusual ? 'text-accent font-bold' : 'text-muted'}`}>
-                    {c.volume ?? '—'}
-                  </td>
-                  <td
-                    class="px-2 py-[3px] text-right text-muted"
-                    // Right-anchored depth fill scaled to the deepest OI in view;
-                    // inline because a per-row percent can't be a Tailwind class.
-                    // rgba is --color-accent at 0.10.
-                    style={c.oi ? { background: `linear-gradient(to left, rgba(245,158,11,0.10) ${oiPct}%, transparent ${oiPct}%)` } : undefined}
-                  >
-                    {c.oi ?? '—'}
-                  </td>
+                  {sideTds(row, 'put')}
                 </tr>
-              )
-            })}
+              </>
+            ))}
           </tbody>
         </table>
       </div>
@@ -694,39 +787,27 @@ function OptionsView({ symbol }) {
   if (!chain) return <div class="px-2 font-mono text-[11px] text-muted">{tl('loading chain…')}</div>
 
   const t = Math.max((chain.expiration * 1000 - Date.now()) / (365 * 86_400_000), 1 / 365)
-  // Show ±12 strikes around spot so the table stays scannable.
-  const near = (rows) => {
-    if (chain.spot == null) return rows
-    const idx = rows.findIndex((r) => r.strike >= chain.spot)
-    const lo = Math.max(0, (idx === -1 ? rows.length : idx) - 12)
-    return rows.slice(lo, lo + 24)
-  }
+  const straddle = straddleSummary(chain)
 
   return (
     <div class="min-w-0">
-      <div class="flex items-center gap-2 px-1 pb-2 flex-wrap">
-        <span class="font-mono text-[11px] text-muted">{tl('EXPIRY')}</span>
-        <select
-          value={chain.expiration ?? ''}
-          onChange={(e) => setExpiration(Number(e.target.value))}
-          class="bg-surface-1 border border-line-2 rounded-lg px-2 py-1 font-mono text-[11px] text-ink outline-none focus:border-accent"
-        >
-          {chain.expirations.map((x) => (
-            <option key={x} value={x}>
-              {new Date(x * 1000).toISOString().slice(0, 10)}
-            </option>
-          ))}
-        </select>
-        {chain.spot != null && (
-          <span class="font-mono text-[11px] text-muted">
-            {tt('research.options_note', { spot: fmtPrice(chain.spot) })}
-          </span>
-        )}
+      <div class="px-1 pb-2 min-w-0">
+        <ExpiryPills
+          expirations={chain.expirations}
+          active={chain.expiration}
+          onPick={setExpiration}
+        />
       </div>
-      <div class="grid gap-2 xl:grid-cols-2">
-        <OptionSide title={tl('Calls')} rows={near(chain.calls)} spot={chain.spot} t={t} type="call" />
-        <OptionSide title={tl('Puts')} rows={near(chain.puts)} spot={chain.spot} t={t} type="put" />
-      </div>
+      {straddle && (
+        <div class="px-1 pb-2 font-mono text-[10.5px] text-ink-2">
+          {tl('ATM')} {fmtPrice(straddle.strike)} {tl('straddle')}{' '}
+          <span class="text-ink font-semibold">{fmtPrice(straddle.price)}</span>
+          {' '}· {tl('market prices a')}{' '}
+          <span class="text-accent font-semibold">±{straddle.movePct.toFixed(1)}%</span>{' '}
+          {tl('move by')} {new Date(chain.expiration * 1000).toISOString().slice(5, 10)}
+        </div>
+      )}
+      <OptionsLadder chain={chain} t={t} />
     </div>
   )
 }
@@ -2019,9 +2100,13 @@ function WireMini({ symbol }) {
 function DividendsView({ symbol }) {
   const [f, setF] = useState(null)
   const [md, setMd] = useState(null)
+  const [hist, setHist] = useState(null)
+  const [splits, setSplits] = useState(null)
   useEffect(() => {
-    setF(null); setMd(null)
+    setF(null); setMd(null); setHist(null); setSplits(null)
     fetchFundamentals(symbol).then(setF).catch(() => setF({}))
+    fetchDivHistory(symbol).then(setHist).catch(() => setHist([]))
+    fetchSplits(symbol).then(setSplits).catch(() => setSplits([]))
     const base = wireUrl()
     if (base) {
       fetch(`${base.replace(/\/$/, '')}/api/ibkr/dividends?scope=single&symbol=${encodeURIComponent(symbol)}`,
@@ -2047,7 +2132,7 @@ function DividendsView({ symbol }) {
           <div class="px-3 py-2 font-mono text-[11px] text-muted animate-pulse">{tl('loading…')}</div>
         ) : (
           <>
-            {cellRow('Yield', f.dividendYield != null ? fmtFracPct(f.dividendYield) : '—')}
+            {cellRow('Yield', (f.dividendYield ?? f.yield) != null ? fmtFracPct(f.dividendYield ?? f.yield) : '—')}
             {cellRow('Rate (annual)', f.dividendRate != null ? fmtPrice(f.dividendRate) : '—')}
             {cellRow('Payout ratio', f.payoutRatio != null ? fmtFracPct(f.payoutRatio) : '—')}
             {cellRow('Ex-div date', f.exDividendDate
@@ -2055,12 +2140,69 @@ function DividendsView({ symbol }) {
           </>
         )}
       </section>
+      {hist != null && hist.length > 0 && (() => {
+        // Annual sums, oldest → newest. The 5y monthly chart pull means the
+        // first year is usually partial — label it so the short bar doesn't
+        // read as a cut.
+        const byYear = new Map()
+        for (const d of hist) {
+          const y = new Date(d.date * 1000).getUTCFullYear()
+          byYear.set(y, (byYear.get(y) || 0) + d.amount)
+        }
+        const years = [...byYear.entries()].sort((a, b) => a[0] - b[0])
+        const max = Math.max(...years.map(([, v]) => v), 0.0001)
+        const firstYear = years[0]?.[0]
+        const recent = hist.slice(0, 8)
+        return (
+          <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
+            <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
+              <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Payment history')}</h2>
+            </header>
+            <div class="flex items-end gap-2 px-3 pt-3 pb-1 h-24">
+              {years.map(([y, v]) => (
+                <div key={y} class="flex-1 flex flex-col items-center gap-1 min-w-0">
+                  <span class="font-mono text-[9px] text-ink-2">{fmtPrice(v)}</span>
+                  <div class="w-full rounded-t-sm bg-accent/60"
+                    style={{ height: `${Math.max(3, Math.round((v / max) * 52))}px` }} />
+                  <span class="font-mono text-[9px] text-muted">{y}{y === firstYear ? '*' : ''}</span>
+                </div>
+              ))}
+            </div>
+            {firstYear != null && (
+              <p class="px-3 pb-1 font-mono text-[9px] text-muted">* {tl('partial year — 5y window')}</p>
+            )}
+            <table class="w-full border-collapse font-mono text-[11px]">
+              <thead>
+                <tr class="text-[9px] text-muted uppercase tracking-wider bg-surface-2/60">
+                  <th class="px-3 py-1 text-left">{tl('Ex-date')}</th>
+                  <th class="px-3 py-1 text-right">{tl('Amount')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recent.map((d) => (
+                  <tr key={d.date} class="border-t border-line">
+                    <td class="px-3 py-[3px] text-ink-2">
+                      {new Date(d.date * 1000).toISOString().slice(0, 10)}
+                    </td>
+                    <td class="px-3 py-[3px] text-right text-ink">{fmtPrice(d.amount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+        )
+      })()}
+      {splits != null && splits.length > 0 && (
+        <p class="px-1 font-mono text-[10.5px] text-muted">
+          {tl('Splits')}: {splits.map((s) => `${s.ratio} (${new Date(s.date * 1000).toISOString().slice(0, 10)})`).join(' · ')}
+        </p>
+      )}
       {md && md.trim() && !/^no dividend/i.test(md.trim()) && (
         <section class="bg-surface-1 border border-line rounded-xl px-3 py-2 font-anth text-[12.5px] leading-relaxed text-ink-2">
           <MdLite text={md} />
         </section>
       )}
-      {f != null && f.dividendYield == null && (
+      {f != null && (f.dividendYield ?? f.yield) == null && (hist == null || hist.length === 0) && (
         <p class="px-1 font-mono text-[10.5px] text-muted">{symbol} pays no dividend — growth name, the yield is the thesis.</p>
       )}
     </div>
