@@ -8,7 +8,7 @@ import {
 describe('MODELS registry', () => {
   it('exposes the deliberately trimmed web lineup', () => {
     expect(Object.keys(MODELS)).toEqual(['flash', 'sonnet', 'opus', 'fable', 'terra', 'sol'])
-    expect(MODELS.flash).toMatchObject({ id: 'gemini-3.6-flash', thinkingBudget: 1024 })
+    expect(MODELS.flash).toMatchObject({ id: 'gemini-3.7-flash', thinkingBudget: 1024 })
     expect(MODELS.opus).toMatchObject({ id: 'claude-opus-5', effort: 'medium' })
     expect(MODELS.terra).toMatchObject({ id: 'gpt-5.6-terra', reasoningEffort: 'high' })
     expect(MODELS.sol).toMatchObject({ id: 'gpt-5.6-sol', reasoningEffort: 'low' })
@@ -26,9 +26,9 @@ describe('MODELS registry', () => {
 
 describe('estimateCost', () => {
   it('charges input estimate plus full output allowance', () => {
-    // Flash 3.6: $1.50/M in, $7.50/M out, 2048 max out tokens
+    // Flash 3.7: $0.75/M in, $3.75/M out, 2048 max out tokens
     const c = estimateCost(MODELS.flash, 4000) // ≈1000 input tokens
-    expect(c).toBeCloseTo((1000 / 1e6) * 1.5 + (2048 / 1e6) * 7.5, 6)
+    expect(c).toBeCloseTo((1000 / 1e6) * 0.75 + (2048 / 1e6) * 3.75, 6)
   })
 
   it('keeps a fable turn well under the daily cap', () => {
