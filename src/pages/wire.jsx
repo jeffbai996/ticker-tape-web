@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import {
-  wireUrl, setWireUrl, fragwireHome, fetchEvents, fetchUpdates, fetchToday, fetchMeta,
+  wireUrl, setWireUrl, fragwireHome, calendarSubscriptionUrl, fetchEvents, fetchUpdates, fetchToday, fetchMeta,
   demoBackfill, demoEvent, demoToday, rankEvents, collapseSessions, clusterStories,
   srcCred, evHeadline, evBody, matchesWireQuery, pubDisplayName, readMinutes,
   toggleWireArticle,
@@ -678,6 +678,7 @@ export function Wire({ route }) {
 
   const stateTone = { demo: 'text-muted', connecting: 'text-muted', live: 'text-accent', error: 'text-down' }
   const wireHome = fragwireHome()      // re-reads on endpoint change via `endpoint` state
+  const calendarUrl = calendarSubscriptionUrl()
 
   const connState = state === 'live' ? 'live' : state === 'error' ? 'down'
     : state === 'connecting' ? 'connecting' : 'demo'
@@ -731,6 +732,10 @@ export function Wire({ route }) {
                 {tl(label)}
               </a>
             ))}
+            <a href={calendarUrl} title={tl('Subscribe to Fragwire calendar')}
+               class="px-2 py-0.5 rounded-md font-sans font-semibold text-[11px] text-accent hover:text-ink hover:bg-surface-2 hover:no-underline">
+              {tl('subscribe')}
+            </a>
           </nav>
         )}
         {error && <span class="font-mono text-[11px] text-down truncate">{error}</span>}

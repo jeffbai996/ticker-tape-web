@@ -65,6 +65,14 @@ export function fragwireHome() {
   return host.endsWith('.ts.net') ? `https://${host}:${WIRE_UI_PORT}` : ''
 }
 
+/** Calendar-client subscription URL for the configured Fragwire service. */
+export function calendarSubscriptionUrl() {
+  const home = fragwireHome()
+  if (!home) return ''
+  const url = new URL('/calendar.ics', home)
+  return url.href.replace(/^https?:/, 'webcal:')
+}
+
 // `newest` takes the TAIL of the archive. Without it a since_id=0 backfill
 // returns the OLDEST rows in the store — the board opened on ancient events
 // and a link to a fresh story landed on nothing (Jeff 2026-08-05).
