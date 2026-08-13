@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { lastSessionBars, fetchHistory, indicatorWarmRange } from '../../src/lib/history.js'
+import { lastSessionBars, latestSessionBars, fetchHistory, indicatorWarmRange, RANGES } from '../../src/lib/history.js'
 
 
 describe('lastSessionBars', () => {
@@ -19,6 +19,25 @@ describe('lastSessionBars', () => {
   it('survives empty input', () => {
     expect(lastSessionBars([])).toEqual([])
     expect(lastSessionBars(null)).toEqual([])
+  })
+})
+
+describe('two-session chart range', () => {
+  const et = (iso) => Math.floor(new Date(iso).getTime() / 1000)
+  const bars = [
+    { time: et('2026-08-07T20:00:00Z'), close: 1 },
+    { time: et('2026-08-10T08:00:00Z'), close: 2 },
+    { time: et('2026-08-10T08:01:00Z'), close: 3 },
+    { time: et('2026-08-10T08:02:00Z'), close: 4 },
+  ]
+
+  it('keeps the latest two exchange dates across a weekend', () => {
+    expect(latestSessionBars(bars, 2).map((bar) => bar.close)).toEqual([1, 2, 3, 4])
+  })
+
+  it('replaces the visible 1D range with a 5d-backed 2D range', () => {
+    expect(RANGES[0]).toMatchObject({ key: '2D', range: '5d', sessions: 2 })
+    expect(RANGES.some((range) => range.key === '1D')).toBe(false)
   })
 })
 
@@ -61,6 +80,12 @@ describe('fetchHistory extended hours', () => {
     globalThis.fetch.mockClear()
     await fetchHistory('EXTB', '1D')
     expect(globalThis.fetch.mock.calls[0][0]).not.toContain('includePrePost')
+  })
+
+  it('backs the 2D window with five days of intraday data', async () => {
+    await fetchHistory('TWOD', '2D', { prepost: true })
+    expect(globalThis.fetch.mock.calls[0][0]).toContain('range=5d&interval=5m')
+    expect(globalThis.fetch.mock.calls[0][0]).toContain('includePrePost=true')
   })
 
   it('caches the two sessions separately so toggling refetches', async () => {

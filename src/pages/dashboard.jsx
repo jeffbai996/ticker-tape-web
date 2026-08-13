@@ -368,7 +368,7 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
                 give up width, so the fixed price/change/AH columns stay aligned
                 across rows AND never get pushed past the clip edge. Below
                 820px the text hides but the gutter stays, collapsing to 0. */}
-            <span class="tui-company-name-wide hidden @min-[820px]:block flex-1 min-w-0 max-w-[120px] @min-[1080px]:max-w-[240px]">
+            <span class="tui-company-name-wide hidden @min-[820px]:block flex-1 min-w-0 max-w-[220px] @min-[1080px]:max-w-[300px]">
               <Marquee text={q?.name || ''} title={q?.name ? `${symbol} — ${q.name}` : symbol}
                 class="inline-block w-full text-[10.5px] text-muted font-normal font-anth" />
             </span>
@@ -396,7 +396,7 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
                   phone it was the same size as the print and clipped off the
                   right edge (Jeff 2026-08-04) */}
               {q?.extLabel && q.extPrice != null ? (
-                <span class="whitespace-nowrap text-[11px] max-sm:text-[10px] shrink-0 max-sm:ml-auto @min-[820px]:min-w-[9.4rem] @min-[545px]:text-right">
+                <span class="whitespace-nowrap text-[11px] max-sm:text-[10px] shrink-0 max-sm:ml-auto @min-[820px]:min-w-[7rem] @min-[545px]:text-right">
                   {/* only the PERCENT drops a weight tier (Jeff 2026-08-06);
                       the extended price keeps its weight and runs a size
                       bigger than the tag beside it — it's the figure you read,
@@ -417,7 +417,7 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
                 /* ghost slot: a row whose extended print hasn't loaded used to
                    let the name gutter grow and right-shift the whole quote
                    cluster off the column grid (Jeff 2026-08-06) */
-                <span class="whitespace-nowrap text-[11px] max-sm:hidden shrink-0 invisible @min-[820px]:min-w-[9.4rem] @min-[545px]:text-right" aria-hidden="true">
+                <span class="whitespace-nowrap text-[11px] max-sm:hidden shrink-0 invisible @min-[820px]:min-w-[7rem] @min-[545px]:text-right" aria-hidden="true">
                   {/* mirrors the real print part for part, including the
                       larger price — a ghost narrower than the thing it
                       reserves space for lets the column shift when data lands */}
