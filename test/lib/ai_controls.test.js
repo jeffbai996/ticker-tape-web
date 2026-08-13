@@ -17,7 +17,7 @@ describe('AI generation controls', () => {
 
   it('shows concise report model names without provider families', () => {
     expect(reportModelLabel('Claude Opus 5')).toBe('Opus 5')
-    expect(reportModelLabel('Gemini Flash 3.6')).toBe('Flash 3.6')
+    expect(reportModelLabel('Gemini Flash 3.7')).toBe('Flash 3.7')
     expect(reportModelLabel('GPT 5.6 Sol')).toBe('GPT 5.6 Sol')
     expect(report).toContain('{reportModelLabel(m.label)}')
   })

@@ -24,8 +24,10 @@ const MAX_TOOLS = 16
 // Web mirror of the CLI's MODELS registry (chat.py). cost per 1M tokens.
 export const MODELS = {
   flash: {
-    id: 'gemini-3.6-flash', label: 'Flash 3.6', provider: 'gemini',
-    thinkingBudget: 1024, costIn: 1.50, costOut: 7.50,
+    // Introductory pricing through 2026-12-31; reverts to 1.50/7.50 on
+    // 2027-01-01. Keep in step with chat.py's MODELS registry.
+    id: 'gemini-3.7-flash', label: 'Flash 3.7', provider: 'gemini',
+    thinkingBudget: 1024, costIn: 0.75, costOut: 3.75,
   },
   sonnet: { id: 'claude-sonnet-5', label: 'Sonnet 5', provider: 'anthropic', costIn: 3.00, costOut: 15.00 },
   opus: {
