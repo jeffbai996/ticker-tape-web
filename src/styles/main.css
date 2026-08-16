@@ -265,9 +265,8 @@ html, body {
     transition-timing-function: linear;
   }
 
-  /* Below the dashboard's permanent-name breakpoint, the ticker and company
-     name share one fixed identity slot. The vertical masked swap keeps the
-     quote columns frozen and reads as a state change, not a tooltip. */
+  /* The ticker stays stable below the permanent-name breakpoint. Company
+     names join it only when the container has room for both. */
   .tui-company-identity {
     display: inline-block;
     overflow: hidden;
@@ -278,74 +277,6 @@ html, body {
     display: block;
     overflow: hidden;
     text-overflow: ellipsis;
-    transition:
-      transform .28s cubic-bezier(.16, 1, .3, 1),
-      opacity .18s ease;
-  }
-  .tui-company-name-swap {
-    position: absolute;
-    inset: 0;
-    display: block;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    color: var(--color-ink-2);
-    font: 500 10.25px/1.45 "Anthropic Sans", "Plus Jakarta Sans", system-ui, sans-serif;
-    letter-spacing: -0.01em;
-    padding-right: 2px;
-    opacity: 0;
-    pointer-events: none;
-    transform: translateY(110%);
-    transition:
-      transform .28s cubic-bezier(.16, 1, .3, 1),
-      opacity .18s ease;
-  }
-  /* Only where the slot is too narrow to show ticker AND name at once. Above
-     that the name rides inline, so fading the ticker on hover just deleted
-     the ticker (Jeff 2026-08-05). */
-  /* …but never when the name is ALREADY on the row: during regular hours
-     the freed extended-print space shows it inline, and the tap/hover swap
-     would just replace the ticker with a name you can read anyway
-     (Jeff 2026-08-06) */
-  @container (max-width: 544px) {
-    /* the slot clips its own swap by default; a revealed name is explicitly
-       allowed out of it, or the overlay above gets cut back to the ticker
-       width and none of this buys anything (Jeff 2026-08-07) */
-    .tui-row.is-revealed:not(.has-inline-name) .tui-company-identity,
-    .tui-row:hover:not(.has-inline-name) .tui-company-identity,
-    .tui-row:focus-visible:not(.has-inline-name) .tui-company-identity,
-    .tui-row:focus-within:not(.has-inline-name) .tui-company-identity {
-      overflow: visible;
-    }
-    .tui-row.is-revealed:not(.has-inline-name) .tui-company-symbol,
-    .tui-row:hover:not(.has-inline-name) .tui-company-symbol,
-    .tui-row:focus-visible:not(.has-inline-name) .tui-company-symbol,
-    .tui-row:focus-within:not(.has-inline-name) .tui-company-symbol {
-      opacity: 0;
-      transform: translateY(-110%);
-    }
-    .tui-row.is-revealed:not(.has-inline-name) .tui-company-name-swap,
-    .tui-row:hover:not(.has-inline-name) .tui-company-name-swap,
-    .tui-row:focus-visible:not(.has-inline-name) .tui-company-name-swap,
-    .tui-row:focus-within:not(.has-inline-name) .tui-company-name-swap {
-      opacity: 1;
-      transform: translateY(0);
-      /* The name was capped at the ticker slot — ~69px on a phone — so it
-         ellipsized with the rest of the row sitting empty beside it (Jeff
-         2026-08-07: "text not using the full width"). Revealed, it sizes to
-         its content and rides OVER the numbers on its own backdrop: nothing
-         reflows, the quote comes straight back on the second tap. The
-         column's own overflow clips anything genuinely too long. */
-      right: auto;
-      width: max-content;
-      max-width: 74vw;
-      z-index: 2;
-      padding-right: 1.1rem;
-      background: linear-gradient(90deg,
-        #000 0,
-        #000 calc(100% - 1.1rem),
-        rgb(0 0 0 / 0) 100%);
-    }
   }
   
 /* ─── Drag to reorder (select mode) ───────────────────────────────────────
@@ -411,8 +342,6 @@ html, body {
 
 @media (prefers-reduced-motion: reduce) {
     .mq-inner,
-    .tui-company-symbol,
-    .tui-company-name-swap,
     .board-drop-line {
       transition: none !important;
     }

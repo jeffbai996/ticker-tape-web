@@ -6,55 +6,31 @@ const dashboard = readFileSync(resolve(process.cwd(), 'src/pages/dashboard.jsx')
 const css = readFileSync(resolve(process.cwd(), 'src/styles/main.css'), 'utf8')
 
 describe('compact dashboard company name', () => {
-  it('swaps the ticker for the company name in the same fixed slot', () => {
+  it('only shows the company name once the row has enough room', () => {
     expect(dashboard).toContain('class={`tui-row group/row')
     expect(dashboard).toContain('class="tui-company-identity relative flex items-baseline gap-1.5 flex-1 min-w-0')
     expect(dashboard).toContain('class="tui-company-symbol shrink-0"')
-    // the swap only covers widths too narrow to show both strings at once;
-    // above that the name rides inline in the slot's spare width
-    expect(dashboard).toContain('class="tui-company-name-swap @min-[545px]:hidden"')
-    // 2026-08-06: the mid-band name hover-scrolls instead of hard-truncating,
-    // so the reader can see the rest of a long name at that zoom
-    // open hours free the extended-print space on phones — the name rides
-    // there inline, and only pre/post rows keep the tap-to-reveal swap
-    expect(dashboard).toContain("${q?.extLabel ? 'hidden @min-[545px]:block' : 'block'} @min-[820px]:hidden min-w-0")
-    expect(dashboard).toContain('has-inline-name')
+    expect(dashboard).toContain('data-inline-name class="hidden @min-[545px]:block @min-[820px]:hidden min-w-0"')
     expect(dashboard).toMatch(/data-inline-name[\s\S]{0,200}<Marquee text=\{q\.name\}/)
-    expect(dashboard).toContain('aria-hidden="true"')
     expect(dashboard).toContain('class="tui-company-name-wide hidden @min-[820px]:block')
-    expect(css).toContain('.tui-row:hover:not(.has-inline-name) .tui-company-symbol')
-    expect(css).toContain('.tui-row:focus-visible:not(.has-inline-name) .tui-company-name-swap')
-    expect(css).toMatch(/\.tui-company-name-swap\s*\{[\s\S]*position: absolute;[\s\S]*inset: 0;/)
     expect(css).toMatch(/\.tui-company-identity\s*\{[\s\S]*overflow: hidden;/)
-    expect(css).toMatch(/\.tui-company-name-swap\s*\{[\s\S]*padding-right: 2px;/)
     expect(dashboard).toContain('class="tui-quote-cluster flex items-baseline gap-1.5 max-sm:gap-1 shrink-0"')
     expect(dashboard).toContain('max-w-[220px] @min-[1080px]:max-w-[300px]')
     expect(dashboard).toContain('@min-[820px]:min-w-[7rem] @min-[545px]:text-right')
     expect(dashboard).not.toContain('@min-[820px]:min-w-[9.4rem]')
     expect(dashboard).toMatch(/tui-quote-cluster[\s\S]*q\.extLabel[\s\S]*q\.extPrice/)
-    expect(css).toMatch(/prefers-reduced-motion:[\s\S]*\.tui-company-name-swap/)
   })
 
-  // touch has no hover: first tap on the ticker reveals, second navigates
-  it('reveals the name on a first tap where the slot cannot show both', () => {
-    expect(dashboard).toContain("matchMedia('(hover: none)').matches")
-    expect(dashboard).toContain('data-inline-name')
-    expect(dashboard).toContain('onReveal?.(symbol)')
-    expect(dashboard).toContain("revealed ? ' is-revealed' : ''")
-    expect(css).toContain('.tui-row.is-revealed:not(.has-inline-name) .tui-company-name-swap')
-    expect(css).toContain('@container (max-width: 544px)')
-  })
-
-  // the open row belongs to the BOARD: tapping a second name moves the reveal
-  // instead of stacking, tapping the same one closes it (Jeff 2026-08-07)
-  it('keeps exactly one revealed name and lets it use the row', () => {
-    expect(dashboard).toContain('const [revealedSym, setRevealedSym] = useState(null)')
-    expect(dashboard).toContain('setRevealedSym((cur) => (cur === sym ? null : sym))')
-    expect(dashboard).toMatch(/revealed=\{revealedSym === s\}\s+onReveal=\{toggleReveal\}/)
-    expect(dashboard).toMatch(/revealed=\{revealedSym === symbol\}\s+onReveal=\{toggleReveal\}/)
-    // the swap escapes the ticker slot only while it's open
-    expect(css).toContain('.tui-row.is-revealed:not(.has-inline-name) .tui-company-identity')
-    expect(css).toMatch(/is-revealed[\s\S]*\.tui-company-name-swap[\s\S]*width: max-content;/)
+  it('does not reveal or mask the company name on touch', () => {
+    expect(dashboard).not.toContain("matchMedia('(hover: none)').matches")
+    expect(dashboard).not.toContain('onIdentityTap')
+    expect(dashboard).not.toContain('revealedSym')
+    expect(dashboard).not.toContain('onReveal')
+    expect(dashboard).not.toContain('is-revealed')
+    expect(dashboard).not.toContain('has-inline-name')
+    expect(dashboard).not.toContain('tui-company-name-swap')
+    expect(css).not.toContain('tui-company-name-swap')
+    expect(css).not.toContain('background: linear-gradient(90deg')
   })
 
   it('flashes the regular print as ticker-by-ticker updates land', () => {
