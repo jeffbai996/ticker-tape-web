@@ -5,8 +5,8 @@ import { startFreshnessWatch } from './lib/freshness.js'
 import './styles/main.css'
 
 render(<App />, document.getElementById('app'))
-// wire-connected builds share watchlists through the cloud save; the public
-// keyless build has no endpoint and the engine stays off
+// Private builds use the wire save; public builds stay local until the viewer
+// explicitly enables capability-scoped watchlist sync.
 startWatchlistSync()
 // stale open tabs reload themselves on tab-return after a deploy
 startFreshnessWatch()
