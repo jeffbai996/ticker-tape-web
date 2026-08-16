@@ -12,6 +12,7 @@ import { t as tt, tl } from '../lib/i18n.js'
 import { onSyncStatus } from '../lib/cloudsave.js'
 import { wireUrl } from '../lib/wire.js'
 import { pushWatchlistToWire } from '../lib/watchlistExport.js'
+import { shouldOpenWatchlistCard } from '../lib/watchlistCard.js'
 import { Empty } from '../components/Loading.jsx'
 import { useEffect } from 'preact/hooks'
 
@@ -181,9 +182,16 @@ function WatchlistCard({ item, quotes, earnDays, allLists, primary = false }) {
     const saved = renameWatchlist(item.id, name)
     if (saved) setEditing(false)
   }
+  const openCard = (event) => {
+    if (editing || managing) return
+    if (!shouldOpenWatchlistCard(event, window.getSelection()?.toString())) return
+    location.hash = href
+  }
 
   return (
-    <article class={`group bg-surface-1 border rounded-xl p-3.5 flex flex-col gap-3 min-w-0 transition-colors ${primary ? 'border-accent/40' : 'border-line hover:border-line-2'}`}>
+    <article onClick={openCard} class={`group bg-surface-1 border rounded-xl p-3.5 flex flex-col gap-3 min-w-0 transition-colors ${
+      editing || managing ? '' : 'cursor-pointer hover:bg-surface-2/40'
+    } ${primary ? 'border-accent/40 hover:border-accent/60' : 'border-line hover:border-line-2'}`}>
       <div class="flex items-start gap-2 min-h-9">
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-2">
@@ -200,9 +208,9 @@ function WatchlistCard({ item, quotes, earnDays, allLists, primary = false }) {
             )}
             {primary && <span class="rounded border border-accent/40 bg-accent-soft px-1.5 py-px font-anth text-[7px] font-bold tracking-wider text-accent">{tl('PRIMARY')}</span>}
           </div>
-          <div class="pt-0.5 font-anth text-[9px] text-muted">
-            {item.symbols.length} {tl(item.symbols.length === 1 ? 'ticker' : 'tickers')}
-            {primary ? ` · ${tl('shared across Briefing, Wire, AI, and the tape')}` : ` · ${tl('independent dashboard view')}`}
+          <div data-watchlist-count class="pt-1 flex items-baseline gap-1.5 font-anth">
+            <span class="font-mono text-[12px] font-bold text-ink-2">{item.symbols.length}</span>
+            <span class="text-[10px] text-muted">{tl(item.symbols.length === 1 ? 'ticker' : 'tickers')}</span>
           </div>
         </div>
       </div>
@@ -223,7 +231,10 @@ function WatchlistCard({ item, quotes, earnDays, allLists, primary = false }) {
         onSend={send} onRemove={dropFrom} />
 
       <div class="flex items-center gap-3 border-t border-line pt-2.5 font-anth text-[10px] font-semibold">
-        <a href={href} class="text-accent hover:no-underline">{tl('Open dashboard →')}</a>
+        <a href={href} data-watchlist-open
+          class="inline-flex min-h-9 items-center rounded-md border border-accent/60 bg-accent-soft px-2.5 text-[11px] text-accent whitespace-nowrap hover:bg-accent hover:text-black hover:no-underline transition-colors">
+          {tl('Open dashboard →')}
+        </a>
         <button onClick={() => setManaging((v) => !v)}
           class={managing ? 'text-accent-2' : 'text-muted hover:text-ink'}>
           {managing ? tl('done') : `⇄ ${tl('manage')}`}
