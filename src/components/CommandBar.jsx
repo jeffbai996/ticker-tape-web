@@ -6,6 +6,7 @@ import { getWatchlist } from '../lib/watchlist.js'
 import { parseRich } from '../lib/rich.js'
 import { isTypingTarget, watchMedia } from '../lib/keys.js'
 import { tl } from '../lib/i18n.js'
+import { consoleHeightAt } from '../lib/consoleResize.js'
 
 // The TUI's bottom command line, with a real output console: every command
 // echoes into a drop-up log (like the CLI's main pane) instead of a blink-
@@ -40,6 +41,7 @@ export function CommandBar() {
   const [histIdx, setHistIdx] = useState(-1)
   const history = useRef([])
   const scrollRef = useRef(null)
+  const panelRef = useRef(null)
   // console height is a preference: drag the top edge, it sticks
   const [consoleH, setConsoleH] = useState(() => {
     const v = parseInt(localStorage.getItem('console_h') || '', 10)
@@ -53,24 +55,41 @@ export function CommandBar() {
   const closeConsole = () => { setOpen(false); setExpanded(false) }
   const startDrag = (e) => {
     e.preventDefault()
+    const panel = panelRef.current
+    if (!panel) return
     setExpanded(true)
     const grip = e.currentTarget
     grip.setPointerCapture(e.pointerId)
     const startY = e.clientY
     const startH = consoleH
-    const move = (ev) => setConsoleH(
-      Math.max(120, Math.min(window.innerHeight * 0.8, startH + (startY - ev.clientY))))
+    let next = startH
+    let frame = 0
+    const paint = () => {
+      frame = 0
+      panel.style.height = `${next}px`
+      panel.style.maxHeight = `${next}px`
+    }
+    // Expanding and tracking are synchronous DOM work. Feeding every pointer
+    // event through Preact plus a 200ms CSS transition made the grip trail the
+    // finger by roughly half a second on iPad.
+    paint()
+    const move = (ev) => {
+      next = consoleHeightAt(startH, startY, ev.clientY, window.innerHeight)
+      if (!frame) frame = requestAnimationFrame(paint)
+    }
     const up = () => {
+      if (frame) cancelAnimationFrame(frame)
+      paint()
       grip.removeEventListener('pointermove', move)
       grip.removeEventListener('pointerup', up)
-      setConsoleH((h) => {
-        const r = Math.round(h)
-        localStorage.setItem('console_h', String(r))
-        return r
-      })
+      grip.removeEventListener('pointercancel', up)
+      const height = Math.round(next)
+      localStorage.setItem('console_h', String(height))
+      setConsoleH(height)
     }
     grip.addEventListener('pointermove', move)
     grip.addEventListener('pointerup', up)
+    grip.addEventListener('pointercancel', up)
   }
 
   useEffect(() => {
@@ -150,6 +169,11 @@ export function CommandBar() {
 
   const onKey = (e) => {
     const h = history.current
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      e.currentTarget.form?.requestSubmit()
+      return
+    }
     if (e.key === 'Tab' && suggestions.length) {
       e.preventDefault()
       setValue(applyCompletion(value, suggestions))
@@ -197,15 +221,19 @@ export function CommandBar() {
               ✕
             </button>
           </div>
-          <div ref={scrollRef} onClick={() => setExpanded(true)}
-            style={{ maxHeight: `${expanded ? consoleH : Math.min(consoleH, COMPACT_H)}px` }}
-            class="overflow-y-auto px-3 py-1.5 font-mono text-[11px] leading-relaxed select-text transition-[max-height] duration-200">
+          <div ref={(node) => { scrollRef.current = node; panelRef.current = node }}
+            onClick={() => setExpanded(true)}
+            style={{
+              height: `${expanded ? consoleH : Math.min(consoleH, COMPACT_H)}px`,
+              maxHeight: `${expanded ? consoleH : Math.min(consoleH, COMPACT_H)}px`,
+            }}
+            class="overflow-y-auto px-3 py-1.5 font-mono text-[11px] leading-relaxed select-text will-change-[height]">
             {log.map((entry) => (
               <div key={entry.id} class="pb-1">
                 <div class="text-muted">
                   <span class="text-accent">ticker&gt;</span> {entry.cmd}
                 </div>
-                <pre class="text-ink-2 whitespace-pre-wrap pl-3 m-0 font-mono"><Rich text={entry.text} /></pre>
+                <pre class="text-ink-2 whitespace-pre-wrap m-0 font-mono"><Rich text={entry.text} /></pre>
               </div>
             ))}
           </div>
