@@ -216,6 +216,26 @@ const STRINGS = {
     en: 'list full — {max} symbols max',
     zh: '列表已满 — 最多 {max} 个代码',
   },
+  'watchlists.sync_local': {
+    en: 'Saved in this browser. Enable private-code sync to use the same lists on another device.',
+    zh: '目前保存在此浏览器中。启用私密代码同步，即可在其他设备使用同一组自选股。',
+  },
+  'watchlists.sync_secret': {
+    en: 'Anyone with this code can open and change these watchlists. Share it privately.',
+    zh: '任何持有此代码的人都能打开并修改这些自选股，请仅私下分享。',
+  },
+  'watchlists.sync_invalid': {
+    en: 'That sync code is not valid.',
+    zh: '同步代码无效。',
+  },
+  'watchlists.sync_connected': {
+    en: 'Sync connected. This browser will reconcile with the saved copy.',
+    zh: '同步已连接。此浏览器将与云端副本合并。',
+  },
+  'watchlists.sync_disconnected': {
+    en: 'Sync disconnected. Your lists remain saved in this browser.',
+    zh: '同步已断开。自选股仍保存在此浏览器中。',
+  },
   'screen.cap': {
     en: 'the screen compares at most {max} symbols',
     zh: '筛选器最多同时比较 {max} 个代码',
@@ -397,6 +417,8 @@ const LABELS = {
   'fails a band': '未通过条件', 'missing data': '数据缺失',
   'earnings 14d': '14天内财报', 'earnings 7d': '7天内财报', Create: '创建',
   cloud: '云端', 'cloud offline': '云端离线', 'send symbols to': '发送至', manage: '管理',
+  'sync watchlists': '同步自选股', 'enable sync': '启用同步', 'sync code': '同步代码',
+  connect: '连接', disconnect: '断开同步', or: '或', 'copy code': '复制代码', 'copied code ✓': '代码已复制 ✓',
   '→ moves · ✕ removes': '→ 移动 · ✕ 移除', 'copied ✓': '已复制 ✓', Export: '导出',
   'send to destination': '移动到目标列表', 'symbols (optional)': '股票代码（可选）',
   'describe a change — add, rewrite, forget…': '描述改动 — 新增、改写、忘记…',

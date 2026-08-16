@@ -1,10 +1,13 @@
-// Watchlist cloud sync — the BaiCloud-games save pattern, so Jeff and Dan
-// share lists across devices (2026-08-06). The wire hosts one shared document
-// under /api/saves/ttw-watchlists with optimistic concurrency: pull, merge,
-// push with the revision we based our edit on; a 409 hands back the winner's
-// document and we merge again. The server never merges — this file owns it.
+// Watchlist cloud sync. Private builds use the wire's shared save document;
+// public builds opt into a capability-scoped document on the data worker.
+// Both backends use optimistic concurrency: pull, merge, then push against the
+// revision we read. The server never merges — this file owns it.
 
 import { wireUrl } from './wire.js'
+import {
+  clearWatchlistCapability, createWatchlistCapability, getWatchlistCapability,
+  saveWatchlistCapability, validWatchlistCapability, watchlistSyncEndpoint,
+} from './watchlistSync.js'
 
 export const SAVE_KEY = 'ttw-watchlists'
 const META_KEY = 'cloudsave_meta_v1'   // {rev, touched:{main|list-id: ts}, deleted:{id: ts}}
@@ -36,11 +39,17 @@ export function markDeleted(meta, id, ts = Date.now()) {
   return { ...meta, touched, deleted: { ...meta.deleted, [id]: ts } }
 }
 
+export function seedLocalSyncMeta(main, lists, ts = Date.now()) {
+  const touched = { main: ts }
+  for (const list of lists || []) touched[list.id] = ts
+  return { rev: 0, touched, deleted: {} }
+}
+
 /**
  * Merge the local snapshot with the remote document. Per part (main list and
  * each named list) the side with the NEWER touch timestamp wins whole; a
  * deletion beats an edit only when the deletion is newer. Unknown remote
- * lists are adopted (that's how Dan's lists appear on Jeff's phone).
+ * lists are adopted so another browser's lists appear on this device.
  *
  * Returns { doc, changedLocal } — doc is what should exist everywhere,
  * changedLocal says whether the local store must be rewritten.
@@ -84,9 +93,9 @@ export function mergeDocs(local, remote) {
 }
 
 async function api(path, init) {
-  const base = wireUrl()
-  if (!base) throw new Error('no wire endpoint')
-  const resp = await fetch(`${base.replace(/\/$/, '')}${path}`, {
+  const target = saveEndpoint()
+  if (!target) throw new Error('no watchlist sync endpoint')
+  const resp = await fetch(target, {
     headers: { 'Content-Type': 'application/json' },
     signal: AbortSignal.timeout(10_000),
     ...init,
@@ -96,14 +105,14 @@ async function api(path, init) {
 }
 
 export async function pullRemote() {
-  const { out } = await api(`/api/saves/${SAVE_KEY}`)
+  const { out } = await api()
   if (!out.ok) throw new Error(out.error || 'pull failed')
   return { doc: out.data, rev: out.rev }
 }
 
 /** Push a doc based on `rev`; on a lost race returns the winner instead. */
 export async function pushRemote(doc, rev) {
-  const { status, out } = await api(`/api/saves/${SAVE_KEY}`, {
+  const { status, out } = await api(null, {
     method: 'POST',
     body: JSON.stringify({ data: doc, rev }),
   })
@@ -122,7 +131,7 @@ import { getWatchlist, onWatchlistChange, replaceWatchlist } from './watchlist.j
 import { loadWatchlists, onWatchlistsChange, replaceWatchlists } from './watchlists.js'
 
 const statusListeners = new Set()
-let status = { state: wireUrl() ? 'idle' : 'off', rev: 0, at: 0 }
+let status = { state: saveEndpoint() ? 'idle' : 'off', rev: 0, at: 0 }
 
 export function onSyncStatus(fn) {
   statusListeners.add(fn)
@@ -141,7 +150,14 @@ export function syncStatus() {
 
 let applying = false
 let timer = null
+let interval = null
 let started = false
+
+function saveEndpoint() {
+  const wire = wireUrl()
+  if (wire) return `${wire.replace(/\/$/, '')}/api/saves/${SAVE_KEY}`
+  return watchlistSyncEndpoint()
+}
 
 function snapshot(meta) {
   return {
@@ -172,7 +188,7 @@ function stampLocalEdits(prev, meta) {
 }
 
 async function syncOnce() {
-  if (!wireUrl()) return
+  if (!saveEndpoint()) { setStatus({ state: 'off', rev: 0 }); return }
   let meta = loadMeta()
   setStatus({ state: 'syncing' })
   try {
@@ -207,7 +223,7 @@ async function syncOnce() {
     }
     setStatus({ state: 'error' })
   } catch {
-    setStatus({ state: wireUrl() ? 'offline' : 'off' })
+    setStatus({ state: saveEndpoint() ? 'offline' : 'off' })
   }
 }
 
@@ -221,7 +237,6 @@ function queueSync() {
 export function startWatchlistSync() {
   if (started || typeof localStorage === 'undefined') return
   started = true
-  if (!wireUrl()) { setStatus({ state: 'off' }); return }
   let prev = { main: getWatchlist(), lists: loadWatchlists() }
   const onEdit = () => {
     if (applying) { prev = { main: getWatchlist(), lists: loadWatchlists() }; return }
@@ -232,7 +247,41 @@ export function startWatchlistSync() {
   }
   onWatchlistChange(onEdit)
   onWatchlistsChange(onEdit)
-  syncOnce()
-  // pull every 60s so the other device's edits appear without a reload
-  setInterval(syncOnce, 60_000)
+  restartWatchlistSync()
 }
+
+function restartWatchlistSync() {
+  clearTimeout(timer)
+  clearInterval(interval)
+  interval = null
+  if (!saveEndpoint()) { setStatus({ state: 'off', rev: 0 }); return }
+  syncOnce()
+  // Pull periodically so another device appears without a reload.
+  interval = setInterval(syncOnce, 60_000)
+}
+
+export function createPublicWatchlistSync() {
+  const capability = createWatchlistCapability()
+  if (!saveWatchlistCapability(capability)) return ''
+  saveMeta(seedLocalSyncMeta(getWatchlist(), loadWatchlists()))
+  restartWatchlistSync()
+  return capability
+}
+
+export function connectPublicWatchlistSync(value) {
+  if (!validWatchlistCapability(value)) return false
+  if (!saveWatchlistCapability(value)) return false
+  // The remote copy is authoritative on first connect. Subsequent local edits
+  // receive fresh touches through the normal store listeners.
+  saveMeta({ rev: 0, touched: {}, deleted: {} })
+  restartWatchlistSync()
+  return true
+}
+
+export function disconnectPublicWatchlistSync() {
+  clearWatchlistCapability()
+  saveMeta({ rev: 0, touched: {}, deleted: {} })
+  restartWatchlistSync()
+}
+
+export { getWatchlistCapability }
