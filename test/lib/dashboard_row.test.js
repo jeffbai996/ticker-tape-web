@@ -9,7 +9,7 @@ describe('compact dashboard company name', () => {
   it('obscures the name only in the compact touch layout', () => {
     expect(dashboard).toContain('class={`tui-row group/row')
     expect(dashboard).toContain('class="tui-company-identity relative flex items-baseline gap-1.5 flex-1 min-w-0')
-    expect(dashboard).toContain('class="tui-company-symbol shrink-0" onClick={onIdentityTap}')
+    expect(dashboard).toContain('data-ticker-reveal-target class="tui-company-symbol shrink-0" onClick={onIdentityTap}')
     expect(dashboard).toContain('data-inline-name class="hidden @min-[545px]:block @min-[820px]:hidden min-w-0"')
     expect(dashboard).toMatch(/data-inline-name[\s\S]{0,200}<Marquee text=\{q\.name\}/)
     expect(dashboard).toContain('class="tui-company-name-swap @min-[545px]:hidden"')
@@ -24,14 +24,16 @@ describe('compact dashboard company name', () => {
   })
 
   it('animates one compact name without restoring the black overlay', () => {
-    expect(dashboard).toContain("matchMedia('(hover: none)').matches")
+    expect(dashboard).not.toContain("matchMedia('(hover: none)').matches")
     expect(dashboard).toContain('onIdentityTap')
     expect(dashboard).toContain('revealedSym')
     expect(dashboard).toContain('onReveal')
     expect(dashboard).toContain('is-revealed')
     expect(dashboard).toContain('tui-company-name-swap')
     expect(css).toContain('.tui-row.is-revealed .tui-company-name-swap')
-    expect(css).toContain('.tui-row.is-revealed .tui-quote-cluster')
+    expect(css).not.toContain('.tui-row.is-revealed .tui-quote-cluster')
+    expect(css).toMatch(/\.tui-row\.is-revealed \.tui-company-name-swap\s*\{[\s\S]*width: 100%;[\s\S]*max-width: 100%;/)
+    expect(css).not.toMatch(/\.tui-row\.is-revealed[\s\S]{0,1000}\.tui-quote-cluster[\s\S]{0,120}opacity:\s*0/)
     expect(css).not.toContain('background: linear-gradient(90deg')
   })
 
