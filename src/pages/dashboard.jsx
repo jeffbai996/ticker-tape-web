@@ -251,12 +251,10 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
   const q = data?.quote
   const identityRef = useRef(null)
   const onIdentityTap = (e) => {
-    // The first ticker tap is a reveal only in the compact touch layout. Once
-    // revealed, or wherever the inline name is already visible, leave the
-    // anchor alone so the tap navigates normally.
-    if (selecting || revealed || !q?.name
-        || typeof matchMedia !== 'function'
-        || !matchMedia('(hover: none)').matches) return
+    // The compact layout itself owns this interaction. Once revealed, or
+    // wherever the inline name is already visible, leave the row link alone
+    // so the next tap navigates normally.
+    if (selecting || revealed || !q?.name) return
     const inline = identityRef.current?.querySelector('[data-inline-name]')
     if (inline && inline.offsetParent !== null) return
     e.preventDefault()
@@ -275,6 +273,7 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
   return (
     <a
       href={`#/research/${symbol.toLowerCase()}`}
+      data-row-link="ticker-overview"
       data-row-symbol={symbol}
       data-drag-scope={dragScope || undefined}
       onMouseEnter={() => prefetchSymbol(symbol)}
@@ -324,10 +323,10 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
           VOL was landing flush against the extended-hours percentage */}
       <div class="flex gap-6 max-sm:gap-2 min-w-0">
         <div class="flex-1 min-w-0 overflow-hidden">
-          <div class="flex items-baseline gap-1.5 max-sm:gap-1 font-mono text-[13px] max-sm:text-[12px] flex-nowrap max-sm:flex-wrap min-w-0">
+          <div class="flex items-baseline gap-1.5 max-sm:gap-1 font-mono text-[13px] max-sm:text-[12px] flex-nowrap min-w-0">
             <span ref={identityRef}
               class="tui-company-identity relative flex items-baseline gap-1.5 flex-1 min-w-0 @min-[820px]:flex-none @min-[820px]:w-14 text-ink font-[650] font-tick text-[12px]">
-              <span class="tui-company-symbol shrink-0" onClick={onIdentityTap}>{symbol}</span>
+              <span data-ticker-reveal-target class="tui-company-symbol shrink-0" onClick={onIdentityTap}>{symbol}</span>
               {/* Mobile keeps the company name behind the ticker's deliberate
                   first-tap reveal. Wider rows show it inline permanently. */}
               {q?.name && (

@@ -6,8 +6,8 @@ const src = fs.readFileSync('src/pages/dashboard.jsx', 'utf8')
 describe('watchlist row: touch identity', () => {
   it('binds the first-tap reveal only to the ticker glyphs', () => {
     expect(src).toContain(
-      '<span class="tui-company-symbol shrink-0" onClick={onIdentityTap}>{symbol}</span>')
-    expect(src).toContain("matchMedia('(hover: none)').matches")
+      '<span data-ticker-reveal-target class="tui-company-symbol shrink-0" onClick={onIdentityTap}>{symbol}</span>')
+    expect(src).not.toContain("matchMedia('(hover: none)').matches")
     expect(src).toContain("identityRef.current?.querySelector('[data-inline-name]')")
     expect(src).toContain('onReveal?.(symbol)')
   })
@@ -19,6 +19,10 @@ describe('watchlist row: touch identity', () => {
     const openTag = slot.slice(0, slot.indexOf('>') + 1)
     expect(openTag).not.toContain('onClick')
     expect(src).not.toContain('onClick={onIdentityTap} class="tui-row')
+    expect(src).toContain('href={`#/research/${symbol.toLowerCase()}`}')
+    expect(src).toContain('data-row-link="ticker-overview"')
+    expect(src).toContain('flex-nowrap min-w-0')
+    expect(src).not.toContain('flex-nowrap max-sm:flex-wrap min-w-0')
   })
 
   it('reveals once, then lets the second ticker tap navigate', () => {

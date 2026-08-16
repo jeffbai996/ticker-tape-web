@@ -268,13 +268,16 @@ html, body {
   /* Compact touch rows use a two-step identity: ticker first, full name after
      a deliberate ticker tap. Wider rows keep the name inline. */
   .tui-company-identity {
-    display: inline-block;
+    display: flex;
+    min-width: 0;
     overflow: hidden;
     white-space: nowrap;
     vertical-align: baseline;
   }
   .tui-company-symbol {
-    display: block;
+    display: inline-block;
+    flex: none;
+    width: max-content;
     overflow: hidden;
     text-overflow: ellipsis;
     transition:
@@ -289,7 +292,7 @@ html, body {
     white-space: nowrap;
     text-overflow: ellipsis;
     color: var(--color-ink-2);
-    font: 500 10.5px/1.45 "Anthropic Sans", "Plus Jakarta Sans", system-ui, sans-serif;
+    font: 500 12px/1.45 "Anthropic Sans", "Plus Jakarta Sans", system-ui, sans-serif;
     letter-spacing: -0.01em;
     opacity: 0;
     pointer-events: none;
@@ -298,27 +301,17 @@ html, body {
       transform .28s cubic-bezier(.16, 1, .3, 1),
       opacity .18s ease;
   }
-  .tui-quote-cluster { transition: opacity .18s ease; }
-
   @container (max-width: 544px) {
-    .tui-row.is-revealed .tui-company-identity { overflow: visible; }
     .tui-row.is-revealed .tui-company-symbol {
       opacity: 0;
       transform: translateY(-110%);
     }
     .tui-row.is-revealed .tui-company-name-swap {
-      right: auto;
-      width: max-content;
-      max-width: calc(100cqw - 3rem);
+      width: 100%;
+      max-width: 100%;
       z-index: 2;
       opacity: 1;
       transform: translateY(0);
-    }
-    /* The name gets the row while revealed, without the black backing the old
-       overlay needed. The quote remains laid out underneath, so nothing jumps. */
-    .tui-row.is-revealed .tui-quote-cluster {
-      opacity: 0;
-      pointer-events: none;
     }
   }
   
@@ -387,7 +380,6 @@ html, body {
     .mq-inner,
     .tui-company-symbol,
     .tui-company-name-swap,
-    .tui-quote-cluster,
     .board-drop-line {
       transition: none !important;
     }
