@@ -719,10 +719,10 @@ export function Chat() {
   // (Jeff 2026-08-10). CSS zoom on the scroller scales the px-classed bubbles.
   const [chatZoom, setChatZoom] = useState(() => {
     const saved = Number(localStorage.getItem('chat_text_zoom'))
-    return saved >= 0.8 && saved <= 1.4 ? saved : 1
+    return saved >= 0.7 && saved <= 2 ? saved : 1
   })
   const bumpChatZoom = (d) => setChatZoom((z) => {
-    const next = Math.min(1.4, Math.max(0.8, Math.round((z + d) * 20) / 20))
+    const next = Math.min(2, Math.max(0.7, Math.round((z + d) * 20) / 20))
     localStorage.setItem('chat_text_zoom', String(next))
     return next
   })
@@ -1322,9 +1322,9 @@ export function Chat() {
           </span>
           <span class="flex items-center gap-0.5 bg-surface-2 border border-line rounded-md px-0.5 py-px" title="transcript text size">
             <button type="button" onClick={() => bumpChatZoom(-0.1)}
-              class="px-1.5 py-px font-mono text-[10px] rounded text-muted hover:text-ink hover:bg-surface-3">A−</button>
+              class="px-1.5 py-px font-mono text-[10px] rounded text-muted hover:text-ink hover:bg-surface-3">−</button>
             <button type="button" onClick={() => bumpChatZoom(0.1)}
-              class="px-1.5 py-px font-mono text-[10px] rounded text-muted hover:text-ink hover:bg-surface-3">A+</button>
+              class="px-1.5 py-px font-mono text-[10px] rounded text-muted hover:text-ink hover:bg-surface-3">+</button>
           </span>
           {effortLevels.length > 0 && (
             <span class="flex items-center gap-0.5 bg-surface-2 border border-line rounded-md px-0.5 py-px" title={tl('thinking effort')}>
@@ -1586,7 +1586,7 @@ export function Chat() {
               stickRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120
             }}
             class="flex-1 overflow-y-auto min-h-0 max-w-[46rem] w-full mx-auto flex flex-col gap-3 px-2"
-            style={chatZoom !== 1 ? { zoom: chatZoom } : undefined}
+            style={{ fontSize: `${(13.5 * chatZoom).toFixed(2)}px` }}
           >
         {history.map((m, i) => {
           if (m.role === 'tool') return null
@@ -1595,7 +1595,7 @@ export function Chat() {
             return (
               <div key={i} class="chat-message-enter self-start flex flex-col gap-1 max-w-[92%]">
                 {m.content && (
-                  <div class="rounded-xl border px-3 py-2 font-anth text-[13px] leading-relaxed bg-surface-1 border-line text-ink">
+                  <div class="rounded-xl border px-3 py-2 font-anth text-[0.96em] leading-relaxed bg-surface-1 border-line text-ink">
                     <MdLite text={m.content} />
                   </div>
                 )}
@@ -1612,7 +1612,7 @@ export function Chat() {
                 )}
                 <div class="group self-start max-w-[92%] relative"
                   title={m.ts ? `${m.model ? `${m.model} · ` : ''}${new Date(m.ts).toLocaleString()}` : undefined}>
-                  <div class="chat-assistant-bubble rounded-2xl border px-3.5 py-2.5 text-[13.5px] leading-relaxed bg-surface-1 border-line text-ink font-anth">
+                  <div class="chat-assistant-bubble rounded-2xl border px-3.5 py-2.5 text-[1em] leading-relaxed bg-surface-1 border-line text-ink font-anth">
                     <MdLite text={m.content} />
                   </div>
                   <div class="absolute -top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
@@ -1644,7 +1644,7 @@ export function Chat() {
             )
           }
           return (
-            <div key={i} class="chat-message-enter self-end rounded-2xl px-3.5 py-2.5 text-[13.5px] leading-relaxed whitespace-pre-wrap bg-accent-soft border border-accent/40 text-ink max-w-[85%] font-anth">
+            <div key={i} class="chat-message-enter self-end rounded-2xl px-3.5 py-2.5 text-[1em] leading-relaxed whitespace-pre-wrap bg-accent-soft border border-accent/40 text-ink max-w-[85%] font-anth">
               {m.content}
             </div>
           )
@@ -1653,13 +1653,13 @@ export function Chat() {
           <ActivityTrace steps={activity} busy={busy} startedAt={turnStartedRef.current} usage={usage} />
         )}
         {liveAnswer && (
-          <div class="chat-assistant-bubble chat-message-live self-start max-w-[92%] rounded-2xl border px-3.5 py-2.5 text-[13.5px] leading-relaxed bg-surface-1 border-line text-ink font-anth">
+          <div class="chat-assistant-bubble chat-message-live self-start max-w-[92%] rounded-2xl border px-3.5 py-2.5 text-[1em] leading-relaxed bg-surface-1 border-line text-ink font-anth">
             <MdLite text={liveAnswer} />
           </div>
         )}
         {queued.map((item, i) => (
           <div key={`${item.ts}-${i}`} class="self-end max-w-[85%] flex flex-col items-end gap-0.5">
-            <div class="rounded-2xl px-3.5 py-2.5 text-[13.5px] leading-relaxed whitespace-pre-wrap bg-accent-soft/60 border border-accent/25 text-ink font-anth">
+            <div class="rounded-2xl px-3.5 py-2.5 text-[1em] leading-relaxed whitespace-pre-wrap bg-accent-soft/60 border border-accent/25 text-ink font-anth">
               {item.text}
             </div>
             <span class="font-mono text-[9px] text-muted pr-1">{tl('queued follow-up')}</span>
