@@ -314,13 +314,13 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
             <span
               class="tui-company-identity relative flex items-baseline gap-1.5 flex-1 min-w-0 @min-[820px]:flex-none @min-[820px]:w-14 text-ink font-[650] font-tick text-[12px]">
               <span class="tui-company-symbol shrink-0">{symbol}</span>
-              {/* Company names are useful only when the row can keep the quote
-                  cluster intact. On narrow touch layouts the ticker remains
-                  the sole identity; tap state must never replace it. */}
+              {/* Keep the company name as ordinary inline content at every
+                  width. The elastic identity slot yields to the quote cluster,
+                  while Marquee clips long names without any tap overlay. */}
               {q?.name && (
                 /* the mid band truncated the name with no way to read the rest
                    — same hover-scroll the wide band uses (Jeff 2026-08-06). */
-                <span data-inline-name class="hidden @min-[545px]:block @min-[820px]:hidden min-w-0">
+                <span data-inline-name class="block @min-[820px]:hidden min-w-0">
                   <Marquee text={q.name} title={`${symbol} — ${q.name}`}
                     class="block min-w-0 text-[10.5px] text-muted font-normal font-anth" />
                 </span>
