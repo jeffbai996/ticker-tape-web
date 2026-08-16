@@ -5,13 +5,17 @@
 // Every verb the parser answers to, including the aliases — a completion list
 // that omits `uw` or `wi` teaches the wrong grammar.
 export const COMMAND_WORDS = [
-  'alert', 'alerts', 'an', 'acct', 'b', 'backtest', 'brief', 'bt',
-  'cal', 'carry', 'cat', 'catalyst', 'chart', 'chat', 'clear', 'cls',
-  'cockpit', 'compare', 'copy', 'corr', 'div', 'dividends', 'ei', 'er',
-  'exit', 'fil', 'group', 'groups', 'h', 'help', 'hm', 'hold', 'ins',
-  'intra', 'journal', 'jr', 'lang', 'm', 'margin', 'market', 'markets',
-  'mem', 'memory', 'movers', 'n', 'opt', 'options', 'pos', 'prof', 'q',
-  'quit', 's', 'screen', 'sectors', 'ta', 'timeline', 'today', 'trades',
+  'acct', 'ai', 'al', 'alert', 'alerts', 'an', 'asof', 'b', 'backtest',
+  'brief', 'briefing', 'breakers', 'bt', 'bucket', 'cal', 'calendar', 'carry',
+  'cat', 'catalyst', 'chain', 'chart', 'chat', 'clear', 'cls', 'cm', 'cockpit',
+  'commod', 'commodities', 'compare', 'copy', 'corr', 'cost', 'cp', 'cx',
+  'dash', 'detail', 'div', 'dividend', 'dividends', 'e', 'ei', 'er', 'exit',
+  'fil', 'group', 'groups', 'grp', 'h', 'heatmap', 'help', 'hf', 'hm', 'hold',
+  'i', 'ibkr', 'ins', 'intra', 'j', 'journal', 'jr', 'lang', 'm', 'margin',
+  'market', 'markets', 'mem', 'memory', 'morning', 'movers', 'n', 'news',
+  'nlv', 'opt', 'options', 'pnl', 'pos', 'prof', 'pt', 'q', 'quit', 'rating',
+  'replay', 'resume', 'risk', 's', 'scr', 'screen', 'screening', 'sectors',
+  'surprises', 't', 'ta', 'timeline', 'tl', 'today', 'trades', 'tt', 'tw',
   'unwatch', 'uw', 'vs', 'w', 'watch', 'whatif', 'wi', 'wire',
 ]
 
