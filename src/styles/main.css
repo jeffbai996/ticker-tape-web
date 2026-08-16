@@ -265,8 +265,8 @@ html, body {
     transition-timing-function: linear;
   }
 
-  /* The ticker stays stable below the permanent-name breakpoint. Company
-     names join it only when the container has room for both. */
+  /* Compact touch rows use a two-step identity: ticker first, full name after
+     a deliberate ticker tap. Wider rows keep the name inline. */
   .tui-company-identity {
     display: inline-block;
     overflow: hidden;
@@ -277,6 +277,49 @@ html, body {
     display: block;
     overflow: hidden;
     text-overflow: ellipsis;
+    transition:
+      transform .28s cubic-bezier(.16, 1, .3, 1),
+      opacity .18s ease;
+  }
+  .tui-company-name-swap {
+    position: absolute;
+    inset: 0;
+    display: block;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--color-ink-2);
+    font: 500 10.5px/1.45 "Anthropic Sans", "Plus Jakarta Sans", system-ui, sans-serif;
+    letter-spacing: -0.01em;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(110%);
+    transition:
+      transform .28s cubic-bezier(.16, 1, .3, 1),
+      opacity .18s ease;
+  }
+  .tui-quote-cluster { transition: opacity .18s ease; }
+
+  @container (max-width: 544px) {
+    .tui-row.is-revealed .tui-company-identity { overflow: visible; }
+    .tui-row.is-revealed .tui-company-symbol {
+      opacity: 0;
+      transform: translateY(-110%);
+    }
+    .tui-row.is-revealed .tui-company-name-swap {
+      right: auto;
+      width: max-content;
+      max-width: calc(100cqw - 3rem);
+      z-index: 2;
+      opacity: 1;
+      transform: translateY(0);
+    }
+    /* The name gets the row while revealed, without the black backing the old
+       overlay needed. The quote remains laid out underneath, so nothing jumps. */
+    .tui-row.is-revealed .tui-quote-cluster {
+      opacity: 0;
+      pointer-events: none;
+    }
   }
   
 /* ─── Drag to reorder (select mode) ───────────────────────────────────────
@@ -342,6 +385,9 @@ html, body {
 
 @media (prefers-reduced-motion: reduce) {
     .mq-inner,
+    .tui-company-symbol,
+    .tui-company-name-swap,
+    .tui-quote-cluster,
     .board-drop-line {
       transition: none !important;
     }
@@ -646,4 +692,25 @@ button:hover .burger path:nth-child(2) { transform: scaleX(.55); }
   background: linear-gradient(180deg,
     color-mix(in srgb, var(--color-accent) 26%, transparent), transparent);
   pointer-events: none;
+}
+
+/* Mobile legibility floor. The terminal uses many deliberate pixel-sized
+   labels; on a phone's default Safari scale the 7–12px tier lands a little
+   too fine. Raise only that compact tier by about one pixel. Descending order
+   matters when an element carries both a base and a smaller max-sm size: the
+   mobile-specific smaller token must win. Larger quotes/headings are intact. */
+@media (max-width: 640px) {
+  #app [class*="text-[12.5px]"] { font-size: 13.25px; }
+  #app [class*="text-[12px]"] { font-size: 13px; }
+  #app [class*="text-[11.5px]"] { font-size: 12.5px; }
+  #app [class*="text-[11px]"] { font-size: 12px; }
+  #app [class*="text-[10.5px]"] { font-size: 11.5px; }
+  #app [class*="text-[10px]"] { font-size: 11px; }
+  #app [class*="text-[9.5px]"] { font-size: 10.5px; }
+  #app [class*="text-[9px]"] { font-size: 10px; }
+  #app [class*="text-[8.5px]"] { font-size: 9.5px; }
+  #app [class*="text-[8px]"] { font-size: 9.25px; }
+  #app [class*="text-[7.5px]"] { font-size: 8.75px; }
+  #app [class*="text-[7px]"] { font-size: 8.5px; }
+  #app [class*="text-[6.5px]"] { font-size: 8px; }
 }
