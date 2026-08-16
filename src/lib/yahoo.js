@@ -67,6 +67,9 @@ export function quoteFromV7(row, now = new Date()) {
     dayLow: row?.regularMarketDayLow ?? null,
     volume: row?.regularMarketVolume ?? null,
     marketTime: row?.regularMarketTime ?? null,
+    // Fragwire's calendar sync uses this to exclude funds, indices, futures,
+    // and crypto from company-earnings polling.
+    quoteType: row?.quoteType || '',
     // v7 uses the short field names here (not regularMarketBid/Ask).
     bid: row?.bid ?? null,
     ask: row?.ask ?? null,

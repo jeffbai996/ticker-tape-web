@@ -13,8 +13,27 @@ describe('watchlist export', () => {
     expect(fetcher).toHaveBeenCalledWith('https://wire.example/api/watchlist', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ add: ['AAA', 'BBB'] }),
+      body: JSON.stringify({ add: [
+        { symbol: 'AAA', instrument_type: '' },
+        { symbol: 'BBB', instrument_type: '' },
+      ] }),
     })
+  })
+
+  it('replaces the primary list and forwards known instrument types', async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      json: () => Promise.resolve({ ok: true }),
+    })
+    const quoteLookup = (symbol) => ({ quote: {
+      quoteType: symbol === 'SPY' ? 'ETF' : 'EQUITY',
+    } })
+
+    await pushWatchlistToWire('https://wire.example', ['NVDA', 'SPY'], fetcher,
+      { replace: true, quoteLookup })
+    expect(JSON.parse(fetcher.mock.calls[0][1].body)).toEqual({ replace: [
+      { symbol: 'NVDA', instrument_type: 'EQUITY' },
+      { symbol: 'SPY', instrument_type: 'ETF' },
+    ] })
   })
 
   it('keeps the export action on watchlist cards, not the wire page', () => {
