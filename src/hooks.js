@@ -66,6 +66,9 @@ export function useQuotes(symbols) {
       isHidden: () => document.hidden,
       scheduleFrame: requestFrame,
       cancelFrame,
+      scheduleTimer: setTimeout,
+      cancelTimer: clearTimeout,
+      maxWaitMs: 250,
       render: () => bump((n) => n + 1),
     })
     const unsub = subscribe((symbol) => {

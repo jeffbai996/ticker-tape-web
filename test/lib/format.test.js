@@ -64,8 +64,8 @@ describe('rangePos', () => {
 })
 
 describe('fmtPrice', () => {
-  it('renders two decimals with thousands separators', () => {
-    expect(fmtPrice(1234.5)).toBe('1,234.50')
+  it('renders quote prices without thousands separators', () => {
+    expect(fmtPrice(1234.5)).toBe('1234.50')
     expect(fmtPrice(0.5)).toBe('0.50')
   })
   it('renders a dash for missing values', () => {
@@ -159,8 +159,8 @@ describe('fmtPriceBare', () => {
 describe('KRW-scale prices', () => {
   it('fmtPrice collapses to K only above 100k — indices stay full', () => {
     expect(fmtPrice(1495000)).toBe('1495K')
-    expect(fmtPrice(54349.12)).toBe('54,349.12')
-    expect(fmtPrice(29537.25)).toBe('29,537.25')
+    expect(fmtPrice(54349.12)).toBe('54349.12')
+    expect(fmtPrice(29537.25)).toBe('29537.25')
   })
   it('fmtChange keeps its sign in K-notation at scale', () => {
     expect(fmtChange(-173000)).toBe('-173K')

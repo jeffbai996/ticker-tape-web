@@ -50,4 +50,30 @@ describe('createQuoteRenderGate', () => {
     frames.shift()()
     expect(render).toHaveBeenCalledTimes(2)
   })
+
+  it('publishes within the latency ceiling when a visible desktop frame stalls', () => {
+    const frames = []
+    const timers = []
+    const render = vi.fn()
+    const cancelFrame = vi.fn()
+    const gate = createQuoteRenderGate({
+      isHidden: () => false,
+      scheduleFrame: (fn) => { frames.push(fn); return frames.length },
+      cancelFrame,
+      scheduleTimer: (fn, ms) => { timers.push({ fn, ms }); return timers.length },
+      cancelTimer: vi.fn(),
+      maxWaitMs: 250,
+      render,
+    })
+
+    gate.onFeedUpdate()
+    gate.onFeedUpdate()
+    expect(frames).toHaveLength(1)
+    expect(timers).toHaveLength(1)
+    expect(timers[0].ms).toBe(250)
+
+    timers[0].fn()
+    expect(render).toHaveBeenCalledTimes(1)
+    expect(cancelFrame).toHaveBeenCalledWith(1)
+  })
 })
