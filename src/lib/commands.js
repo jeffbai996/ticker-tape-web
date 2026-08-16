@@ -8,45 +8,69 @@ const SYM = /^[A-Za-z0-9.^=-]{1,12}$/
 const DATE = /^\d{4}-\d{2}-\d{2}$/
 const RANGE_KEYS = ['1D', '5D', '1M', '3M', '6M', 'YTD', '1Y', '2Y', '5Y']
 
-// Multi-line help in the CLI help screen's exact register: bold-info command
-// column, dim descriptions, amber ═══ sections (rendered via lib/rich.js).
+// Multi-line help in the CLI help screen's register: one fixed-width command
+// rail, dim descriptions, amber sections. Keep the hierarchy and wording in
+// sync with ticker-tape/screens/help.py, omitting CLI-only operations rather
+// than advertising commands the browser cannot execute.
 const INF = '#00c8ff'
 const DIM = '#808080'
 const ACC = '#ffc800'
-const row = (cmd, desc) => `[bold ${INF}]${cmd.padEnd(18)}[/][${DIM}]${desc}[/]`
-const row2 = (c1, d1, c2, d2) => `${row(c1, d1.padEnd(24))}${row(c2, d2)}`
-const section = (title) => `[bold ${ACC}]═══ ${title} ═══[/]`
+const row = (cmd, desc) => `[bold ${INF}]${cmd.padEnd(Math.max(28, cmd.length + 2))}[/][${DIM}]${desc}[/]`
+const section = (title) => `[bold ${ACC}]═══ ${title.toUpperCase()} ═══[/]`
 export const HELP_TEXT = [
-  section('research'),
-  row2('SYM', 'open research', 'ta|chart SYM', 'chart + technicals'),
-  row2('intra SYM', 'intraday + VWAP', 'opt SYM', 'options chain'),
-  row2('ei SYM', 'earnings impact', 'an SYM', 'analysts'),
-  row2('ins SYM', 'insider activity', 'n SYM', 'news'),
-  row2('hold SYM', 'holders', 'fil SYM', 'SEC filings'),
-  row2('prof SYM', 'company profile', 'wire SYM', 'fragwire trail'),
-  section('screens'),
-  row2('vs A B \\[C…]', 'compare', 'screen A B', 'valuation grid'),
-  row2('m s hm movers', 'markets views', 'er · cal', 'earnings · calendar'),
-  row2('market sectors …', 'full names work too', 'wire · today', 'wire · calendar'),
-  row2('pos acct cockpit', 'portfolio views', 'carry timeline', 'more portfolio'),
-  row2('b|brief', 'briefing + AI', 'pos · acct', 'demo portfolio'),
-  row2('alerts', 'alert center', 'chat \\[q]', 'AI chat'),
-  row('bt|backtest', 'fills ledger replay'),
-  row2('corr', 'correlation grid', 'margin|trades', 'account · fills'),
-  section('actions'),
-  row2('w|uw SYM', 'watch / unwatch', 'alert SYM > N', 'arm price alert'),
-  row2('alert SYM rsi > 70', 'rsi alert', 'alert SYM vol > 2', 'volume multiple'),
-  row2('cat', 'list catalysts', 'cat rm N', 'remove catalyst'),
-  row('cat add DATE …', '\\[SYM] \\[type] label — type: product conf policy capex macro'),
-  row2('group NAME SYM…', 'name a bucket', 'group rm NAME', 'ungroup'),
-  row2('div SYM', 'dividend history', 'chart SYM 6m', 'range works now'),
-  row('opt SYM DATE', 'jump straight to a 2026-09-18 expiry'),
-  section('notes'),
-  row2('mem \\[add TEXT]', 'AI memories', 'mem edit·rm N', 'update · delete'),
-  row2('journal \\[add …]', 'trade journal', 'journal search T', 'find old thinking'),
-  section('console'),
-  row2('clear', 'wipe the console', 'copy \\[N]', 'copy output to clipboard'),
-  row2('lang \\[en|zh]', 'switch language', 'h · q', 'help · quit'),
+  section('keyboard shortcuts'),
+  row('t', 'Thesis Watcher'),
+  row('s', 'Sector performance'),
+  row('e', 'Earnings calendar'),
+  row('?', 'This help screen'),
+  row('q', 'Close message'),
+  section('commands'),
+  row('<TICKER>', 'Stock lookup (e.g. AAPL)'),
+  row('m, market', 'Market overview'),
+  row('ta <SYM>', 'Technical analysis'),
+  row('news \\[SYM]', 'News feed — all or by symbol'),
+  row('wire \\[SYM|read N|story N]', 'Live events wire (fragwire)'),
+  row('today', "Day sheet — today's calendar"),
+  row('chart <SYM> \\[period]', 'Price chart (1d/5d/1m/3m/6m/ytd/1y/2y/5y)'),
+  row('vs <SYM> <SYM> ...', 'Compare symbols'),
+  row('intra <SYM>', 'Intraday bars with VWAP'),
+  row('impact <SYM>', 'Earnings impact history'),
+  row('screen <SYM> <SYM>', 'Valuation comparison table'),
+  row('insider <SYM>', 'Insider transactions'),
+  row('options <SYM> \\[exp]', 'Options chain with IV'),
+  row('div / rating <SYM>', 'Dividends / analyst ratings'),
+  row('corr / heatmap', 'Correlation matrix / performance heatmap'),
+  row('calendar', 'Economic calendar (upcoming data + events)'),
+  row('catalyst \\[cmd]', 'Catalyst calendar — add/list/remove'),
+  row('commodities', 'Commodity futures'),
+  row('surprises', 'Earnings surprise tracker'),
+  section('portfolio'),
+  row('watch / unwatch <SYM>', 'Add/remove watchlist symbol'),
+  row('wl', 'Show watchlist'),
+  row('alert \\[condition]', 'Smart alerts (price, RSI, volume)'),
+  row('group \\[name] \\[SYMs]', 'Manage watchlist groups'),
+  row('journal \\[cmd]', 'Trade journal (add/search/remove)'),
+  section('ibkr'),
+  row('ibkr / pos / acct / pnl', 'Portfolio / positions / account'),
+  row('whatif \\[buy/sell] <SYM> <QTY>', 'Pre-trade sizing workspace'),
+  row('trades', "Today's executions"),
+  row('dash', 'Margin dashboard'),
+  row('cockpit / hf', 'Risk cockpit'),
+  row('carry', 'Cost of carry'),
+  row('detail <SYM>', 'Position research detail'),
+  row('timeline', 'Portfolio history'),
+  row('backtest \\[SYM]', 'Thesis replay'),
+  row('tt / asof', 'Time travel'),
+  row('breakers / tw', 'Thesis Watcher'),
+  row('brief', 'Morning briefing'),
+  section('ai chat'),
+  row('chat \\[question]', 'AI chat (multi-model)'),
+  row('resume', 'Open the latest chat session'),
+  row('memory \\[cmd]', 'Persistent memories'),
+  section('other'),
+  row('copy \\[N]', 'Copy console output to clipboard'),
+  row('lang / clear', 'Language / clear console'),
+  row('quit, q', 'Close message'),
 ].join('\n')
 
 const low = (s) => s.toLowerCase()
@@ -69,48 +93,58 @@ export function parseCommand(input) {
   // navigation shortcuts
   const NAVS = {
     m: '#/markets', s: '#/markets/sectors', hm: '#/markets/heatmap',
-    movers: '#/markets/movers', er: '#/markets/earnings', cal: '#/markets/calendar',
-    wl: '#/', t: '#/', pos: '#/portfolio', acct: '#/portfolio/account',
-    pnl: '#/portfolio', alerts: '#/alerts', port: '#/portfolio',
-    b: '#/brief', brief: '#/brief', briefing: '#/brief',
-    bt: '#/portfolio/backtest', backtest: '#/portfolio/backtest',
+    movers: '#/markets/movers', e: '#/markets/earnings', er: '#/markets/earnings', cal: '#/markets/calendar',
+    wl: '#/', t: '#/portfolio/thesis', pos: '#/portfolio', acct: '#/portfolio/account',
+    pnl: '#/portfolio/account', alerts: '#/alerts', port: '#/portfolio',
+    b: '#/brief', brief: '#/brief', briefing: '#/brief', morning: '#/brief',
+    bt: '#/portfolio/backtest', backtest: '#/portfolio/backtest', replay: '#/portfolio/backtest',
     market: '#/markets', markets: '#/markets', sectors: '#/markets/sectors',
-    commodities: '#/markets/commodities', heatmap: '#/markets/heatmap',
+    commodities: '#/markets/commodities', commod: '#/markets/commodities', cm: '#/markets/commodities', heatmap: '#/markets/heatmap',
     earnings: '#/markets/earnings', calendar: '#/markets/calendar',
     today: '#/markets/calendar', positions: '#/portfolio',
-    account: '#/portfolio/account', cockpit: '#/portfolio/cockpit',
-    carry: '#/portfolio/carry', timeline: '#/portfolio/timeline',
-    sizing: '#/portfolio/sizing', wire: '#/wire',
-    dash: '#/', dashboard: '#/', research: '#/research',
+    account: '#/portfolio/account', ibkr: '#/portfolio', cockpit: '#/portfolio/cockpit', risk: '#/portfolio/cockpit',
+    carry: '#/portfolio/carry', cost: '#/portfolio/carry', timeline: '#/portfolio/timeline', tl: '#/portfolio/timeline', nlv: '#/portfolio/timeline',
+    sizing: '#/portfolio/sizing', wire: '#/wire', news: '#/wire',
+    dash: '#/portfolio/account', dashboard: '#/', research: '#/research',
     // ── CLI parity pass (Jeff 2026-08-04: "still missing some cli commands").
     // Every alias below already had a page here; only the word was missing.
-    r: '#/research', e: '#/markets/earnings', surprises: '#/markets/earnings',
+    r: '#/research', surprises: '#/markets/earnings',
     corr: '#/screen/correlation', correlation: '#/screen/correlation',
-    screening: '#/screen', compare: '#/screen/compare',
+    screening: '#/screen', scr: '#/screen', compare: '#/screen/compare',
     valuation: '#/screen/valuation',
     watchlist: '#/', tape: '#/',
     hf: '#/portfolio/cockpit',              // CLI's "high finance" cockpit
-    trades: '#/portfolio/timeline',         // fills, in date order
+    trades: '#/portfolio/trades',           // fills, in date order
     margin: '#/portfolio/account', cushion: '#/portfolio/account',
     headroom: '#/portfolio/account',
     heat: '#/markets/heatmap', comm: '#/markets/commodities',
+    tt: '#/portfolio/timetravel', asof: '#/portfolio/timetravel',
+    breakers: '#/portfolio/thesis', tw: '#/portfolio/thesis',
+    resume: '#/chat',
   }
   if (cmd in NAVS && !args.length) return { type: 'nav', hash: NAVS[cmd] }
 
   // per-symbol views
   const VIEWS = {
-    ta: null, chart: null, n: null, news: null,
-    intra: 'intraday', opt: 'options', options: 'options',
+    ta: null, chart: null, n: 'news', news: 'news',
+    i: 'intraday', intra: 'intraday', opt: 'options', options: 'options', chain: 'options',
     ei: 'earnings', ins: 'insider', insider: 'insider',
     an: 'analysts', analysts: 'analysts',
     hold: 'holders', holders: 'holders', fil: 'filings', filings: 'filings',
     prof: 'profile', profile: 'profile', memo: null,
     ratings: 'analysts', technicals: null, lookup: null,
     // CLI spellings that had no web equivalent word
-    impact: 'earnings', earn: 'earnings', rating: 'analysts', detail: null,
+    impact: 'earnings', earn: 'earnings', rating: 'analysts', pt: 'analysts', detail: null,
   }
-  if (cmd === 'wire' && args.length === 1 && SYM.test(args[0])) {
-    return research(args[0], 'wire')
+  if (cmd === 'wire') {
+    if (args.length === 2 && ['read', 'story'].includes(low(args[0]))
+        && /^\d{1,12}$/.test(args[1])) {
+      return { type: 'nav', hash: `#/wire/${args[1]}` }
+    }
+    if (args.length === 1 && ['live', 'health'].includes(low(args[0]))) {
+      return { type: 'nav', hash: '#/wire' }
+    }
+    if (args.length === 1 && SYM.test(args[0])) return research(args[0], 'wire')
   }
   if (cmd in VIEWS && args.length >= 1 && SYM.test(args[0])) {
     const plan = research(args[0], VIEWS[cmd])
@@ -141,7 +175,7 @@ export function parseCommand(input) {
 
   // alert SYM >|< N  ·  alert SYM rsi > 70  ·  alert SYM vol > 2
   // (the alerts page has always stored a type; only the grammar was price-only)
-  if (cmd === 'alert') {
+  if (cmd === 'alert' || cmd === 'al') {
     const usage = `[bold ${INF}]usage[/] [${DIM}]alert SYM > 123.45 · alert SYM rsi > 70 · alert SYM vol > 2[/]`
     if (!args.length) return { type: 'nav', hash: '#/alerts' }
     const m = args.join(' ')
@@ -169,7 +203,7 @@ export function parseCommand(input) {
     if (want === 'en' || want === 'zh') return { type: 'lang', locale: want }
     return { type: 'msg', text: `[bold ${INF}]usage[/] [${DIM}]lang · lang en · lang zh[/]` }
   }
-  if (cmd === 'copy') {
+  if (cmd === 'copy' || cmd === 'cp') {
     const n = args.length ? Number(args[0]) : null
     if (args.length && !Number.isInteger(n)) {
       return { type: 'msg', text: `[bold ${INF}]usage[/] [${DIM}]copy · copy 3 (nth console entry)[/]` }
@@ -195,7 +229,7 @@ export function parseCommand(input) {
   }
 
   // group · group NAME SYM… · group rm NAME  (CLI watchlist groups)
-  if (cmd === 'group' || cmd === 'groups') {
+  if (cmd === 'group' || cmd === 'groups' || cmd === 'grp' || cmd === 'bucket') {
     if (!args.length) return { type: 'group_list' }
     if (low(args[0]) === 'rm' && args.length === 2) {
       return { type: 'group_rm', name: args[1] }
@@ -224,7 +258,7 @@ export function parseCommand(input) {
   }
 
   // journal · journal add TEXT · journal rm N|N-M · journal search TERM · journal N
-  if (cmd === 'journal' || cmd === 'jr') {
+  if (cmd === 'journal' || cmd === 'jr' || cmd === 'j') {
     if (!args.length) return { type: 'journal_list' }
     const sub = low(args[0])
     if (sub === 'add' && args.length >= 2) {
@@ -242,7 +276,7 @@ export function parseCommand(input) {
   }
 
   // div SYM — dividend profile + payout history in the console
-  if (cmd === 'div' || cmd === 'dividends') {
+  if (cmd === 'div' || cmd === 'dividend' || cmd === 'dividends') {
     if (args.length === 1 && SYM.test(args[0])) {
       return { type: 'div', symbol: args[0].toUpperCase() }
     }
@@ -250,7 +284,7 @@ export function parseCommand(input) {
   }
 
   // cat · cat rm N · cat add DATE [SYM] [type] label…
-  if (cmd === 'cat' || cmd === 'catalyst') {
+  if (cmd === 'cat' || cmd === 'catalyst' || cmd === 'cx') {
     if (!args.length) return { type: 'catalyst_list' }
     if (low(args[0]) === 'rm' && args.length === 2 && /^\d+$/.test(args[1])) {
       return { type: 'catalyst_rm', id: Number(args[1]) }
@@ -278,7 +312,7 @@ export function parseCommand(input) {
     return { type: 'msg', text: `[bold ${INF}]usage[/] [${DIM}]cat · cat rm N · cat add 2026-09-09 NVDA product GTC keynote[/]` }
   }
 
-  if (cmd === 'chat') {
+  if (cmd === 'chat' || cmd === 'ai') {
     return args.length ? { type: 'chat', q: args.join(' ') } : { type: 'nav', hash: '#/chat' }
   }
 
