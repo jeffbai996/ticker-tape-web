@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks'
+import { useEffect, useState } from 'preact/hooks'
 import { useNamedWatchlists, useQuotes, useWatchlist } from '../hooks.js'
 import {
   addWatchlistSymbol, createWatchlist, removeWatchlist, removeWatchlistSymbol,
@@ -9,12 +9,14 @@ import { useEarningsDays } from './dashboard.jsx'
 import { fmtPct } from '../lib/format.js'
 import { pulseStats } from '../lib/pulse.js'
 import { t as tt, tl } from '../lib/i18n.js'
-import { onSyncStatus } from '../lib/cloudsave.js'
+import {
+  connectPublicWatchlistSync, createPublicWatchlistSync,
+  disconnectPublicWatchlistSync, getWatchlistCapability, onSyncStatus,
+} from '../lib/cloudsave.js'
 import { wireUrl } from '../lib/wire.js'
 import { pushWatchlistToWire } from '../lib/watchlistExport.js'
 import { shouldOpenWatchlistCard } from '../lib/watchlistCard.js'
 import { Empty } from '../components/Loading.jsx'
-import { useEffect } from 'preact/hooks'
 
 /** Cloud-save state, quietly: synced rev / syncing / offline. Hidden entirely
  *  on builds with no wire endpoint. */
@@ -33,6 +35,105 @@ function CloudChip() {
       : 'border-down/40 text-down'}`}>
       {label}
     </span>
+  )
+}
+
+function copyText(value) {
+  if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(value)
+  const field = document.createElement('textarea')
+  field.value = value
+  field.style.position = 'fixed'
+  field.style.opacity = '0'
+  document.body.appendChild(field)
+  field.select()
+  const copied = document.execCommand('copy')
+  field.remove()
+  return copied ? Promise.resolve() : Promise.reject(new Error('copy failed'))
+}
+
+/** Public sync is deliberately a single secret capability, not a doorway to
+ * the private wire service. Disconnecting removes only this browser's key. */
+function PublicSyncControls() {
+  const [capability, setCapability] = useState(() => getWatchlistCapability())
+  const [entry, setEntry] = useState('')
+  const [notice, setNotice] = useState('')
+  const [copied, setCopied] = useState(false)
+  if (wireUrl()) return null
+
+  const enable = () => {
+    const created = createPublicWatchlistSync()
+    if (!created) return
+    setCapability(created)
+    setNotice('')
+  }
+  const connect = (event) => {
+    event.preventDefault()
+    if (!connectPublicWatchlistSync(entry)) {
+      setNotice(tt('watchlists.sync_invalid'))
+      return
+    }
+    setCapability(getWatchlistCapability())
+    setEntry('')
+    setNotice(tt('watchlists.sync_connected'))
+  }
+  const disconnect = () => {
+    disconnectPublicWatchlistSync()
+    setCapability('')
+    setNotice(tt('watchlists.sync_disconnected'))
+  }
+  const copy = () => copyText(capability).then(() => {
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1600)
+  }).catch(() => setNotice(tt('watchlists.sync_invalid')))
+
+  return (
+    <section aria-label={tl('sync watchlists')}
+      class="mt-3 rounded-lg border border-line bg-surface-1/70 px-3 py-2.5 font-anth">
+      <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-ink-2">
+            {tl('sync watchlists')}
+            {capability && <CloudChip />}
+          </div>
+          <p class="pt-0.5 text-[9px] leading-relaxed text-muted">
+            {capability ? tt('watchlists.sync_secret') : tt('watchlists.sync_local')}
+          </p>
+        </div>
+        {capability ? (
+          <div class="flex shrink-0 items-center gap-1.5">
+            <span aria-label={tl('sync code')}
+              class="rounded border border-line bg-black/30 px-2 py-1 font-mono text-[9px] text-muted">
+              •••• {capability.slice(-4)}
+            </span>
+            <button type="button" onClick={copy}
+              class="min-h-8 rounded border border-accent/50 bg-accent-soft px-2.5 text-[10px] font-semibold text-accent hover:bg-accent/15">
+              {tl(copied ? 'copied code ✓' : 'copy code')}
+            </button>
+            <button type="button" onClick={disconnect}
+              class="min-h-8 px-1.5 text-[9px] text-muted hover:text-down">
+              {tl('disconnect')}
+            </button>
+          </div>
+        ) : (
+          <div class="flex shrink-0 flex-wrap items-center gap-1.5 sm:flex-nowrap">
+            <button type="button" onClick={enable}
+              class="min-h-8 whitespace-nowrap rounded border border-accent/60 bg-accent-soft px-2.5 text-[10px] font-semibold text-accent hover:bg-accent/15">
+              {tl('enable sync')}
+            </button>
+            <span class="text-[9px] text-muted">{tl('or')}</span>
+            <form onSubmit={connect} class="flex min-w-0 items-center gap-1">
+              <input value={entry} onInput={(event) => { setEntry(event.currentTarget.value); setNotice('') }}
+                aria-label={tl('sync code')} placeholder={tl('sync code')} spellcheck={false}
+                class="min-h-8 min-w-0 w-44 rounded border border-line bg-black/30 px-2 font-mono text-[9px] text-ink outline-none focus:border-accent" />
+              <button class="min-h-8 rounded border border-line px-2 text-[9px] font-semibold text-ink-2 hover:border-accent hover:text-accent">
+                {tl('connect')}
+              </button>
+            </form>
+          </div>
+        )}
+      </div>
+      {notice && <div role="status" class="pt-1.5 text-[9px] text-accent-2">{notice}</div>}
+    </section>
   )
 }
 
@@ -303,6 +404,7 @@ export function WatchlistsPage() {
           </form>
         </header>
         {error && <div class="px-1 pt-2 font-anth text-[10px] text-down">{error}</div>}
+        <PublicSyncControls />
 
         <div class="grid md:grid-cols-2 gap-3 pt-4">
           <WatchlistCard item={{ id: 'main', name: tl('Dashboard'), symbols: main }}

@@ -7,6 +7,7 @@
  */
 
 import { handleChat } from './chat.js'
+import { handleWatchlists } from './watchlists.js'
 
 const CORS_HEADERS = {
     'Access-Control-Allow-Origin': '*',
@@ -34,6 +35,12 @@ export default {
         // AI chat proxy — own CORS (origin-restricted), own spend/rate gates.
         if (path === '/chat' || path.startsWith('/chat/')) {
             return handleChat(request, env, path);
+        }
+
+        // Public watchlist sync is capability-scoped and intentionally does
+        // not proxy the private Fragwire API.
+        if (path.startsWith('/watchlists/')) {
+            return handleWatchlists(request, env, path);
         }
 
         if (request.method === 'OPTIONS') {

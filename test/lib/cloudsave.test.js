@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { mergeDocs, touch, markDeleted } from '../../src/lib/cloudsave.js'
+import { mergeDocs, touch, markDeleted, seedLocalSyncMeta } from '../../src/lib/cloudsave.js'
 
 const snap = (main, lists, touched = {}, deleted = {}) =>
   ({ main, lists, touched, deleted })
@@ -7,10 +7,10 @@ const snap = (main, lists, touched = {}, deleted = {}) =>
 describe('mergeDocs', () => {
   it('adopts remote lists this device has never seen', () => {
     const local = snap(['NVDA'], [], { main: 10 })
-    const remote = snap(['NVDA'], [{ id: 'dan', name: '蛋宝', symbols: ['GLD'] }],
-      { main: 5, dan: 20 })
+    const remote = snap(['NVDA'], [{ id: 'macro', name: 'Macro', symbols: ['GLD'] }],
+      { main: 5, macro: 20 })
     const { doc, changedLocal } = mergeDocs(local, remote)
-    expect(doc.lists.map((l) => l.id)).toEqual(['dan'])
+    expect(doc.lists.map((l) => l.id)).toEqual(['macro'])
     expect(changedLocal).toBe(true)
   })
 
@@ -83,5 +83,14 @@ describe('meta helpers', () => {
     const next = markDeleted(meta, 'gone', 77)
     expect(next.touched).toEqual({})
     expect(next.deleted).toEqual({ gone: 77 })
+  })
+
+  it('seeds every local part when a new sync space is created', () => {
+    const seeded = seedLocalSyncMeta(
+      ['AAPL'],
+      [{ id: 'semis', name: 'Semis', symbols: ['NVDA'] }],
+      99,
+    )
+    expect(seeded).toEqual({ rev: 0, touched: { main: 99, semis: 99 }, deleted: {} })
   })
 })
