@@ -12,18 +12,13 @@ const kNotation = (abs) =>
 export function fmtPrice(v) {
   if (v == null || Number.isNaN(v)) return DASH
   if (Math.abs(v) >= BIG_PRICE) return kNotation(Math.abs(v))
-  return v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return v.toFixed(2)
 }
 
-/**
- * Price without the thousands separator — the dense rows and the watchlist
- * read as columns of digits, and a comma at four figures breaks the column
- * alignment for one row in ten (Jeff 2026-08-04). The nav bars keep commas.
- */
+/** Compatibility name retained for call sites that explicitly requested bare
+ * prices. All quote prices now share the no-separator terminal grammar. */
 export function fmtPriceBare(v) {
-  if (v == null || Number.isNaN(v)) return DASH
-  if (Math.abs(v) >= BIG_PRICE) return kNotation(Math.abs(v))
-  return v.toFixed(2)
+  return fmtPrice(v)
 }
 
 /** Signed percent: an up move is explicitly "+", the way a tape reads it.
