@@ -246,9 +246,23 @@ function CompactDayRange({ lo, hi, v, cls = '' }) {
 
 function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggleSelect,
                    spark = DEFAULT_SPARK, sparkWin = DEFAULT_WINDOW,
-                   intradayBars = null,
+                   intradayBars = null, revealed = false, onReveal,
                    dragScope = null, dragging = false, drag = null }) {
   const q = data?.quote
+  const identityRef = useRef(null)
+  const onIdentityTap = (e) => {
+    // The first ticker tap is a reveal only in the compact touch layout. Once
+    // revealed, or wherever the inline name is already visible, leave the
+    // anchor alone so the tap navigates normally.
+    if (selecting || revealed || !q?.name
+        || typeof matchMedia !== 'function'
+        || !matchMedia('(hover: none)').matches) return
+    const inline = identityRef.current?.querySelector('[data-inline-name]')
+    if (inline && inline.offsetParent !== null) return
+    e.preventDefault()
+    e.stopPropagation()
+    onReveal?.(symbol)
+  }
   const up = (q?.pct ?? 0) >= 0
   const extUp = (q?.extPct ?? 0) >= 0
   const heavy = (data?.tech?.volRatio ?? 0) >= 1.5
@@ -268,7 +282,7 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
       class={`tui-row group/row relative block px-3 py-[3px] border-b border-line last:border-0 hover:no-underline${
         selecting ? ' pl-9 cursor-pointer' : ''}${grabbable ? ' pr-11' : ''}${
         dragging ? ' is-dragging' : ''}${
-        selected ? ' bg-accent-soft' : ' hover:bg-white/[0.035]'}`}
+        selected ? ' bg-accent-soft' : ' hover:bg-white/[0.035]'}${revealed ? ' is-revealed' : ''}`}
       title={q?.name ? `${symbol} — ${q.name}` : symbol}
     >
       {/* Select mode owns row order now (Jeff 2026-08-11): the grip replaces
@@ -311,18 +325,22 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
       <div class="flex gap-6 max-sm:gap-2 min-w-0">
         <div class="flex-1 min-w-0 overflow-hidden">
           <div class="flex items-baseline gap-1.5 max-sm:gap-1 font-mono text-[13px] max-sm:text-[12px] flex-nowrap max-sm:flex-wrap min-w-0">
-            <span
+            <span ref={identityRef}
               class="tui-company-identity relative flex items-baseline gap-1.5 flex-1 min-w-0 @min-[820px]:flex-none @min-[820px]:w-14 text-ink font-[650] font-tick text-[12px]">
-              <span class="tui-company-symbol shrink-0">{symbol}</span>
-              {/* Keep the company name as ordinary inline content at every
-                  width. The elastic identity slot yields to the quote cluster,
-                  while Marquee clips long names without any tap overlay. */}
+              <span class="tui-company-symbol shrink-0" onClick={onIdentityTap}>{symbol}</span>
+              {/* Mobile keeps the company name behind the ticker's deliberate
+                  first-tap reveal. Wider rows show it inline permanently. */}
               {q?.name && (
                 /* the mid band truncated the name with no way to read the rest
                    — same hover-scroll the wide band uses (Jeff 2026-08-06). */
-                <span data-inline-name class="block @min-[820px]:hidden min-w-0">
+                <span data-inline-name class="hidden @min-[545px]:block @min-[820px]:hidden min-w-0">
                   <Marquee text={q.name} title={`${symbol} — ${q.name}`}
                     class="block min-w-0 text-[10.5px] text-muted font-normal font-anth" />
+                </span>
+              )}
+              {q?.name && (
+                <span class="tui-company-name-swap @min-[545px]:hidden" aria-hidden="true">
+                  {q.name}
                 </span>
               )}
             </span>
@@ -1533,6 +1551,8 @@ export function Dashboard({ listId = null }) {
   const listFull = activeList ? () => isNamedWatchlistFull(activeList.id) : isWatchlistFull
   const listCap = activeList ? MAX_WATCHLIST_SYMBOLS : MAX_WATCHLIST
   const isPresent = (symbol) => watchlist.includes(String(symbol || '').trim().toUpperCase())
+  const [revealedSym, setRevealedSym] = useState(null)
+  const revealName = (sym) => setRevealedSym(sym)
   // batch mode: tick rows, act once — one-star-at-a-time was the only way to
   // clear several names off the board (Jeff 2026-08-06)
   const [selecting, setSelecting] = useState(false)
@@ -1758,6 +1778,7 @@ export function Dashboard({ listId = null }) {
                   <TuiRow key={s} symbol={s} data={quotes[s]} earnDays={earnDays[s]}
                     onRemove={removeSymbol} selecting={selecting} spark={spark} sparkWin={sparkWin}
                     intradayBars={intradaySparks[s]}
+                    revealed={revealedSym === s} onReveal={revealName}
                     dragScope={dragScopeFor(g.name)} dragging={dragSym === s} drag={rowDrag}
                     selected={selected.has(s)} onToggleSelect={toggleSelect} />
                 ))}
@@ -1767,6 +1788,7 @@ export function Dashboard({ listId = null }) {
             <TuiRow key={symbol} symbol={symbol} data={quotes[symbol]} earnDays={earnDays[symbol]}
               onRemove={removeSymbol} selecting={selecting} spark={spark} sparkWin={sparkWin}
               intradayBars={intradaySparks[symbol]}
+              revealed={revealedSym === symbol} onReveal={revealName}
               dragScope={dragScopeFor('flat')} dragging={dragSym === symbol} drag={rowDrag}
               selected={selected.has(symbol)} onToggleSelect={toggleSelect} />
           ))}
