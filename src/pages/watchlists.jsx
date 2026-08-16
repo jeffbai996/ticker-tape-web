@@ -249,7 +249,8 @@ function WatchlistCard({ item, quotes, earnDays, allLists, primary = false }) {
     if (endpoint) {
       setExportState('syncing')
       try {
-        await pushWatchlistToWire(endpoint, item.symbols)
+        await pushWatchlistToWire(endpoint, item.symbols, fetch,
+          { replace: primary })
         flash()
       } catch {
         fail()
