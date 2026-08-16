@@ -147,6 +147,7 @@ async function fetchSymbol(symbol) {
       dayLow: meta.regularMarketDayLow ?? null,
       volume: meta.regularMarketVolume ?? null,
       marketTime: meta.regularMarketTime ?? null,
+      quoteType: meta.instrumentType || '',
     }
   }
 
