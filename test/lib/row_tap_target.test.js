@@ -11,9 +11,10 @@ describe('watchlist row: touch identity', () => {
     expect(src).not.toContain('onReveal?.(symbol)')
   })
 
-  it('hides the name until the container has spare width', () => {
+  it('shows the name inline without a reveal interaction', () => {
     expect(src).toContain(
-      'data-inline-name class="hidden @min-[545px]:block @min-[820px]:hidden min-w-0"')
+      'data-inline-name class="block @min-[820px]:hidden min-w-0"')
+    expect(src).not.toContain('data-inline-name class="hidden @min-[545px]:block')
     expect(src).not.toContain('tui-company-name-swap')
   })
 })

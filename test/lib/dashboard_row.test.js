@@ -6,11 +6,12 @@ const dashboard = readFileSync(resolve(process.cwd(), 'src/pages/dashboard.jsx')
 const css = readFileSync(resolve(process.cwd(), 'src/styles/main.css'), 'utf8')
 
 describe('compact dashboard company name', () => {
-  it('only shows the company name once the row has enough room', () => {
+  it('keeps the company name visible at every row width', () => {
     expect(dashboard).toContain('class={`tui-row group/row')
     expect(dashboard).toContain('class="tui-company-identity relative flex items-baseline gap-1.5 flex-1 min-w-0')
     expect(dashboard).toContain('class="tui-company-symbol shrink-0"')
-    expect(dashboard).toContain('data-inline-name class="hidden @min-[545px]:block @min-[820px]:hidden min-w-0"')
+    expect(dashboard).toContain('data-inline-name class="block @min-[820px]:hidden min-w-0"')
+    expect(dashboard).not.toContain('data-inline-name class="hidden @min-[545px]:block')
     expect(dashboard).toMatch(/data-inline-name[\s\S]{0,200}<Marquee text=\{q\.name\}/)
     expect(dashboard).toContain('class="tui-company-name-wide hidden @min-[820px]:block')
     expect(css).toMatch(/\.tui-company-identity\s*\{[\s\S]*overflow: hidden;/)
