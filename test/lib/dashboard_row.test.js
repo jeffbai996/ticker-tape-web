@@ -6,13 +6,14 @@ const dashboard = readFileSync(resolve(process.cwd(), 'src/pages/dashboard.jsx')
 const css = readFileSync(resolve(process.cwd(), 'src/styles/main.css'), 'utf8')
 
 describe('compact dashboard company name', () => {
-  it('keeps the company name visible at every row width', () => {
+  it('obscures the name only in the compact touch layout', () => {
     expect(dashboard).toContain('class={`tui-row group/row')
     expect(dashboard).toContain('class="tui-company-identity relative flex items-baseline gap-1.5 flex-1 min-w-0')
-    expect(dashboard).toContain('class="tui-company-symbol shrink-0"')
-    expect(dashboard).toContain('data-inline-name class="block @min-[820px]:hidden min-w-0"')
-    expect(dashboard).not.toContain('data-inline-name class="hidden @min-[545px]:block')
+    expect(dashboard).toContain('class="tui-company-symbol shrink-0" onClick={onIdentityTap}')
+    expect(dashboard).toContain('data-inline-name class="hidden @min-[545px]:block @min-[820px]:hidden min-w-0"')
     expect(dashboard).toMatch(/data-inline-name[\s\S]{0,200}<Marquee text=\{q\.name\}/)
+    expect(dashboard).toContain('class="tui-company-name-swap @min-[545px]:hidden"')
+    expect(dashboard).toContain('aria-hidden="true"')
     expect(dashboard).toContain('class="tui-company-name-wide hidden @min-[820px]:block')
     expect(css).toMatch(/\.tui-company-identity\s*\{[\s\S]*overflow: hidden;/)
     expect(dashboard).toContain('class="tui-quote-cluster flex items-baseline gap-1.5 max-sm:gap-1 shrink-0"')
@@ -22,15 +23,15 @@ describe('compact dashboard company name', () => {
     expect(dashboard).toMatch(/tui-quote-cluster[\s\S]*q\.extLabel[\s\S]*q\.extPrice/)
   })
 
-  it('does not reveal or mask the company name on touch', () => {
-    expect(dashboard).not.toContain("matchMedia('(hover: none)').matches")
-    expect(dashboard).not.toContain('onIdentityTap')
-    expect(dashboard).not.toContain('revealedSym')
-    expect(dashboard).not.toContain('onReveal')
-    expect(dashboard).not.toContain('is-revealed')
-    expect(dashboard).not.toContain('has-inline-name')
-    expect(dashboard).not.toContain('tui-company-name-swap')
-    expect(css).not.toContain('tui-company-name-swap')
+  it('animates one compact name without restoring the black overlay', () => {
+    expect(dashboard).toContain("matchMedia('(hover: none)').matches")
+    expect(dashboard).toContain('onIdentityTap')
+    expect(dashboard).toContain('revealedSym')
+    expect(dashboard).toContain('onReveal')
+    expect(dashboard).toContain('is-revealed')
+    expect(dashboard).toContain('tui-company-name-swap')
+    expect(css).toContain('.tui-row.is-revealed .tui-company-name-swap')
+    expect(css).toContain('.tui-row.is-revealed .tui-quote-cluster')
     expect(css).not.toContain('background: linear-gradient(90deg')
   })
 
