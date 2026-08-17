@@ -33,6 +33,10 @@ describe('route history', () => {
     expect(app).not.toContain('history.pushState')
     expect(app).not.toContain('history.replaceState')
   })
+
+  it('keeps the fixed shell bounded to the mobile viewport', () => {
+    expect(app).toContain('h-dvh w-full max-w-full min-w-0 overflow-hidden')
+  })
 })
 
 describe('watchlists surface', () => {
