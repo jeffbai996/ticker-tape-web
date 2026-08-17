@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'preact/hooks'
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
 import { fetchChatModels, fetchSpend } from '../lib/chatClient.js'
 import { runAgentic, trimHistory } from '../lib/agent.js'
 import { toolLabel, toolRunLabel } from '../lib/tools.js'
@@ -18,6 +18,7 @@ import { pulseStats } from '../lib/pulse.js'
 import { loadMemories, addMemory, editMemory, removeMemory, applyMemoryTags } from '../lib/chatMemory.js'
 import { loadJournal, addJournalEntry, removeJournalEntry, searchJournal } from '../lib/journal.js'
 import { CHAT_HOME_EVENT, takeChatHomePending } from '../lib/chatnav.js'
+import { captureAnchor, restoreAnchor } from '../lib/scrollAnchor.js'
 import { CHATSTORE_SYNC_EVENT, chatstoreAvailable, syncNotes } from '../lib/chatstore.js'
 import { LANES, activeLanes, canRefresh, dynamicActions, visibleActions } from '../lib/launchpad.js'
 import {
@@ -721,11 +722,17 @@ export function Chat() {
     const saved = Number(localStorage.getItem('chat_text_zoom'))
     return saved >= 0.7 && saved <= 2 ? saved : 1
   })
-  const bumpChatZoom = (d) => setChatZoom((z) => {
-    const next = Math.min(2, Math.max(0.7, Math.round((z + d) * 20) / 20))
-    localStorage.setItem('chat_text_zoom', String(next))
-    return next
-  })
+  const bumpChatZoom = (d) => {
+    // Snapshot where the reader is while the old text size is still on
+    // screen. The restore happens in the layout effect below, once preact
+    // has reflowed the transcript at the new size.
+    zoomAnchorRef.current = captureAnchor(scrollRef.current)
+    setChatZoom((z) => {
+      const next = Math.min(2, Math.max(0.7, Math.round((z + d) * 20) / 20))
+      localStorage.setItem('chat_text_zoom', String(next))
+      return next
+    })
+  }
   const [model, setModel] = useState(
     localStorage.getItem(modelStorageKey) || (onWire ? 'agy-flash' : 'flash'),
   )
@@ -754,6 +761,7 @@ export function Chat() {
   const [atHome, setAtHome] = useState(takeChatHomePending)
   const [threads, setThreads] = useState([])
   const scrollRef = useRef(null)
+  const zoomAnchorRef = useRef(null)
   const stickRef = useRef(true)      // autoscroll only while parked at the tail
   const abortRef = useRef(null)
   const inputRef = useRef(null)
@@ -901,6 +909,17 @@ export function Chat() {
   useEffect(() => {
     if (stickRef.current) scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight)
   }, [history])
+
+  // A text-size change reflows every bubble, so the transcript slides out
+  // from under the reader unless we put them back. useLayoutEffect, not
+  // useEffect: this has to land before the browser paints, or the jump is
+  // visible as a flicker.
+  useLayoutEffect(() => {
+    const anchor = zoomAnchorRef.current
+    if (!anchor) return
+    zoomAnchorRef.current = null
+    restoreAnchor(scrollRef.current, anchor)
+  }, [chatZoom])
 
   const clearComposer = () => {
     setInput('')
@@ -1586,7 +1605,7 @@ export function Chat() {
               stickRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120
             }}
             class="flex-1 overflow-y-auto min-h-0 max-w-[46rem] w-full mx-auto flex flex-col gap-3 px-2"
-            style={{ fontSize: `${(13.5 * chatZoom).toFixed(2)}px` }}
+            style={{ fontSize: `${(13.5 * chatZoom).toFixed(2)}px`, overflowAnchor: 'none' }}
           >
         {history.map((m, i) => {
           if (m.role === 'tool') return null
