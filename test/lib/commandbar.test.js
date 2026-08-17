@@ -33,11 +33,14 @@ describe('console resize', () => {
     expect(isTap(500, 520)).toBe(false)
   })
 
-  it('the / hint sits before the prompt, and there is no "console ▴" reopener (Jeff 2026-08-17: invisible bottom-right)', () => {
-    const promptIdx = commandBar.indexOf('font-bold shrink-0">ticker&gt;</span>')
+  it('the / hint sits right after the input placeholder, glyph centered; no "console ▴" reopener (Jeff 2026-08-17)', () => {
+    const inputIdx = commandBar.indexOf("placeholder={tl('type command or symbol")
     const hintIdx = commandBar.indexOf("title={tl('focus console')}")
-    expect(hintIdx).toBeGreaterThan(-1)
-    expect(hintIdx).toBeLessThan(promptIdx)
+    expect(hintIdx).toBeGreaterThan(inputIdx)
+    // input no longer swallows the whole row, so the keycap hugs the text
+    expect(commandBar.slice(inputIdx, hintIdx)).toMatch(/flex-none w-\[min\(100%,26rem\)\]/)
+    // centered glyph: flex centering, not CSS grid place-items on a 10px em box
+    expect(commandBar.slice(hintIdx, hintIdx + 300)).toMatch(/inline-flex items-center justify-center/)
     expect(commandBar).not.toMatch(/console ▴/)
   })
 
