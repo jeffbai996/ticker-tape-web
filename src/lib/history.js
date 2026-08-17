@@ -187,3 +187,13 @@ export function fetchNews(symbol) {
     }))
   })
 }
+
+/** % change from the first bar of the visible range to `price`, labelled by
+ *  the range key. The descriptor band used to hardcode "YTD" while actually
+ *  measuring from the first visible bar of whatever range was on screen. */
+export function rangeReturn(bars, price, rangeKey) {
+  const first = bars?.[0]
+  const pct = first && price != null && first.close
+    ? Math.round(((price / first.close) - 1) * 10000) / 100 : null
+  return { label: rangeKey, pct }
+}
