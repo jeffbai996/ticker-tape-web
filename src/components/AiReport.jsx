@@ -10,8 +10,8 @@ import { reportModelLabel } from '../lib/modelLabel.js'
 
 // One-click AI synthesis panel: build a prompt, stream the answer, offer
 // copy/download. On a wire build the writer is picked from the subscription
-// lineup (localStorage-sticky); the keyless public path keeps the cheapest
-// worker model.
+// lineup (localStorage-sticky). The public build renders the same panel as an
+// inert preview; it never contacts either the wire or metered worker route.
 const REPORT_MODEL = 'flash'
 // pill display only — the full effort key still travels in state and requests
 const EFFORT_SHORT = { medium: 'med' }
@@ -149,11 +149,12 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
   const [effort, setEffort] = useState(() => localStorage.getItem(EFFORT_KEY) || '')
   const [instructions, setInstructions] = useState(() => localStorage.getItem(INSTRUCTIONS_KEY) || '')
   const bodyRef = useRef(null)
+  const serviceAvailable = IS_PRIVATE_BUILD
 
   // the subscription lineup, when a wire is connected — same registry the
   // chat picker uses, so nothing here hardcodes a lineup that can drift
   useEffect(() => {
-    if (!wireUrl()) return
+    if (!IS_PRIVATE_BUILD || !wireUrl()) return
     fetchWireChatModels()
       .then((live) => {
         setModels(live)
@@ -175,12 +176,8 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
     if (busy) bodyRef.current?.scrollTo(0, bodyRef.current.scrollHeight)
   }, [text, busy])
 
-  // Reports need a brain: the wire router on the private build (or a
-  // configured endpoint). The public keyless build hides the feature.
-  if (!IS_PRIVATE_BUILD && !wireUrl()) return null
-
   const generate = async () => {
-    if (busy) return
+    if (!serviceAvailable || busy) return
     setBusy(true)
     setError(null)
     setText('')
@@ -256,7 +253,8 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
   const effortLevels = reportEfforts(selectedWriter)
 
   return (
-    <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
+    <section data-ai-service-state={serviceAvailable ? 'ready' : 'disabled'}
+      class="bg-surface-1 border border-line rounded-xl overflow-hidden">
       {/* one wrapping row of two control units: wide surfaces get a single
           line; the narrow rail breaks into exactly two — model+effort, then
           copy/dials/generate. justify-end right-aligns overflow rows,
@@ -268,6 +266,11 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
           {hint && <span class="font-mono text-[9.5px] text-muted normal-case tracking-normal truncate min-w-0 max-sm:hidden">{hint}</span>}
         </div>
         <div class="flex items-center gap-1.5 min-w-0">
+          {!serviceAvailable && (
+            <span class="h-6 inline-flex items-center rounded border border-line bg-surface-3 px-2 font-anth text-[9px] uppercase tracking-wider text-muted">
+              {tl('preview only')}
+            </span>
+          )}
           {models.length > 0 && (
             <label class="h-6 flex items-center rounded border border-line bg-surface-3 pl-1" title={tl('Report model')}>
               <select
@@ -332,10 +335,11 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
               tooltip and in the panel it opens */}
           <button
             onClick={() => setShowDials((v) => !v)}
+            disabled={!serviceAvailable}
             aria-expanded={showDials}
             aria-label={tl('Style & analysis')}
             title={tl('Style & analysis')}
-            class={`h-6 flex items-center gap-1 font-anth text-[10px] px-1.5 rounded border whitespace-nowrap ${
+            class={`h-6 flex items-center gap-1 font-anth text-[10px] px-1.5 rounded border whitespace-nowrap disabled:opacity-45 disabled:cursor-not-allowed ${
               showDials ? 'border-accent text-accent' : 'border-line text-muted hover:text-ink'}`}
           >
             <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h10m4 0h2M4 12h4m4 0h8M4 18h13m3 0h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="19" cy="18" r="2"/></svg>
@@ -345,7 +349,7 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
               keeps its exact width; the spinner sits in the reserved box */}
           <button
             onClick={generate}
-            disabled={busy}
+            disabled={!serviceAvailable || busy}
             class="relative h-6 inline-flex items-center font-mono text-[10px] px-2 rounded border border-accent text-accent bg-accent-soft hover:bg-accent hover:text-black disabled:opacity-40"
           >
             <span class={busy ? 'invisible' : ''}>{text ? tl('regenerate') : tl('generate')}</span>
@@ -358,6 +362,11 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
           </button>
         </div>
       </header>
+      {!serviceAvailable && (
+        <div class="px-3 py-2 font-anth text-[11px] text-muted border-t border-line/50">
+          {tl('AI generation is disabled in the public demo. No request will be sent.')}
+        </div>
+      )}
       {showDials && (
         <div class="flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2.5 border-b border-line-2 bg-surface-2/60">
           <div class="basis-full flex items-baseline gap-2">

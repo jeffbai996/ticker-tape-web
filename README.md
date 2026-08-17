@@ -28,7 +28,7 @@ Personal project. See [LICENSE](LICENSE).
 - **Markets** — movers, sectors, heatmap, commodities, earnings week, 2026 macro calendar (FOMC/CPI/NFP/GDP/PCE)
 - **Screening** — multi-symbol compare, correlation matrix, valuation grid on any tickers
 - **Alerts** — price + technical (RSI / SMA cross / volume) alerts evaluated in-browser, with browser notifications
-- **AI** — one-click **Briefing** synthesis and per-symbol **memo** generation, plus a multi-model chat page. Streams through the worker; server holds the keys
+- **AI surfaces** — the public demo shows the **Briefing** / report controls and multi-model chat workspace as disabled previews; the private tailnet build activates them through its server-side router
 - **Demo portfolio** — clearly-marked synthetic positions exercising the position/risk/sizing/carry views
 - **i18n** — EN / 中文 toggle, PWA-installable, mobile layout with bottom tab bar
 
@@ -44,9 +44,9 @@ Browser (GitHub Pages, static)
 Cloudflare Worker (worker/)
   /v1 /v7 /v8 /v10 /ws  Yahoo Finance proxy; handles the cookie+crumb dance
                         (single-flight refresh, survives 401 stampedes)
-  /chat                 AI streaming proxy: Anthropic / Google / OpenAI.
-                        Keys are worker secrets. Daily spend cap enforced in
-                        KV via worst-case pre-charging; per-IP rate limit.
+  /chat                 Guarded AI streaming route retained in the Worker.
+                        The public browser bundle does not call it; keys stay
+                        server-side and the public AI surfaces remain inert.
 ```
 
 No cron, no committed data, no API keys in the browser — everything is fetched live and computed on the client.
@@ -62,7 +62,8 @@ No cron, no committed data, no API keys in the browser — everything is fetched
 | Tests | Vitest (jsdom) |
 | Fonts | Plus Jakarta Sans (UI) + IBM Plex Mono (data) |
 | Deploy | GitHub Pages via Actions |
-| Data/AI proxy | Cloudflare Worker (`worker/`) |
+| Public data proxy | Cloudflare Worker (`worker/`) |
+| Private AI router | Fragwire on the tailnet build |
 
 ## Commands
 
@@ -73,12 +74,12 @@ npm run build      # production build to dist/
 npm test           # Vitest
 ```
 
-Worker: `cd worker && npx wrangler deploy` (needs Cloudflare credentials; chat providers configured as worker secrets).
+Worker: `cd worker && npx wrangler deploy` (needs Cloudflare credentials).
 
 ## Constraints
 
 - **No personal data.** This is a public showcase: no real positions, accounts, or portfolio-derived symbols anywhere in source, tests, or fixtures. The portfolio section is a labeled synthetic demo.
-- API keys never touch the browser — chat is proxied server-side with a hard daily spend cap.
+- API keys never touch the browser. Public AI controls are previews only; the private build calls its server-side router.
 - Yahoo data quirks are handled explicitly (crumb auth, ^TNX change fields, patchy earnings-calendar coverage) rather than papered over.
 
 ## Repo Layout

@@ -1,12 +1,15 @@
 // Top-level information architecture. Sub-tabs switch content within a section
 // without a page reload; research intentionally uses its own routed page.
 
-// The assistant runs on the operator's own Claude/agy subscription through
-// fragwire, so it only exists in the private tailnet build — a public origin
-// must not expose a subscription-backed endpoint (Jeff 2026-08-04).
+// The assistant runtime stays private, but the public demo keeps the surface
+// in the information architecture so it does not present a cut-down product.
+// Its route renders an inert preview and never calls the model service.
 const PRIVATE_BUILD = import.meta.env.VITE_PRIVATE === '1'
 
-const CHAT_SECTION = { id: 'chat', label: 'AI Chat', subs: [] }
+const CHAT_SECTION = {
+  id: 'chat', label: 'AI Chat', subs: [],
+  ...(PRIVATE_BUILD ? {} : { badge: 'PREVIEW' }),
+}
 
 export const NAV = [
   { id: 'dashboard', label: 'Dashboard', subs: [] },
@@ -58,9 +61,8 @@ export const NAV = [
   },
   { id: 'alerts', label: 'Alerts', subs: [] },
   { id: 'wire', label: 'Wire', badge: 'DEMO', subs: [] },
+  CHAT_SECTION,
 ]
-
-if (PRIVATE_BUILD) NAV.push(CHAT_SECTION)
 
 // The private build isn't a demo: the portfolio is real (fragwire fronts the
 // gateway) and the wire is the operator's own — the showcase badges only
