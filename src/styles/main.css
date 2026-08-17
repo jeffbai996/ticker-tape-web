@@ -93,6 +93,9 @@ html, body {
   height: 100%;
   overflow: hidden;
   overscroll-behavior: none;
+  /* Keep one-finger app panning, but never hand a two-finger gesture to the
+     browser as page zoom. Chart panes still receive their own touch stream. */
+  touch-action: pan-x pan-y;
 }
 
 /* Terminal-dark scrollbars everywhere. */
@@ -705,4 +708,7 @@ button:hover .burger path:nth-child(2) { transform: scaleX(.55); }
   #app [class*="text-[7.5px]"] { font-size: 8.75px; }
   #app [class*="text-[7px]"] { font-size: 8.5px; }
   #app [class*="text-[6.5px]"] { font-size: 8px; }
+  /* iOS magnifies the viewport when a focused control computes below 16px.
+     Keep the layout widths compact; only the editable text needs this floor. */
+  #app :is(input, textarea, select) { font-size: 16px !important; }
 }

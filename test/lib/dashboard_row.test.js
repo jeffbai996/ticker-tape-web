@@ -91,6 +91,8 @@ describe('compact dashboard company name', () => {
     expect(dashboard).toContain("placeholder={`${tl('Search')}…`}")
     expect(dashboard).toContain('transition-[width,background-color,border-color,box-shadow]')
     expect(dashboard).toContain('max-sm:placeholder:text-transparent')
+    expect(dashboard).toContain("expanded ? 'w-[min(6rem,24vw)] sm:w-60 pr-2'")
+    expect(dashboard).not.toContain("expanded ? 'w-44 sm:w-60 pr-2'")
     // sort and the watchlist picker stay in the menu; select is a first-class
     // toolbar action directly after search
     expect(dashboard).toContain('function BoardMenu')
@@ -102,6 +104,15 @@ describe('compact dashboard company name', () => {
     expect(dashboard).toContain("{tl('Select')}")
     expect(dashboard).not.toContain('<option value="manual"')
     expect(dashboard).not.toContain('manage lists')
+  })
+
+  it('reserves the extended-hours slot while its quote is missing', () => {
+    expect(dashboard).toContain('max-sm:w-[6.2rem]')
+    expect(dashboard.match(/max-sm:w-\[6\.2rem\]/g)).toHaveLength(2)
+    expect(dashboard).toContain("q?.extLabel && q.extPrice != null ? (")
+    expect(dashboard).not.toContain(") : marketState(new Date()).state !== 'open' ? (")
+    expect(dashboard).not.toMatch(/aria-hidden="true"[\s\S]{0,500}\) : null\}/)
+    expect(dashboard).toMatch(/q\?\.extLabel && q\.extPrice != null \? \([\s\S]*\) : \([\s\S]*invisible[\s\S]*aria-hidden="true"/)
   })
 
   it('keeps sectors visible while selection actions float above the viewport edge', () => {
