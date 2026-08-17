@@ -1393,7 +1393,7 @@ function TickerSearch({ filter, setFilter, activeList }) {
         }}
         placeholder={`${tl('Search')}…`}
         aria-label={tl('Search')}
-        class={`board-control board-search min-w-0 border rounded-lg pl-6 py-1 font-anth text-[10px] text-ink outline-none focus:border-accent placeholder:text-[9.5px] placeholder:text-muted/70 transition-[width,background-color,border-color,box-shadow] duration-300 ease-out ${
+        class={`board-control board-search h-[26px] min-w-0 border rounded-lg pl-6 py-0 font-anth text-[10px] text-ink outline-none focus:border-accent placeholder:text-[9.5px] placeholder:text-muted/70 transition-[width,background-color,border-color,box-shadow] duration-300 ease-out ${
           expanded ? 'w-[min(6rem,24vw)] sm:w-60 pr-2'
             : 'w-[26px] sm:w-[88px] pr-0 sm:pr-2 cursor-pointer max-sm:placeholder:text-transparent'}`} />
       {open && hits?.length > 0 && (
