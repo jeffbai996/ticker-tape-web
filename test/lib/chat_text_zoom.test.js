@@ -41,4 +41,27 @@ describe('chat transcript text size', () => {
     expect(source).toContain('>−</button>')
     expect(source).toContain('>+</button>')
   })
+
+  it('holds the reading position across the reflow', () => {
+    // Changing the font size reflows every bubble, so the transcript slides out
+    // from under the reader unless the position is captured before and restored
+    // after (Jeff 2026-08-17: "should keep the chat in place, not move it
+    // around"). Same capture/restore contract as operator's scaleKeepingView.
+    expect(source).toContain('captureAnchor(scrollRef.current)')
+    expect(source).toContain('restoreAnchor(scrollRef.current, anchor)')
+    expect(source).toContain('}, [chatZoom])')
+  })
+
+  it('restores before the browser paints', () => {
+    // useEffect fires after paint, so the correction would land one frame late
+    // and read as a flicker rather than as the chat holding still.
+    expect(source).toContain('useLayoutEffect')
+  })
+
+  it('takes scroll anchoring off the browser while the transcript reflows', () => {
+    // Chrome picks its own anchor node and adjusts scrollTop during a reflow,
+    // which races the explicit restore. operator turns it off on its log for
+    // the same reason.
+    expect(source).toContain("overflowAnchor: 'none'")
+  })
 })
