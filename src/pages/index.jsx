@@ -7,21 +7,12 @@ import { Screen } from './screen.jsx'
 import { Alerts } from './alerts.jsx'
 import { Portfolio } from './portfolio.jsx'
 import { Chat } from './chat.jsx'
+import { ChatPreview } from './chatPreview.jsx'
+import { Brief } from './brief.jsx'
+import { Wire } from './wire.jsx'
 import { IS_PRIVATE_BUILD } from '../lib/nav.js'
 import { useNamedWatchlists } from '../hooks.js'
 import { resolveDashboardLanding } from '../lib/dashboardLanding.js'
-
-function ChatUnavailable() {
-  return (
-    <div class="flex-1 p-6 font-mono text-[12px] text-muted max-w-lg leading-relaxed">
-      the assistant runs on the operator's own subscription through a private
-      wire service, so it isn't part of this public demo. everything else on
-      the site works without it.
-    </div>
-  )
-}
-import { Brief } from './brief.jsx'
-import { Wire } from './wire.jsx'
 
 const PAGES = {
   markets: {
@@ -66,9 +57,8 @@ export function Page({ route }) {
   if (route.section === 'alerts') return <Alerts />
   if (route.section === 'wire') return <Wire route={route} />
   if (route.section === 'portfolio') return <Portfolio route={route} />
-  // Public build has no assistant: the route is dead, not just hidden.
   if (route.section === 'chat') {
-    return IS_PRIVATE_BUILD ? <Chat /> : <ChatUnavailable />
+    return IS_PRIVATE_BUILD ? <Chat /> : <ChatPreview />
   }
   const page = PAGES[route.section]
   const sub = route.sub ? ` / ${route.sub}` : ''
