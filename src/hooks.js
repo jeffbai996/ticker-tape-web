@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { track, subscribe, getCached } from './lib/feed.js'
+import { follow, track, subscribe, getCached } from './lib/feed.js'
 import {
   loadAlerts, onAlertsChange, markTriggered, conditionText,
   evaluatePriceAlerts, evaluateTechnicalAlerts,
@@ -56,7 +56,7 @@ export function useQuotes(symbols) {
   const [, bump] = useState(0)
 
   useEffect(() => {
-    track(symbols)
+    const unfollow = follow(symbols)
     const wanted = new Set(symbols)
     const requestFrame = globalThis.requestAnimationFrame?.bind(globalThis)
       || ((fn) => setTimeout(fn, 16))
@@ -77,6 +77,7 @@ export function useQuotes(symbols) {
     const onVisibility = () => gate.onVisibilityChange()
     document.addEventListener('visibilitychange', onVisibility)
     return () => {
+      unfollow()
       unsub()
       document.removeEventListener('visibilitychange', onVisibility)
       gate.dispose()
