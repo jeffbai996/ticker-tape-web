@@ -376,7 +376,7 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
                   phone it was the same size as the print and clipped off the
                   right edge (Jeff 2026-08-04) */}
               {q?.extLabel && q.extPrice != null ? (
-                <span class="whitespace-nowrap text-[11px] max-sm:text-[10px] shrink-0 max-sm:ml-auto @min-[820px]:min-w-[7rem] @min-[545px]:text-right">
+                <span class="whitespace-nowrap text-[11px] max-sm:text-[10px] shrink-0 max-sm:ml-auto max-sm:w-[6.2rem] @min-[820px]:min-w-[7rem] @min-[545px]:text-right">
                   {/* only the PERCENT drops a weight tier (Jeff 2026-08-06);
                       the extended price keeps its weight and runs a size
                       bigger than the tag beside it — it's the figure you read,
@@ -393,11 +393,10 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
                     {extUp ? '▲' : '▼'}{fmtPctPlain(Math.abs(q.extPct ?? 0))}
                   </span>
                 </span>
-              ) : marketState(new Date()).state !== 'open' ? (
-                /* ghost slot: a row whose extended print hasn't loaded used to
-                   let the name gutter grow and right-shift the whole quote
-                   cluster off the column grid (Jeff 2026-08-06) */
-                <span class="whitespace-nowrap text-[11px] max-sm:hidden shrink-0 invisible @min-[820px]:min-w-[7rem] @min-[545px]:text-right" aria-hidden="true">
+              ) : (
+                /* Ghost slot at every session and width: a temporarily absent
+                   extended print must not move the regular quote. */
+                <span class="whitespace-nowrap text-[11px] max-sm:text-[10px] shrink-0 invisible max-sm:w-[6.2rem] @min-[820px]:min-w-[7rem] @min-[545px]:text-right" aria-hidden="true">
                   {/* mirrors the real print part for part, including the
                       larger price — a ghost narrower than the thing it
                       reserves space for lets the column shift when data lands */}
@@ -405,7 +404,7 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
                   <span class="font-semibold text-[12px]">0000.00</span>{' '}
                   <span class="font-normal">▼0.0%</span>
                 </span>
-              ) : null}
+              )}
             </span>
           </div>
           {/* Phone width: badges scroll sideways instead of clipping mid-badge. */}
@@ -1395,7 +1394,7 @@ function TickerSearch({ filter, setFilter, activeList }) {
         placeholder={`${tl('Search')}…`}
         aria-label={tl('Search')}
         class={`board-control board-search min-w-0 border rounded-lg pl-6 py-1 font-anth text-[10px] text-ink outline-none focus:border-accent placeholder:text-[9.5px] placeholder:text-muted/70 transition-[width,background-color,border-color,box-shadow] duration-300 ease-out ${
-          expanded ? 'w-44 sm:w-60 pr-2'
+          expanded ? 'w-[min(6rem,24vw)] sm:w-60 pr-2'
             : 'w-[26px] sm:w-[88px] pr-0 sm:pr-2 cursor-pointer max-sm:placeholder:text-transparent'}`} />
       {open && hits?.length > 0 && (
         <div class="absolute top-full left-0 mt-1 w-[26rem] max-w-[88vw] z-40 bg-surface-1/95 backdrop-blur border border-line rounded-lg shadow-[0_8px_24px_rgba(0,0,0,0.6)] overflow-hidden">

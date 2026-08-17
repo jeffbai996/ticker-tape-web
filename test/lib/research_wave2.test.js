@@ -29,14 +29,16 @@ describe('research header', () => {
   })
 
   it('keeps the complete quote header on one line', () => {
-    expect(research).toContain('class="flex items-center gap-3 px-1 pb-2 flex-nowrap min-w-0 overflow-hidden"')
+    expect(research).toContain('data-research-header class="flex items-center gap-3 max-sm:gap-2 px-1 pb-2 flex-nowrap min-w-0 overflow-hidden"')
+    expect(research).toContain('data-research-quote-cluster class="ml-auto flex items-baseline')
     expect(research).not.toContain('max-sm:w-full flex items-baseline')
   })
 
-  it('shows the company name only when the research canvas has ample room', () => {
+  it('keeps the full company name in the bounded identity scroller', () => {
     expect(research).toContain('class="@container flex-1 p-3 select-text min-w-0"')
-    expect(research).toContain('class="hidden @min-[1180px]:block @min-[1180px]:flex-1 min-w-0"')
-    expect(research).not.toContain('<span class="flex-1 min-w-0">\n              <Marquee text={q.name}')
+    expect(research).toContain('data-research-identity-scroll class="flex items-center gap-3 flex-1 min-w-0 overflow-x-auto')
+    expect(research).toContain('data-research-company-name class="shrink-0 whitespace-nowrap')
+    expect(research).not.toContain('hidden @min-[1180px]:block')
   })
 })
 

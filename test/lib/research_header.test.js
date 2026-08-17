@@ -6,8 +6,20 @@ const research = readFileSync(resolve(process.cwd(), 'src/pages/research.jsx'), 
 
 describe('research overview header', () => {
   it('renders the top-left ticker as Anthropic Sans rather than mono data', () => {
-    expect(research).toContain('<h1 class="font-tick font-bold text-lg text-ink">{symbol}</h1>')
+    expect(research).toContain('<h1 class="font-tick font-bold text-lg text-ink shrink-0">{symbol}</h1>')
     expect(research).not.toContain('<h1 class="font-mono font-bold text-lg text-ink">{symbol}</h1>')
+  })
+
+  it('scrolls the full mobile identity while pinning the live quote lane', () => {
+    expect(research).toContain('data-research-header')
+    expect(research).toContain('data-research-identity-scroll')
+    expect(research).toContain('overflow-x-auto no-scrollbar')
+    expect(research).toContain('data-research-company-name')
+    expect(research).toContain('{q.name}')
+    expect(research).toContain('data-research-quote-cluster')
+    expect(research).toContain('shrink-0 whitespace-nowrap')
+    expect(research).toContain('max-sm:hidden"><FlashMetric value={q.change}')
+    expect(research).not.toContain('hidden @min-[1180px]:block @min-[1180px]:flex-1')
   })
 
   it('bounds the primary chart controls while leaving indicators scrollable', () => {

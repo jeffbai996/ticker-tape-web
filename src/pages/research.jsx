@@ -22,7 +22,6 @@ import {
   fmtPrice, fmtPriceBare, fmtPct, fmtPctPlain, fmtChange, fmtVol, fmtBig, fmtRatio, fmtFracPct,
 } from '../lib/format.js'
 import { hrefFor } from '../lib/route.js'
-import { Marquee } from '../components/Marquee.jsx'
 import { getLocale, tl, t as tt } from '../lib/i18n.js'
 import { Fig, FlashMetric, FlashPrice } from '../components/Fig.jsx'
 import { Loading } from '../components/Loading.jsx'
@@ -2412,41 +2411,42 @@ export function Research({ route }) {
 
   return (
     <div class="@container flex-1 p-3 select-text min-w-0">
-      <div class="flex items-center gap-3 px-1 pb-2 flex-nowrap min-w-0 overflow-hidden">
-        <h1 class="font-tick font-bold text-lg text-ink">{symbol}</h1>
-        <WatchStar symbol={symbol} />
-        <AlertButton symbol={symbol} price={q?.price} />
-        {q && (
-          <>
-            {/* Names are useful only when they occupy genuine spare canvas.
-                At tighter viewport/zoom levels the symbol is the identity;
-                reserving even a shrinking name gutter crowds the quote. */}
-            <span class="hidden @min-[1180px]:block @min-[1180px]:flex-1 min-w-0">
-              <Marquee text={q.name} class="w-full text-[12px] text-muted font-anth" />
+      <div data-research-header class="flex items-center gap-3 max-sm:gap-2 px-1 pb-2 flex-nowrap min-w-0 overflow-hidden">
+        {/* Identity is the expendable/scrollable lane. Quotes never enter this
+            scroller, so a long legal company name cannot push live data out. */}
+        <div data-research-identity-scroll class="flex items-center gap-3 flex-1 min-w-0 overflow-x-auto overscroll-x-contain no-scrollbar">
+          <h1 class="font-tick font-bold text-lg text-ink shrink-0">{symbol}</h1>
+          <WatchStar symbol={symbol} />
+          <AlertButton symbol={symbol} price={q?.price} />
+          {q?.name && (
+            <span data-research-company-name class="shrink-0 whitespace-nowrap text-[12px] text-muted font-anth">
+              {q.name}
             </span>
-            <span class="ml-auto flex items-baseline gap-x-3 shrink-0 whitespace-nowrap">
-              <span class="font-mono font-bold text-lg text-ink"><FlashPrice price={q.price} fmt={fmtPrice} /></span>
-              <span class={`font-mono text-[15px] ${up ? 'text-up' : 'text-down'}`}>
-                <span class="font-semibold"><FlashMetric value={q.change} fmt={fmtChange} /></span>{' '}
+          )}
+        </div>
+        {q && (
+          <span data-research-quote-cluster class="ml-auto flex items-baseline gap-x-3 max-sm:gap-x-2 shrink-0 whitespace-nowrap">
+              <span class="font-mono font-bold text-lg max-sm:text-[15px] text-ink"><FlashPrice price={q.price} fmt={fmtPrice} /></span>
+              <span class={`font-mono text-[15px] max-sm:text-[12px] ${up ? 'text-up' : 'text-down'}`}>
+                <span class="font-semibold max-sm:hidden"><FlashMetric value={q.change} fmt={fmtChange} /></span>{' '}
                 <span class="font-normal">{fmtPct(q.pct)}</span>
               </span>
               {q.volume != null && (
-                <span class="font-mono text-[11px] text-muted">vol {fmtVol(q.volume)}</span>
+                <span class="font-mono text-[11px] text-muted max-sm:hidden">vol {fmtVol(q.volume)}</span>
               )}
-              <StaleQuoteTag />
+              <span class="max-sm:hidden"><StaleQuoteTag /></span>
               {q.extLabel && q.extPrice != null && (
-                <span class="font-mono text-[12px] whitespace-nowrap">
+                <span class="font-mono text-[12px] max-sm:text-[11px] whitespace-nowrap">
                   <span class={extendedLabelClass(q.extLabel)}>{q.extLabel}</span>{' '}
                   <span class="text-ink-2"><FlashPrice price={q.extPrice} fmt={fmtPrice} /></span>
                   {q.extPct != null && (
-                    <span class={`ml-1.5 ${extUp ? 'text-up' : 'text-down'}`}>
+                    <span class={`ml-1.5 max-sm:hidden ${extUp ? 'text-up' : 'text-down'}`}>
                       {extUp ? '▲' : '▼'}{Math.abs(q.extPct).toFixed(2)}%
                     </span>
                   )}
                 </span>
               )}
             </span>
-          </>
         )}
         {/* the range + bar-interval pickers live inside the Overview chart
             card now, ChartSuite-style (Jeff 2026-08-09: "time pills into the
