@@ -87,3 +87,20 @@ describe('locale state', () => {
     expect(css).not.toMatch(/html:lang\(zh-CN\)[^{]*\{[^}]*\bzoom\s*:/)
   })
 })
+
+describe('zh pass 2026-08-17 (rendered audit)', () => {
+  it('translates the descriptor / technicals labels the served zh build was still showing in English', async () => {
+    const { tl, setLocale } = await import('../../src/lib/i18n.js')
+    setLocale('zh')
+    // (RSI 14 / Beta stay as-is on purpose — standard metric codes)
+    for (const k of ['sort by', 'sym', 'unwatch %s', 'MACD hist', 'Bollinger up',
+      'Corr QQQ', 'P/E ttm / fwd', 'FCF ttm', 'Div yield', 'Short % float', 'Target (mean)',
+      '52wk H / L', 'Ret 1w / 1m', 'Avg $ vol', 'Gross / op mgn', 'PEG / payout', 'Div rate',
+      'Benchmark', 'AI market read', 'Buy']) {
+      expect(tl(k), k).not.toBe(k)
+    }
+    expect(tl('pulling the story…')).not.toMatch(/抓取/)
+    expect(tl('unwatch %s')).toBe('从看盘移除 %s')
+    setLocale('en')
+  })
+})

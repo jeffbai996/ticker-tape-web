@@ -314,7 +314,7 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
           (Jeff 2026-08-05). Filled = on the board; a tap lifts it off. */}
       {!selecting && <button
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(symbol) }}
-        title={`${tl('remove')} ${symbol} ${tl('from the board')}`}
+        title={tl('unwatch %s').replace('%s', symbol)}
         class="absolute right-1.5 top-1/2 -translate-y-1/2 z-10 w-6 h-6 grid place-items-center rounded-md text-accent opacity-0 group-hover/row:opacity-100 hover:bg-surface-2 hover:text-down transition-opacity"
       >
         ★
