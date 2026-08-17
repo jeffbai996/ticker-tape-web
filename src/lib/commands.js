@@ -8,69 +8,45 @@ const SYM = /^[A-Za-z0-9.^=-]{1,12}$/
 const DATE = /^\d{4}-\d{2}-\d{2}$/
 const RANGE_KEYS = ['1D', '5D', '1M', '3M', '6M', 'YTD', '1Y', '2Y', '5Y']
 
-// Multi-line help in the CLI help screen's register: one fixed-width command
-// rail, dim descriptions, amber sections. Keep the hierarchy and wording in
-// sync with ticker-tape/screens/help.py, omitting CLI-only operations rather
-// than advertising commands the browser cannot execute.
+// The browser console has a wide pane, so keep the CLI's dense two-column
+// register instead of stretching one command rail across mostly empty space.
 const INF = '#00c8ff'
 const DIM = '#808080'
 const ACC = '#ffc800'
-const row = (cmd, desc) => `[bold ${INF}]${cmd.padEnd(Math.max(28, cmd.length + 2))}[/][${DIM}]${desc}[/]`
-const section = (title) => `[bold ${ACC}]═══ ${title.toUpperCase()} ═══[/]`
+const row = (cmd, desc) => `[bold ${INF}]${cmd.padEnd(18)}[/][${DIM}]${desc}[/]`
+const row2 = (c1, d1, c2, d2) => `${row(c1, d1.padEnd(24))}${row(c2, d2)}`
+const section = (title) => `[bold ${ACC}]═══ ${title} ═══[/]`
 export const HELP_TEXT = [
-  section('keyboard shortcuts'),
-  row('t', 'Thesis Watcher'),
-  row('s', 'Sector performance'),
-  row('e', 'Earnings calendar'),
-  row('?', 'This help screen'),
-  row('q', 'Close message'),
-  section('commands'),
-  row('<TICKER>', 'Stock lookup (e.g. AAPL)'),
-  row('m, market', 'Market overview'),
-  row('ta <SYM>', 'Technical analysis'),
-  row('news \\[SYM]', 'News feed — all or by symbol'),
-  row('wire \\[SYM|read N|story N]', 'Live events wire (fragwire)'),
-  row('today', "Day sheet — today's calendar"),
-  row('chart <SYM> \\[period]', 'Price chart (1d/5d/1m/3m/6m/ytd/1y/2y/5y)'),
-  row('vs <SYM> <SYM> ...', 'Compare symbols'),
-  row('intra <SYM>', 'Intraday bars with VWAP'),
-  row('impact <SYM>', 'Earnings impact history'),
-  row('screen <SYM> <SYM>', 'Valuation comparison table'),
-  row('insider <SYM>', 'Insider transactions'),
-  row('options <SYM> \\[exp]', 'Options chain with IV'),
-  row('div / rating <SYM>', 'Dividends / analyst ratings'),
-  row('corr / heatmap', 'Correlation matrix / performance heatmap'),
-  row('calendar', 'Economic calendar (upcoming data + events)'),
-  row('catalyst \\[cmd]', 'Catalyst calendar — add/list/remove'),
-  row('commodities', 'Commodity futures'),
-  row('surprises', 'Earnings surprise tracker'),
-  section('portfolio'),
-  row('watch / unwatch <SYM>', 'Add/remove watchlist symbol'),
-  row('wl', 'Show watchlist'),
-  row('alert \\[condition]', 'Smart alerts (price, RSI, volume)'),
-  row('group \\[name] \\[SYMs]', 'Manage watchlist groups'),
-  row('journal \\[cmd]', 'Trade journal (add/search/remove)'),
-  section('ibkr'),
-  row('ibkr / pos / acct / pnl', 'Portfolio / positions / account'),
-  row('whatif \\[buy/sell] <SYM> <QTY>', 'Pre-trade sizing workspace'),
-  row('trades', "Today's executions"),
-  row('dash', 'Margin dashboard'),
-  row('cockpit / hf', 'Risk cockpit'),
-  row('carry', 'Cost of carry'),
-  row('detail <SYM>', 'Position research detail'),
-  row('timeline', 'Portfolio history'),
-  row('backtest \\[SYM]', 'Thesis replay'),
-  row('tt / asof', 'Time travel'),
-  row('breakers / tw', 'Thesis Watcher'),
-  row('brief', 'Morning briefing'),
-  section('ai chat'),
-  row('chat \\[question]', 'AI chat (multi-model)'),
-  row('resume', 'Open the latest chat session'),
-  row('memory \\[cmd]', 'Persistent memories'),
-  section('other'),
-  row('copy \\[N]', 'Copy console output to clipboard'),
-  row('lang / clear', 'Language / clear console'),
-  row('quit, q', 'Close message'),
+  section('research'),
+  row2('SYM', 'open research', 'ta|chart SYM', 'chart + technicals'),
+  row2('intra SYM', 'intraday + VWAP', 'opt SYM', 'options chain'),
+  row2('ei SYM', 'earnings impact', 'an SYM', 'analysts'),
+  row2('ins SYM', 'insider activity', 'n SYM', 'news'),
+  row2('hold SYM', 'holders', 'fil SYM', 'SEC filings'),
+  row2('prof SYM', 'company profile', 'wire SYM', 'fragwire trail'),
+  section('screens'),
+  row2('vs A B \\[C…]', 'compare', 'screen A B', 'valuation grid'),
+  row2('m s hm movers', 'markets views', 'er · cal', 'earnings · calendar'),
+  row2('market sectors …', 'full names work too', 'wire · today', 'wire · calendar'),
+  row2('pos acct cockpit', 'portfolio views', 'carry timeline', 'more portfolio'),
+  row2('b|brief', 'briefing + AI', 'pos · acct', 'demo portfolio'),
+  row2('alerts', 'alert center', 'chat \\[q]', 'AI chat'),
+  row('bt|backtest', 'fills ledger replay'),
+  row2('corr', 'correlation grid', 'margin|trades', 'account · fills'),
+  section('actions'),
+  row2('w|uw SYM', 'watch / unwatch', 'alert SYM > N', 'arm price alert'),
+  row2('alert SYM rsi > 70', 'rsi alert', 'alert SYM vol > 2', 'volume multiple'),
+  row2('cat', 'list catalysts', 'cat rm N', 'remove catalyst'),
+  row('cat add DATE …', '\\[SYM] \\[type] label — type: product conf policy capex macro'),
+  row2('group NAME SYM…', 'name a bucket', 'group rm NAME', 'ungroup'),
+  row2('div SYM', 'dividend history', 'chart SYM 6m', 'range works now'),
+  row('opt SYM DATE', 'jump straight to a 2026-09-18 expiry'),
+  section('notes'),
+  row2('mem \\[add TEXT]', 'AI memories', 'mem edit·rm N', 'update · delete'),
+  row2('journal \\[add …]', 'trade journal', 'journal search T', 'find old thinking'),
+  section('console'),
+  row2('clear', 'wipe the console', 'copy \\[N]', 'copy output to clipboard'),
+  row2('lang \\[en|zh]', 'switch language', 'h · q', 'help · quit'),
 ].join('\n')
 
 const low = (s) => s.toLowerCase()
