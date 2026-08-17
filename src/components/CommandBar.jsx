@@ -282,16 +282,6 @@ export function CommandBar() {
           hot ? 'h-11 border-accent/70 bg-accent-soft' : 'h-8 border-line'
         }`}
       >
-        {/* keycap hint before the prompt — bottom-right was invisible
-            (Jeff 2026-08-17). `/` focuses from anywhere. */}
-        <button
-          type="button"
-          onClick={() => inputRef.current?.focus()}
-          title={tl('focus console')}
-          class="shrink-0 w-5 h-5 grid place-items-center rounded border border-line-2 bg-surface-2 text-muted hover:text-ink text-[10px] leading-none"
-        >
-          /
-        </button>
         <span class="text-accent font-bold shrink-0">ticker&gt;</span>
         <input
           ref={inputRef}
@@ -300,8 +290,21 @@ export function CommandBar() {
           onKeyDown={onKey}
           onBlur={() => setHot(false)}
           placeholder={tl('type command or symbol…  (h = help)')}
-          class="flex-1 bg-transparent outline-none text-ink placeholder:text-muted min-w-0"
+          class="flex-none w-[min(100%,26rem)] bg-transparent outline-none text-ink placeholder:text-muted min-w-0"
         />
+        {/* keycap hint sits right after the placeholder text (Jeff
+            2026-08-17: not all the way left, not bottom-right). Glyph is
+            dead-centered: flex + line-height 1 + a 1px optical nudge, since
+            the slash's ink sits high in the mono em box. */}
+        <button
+          type="button"
+          onClick={() => inputRef.current?.focus()}
+          title={tl('focus console')}
+          class="shrink-0 w-5 h-5 inline-flex items-center justify-center rounded border border-line-2 bg-surface-2 text-muted hover:text-ink text-[10px] leading-none pt-px"
+        >
+          /
+        </button>
+        <span class="flex-1" />
       </form>
     </div>
   )
