@@ -248,6 +248,13 @@ describe('compact dashboard company name', () => {
     expect(css).toMatch(/prefers-reduced-motion:[\s\S]*\.board-menu-pop/)
   })
 
+  it('keeps the mobile search the same height as its square toolbar peers', () => {
+    expect(dashboard).toContain('board-search h-[26px] min-w-0')
+    expect(dashboard).toContain("expanded ? 'w-[min(6rem,24vw)] sm:w-60 pr-2'")
+    expect(dashboard).toContain(": 'w-[26px] sm:w-[88px] pr-0 sm:pr-2")
+    expect(dashboard).not.toContain('board-search min-w-0 border rounded-lg pl-6 py-1')
+  })
+
   // 2026-08-11: the mobile bottom sheet is gone — it floated detached from
   // the button that opened it ("drops this far down"). One anchored dropdown
   // at every width; phones only get a tighter width cap.
