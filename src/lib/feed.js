@@ -11,6 +11,7 @@ import { wireUrl } from './wire.js'
 import { createYahooStream } from './yahooStream.js'
 import { techBadges, histoBars } from './badges.js'
 import { createPCache } from './pcache.js'
+import { createFeedSymbolRegistry } from './feedSymbols.js'
 
 // RS badge benchmark (TUI: RS vs QQQ, 20d). Its daily closes are kept in
 // module memory and prioritized in the queue so other symbols can diff
@@ -229,6 +230,14 @@ async function runBatch() {
 }
 
 const tracked = new Set()
+const symbolRegistry = createFeedSymbolRegistry()
+
+function syncTracked() {
+  const symbols = symbolRegistry.values()
+  tracked.clear()
+  for (const symbol of symbols) tracked.add(symbol)
+  streamSymbols(symbols)
+}
 
 /** Overnight, the wire's IBKR-backed /api/quotes fills the thin-stream gap:
  *  Yahoo's REST print freezes at 20:00 ET and the websocket only ticks names
@@ -277,11 +286,13 @@ function hookVisibility() {
  *  stale, then refresh everything on the sweep cadence. Requested symbols jump
  *  to the front of the queue — the page being looked at fills first, instead
  *  of waiting behind the sidebar's watchlist tail on a cold cache. */
-export function track(symbols) {
+function activate(symbols, register) {
+  const previouslyTracked = new Set(tracked)
+  const release = register(symbols)
+  syncTracked()
   const priority = []
   for (const s of symbols) {
-    const isNew = !tracked.has(s)
-    if (isNew) tracked.add(s)
+    const isNew = !previouslyTracked.has(s)
     const hit = cache.get(s)
     const stale = !hit || Date.now() - hit.ts >= REFRESH_MS
     if (stale && (isNew || queue.includes(s))) priority.push(s)
@@ -290,7 +301,6 @@ export function track(symbols) {
     queue = [...priority, ...queue.filter((s) => !priority.includes(s))]
     scheduleBatch(priority) // instant first paint; the pump follows with charts
   }
-  streamSymbols([...tracked])
   // RS benchmark first, so badge rows can diff against it from the start.
   if (!benchCloses && queue.length && queue[0] !== RS_BENCH) {
     queue = [RS_BENCH, ...queue.filter((s) => s !== RS_BENCH)]
@@ -314,4 +324,24 @@ export function track(symbols) {
       }
     }, QUOTE_SWEEP_MS)
   }
+  return release
+}
+
+/** Mounted quote surfaces are live only while mounted. The newest surface is
+ *  ordered first, which keeps a selected custom dashboard ahead of old routes
+ *  instead of growing one session-long WebSocket subscription forever. */
+export function follow(symbols) {
+  const release = activate(symbols, (items) => symbolRegistry.retain(items))
+  return () => {
+    release()
+    syncTracked()
+  }
+}
+
+/** Persistent tracking is reserved for app-level consumers such as alerts. */
+export function track(symbols) {
+  activate(symbols, (items) => {
+    symbolRegistry.persist(items)
+    return () => {}
+  })
 }
