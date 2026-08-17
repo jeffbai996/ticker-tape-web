@@ -89,13 +89,28 @@ body {
 /* The app is a fixed h-dvh shell; only inner containers scroll. Without this
    iOS Safari chains an inner scroller's end onto the BODY and drags the whole
    app past its own bottom nav into blank page (Jeff 2026-08-06). */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 html, body {
+  width: 100%;
+  max-width: 100%;
   height: 100%;
   overflow: hidden;
   overscroll-behavior: none;
   /* Keep one-finger app panning, but never hand a two-finger gesture to the
      browser as page zoom. Chart panes still receive their own touch stream. */
   touch-action: pan-x pan-y;
+}
+
+#app {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
 /* Terminal-dark scrollbars everywhere. */

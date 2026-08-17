@@ -131,7 +131,7 @@ export function App() {
   }, [])
 
   return (
-    <div class="h-dvh flex flex-col bg-surface-0 text-ink font-sans antialiased">
+    <div class="h-dvh w-full max-w-full min-w-0 overflow-hidden flex flex-col bg-surface-0 text-ink font-sans antialiased">
       <StatusBar />
       <Tape />
       <SubTabs route={route} />
