@@ -197,7 +197,7 @@ describe('compact dashboard company name', () => {
 
   it('translates the strings the zh board was still rendering in English', () => {
     expect(dashboard).toContain("title={folded ? tl('expand') : tl('collapse')}")
-    expect(dashboard).toContain("title={`${tl('remove')} ${symbol} ${tl('from the board')}`}")
+    expect(dashboard).toContain("title={tl('unwatch %s').replace('%s', symbol)}")
     expect(dashboard).toContain("title={tl('drag to reorder')}")
     // nothing left rendering a bare English literal into a title
     expect(dashboard).not.toMatch(/title="[a-z]/)
