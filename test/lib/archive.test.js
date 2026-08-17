@@ -40,3 +40,17 @@ describe('report archive', () => {
     expect(loadArchive()).toHaveLength(0)
   })
 })
+
+describe('archive panel delete is discoverable', () => {
+  it('the delete control is always visible, not hover-only (Jeff 2026-08-17: "users arent able to delete past briefings")', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const src = readFileSync(resolve(process.cwd(), 'src/pages/brief.jsx'), 'utf8')
+    // find the removeReport button and assert it does not hide itself until hover
+    const idx = src.indexOf('removeReport(r.id)')
+    expect(idx).toBeGreaterThan(-1)
+    const around = src.slice(idx, idx + 400)
+    expect(around).not.toMatch(/opacity-0/)
+    expect(around).toMatch(/aria-label=/)
+  })
+})

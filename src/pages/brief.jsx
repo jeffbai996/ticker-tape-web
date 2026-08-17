@@ -53,14 +53,18 @@ function ArchivePanel() {
               </button>
               <button
                 onClick={() => downloadMd(`${r.title.replace(/\s+/g, '-').toLowerCase()}.md`, r.text)}
-                class="text-muted hover:text-ink opacity-0 group-hover:opacity-100 max-md:opacity-100 shrink-0"
+                class="text-muted hover:text-ink shrink-0"
+                title={tl('download .md')}
               >
                 .md
               </button>
+              {/* always visible: hover-only made past briefings read as
+                  undeletable on desktop */}
               <button
                 onClick={() => removeReport(r.id)}
-                class="text-muted hover:text-down opacity-0 group-hover:opacity-100 max-md:opacity-100 shrink-0"
+                class="w-5 h-5 grid place-items-center rounded border border-down/40 bg-down/10 text-down hover:bg-down hover:text-white shrink-0 text-[10px] font-bold"
                 title={tl('delete')}
+                aria-label={tl('delete')}
               >
                 ✕
               </button>
