@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
-  mergeSnapshotQuote, quoteFromChart, quoteFromStream, quoteFromV7 as v7,
-  sparkFromChart,
+  barsFromChart, mergeSnapshotQuote, quoteFromChart, quoteFromStream,
+  quoteFromV7 as v7, sparkFromChart,
 } from '../../src/lib/yahoo.js'
 
 // Shape mirrors Yahoo v8 /finance/chart responses (result[0]).
@@ -295,5 +295,47 @@ describe('out-of-order prints never move the tape backwards', () => {
       prev,
     )
     expect(out.price).toBe(222.61)
+  })
+})
+
+describe('barsFromChart bad-print scrub', () => {
+  it('drops zero-volume bars whose wick spans absurdly beyond their neighbours (MU 2026-08-17 14:18–14:24 PT: Yahoo v8 lows of 485–662 on a 1010 stock, volume 0)', () => {
+    const closes = [1010.1, 1010.2, 1010.4, 1010.35, 1009.99, 1010.5, 1010.7]
+    const result = {
+      timestamp: [1, 2, 3, 4, 5, 6, 7],
+      indicators: { quote: [{
+        open:   [1010.0, 1010.1, 1010.25, 485.86, 526.77, 1010.4, 1010.6],
+        high:   [1010.5, 1293.69, 1010.4, 1010.58, 1010.55, 1010.9, 1011.0],
+        low:    [1009.8, 662.52, 582.80, 485.86, 526.77, 1010.1, 1010.3],
+        close:  closes,
+        volume: [1200, 0, 0, 0, 0, 900, 1100],
+      }] },
+    }
+    const bars = barsFromChart(result)
+    // the four bad prints are gone; the honest bars survive with their order
+    expect(bars.map((b) => b.time)).toEqual([1, 6, 7])
+    expect(bars[0].low).toBe(1009.8)
+  })
+
+  it('keeps zero-volume bars whose range is ordinary (pre/post-market prints legitimately show volume 0)', () => {
+    const result = {
+      timestamp: [1, 2, 3],
+      indicators: { quote: [{
+        open: [100, 100.2, 100.1], high: [100.5, 100.6, 100.4], low: [99.8, 99.9, 99.9],
+        close: [100.2, 100.1, 100.3], volume: [0, 0, 0],
+      }] },
+    }
+    expect(barsFromChart(result)).toHaveLength(3)
+  })
+
+  it('does not scrub a genuine wide-range bar that carries volume (a real gap or halt-reopen prints volume)', () => {
+    const result = {
+      timestamp: [1, 2, 3],
+      indicators: { quote: [{
+        open: [100, 100, 130], high: [100.5, 135, 131], low: [99.8, 99, 129],
+        close: [100.2, 132, 130.5], volume: [1000, 900000, 5000],
+      }] },
+    }
+    expect(barsFromChart(result)).toHaveLength(3)
   })
 })
