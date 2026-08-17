@@ -28,19 +28,20 @@ describe('console resize', () => {
 })
 
 describe('ticker-tape-cli parity', () => {
-  it('keeps the CLI section order and one-column command rail', () => {
+  it('uses the wide terminal for the compact two-column help register', () => {
     const text = plain(HELP_TEXT)
-    const sections = [
-      'KEYBOARD SHORTCUTS', 'COMMANDS', 'PORTFOLIO', 'IBKR', 'AI CHAT', 'OTHER',
-    ]
+    const sections = ['research', 'screens', 'actions', 'notes', 'console']
     let cursor = -1
     for (const section of sections) {
       const next = text.indexOf(`═══ ${section} ═══`)
       expect(next).toBeGreaterThan(cursor)
       cursor = next
     }
-    expect(text).toContain('m, market'.padEnd(28) + 'Market overview')
-    expect(text).not.toContain('research\n')
+    expect(text).toContain(
+      'SYM'.padEnd(18) + 'open research'.padEnd(24)
+      + 'ta|chart SYM'.padEnd(18) + 'chart + technicals',
+    )
+    expect(text).not.toContain('KEYBOARD SHORTCUTS')
   })
 
   it('accepts CLI aliases where an equivalent web surface exists', () => {
