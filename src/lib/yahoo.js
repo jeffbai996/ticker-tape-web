@@ -202,5 +202,26 @@ export function barsFromChart(result) {
       volume: q.volume?.[i] ?? null,
     })
   }
-  return bars
+  return scrubBadPrints(bars)
+}
+
+/** Yahoo v8 occasionally emits intraday bars whose wick spans a third of
+ *  the price on ZERO volume — MU 2026-08-17 14:18–14:24 PT printed lows of
+ *  485–662 on a $1010 stock, four bars, volume 0, and the y-axis collapsed
+ *  the whole session into a flat line. A bad print has no trade behind it
+ *  (volume 0) AND a range wildly out of line with its neighbours; a real
+ *  gap or halt-reopen prints volume. Both conditions must hold — ordinary
+ *  zero-volume pre/post-market bars keep their (small) range. */
+export function scrubBadPrints(bars) {
+  if (bars.length < 3) return bars
+  const range = (b) => Math.max(0, b.high - b.low)
+  // typical range = median of the bars that carry volume (or all, if none do)
+  const traded = bars.filter((b) => (b.volume ?? 0) > 0)
+  const pool = (traded.length >= 3 ? traded : bars).map(range).sort((a, b) => a - b)
+  const median = pool[Math.floor(pool.length / 2)]
+  const scale = bars[Math.floor(bars.length / 2)].close || 1
+  // 8× the typical range, but never below 5% of price — a quiet tape's median
+  // can be tiny and we don't want to scrub an honest 30¢ wick
+  const limit = Math.max(median * 8, scale * 0.05)
+  return bars.filter((b) => (b.volume ?? 0) > 0 || range(b) <= limit)
 }
