@@ -275,6 +275,8 @@ const STRINGS = {
 
 // Short labels keyed by English text. Absent key → English passthrough.
 const LABELS = {
+  // Archive row controls
+  'download .md': '下载 .md',
   // Nav
   Dashboard: '仪表盘', Watchlists: '自选股', Markets: '市场', Research: '研究', Portfolio: '持仓',
   Screening: '筛选', Alerts: '提醒', Wire: '快讯', 'AI Chat': 'AI 对话', Overview: '概览',
