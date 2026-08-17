@@ -6,7 +6,7 @@ import { getWatchlist } from '../lib/watchlist.js'
 import { parseRich } from '../lib/rich.js'
 import { isTypingTarget, watchMedia } from '../lib/keys.js'
 import { tl } from '../lib/i18n.js'
-import { consoleHeightAt } from '../lib/consoleResize.js'
+import { consoleHeightAt, nextConsolePosture, isTap, COMPACT_H } from '../lib/consoleResize.js'
 
 // The TUI's bottom command line, with a real output console: every command
 // echoes into a drop-up log (like the CLI's main pane) instead of a blink-
@@ -47,23 +47,30 @@ export function CommandBar() {
     const v = parseInt(localStorage.getItem('console_h') || '', 10)
     return v >= 120 ? v : 288
   })
-  // Two postures: rapid-fire keyboard commands keep a ~6-line peek; a
-  // deliberate tap on the console (or "console ▴", or a drag) unlocks the
-  // full stored height (Jeff 2026-08-06). Esc resets to the peek.
-  const COMPACT_H = 110
-  const [expanded, setExpanded] = useState(false)
-  const closeConsole = () => { setOpen(false); setExpanded(false) }
+  // Postures: rapid-fire keyboard commands keep a ~6-line peek ('compact');
+  // a deliberate tap on the console body or a drag unlocks the stored drag
+  // height ('stored'); a tap on the grab bar cycles compact → stored → tall
+  // (Jeff 2026-08-17). Esc resets to the peek. 'tall' is 80vh, the drag cap.
+  const [posture, setPosture] = useState('compact')
+  const expanded = posture !== 'compact'
+  const setExpanded = (on) => setPosture(on ? 'stored' : 'compact')
+  const closeConsole = () => { setOpen(false); setPosture('compact') }
+  const postureHeight = () => {
+    if (posture === 'compact') return Math.min(consoleH, COMPACT_H)
+    if (posture === 'tall') return Math.round(window.innerHeight * 0.8)
+    return consoleH
+  }
   const startDrag = (e) => {
     e.preventDefault()
     const panel = panelRef.current
     if (!panel) return
-    setExpanded(true)
     const grip = e.currentTarget
     grip.setPointerCapture(e.pointerId)
     const startY = e.clientY
-    const startH = consoleH
+    const startH = postureHeight()
     let next = startH
     let frame = 0
+    let moved = false
     const paint = () => {
       frame = 0
       panel.style.height = `${next}px`
@@ -74,18 +81,30 @@ export function CommandBar() {
     // finger by roughly half a second on iPad.
     paint()
     const move = (ev) => {
+      if (!isTap(startY, ev.clientY)) moved = true
+      if (!moved) return
       next = consoleHeightAt(startH, startY, ev.clientY, window.innerHeight)
       if (!frame) frame = requestAnimationFrame(paint)
     }
-    const up = () => {
+    const up = (ev) => {
       if (frame) cancelAnimationFrame(frame)
-      paint()
       grip.removeEventListener('pointermove', move)
       grip.removeEventListener('pointerup', up)
       grip.removeEventListener('pointercancel', up)
+      if (!moved && ev.type === 'pointerup') {
+        // a tap, not a drag: step to the next posture; the render below
+        // paints it, so undo the synchronous height we set on pointerdown
+        panel.style.height = ''
+        panel.style.maxHeight = ''
+        setPosture(nextConsolePosture(posture, {
+          stored: consoleH, viewport: window.innerHeight }).posture)
+        return
+      }
+      paint()
       const height = Math.round(next)
       localStorage.setItem('console_h', String(height))
       setConsoleH(height)
+      setPosture('stored')
     }
     grip.addEventListener('pointermove', move)
     grip.addEventListener('pointerup', up)
@@ -209,7 +228,7 @@ export function CommandBar() {
               top/bottom"). The whole header is the resize handle now. */}
           <div onPointerDown={startDrag}
             class="relative flex items-center px-3 py-1 border-b border-line-2 cursor-ns-resize touch-none group/grip"
-            title={tl('drag to resize')}>
+            title={tl('tap to cycle size · drag to resize')}>
             <span class="font-mono text-[9px] tracking-wider text-muted uppercase">{tl('console')}</span>
             <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-[3px] rounded bg-line group-hover/grip:bg-accent group-active/grip:bg-accent" />
             <button
@@ -224,8 +243,8 @@ export function CommandBar() {
           <div ref={(node) => { scrollRef.current = node; panelRef.current = node }}
             onClick={() => setExpanded(true)}
             style={{
-              height: `${expanded ? consoleH : Math.min(consoleH, COMPACT_H)}px`,
-              maxHeight: `${expanded ? consoleH : Math.min(consoleH, COMPACT_H)}px`,
+              height: `${postureHeight()}px`,
+              maxHeight: `${postureHeight()}px`,
             }}
             class="overflow-y-auto px-3 py-1.5 font-mono text-[11px] leading-relaxed select-text will-change-[height]">
             {log.map((entry) => (
@@ -263,6 +282,16 @@ export function CommandBar() {
           hot ? 'h-11 border-accent/70 bg-accent-soft' : 'h-8 border-line'
         }`}
       >
+        {/* keycap hint before the prompt — bottom-right was invisible
+            (Jeff 2026-08-17). `/` focuses from anywhere. */}
+        <button
+          type="button"
+          onClick={() => inputRef.current?.focus()}
+          title={tl('focus console')}
+          class="shrink-0 w-5 h-5 grid place-items-center rounded border border-line-2 bg-surface-2 text-muted hover:text-ink text-[10px] leading-none"
+        >
+          /
+        </button>
         <span class="text-accent font-bold shrink-0">ticker&gt;</span>
         <input
           ref={inputRef}
@@ -273,24 +302,6 @@ export function CommandBar() {
           placeholder={tl('type command or symbol…  (h = help)')}
           class="flex-1 bg-transparent outline-none text-ink placeholder:text-muted min-w-0"
         />
-        {/* keycap hint, not placeholder prose: `/` focuses from anywhere */}
-        <button
-          type="button"
-          onClick={() => inputRef.current?.focus()}
-          title={tl('focus console')}
-          class="shrink-0 w-5 h-5 grid place-items-center rounded border border-line-2 bg-surface-2 text-muted hover:text-ink text-[10px] leading-none"
-        >
-          /
-        </button>
-        {log.length > 0 && !open && (
-          <button
-            type="button"
-            onClick={() => { setOpen(true); setExpanded(true) }}
-            class="text-muted hover:text-ink text-[10px] shrink-0"
-          >
-            console ▴
-          </button>
-        )}
       </form>
     </div>
   )
