@@ -473,19 +473,19 @@ function Technicals({ symbol }) {
       <Stat label="SMA 20" value={fmtPrice(sma(closes, 20))} cls={smaCls(20)} />
       <Stat label="SMA 50" value={fmtPrice(sma(closes, 50))} cls={smaCls(50)} />
       <Stat label="SMA 200" value={fmtPrice(sma(closes, 200))} cls={smaCls(200)} />
-      <Stat label="RSI 14" value={r == null ? null : r.toFixed(1)} cls={rsiCls} />
+      <Stat label={tl('RSI 14')} value={r == null ? null : r.toFixed(1)} cls={rsiCls} />
       <Stat
-        label="MACD hist"
+        label={tl('MACD hist')}
         value={m == null ? null : m.hist.toFixed(2)}
         cls={m == null ? 'text-ink' : m.hist >= 0 ? 'text-up' : 'text-down'}
       />
-      <Stat label="Bollinger up" value={bb && fmtPrice(bb.upper)} />
-      <Stat label="Bollinger mid" value={bb && fmtPrice(bb.mid)} />
-      <Stat label="Bollinger low" value={bb && fmtPrice(bb.lower)} />
-      <Stat label="Beta 1Y (QQQ)" value={reg && reg.beta.toFixed(2)}
+      <Stat label={tl('Bollinger up')} value={bb && fmtPrice(bb.upper)} />
+      <Stat label={tl('Bollinger mid')} value={bb && fmtPrice(bb.mid)} />
+      <Stat label={tl('Bollinger low')} value={bb && fmtPrice(bb.lower)} />
+      <Stat label={tl('Beta 1Y (QQQ)')} value={reg && reg.beta.toFixed(2)}
         cls={reg ? (reg.beta > 1.2 ? 'text-accent' : 'text-ink') : 'text-ink'} />
-      <Stat label="Corr QQQ" value={reg && reg.corr.toFixed(2)} />
-      <Stat label="Up / down capt"
+      <Stat label={tl('Corr QQQ')} value={reg && reg.corr.toFixed(2)} />
+      <Stat label={tl('Up / down capt')}
         value={reg && reg.upCapture != null && reg.downCapture != null
           ? `${Math.round(reg.upCapture)}% / ${Math.round(reg.downCapture)}%` : null}
         cls={reg && reg.upCapture > (reg.downCapture ?? 0) ? 'text-up' : 'text-ink'} />
@@ -520,21 +520,21 @@ function Fundamentals({ symbol }) {
       {f && (
         <>
           <Stat label="Mkt cap" value={fmtBig(f.marketCap)} />
-          <Stat label="P/E ttm / fwd" value={`${fmtRatio(f.trailingPE)} / ${fmtRatio(f.forwardPE)}`} />
-          <Stat label="P/S ttm" value={fmtRatio(f.priceToSalesTrailing12Months)} />
+          <Stat label={tl('P/E ttm / fwd')} value={`${fmtRatio(f.trailingPE)} / ${fmtRatio(f.forwardPE)}`} />
+          <Stat label={tl('P/S ttm')} value={fmtRatio(f.priceToSalesTrailing12Months)} />
           <Stat label="PEG" value={fmtRatio(f.pegRatio)} />
           <Stat label="EV/EBITDA" value={fmtRatio(f.enterpriseToEbitda)} />
           <Stat label="Gross margin" value={fmtFracPct(f.grossMargins)} />
-          <Stat label="Op margin" value={fmtFracPct(f.operatingMargins)} />
+          <Stat label={tl('Op margin')} value={fmtFracPct(f.operatingMargins)} />
           <Stat label="Net margin" value={fmtFracPct(f.profitMargins)} />
           <Stat label="ROE" value={fmtFracPct(f.returnOnEquity)} />
-          <Stat label="Rev growth yoy" value={fmtFracPct(f.revenueGrowth)}
+          <Stat label={tl('Rev growth yoy')} value={fmtFracPct(f.revenueGrowth)}
             cls={f.revenueGrowth == null ? 'text-ink' : f.revenueGrowth >= 0 ? 'text-up' : 'text-down'} />
-          <Stat label="FCF ttm" value={fmtBig(f.freeCashflow)} />
-          <Stat label="Div yield" value={fmtFracPct(f.dividendYield)} />
-          <Stat label="Beta" value={fmtRatio(f.beta)} />
-          <Stat label="Short % float" value={fmtFracPct(f.shortPercentOfFloat)} />
-          <Stat label="Target (mean)" value={fmtPrice(f.targetMeanPrice)} />
+          <Stat label={tl('FCF ttm')} value={fmtBig(f.freeCashflow)} />
+          <Stat label={tl('Div yield')} value={fmtFracPct(f.dividendYield)} />
+          <Stat label={tl('Beta')} value={fmtRatio(f.beta)} />
+          <Stat label={tl('Short % float')} value={fmtFracPct(f.shortPercentOfFloat)} />
+          <Stat label={tl('Target (mean)')} value={fmtPrice(f.targetMeanPrice)} />
         </>
       )}
     </section>
@@ -1843,7 +1843,7 @@ function DesBand({ symbol, bars, rangeKey }) {
       <DesCell n={1} label={tl('Px / Chg')} big
         value={price != null ? `${fmtPrice(price)}${pct != null ? ` ${fmtPct(pct)}` : ''}` : null}
         tone={tone(pct)} />
-      <DesCell n={2} label="52wk H / L"
+      <DesCell n={2} label={tl('52wk H / L')}
         value={f?.fiftyTwoWeekHigh != null ? `${fmtPrice(f.fiftyTwoWeekHigh)} / ${fmtPrice(f.fiftyTwoWeekLow)}` : null} />
       <DesCell n={3} label={tl('52wk pos')}
         value={wkPos != null ? `${Math.round(wkPos * 100)}%` : null}
@@ -1868,21 +1868,21 @@ function DesBand({ symbol, bars, rangeKey }) {
         value={f?.shortPercentOfFloat != null ? fmtFracPct(f.shortPercentOfFloat) : null} />
       <DesCell n={12} label={tl('Beta / D-E')}
         value={f?.beta != null ? `${fmtRatio(f.beta)}${f.debtToEquity != null ? ` / ${fmtRatio(f.debtToEquity)}` : ''}` : null} />
-      <DesCell n={13} label="P/E t / fwd"
+      <DesCell n={13} label={tl('P/E t / fwd')}
         value={f?.trailingPE != null || f?.forwardPE != null ? `${fmtRatio(f?.trailingPE)} / ${fmtRatio(f?.forwardPE)}` : null} />
       <DesCell n={14} label="EV/EBITDA"
         value={f?.enterpriseToEbitda != null ? fmtRatio(f.enterpriseToEbitda) : null} />
-      <DesCell n={15} label="FCF ttm"
+      <DesCell n={15} label={tl('FCF ttm')}
         value={f?.freeCashflow != null ? fmtBig(f.freeCashflow) : null} />
       <DesCell n={16} label={tl('Div yld')}
         value={f?.dividendYield != null ? fmtFracPct(f.dividendYield) : '—'} />
-      <DesCell n={17} label="Ret 1w / 1m"
+      <DesCell n={17} label={tl('Ret 1w / 1m')}
         value={ret(7) != null ? `${fmtPct(ret(7))} / ${fmtPct(ret(30))}` : null}
         tone={tone(ret(30))} />
-      <DesCell n={18} label="Ret 3m / 6m"
+      <DesCell n={18} label={tl('Ret 3m / 6m')}
         value={ret(91) != null ? `${fmtPct(ret(91))} / ${fmtPct(ret(182))}` : null}
         tone={tone(ret(182))} />
-      <DesCell n={19} label="Ret ytd / 1y"
+      <DesCell n={19} label={tl('Ret ytd / 1y')}
         value={ytdFull != null || ret1y != null ? `${fmtPct(ytdFull)} / ${fmtPct(ret1y)}` : null}
         tone={tone(ret1y)} />
       <DesCell n={20} label={tl('Next ern')}
@@ -1891,22 +1891,22 @@ function DesBand({ symbol, bars, rangeKey }) {
       <DesCell n={22} label={tl('Industry')} value={prof?.industry || null} />
       <DesCell n={23} label={tl('Employees')}
         value={prof?.employees != null ? prof.employees.toLocaleString('en-US') : null} />
-      <DesCell n={24} label="Avg $ vol"
+      <DesCell n={24} label={tl('Avg $ vol')}
         value={f?.averageVolume != null && price != null ? fmtBig(f.averageVolume * price) : null} />
-      <DesCell n={25} label="Gross / op mgn"
+      <DesCell n={25} label={tl('Gross / op mgn')}
         value={f?.grossMargins != null ? `${fmtFracPct(f.grossMargins)} / ${fmtFracPct(f.operatingMargins)}` : null} />
-      <DesCell n={26} label="Net mgn / ROE"
+      <DesCell n={26} label={tl('Net mgn / ROE')}
         value={f?.profitMargins != null ? `${fmtFracPct(f.profitMargins)}${f.returnOnEquity != null ? ` / ${fmtFracPct(f.returnOnEquity)}` : ''}` : null} />
-      <DesCell n={27} label="Rev / EPS gr"
+      <DesCell n={27} label={tl('Rev / EPS gr')}
         value={f?.revenueGrowth != null ? `${fmtFracPct(f.revenueGrowth)}${f.earningsGrowth != null ? ` / ${fmtFracPct(f.earningsGrowth)}` : ''}` : null}
         tone={f?.revenueGrowth != null ? (f.revenueGrowth >= 0 ? 'text-up' : 'text-down') : null} />
       <DesCell n={28} label="P/S / P/B"
         value={f?.priceToSalesTrailing12Months != null || f?.priceToBook != null
           ? `${fmtRatio(f?.priceToSalesTrailing12Months)} / ${fmtRatio(f?.priceToBook)}` : null} />
-      <DesCell n={29} label="PEG / payout"
+      <DesCell n={29} label={tl('PEG / payout')}
         value={f?.pegRatio != null || f?.payoutRatio != null
           ? `${fmtRatio(f?.pegRatio)} / ${fmtFracPct(f?.payoutRatio)}` : null} />
-      <DesCell n={30} label="Div rate"
+      <DesCell n={30} label={tl('Div rate')}
         value={f?.dividendRate != null ? fmtPrice(f.dividendRate) : '—'} />
       <DesCell n={31} label={tl('Bid/Ask · SPR')}
         value={spread != null ? `${fmtPriceBare(q.bid)} / ${fmtPriceBare(q.ask)} · ${fmtPriceBare(spread)}` : null} />

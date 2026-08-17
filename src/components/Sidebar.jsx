@@ -95,7 +95,7 @@ function SortHead({ label, col, sort, onSort, align = 'left' }) {
   return (
     <button
       onClick={() => onSort(nextSort(sort, col))}
-      title={`sort by ${label}`}
+      title={`${tl('sort by')} ${label}`}
       class={`flex-1 flex items-baseline gap-1 font-mono text-[9px] tracking-wider uppercase ${
         align === 'right' ? 'justify-end' : ''
       } ${on ? 'text-accent' : 'text-muted hover:text-ink-2'}`}
@@ -188,7 +188,7 @@ export function Sidebar({ route }) {
         <AddSymbol onAdd={addSymbol} isFull={listFull} cap={listCap} />
       </div>
       <div class="px-3 pb-1 flex items-baseline gap-2 border-b border-line/60">
-        <SortHead label="sym" col="sym" sort={sort} onSort={applySort} />
+        <SortHead label={tl('sym')} col="sym" sort={sort} onSort={applySort} />
         <SortHead label="%" col="pct" sort={sort} onSort={applySort} align="right" />
       </div>
       <div class="flex-1 overflow-y-auto min-h-0">

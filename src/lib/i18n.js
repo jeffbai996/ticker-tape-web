@@ -277,6 +277,22 @@ const STRINGS = {
 const LABELS = {
   // Archive row controls
   'download .md': '下载 .md',
+  // 2026-08-17 zh pass — rendered-audit gaps (research descriptor/technicals,
+  // sidebar sort, unwatch title). Keep abbreviations where the EN is a
+  // standard metric code readers already know (RSI/MACD/PEG/FCF/ROE).
+  'sort by': '排序：', sym: '代码', 'unwatch %s': '从看盘移除 %s',
+  'RSI 14': 'RSI 14', 'MACD hist': 'MACD 柱', 'Bollinger up': '布林上轨',
+  'Bollinger mid': '布林中轨', 'Bollinger low': '布林下轨',
+  'Beta 1Y (QQQ)': 'Beta 1年 (QQQ)', 'Corr QQQ': '与 QQQ 相关性',
+  'Up / down capt': '上/下行捕获', 'P/E ttm / fwd': '市盈率 TTM / 预期',
+  'P/E t / fwd': '市盈率 TTM / 预期', 'P/S ttm': '市销率 TTM', 'Op margin': '营业利润率',
+  'Rev growth yoy': '营收同比', 'FCF ttm': '自由现金流 TTM', 'Div yield': '股息率',
+  Beta: 'Beta', 'Short % float': '空头占流通比', 'Target (mean)': '目标价（均值）',
+  '52wk H / L': '52周 高 / 低', 'Ret 1w / 1m': '回报 1周 / 1月', 'Ret 3m / 6m': '回报 3月 / 6月',
+  'Ret ytd / 1y': '回报 年初至今 / 1年', 'Avg $ vol': '平均成交额', 'Gross / op mgn': '毛利率 / 营业利润率',
+  'Net mgn / ROE': '净利率 / ROE', 'Rev / EPS gr': '营收 / EPS 增速', 'PEG / payout': 'PEG / 派息率',
+  'Div rate': '股息', Benchmark: '基准', 'AI market read': 'AI 市场解读', Buy: '买入',
+  range: '区间',
   // Nav
   Dashboard: '仪表盘', Watchlists: '自选股', Markets: '市场', Research: '研究', Portfolio: '持仓',
   Screening: '筛选', Alerts: '提醒', Wire: '快讯', 'AI Chat': 'AI 对话', Overview: '概览',
@@ -615,7 +631,7 @@ const LABELS = {
   'implied vs realized': '隐含 vs 实现', 'no dated prints yet': '暂无已确认日期',
   'nothing on the docket': '日程为空', prints: '次财报', vs: '对比',
   edit: '编辑', close: '关闭', 'flat tape': '盘面平静', 'nothing stretched': '暂无极端信号',
-  'clear runway': '近期无重大事件', 'pulling the story…': '正在抓取正文…',
+  'clear runway': '近期无重大事件', 'pulling the story…': '正在获取正文…',
   "source wouldn't give up its text —": '源站未提供正文 —',
   'open the page ↗': '打开页面 ↗',
   'full text at the source ↗': '完整正文见源站 ↗',
