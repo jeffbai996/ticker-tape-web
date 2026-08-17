@@ -1,10 +1,10 @@
 # ticker-tape-web
 
 Public Bloomberg-style market terminal: Preact + Vite + Tailwind v4 on GitHub
-Pages, backed by a Cloudflare Worker for Yahoo Finance and AI provider access.
-The browser app, demo portfolio, AI surfaces, mobile layout, and worker are all
-shipped; this is the operating guide for the current application, not a build
-roadmap.
+Pages, backed by a Cloudflare Worker for Yahoo Finance data. The browser app,
+demo portfolio, disabled public AI previews, mobile layout, and worker are all
+shipped; the private tailnet build activates AI through Fragwire. This is the
+operating guide for the current application, not a build roadmap.
 
 ## THE RULE (read before touching anything)
 
@@ -20,8 +20,8 @@ Corollaries:
 
 - No broker calls or broker credentials, client-side or Worker-side.
 - No trade-execution UI, including decorative controls.
-- API keys never enter browser storage or browser-served build variables. AI
-  requests go through the Cloudflare Worker; provider keys are Worker secrets.
+- API keys never enter browser storage or browser-served build variables. The
+  public build does not issue AI requests; private AI stays behind Fragwire.
 - No GitHub Secrets carrying private symbol lists into the build.
 - Keep the demo account obviously synthetic. Do not make it resemble a real
   portfolio in the name of realism.
@@ -33,8 +33,10 @@ Corollaries:
 - Markets, per-symbol research, screening, browser alerts, and bilingual UI.
 - Synthetic portfolio views for account, sizing, carry, cockpit, timeline, and
   backtest.
-- AI briefing, memo generation, and multi-model chat through the Worker.
-- Wire page for user-supplied live audio/transcript streams.
+- AI briefing, memo, and multi-model chat surfaces: inert previews publicly,
+  active through Fragwire on the private tailnet build.
+- Wire page with a synthetic public session and optional user-supplied
+  Fragwire-compatible endpoint.
 - Responsive mobile navigation and PWA installation.
 
 ## Tech Stack
@@ -48,7 +50,8 @@ Corollaries:
 | Fonts | Plus Jakarta Sans (UI) + IBM Plex Mono (data, tabular-nums) |
 | Tests | Vitest + jsdom |
 | Static deploy | GitHub Pages via Actions (`.github/workflows/deploy.yml`) |
-| Data and AI proxy | Cloudflare Worker (`worker/`) |
+| Public data proxy | Cloudflare Worker (`worker/`) |
+| Private AI runtime | Fragwire router on the tailnet build |
 
 ## Design System — Operator language
 
@@ -105,15 +108,12 @@ flow go through the Worker. Persistent stale-while-revalidate caches live in
 localStorage via `src/lib/pcache.js`. Persist epoch milliseconds, not `Date`
 objects. Derive day change from the live quote, not a multi-range chart.
 
-The Worker exposes Yahoo proxy routes plus `/chat`, `/chat/models`, and
-`/chat/spend`. It normalizes Anthropic, Gemini, and OpenAI streams, holds provider
-keys as secrets, rate-limits requests, and enforces the daily spend cap in KV.
-The browser may execute approved read-only tools against data it already owns;
-the Worker does not execute tools or expose trading capabilities.
-
-The model registry in `worker/chat.js` is the single source of truth. The chat
-page must fetch `/chat/models`; stale saved selections fall back to the first
-live registry entry.
+The Worker retains guarded `/chat`, `/chat/models`, and `/chat/spend` routes,
+but the public browser bundle does not reference or call them. Public AI
+controls are deliberately inert. The private build gets its live model registry,
+chat streams, and report generation from Fragwire; stale saved selections fall
+back to the first live registry entry. Browser-side tools remain read-only and
+no route exposes trading capabilities.
 
 ## Commands and Deployment
 
