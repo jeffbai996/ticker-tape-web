@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { createChart, CandlestickSeries, HistogramSeries } from 'lightweight-charts'
 import { useEscape, useQuotes } from '../hooks.js'
-import { fetchDividends as fetchDivHistory, fetchHistory, fetchNews, fetchSplits, peekHistory, RANGES } from '../lib/history.js'
+import { fetchDividends as fetchDivHistory, fetchHistory, fetchNews, fetchSplits, peekHistory, RANGES, rangeReturn } from '../lib/history.js'
 import { fetchFinancials, statementRows } from '../lib/financials.js'
 import { alignedReturns, regressStats } from '../lib/regress.js'
 import { BUCKETS } from '../lib/symbols.js'
@@ -1794,7 +1794,7 @@ function DesCell({ n, label, value, tone, big }) {
   )
 }
 
-function DesBand({ symbol, bars }) {
+function DesBand({ symbol, bars, rangeKey }) {
   const [f, setF] = useState(() => peekFundamentals(symbol) ?? null)
   const [yr, setYr] = useState(() => peekHistory(symbol, '1Y') ?? null)
   const [cal, setCal] = useState(() => peekEarningsDate(symbol) ?? null)
@@ -1813,12 +1813,9 @@ function DesBand({ symbol, bars }) {
   const q = cached?.quote
   const price = q?.price ?? (bars?.length ? bars[bars.length - 1].close : null)
   const pct = q?.pct ?? null
-  let ytd = null
-  if (bars?.length > 1) {
-    const y = new Date().getFullYear()
-    const first = bars.find((b) => new Date(b.time * 1000).getFullYear() === y)
-    if (first && price != null) ytd = ((price / first.close) - 1) * 100
-  }
+  // return over the VISIBLE range, labelled by it — this cell said "YTD"
+  // regardless of the range picked (Jeff 2026-08-17)
+  const rr = rangeReturn(bars, price, rangeKey || '')
   const tone = (v) => (v == null ? 'text-muted' : v >= 0 ? 'text-up' : 'text-down')
   // trailing returns off the 1Y daily series — bars are oldest-first seconds
   const ret = (days) => {
@@ -1851,8 +1848,8 @@ function DesBand({ symbol, bars }) {
       <DesCell n={3} label={tl('52wk pos')}
         value={wkPos != null ? `${Math.round(wkPos * 100)}%` : null}
         tone={wkPos != null && wkPos > 0.5 ? 'text-up' : 'text-ink-2'} />
-      <DesCell n={4} label="YTD"
-        value={ytd != null ? fmtPct(ytd) : null} tone={tone(ytd)} />
+      <DesCell n={4} label={rr.label || tl('range')}
+        value={rr.pct != null ? fmtPct(rr.pct) : null} tone={tone(rr.pct)} />
       <DesCell n={5} label={tl('Mkt cap / EV')}
         value={f?.marketCap != null ? `${fmtBig(f.marketCap)}${f.enterpriseValue ? ` / ${fmtBig(f.enterpriseValue)}` : ''}` : null} />
       <DesCell n={6} label={tl('Shrs out / float')}
@@ -2536,7 +2533,7 @@ export function Research({ route }) {
               </div>
             )}
             </div>
-            <DesBand symbol={symbol} bars={hist?.bars} />
+            <DesBand symbol={symbol} bars={hist?.bars} rangeKey={rangeKey} />
             <WireMini symbol={symbol} />
           </section>
           <div class="max-lg:hidden flex flex-col gap-3 min-w-0">{rail}</div>

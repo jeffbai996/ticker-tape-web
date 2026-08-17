@@ -107,3 +107,14 @@ describe('fetchHistory extended hours', () => {
     expect(globalThis.fetch.mock.calls[0][0]).toContain('range=1y&interval=1d')
   })
 })
+
+describe('rangeReturn', () => {
+  it('returns % change from the first bar of the visible range to the current price, labelled by the range key (Jeff 2026-08-17: the descriptor said YTD on a 2D chart)', async () => {
+    const { rangeReturn } = await import('../../src/lib/history.js')
+    const bars = [{ time: 1, close: 100 }, { time: 2, close: 105 }, { time: 3, close: 110 }]
+    expect(rangeReturn(bars, 121, '2D')).toEqual({ label: '2D', pct: 21 })
+    expect(rangeReturn(bars, 121, 'YTD')).toEqual({ label: 'YTD', pct: 21 })
+    expect(rangeReturn([], 121, '1M')).toEqual({ label: '1M', pct: null })
+    expect(rangeReturn(bars, null, '1M')).toEqual({ label: '1M', pct: null })
+  })
+})
