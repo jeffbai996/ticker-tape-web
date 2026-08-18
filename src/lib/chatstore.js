@@ -5,12 +5,12 @@
 // locally first (snappy UI) and push fire-and-forget, add-acks reconcile
 // local ids to server ids.
 
-import { wireUrl } from './wire.js'
+import { wireServiceUrl } from './wire.js'
 
 export const CHATSTORE_SYNC_EVENT = 'ttw:chatstore-sync'
 
 const base = () => {
-  const w = wireUrl()
+  const w = wireServiceUrl()
   return w ? `${w.replace(/\/$/, '')}/api/chatstore` : ''
 }
 

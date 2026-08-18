@@ -1,10 +1,10 @@
 import { loadAlerts, markDeliveryStatus } from './alerts.js'
-import { wireUrl } from './wire.js'
+import { wireServiceUrl } from './wire.js'
 
 const inFlight = new Set()
 
 export async function fetchAlertDestinations() {
-  const base = wireUrl().replace(/\/$/, '')
+  const base = wireServiceUrl().replace(/\/$/, '')
   if (!base) return []
   const response = await fetch(`${base}/api/alerts/destinations`)
   if (!response.ok) throw new Error(`wire ${response.status}`)
@@ -15,7 +15,7 @@ export async function fetchAlertDestinations() {
 /** Deliver one pending alert. Only server-accepted terminal states are saved. */
 export async function deliverAlert(alert) {
   if (!alert?.delivery?.enabled || !alert.delivery.destination) return 'disabled'
-  const base = wireUrl().replace(/\/$/, '')
+  const base = wireServiceUrl().replace(/\/$/, '')
   if (!base || !alert.deliveryId || inFlight.has(alert.deliveryId)) return 'pending'
   inFlight.add(alert.deliveryId)
   try {

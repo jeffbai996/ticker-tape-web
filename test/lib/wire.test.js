@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach } from 'vitest'
-import { setWireUrl, wireUrl, calendarSubscriptionUrl, demoBackfill, demoEvent, demoToday, demoQuotes, rankEvents, collapseSessions, clusterStories, toggleWireArticle, TYPE_CODE, pubDisplayName, readMinutes } from '../../src/lib/wire.js'
+import { mirrorBase, setWireUrl, wireUrl, calendarSubscriptionUrl, demoBackfill, demoEvent, demoToday, demoQuotes, rankEvents, collapseSessions, clusterStories, toggleWireArticle, TYPE_CODE, pubDisplayName, readMinutes } from '../../src/lib/wire.js'
 
 describe('wire article accordion', () => {
   it('replaces the open article and lets the active article close', () => {
@@ -22,10 +22,13 @@ describe('wire endpoint config', () => {
     expect(() => setWireUrl('ftp://x')).toThrow()
   })
 
-  it('blank clears back to demo mode', () => {
+  // Clearing the box no longer means "demo": the public build falls back to
+  // the read-only mirror, and only drops to demo if that is unreachable.
+  it('blank clears back to the public mirror', () => {
     setWireUrl('http://my-wire.local:8095')
     setWireUrl('')
-    expect(wireUrl()).toBe('')
+    expect(localStorage.getItem('tape-wire-url')).toBe(null)
+    expect(wireUrl()).toBe(mirrorBase())
   })
 
   it('builds a calendar subscription URL from the configured wire', () => {

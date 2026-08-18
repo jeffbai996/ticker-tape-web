@@ -3,7 +3,7 @@
 // Both backends use optimistic concurrency: pull, merge, then push against the
 // revision we read. The server never merges — this file owns it.
 
-import { wireUrl } from './wire.js'
+import { wireServiceUrl } from './wire.js'
 import {
   clearWatchlistCapability, createWatchlistCapability, getWatchlistCapability,
   saveWatchlistCapability, validWatchlistCapability, watchlistSyncEndpoint,
@@ -154,7 +154,7 @@ let interval = null
 let started = false
 
 function saveEndpoint() {
-  const wire = wireUrl()
+  const wire = wireServiceUrl()
   if (wire) return `${wire.replace(/\/$/, '')}/api/saves/${SAVE_KEY}`
   return watchlistSyncEndpoint()
 }
