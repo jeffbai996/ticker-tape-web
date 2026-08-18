@@ -63,3 +63,27 @@ describe('board-wide quote columns', () => {
     globalThis.requestAnimationFrame = orig
   })
 })
+
+describe('a hidden tab measures nothing', () => {
+  // rAF is dead on a buried tab, so the timer fallback won every time and ran
+  // a forced layout per render for a screen nobody could see (idle probe,
+  // 2026-08-18). The first visible render measures again.
+  it('skips the measure entirely while the document is hidden', () => {
+    const calls = []
+    const orig = globalThis.requestAnimationFrame
+    globalThis.requestAnimationFrame = (fn) => { calls.push(fn); return calls.length }
+    const style = { vars: {}, setProperty(k, v) { this.vars[k] = v }, removeProperty(k) { delete this.vars[k] } }
+    const root = { style, querySelectorAll: () => { throw new Error('must not measure') } }
+    const pending = scheduleQuoteColumns(root, { doc: { hidden: true } })
+    expect(calls).toHaveLength(0)
+    expect(pending()).toBe(false)
+    expect(style.vars).toEqual({})
+    // visible again → normal path
+    scheduleQuoteColumns({ style, querySelectorAll: () => [{ dataset: { col: 'price' }, offsetWidth: 51 }] },
+      { doc: { hidden: false } })
+    expect(calls).toHaveLength(1)
+    calls[0]()
+    expect(style.vars['--col-price']).toBe('51px')
+    globalThis.requestAnimationFrame = orig
+  })
+})

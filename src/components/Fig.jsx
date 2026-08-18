@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { metricFlashDirection, TICK_FLASH_MS } from '../lib/tickFlash.js'
+import { onVisibilityChange } from '../lib/visibility.js'
 
 export { TICK_FLASH_MS } from '../lib/tickFlash.js'
 
@@ -52,9 +53,11 @@ export function FlashMetric({ value, fmt, kind = 'change' }) {
       timerRef.current = null
       setSt(null)
     }
-    document.addEventListener('visibilitychange', rebaseline)
+    // one document listener for the whole board (visibility.js): a cell per
+    // metric × a row per symbol used to mean ~1200 live listeners
+    const off = onVisibilityChange(rebaseline)
     return () => {
-      document.removeEventListener('visibilitychange', rebaseline)
+      off()
       clearTimeout(baselineTimerRef.current)
     }
   }, [])
