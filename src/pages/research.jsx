@@ -3,7 +3,7 @@
 // composing the routed subview; every subview and its stateful controllers
 // live in src/pages/research/*.
 import { useState } from 'preact/hooks'
-import { useQuotes } from '../hooks.js'
+import { useFocusedSymbols, useQuotes } from '../hooks.js'
 import { ChartSuite } from '../components/ChartSuite.jsx'
 import { ResearchHeader } from './research/header.jsx'
 import { Overview, SymbolPrompt } from './research/overview.jsx'
@@ -26,6 +26,10 @@ export function Research({ route }) {
   // Header quote comes from the live 1D feed — a multi-month chart fetch
   // reports change vs the range START (chartPreviousClose), not yesterday.
   const live = useQuotes(symbol ? [symbol] : [])
+  // The open symbol IS the viewport here — no observer, nothing to measure.
+  // Declaring it puts this one row in the first quote chunk, ahead of the
+  // dashboard board still tracked behind this route, and on the fast sweep.
+  useFocusedSymbols(symbol ? [symbol] : [])
   // the mobile rail's state lives above the no-symbol early return so the
   // hook order can't shift when the landing page renders instead
   const [railOpen, setRailOpen] = useState(false)
