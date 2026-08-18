@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "budget": "bash scripts/bundle_budget.sh",
     "build:tailnet": "bash scripts/deploy_tailnet.sh"
   },
   "dependencies": {
