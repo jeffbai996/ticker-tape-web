@@ -6,7 +6,7 @@
 ![Build](https://img.shields.io/badge/build-Vite-f59e0b?style=flat-square)
 ![Data](https://img.shields.io/badge/data-live%2C_client--side-208cff?style=flat-square)
 ![PWA](https://img.shields.io/badge/PWA-installable-0f766e?style=flat-square)
-![Tests](https://img.shields.io/badge/tests-500_passing-3fb950?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-passing-3fb950?style=flat-square)
 
 A Bloomberg-style market terminal in the browser — the web rebuild of a private CLI TUI. Preact + Vite + Tailwind v4, deployed on GitHub Pages, all data fetched live client-side through a Cloudflare Worker proxy.
 
@@ -28,9 +28,12 @@ Personal project. See [LICENSE](LICENSE).
 - **Markets** — movers, sectors, heatmap, commodities, earnings week, 2026 macro calendar (FOMC/CPI/NFP/GDP/PCE)
 - **Screening** — multi-symbol compare, correlation matrix, valuation grid on any tickers
 - **Alerts** — price + technical (RSI / SMA cross / volume) alerts evaluated in-browser, with browser notifications
-- **AI surfaces** — the public demo shows the **Briefing** / report controls and multi-model chat workspace as disabled previews; the private tailnet build activates them through its server-side router
-- **Demo portfolio** — clearly-marked synthetic positions exercising the position/risk/sizing/carry views
-- **i18n** — EN / 中文 toggle, PWA-installable, mobile layout with bottom tab bar
+- **Watchlists** — named lists next to the main one, with opt-in cloud sync: the browser pulls, merges locally, and pushes against the revision it read, so two devices reconcile without the server arbitrating
+- **AI surfaces** — public and private builds ship the same navigation. Publicly the **Briefing** / report controls and the multi-model chat workspace render as inert `PREVIEW` surfaces that never call a model; the private tailnet build activates them through its server-side router
+- **Demo portfolio** — clearly-marked synthetic positions exercising the account / sizing / carry / cockpit / what-if / thesis / timeline / backtest views
+- **Wire** — a news-and-events board on a synthetic public session, scored by event type × watched name × freshness; it can also point at a user-supplied Fragwire-compatible endpoint
+- **Mobile** — bottom tab bar, spotlight-style inline search, and the `ticker>` console promoted to its own phone page (desktop keeps the floating drop-up)
+- **i18n** — EN / 中文 toggle, PWA-installable
 
 ## Architecture
 
@@ -90,9 +93,9 @@ ticker-tape-web/
 ├── worker/              # Cloudflare Worker: Yahoo proxy + AI chat proxy
 ├── src/
 │   ├── app.jsx          # shell: status bar, tape, sidebar, command bar
-│   ├── pages/           # dashboard, brief, markets, research, screen, portfolio, alerts, chat
+│   ├── pages/           # dashboard, watchlists, brief, markets, research, screen, portfolio, alerts, wire, chat, console
 │   ├── components/      # StatusBar, Tape, CommandBar, AiReport, Histo, Palette…
 │   └── lib/             # feed, yahoo, badges, pulse, briefing, widgets, alerts, i18n…
-├── test/                # Vitest suites (lib + worker)
+├── test/                # Vitest suites (test/lib + test/worker)
 └── vite.config.js
 ```
