@@ -15,7 +15,7 @@ iPad portrait 834, iPad landscape 1194, desktop 1024, desktop 1376 (100% and
   * every row's price box left edge is the same x (measured columns landed)
   * the bottom nav (phone) does not cover the last row's add-symbol control
   * no console errors / pageerrors during load
-Headless caveat (fragserv 2026-08-18): device_scale_factor≠1 or is_mobile=True
+Headless caveat (2026-08-18): device_scale_factor≠1 or is_mobile=True
 stalls the compositor (no rAF, screenshots hang). Geometry reads still work,
 so phones are emulated by viewport only; rAF-dependent widths rely on the
 timer fallback in src/lib/quoteColumns.js.
