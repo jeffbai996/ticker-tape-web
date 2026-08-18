@@ -64,6 +64,30 @@ export function addWidget(type, symbol) {
   return w
 }
 
+/** Replace the whole rail at once (saved workspaces apply a widget set, not a
+ *  sequence of adds). Entries arrive without ids — a saved layout must not
+ *  carry this browser's ids — so fresh ones are minted here. Junk is dropped
+ *  rather than rejecting the whole list: a layout with one unknown widget is
+ *  still worth applying. */
+export function setWidgets(list) {
+  const base = Date.now()
+  const clean = (list || []).flatMap((w, i) => {
+    if (!w || !WIDGET_TYPES.includes(w.type)) return []
+    if (w.type === 'chart') {
+      const symbol = String(w.symbol || '').trim()
+      if (!SYMBOL_ANY_CASE_RE.test(symbol)) return []
+      return [{ id: base + i, type: 'chart', symbol: symbol.toUpperCase() }]
+    }
+    return [{ id: base + i, type: w.type }]
+  })
+  // A deliberate replace is not the legacy rail the one-time 'markets'
+  // migration exists for — mark it done so load() doesn't inject a widget
+  // this call didn't ask for.
+  try { localStorage.setItem(MARKET_MIGRATION_KEY, '1') } catch { /* best-effort */ }
+  save(clean)
+  return clean
+}
+
 export function removeWidget(id) {
   save(load().filter((w) => w.id !== id))
 }
