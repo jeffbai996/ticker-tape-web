@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseToolCall, toolProtocol } from '../src/lib/wirechat.js'
+import { parseToolCall, toolProtocol } from '../../src/lib/wirechat.js'
 
 const DEFS = [
   {

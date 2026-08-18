@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { thesisAnalysisPrompt, thesisHealth, thesisSignals } from '../src/lib/thesis.js'
+import { thesisAnalysisPrompt, thesisHealth, thesisSignals } from '../../src/lib/thesis.js'
 
 describe('Thesis Watcher data contracts', () => {
   it('reports GOOD until a recorded breaker fires', () => {

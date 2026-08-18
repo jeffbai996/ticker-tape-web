@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { tapeEntries } from '../src/lib/tape.js'
+import { tapeEntries } from '../../src/lib/tape.js'
 
 describe('tapeEntries', () => {
   // The cycle is duplicated end to end, so where the seam falls matters:

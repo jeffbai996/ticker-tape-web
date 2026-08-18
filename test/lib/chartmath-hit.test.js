@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { segmentDistance, nearestDrawing } from '../src/lib/chartmath.js'
+import { segmentDistance, nearestDrawing } from '../../src/lib/chartmath.js'
 
 describe('segmentDistance', () => {
   it('is zero on the segment', () => {
