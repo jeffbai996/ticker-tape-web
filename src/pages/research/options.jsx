@@ -9,25 +9,13 @@ import {
   skew25Delta, volumeOiOutliers, yearsTo,
 } from '../../lib/optionsIntel.js'
 
-/** Mid price; falls back to last when the book is empty (after hours). */
-function optMid(c) {
-  if (c?.bid != null && c?.ask != null && (c.bid || c.ask)) return (c.bid + c.ask) / 2
-  return c?.last ?? null
-}
-
-/** ATM straddle at the strike nearest spot — the market's own move estimate. */
+/** ATM straddle at the strike nearest spot — the market's own move estimate.
+ *  One implementation, in optionsIntel.expectedMove: this strip, the intel
+ *  panel above it and the chart's move bands all have to print the same
+ *  number, and they only do that if they all ask the same function. */
 function straddleSummary(chain) {
-  if (chain?.spot == null) return null
-  const strikes = chain.calls
-    .map((c) => c.strike)
-    .filter((k) => chain.puts.some((p) => p.strike === k))
-  if (!strikes.length) return null
-  const k = strikes.reduce((a, b) =>
-    Math.abs(b - chain.spot) < Math.abs(a - chain.spot) ? b : a)
-  const cm = optMid(chain.calls.find((c) => c.strike === k))
-  const pm = optMid(chain.puts.find((p) => p.strike === k))
-  if (cm == null || pm == null) return null
-  return { strike: k, price: cm + pm, movePct: ((cm + pm) / chain.spot) * 100 }
+  const em = expectedMove(chain)
+  return em ? { strike: em.strike, price: em.price, movePct: em.pct } : null
 }
 
 function ExpiryPills({ expirations, active, onPick }) {

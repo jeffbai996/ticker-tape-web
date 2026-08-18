@@ -18,15 +18,38 @@ export function yearsTo(expirationSec, nowMs = Date.now()) {
   return Math.max((expirationSec * 1000 - nowMs) / (365 * 86_400_000), 1 / 365)
 }
 
-/** ATM straddle price/pct for one chain — same read as the overview card,
- *  exposed here so the options panel and the overview stay on one number. */
+/**
+ * Straddle mid for one contract. A one-sided book (0 × ask, normal after
+ * hours) is still a real market and mids to half the ask; only an entirely
+ * empty book falls back to the last print, and a non-positive number is not a
+ * price. Wider than expmove.js's `mid`, which the earnings card keeps for its
+ * own stricter contract.
+ */
+export function contractMid(c) {
+  if (c?.bid != null && c?.ask != null && (c.bid > 0 || c.ask > 0)) return (c.bid + c.ask) / 2
+  return c?.last > 0 ? c.last : null
+}
+
+/**
+ * ATM straddle price/pct for one chain — the single implementation behind the
+ * options panel, the chart's expected-move bands and the session diff.
+ *
+ * The strike is chosen from the strikes quoted on BOTH sides: picking the
+ * nearest call and the nearest put independently lands on two different
+ * strikes whenever a chain's sides are not symmetric, and summing those two
+ * premiums prices a strangle while calling it a straddle.
+ */
 export function expectedMove(chain) {
-  if (chain?.spot == null) return null
-  const call = atmContract(chain.calls, chain.spot)
-  const put = atmContract(chain.puts, chain.spot)
-  if (!call || !put) return null
-  const cm = mid(call)
-  const pm = mid(put)
+  if (chain?.spot == null || !chain.calls?.length || !chain.puts?.length) return null
+  const puts = new Map(chain.puts.map((p) => [p.strike, p]))
+  let call = null
+  for (const c of chain.calls) {
+    if (!puts.has(c.strike)) continue
+    if (call == null || Math.abs(c.strike - chain.spot) < Math.abs(call.strike - chain.spot)) call = c
+  }
+  if (!call) return null
+  const cm = contractMid(call)
+  const pm = contractMid(puts.get(call.strike))
   if (cm == null || pm == null) return null
   const price = cm + pm
   return {
