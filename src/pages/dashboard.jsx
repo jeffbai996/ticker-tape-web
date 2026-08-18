@@ -378,9 +378,13 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
               )}
               {/* extended hours reads a tier below the regular quote — on a
                   phone it was the same size as the print and clipped off the
-                  right edge (Jeff 2026-08-04) */}
+                  right edge (Jeff 2026-08-04). MIN-width, never width: a
+                  4-digit ext print (ON 1834.59 ▼2.0%) overran the fixed
+                  6.2rem box and the row's overflow clip ate the trailing %
+                  (Jeff 2026-08-18). The slot grows to its content; the
+                  identity gutter is what yields. */}
               {q?.extLabel && q.extPrice != null ? (
-                <span class="whitespace-nowrap text-[11px] max-sm:text-[10px] shrink-0 max-sm:ml-auto max-sm:w-[6.2rem] @min-[820px]:min-w-[7rem] @min-[545px]:text-right">
+                <span class="whitespace-nowrap text-[11px] max-sm:text-[10px] shrink-0 max-sm:ml-auto max-sm:min-w-[6.2rem] @min-[820px]:min-w-[7rem] @min-[545px]:text-right">
                   {/* only the PERCENT drops a weight tier (Jeff 2026-08-06);
                       the extended price keeps its weight and runs a size
                       bigger than the tag beside it — it's the figure you read,
@@ -400,7 +404,7 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
               ) : (
                 /* Ghost slot at every session and width: a temporarily absent
                    extended print must not move the regular quote. */
-                <span class="whitespace-nowrap text-[11px] max-sm:text-[10px] shrink-0 invisible max-sm:w-[6.2rem] @min-[820px]:min-w-[7rem] @min-[545px]:text-right" aria-hidden="true">
+                <span class="whitespace-nowrap text-[11px] max-sm:text-[10px] shrink-0 invisible max-sm:min-w-[6.2rem] @min-[820px]:min-w-[7rem] @min-[545px]:text-right" aria-hidden="true">
                   {/* mirrors the real print part for part, including the
                       larger price — a ghost narrower than the thing it
                       reserves space for lets the column shift when data lands */}

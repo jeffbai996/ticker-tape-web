@@ -107,8 +107,10 @@ describe('compact dashboard company name', () => {
   })
 
   it('reserves the extended-hours slot while its quote is missing', () => {
-    expect(dashboard).toContain('max-sm:w-[6.2rem]')
-    expect(dashboard.match(/max-sm:w-\[6\.2rem\]/g)).toHaveLength(2)
+    // a floor, never a ceiling: the fixed 6.2rem box clipped the trailing %
+    // of a 4-digit ext print (ON 1834.59 ▼2.0%) on phones (Jeff 2026-08-18)
+    expect(dashboard).not.toMatch(/max-sm:w-\[6\.2rem\]/)
+    expect(dashboard.match(/max-sm:min-w-\[6\.2rem\]/g)).toHaveLength(2)
     expect(dashboard).toContain("q?.extLabel && q.extPrice != null ? (")
     expect(dashboard).not.toContain(") : marketState(new Date()).state !== 'open' ? (")
     expect(dashboard).not.toMatch(/aria-hidden="true"[\s\S]{0,500}\) : null\}/)
