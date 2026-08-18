@@ -39,15 +39,25 @@ export function contractMid(c) {
  * strikes whenever a chain's sides are not symmetric, and summing those two
  * premiums prices a strangle while calling it a straddle.
  */
+/** Strike nearest spot that is quoted on BOTH sides, or null when the two
+ *  ladders share nothing. The straddle and the ATM IV read both hang off it. */
+export function pairedAtmStrike(chain) {
+  if (!chain?.spot || !chain.calls?.length || !chain.puts?.length) return null
+  const puts = new Set(chain.puts.map((p) => p.strike))
+  let best = null
+  for (const c of chain.calls) {
+    if (!puts.has(c.strike)) continue
+    if (best == null || Math.abs(c.strike - chain.spot) < Math.abs(best - chain.spot)) best = c.strike
+  }
+  return best
+}
+
 export function expectedMove(chain) {
   // A zero/absent spot has no percentage to be a percentage of.
   if (!chain?.spot || !chain.calls?.length || !chain.puts?.length) return null
   const puts = new Map(chain.puts.map((p) => [p.strike, p]))
-  let call = null
-  for (const c of chain.calls) {
-    if (!puts.has(c.strike)) continue
-    if (call == null || Math.abs(c.strike - chain.spot) < Math.abs(call.strike - chain.spot)) call = c
-  }
+  const strike = pairedAtmStrike(chain)
+  const call = strike == null ? null : chain.calls.find((c) => c.strike === strike)
   if (!call) return null
   const cm = contractMid(call)
   const pm = contractMid(puts.get(call.strike))
@@ -61,13 +71,25 @@ export function expectedMove(chain) {
   }
 }
 
-/** ATM IV: average of the nearest call and put IV at the ATM strike. Yahoo
- *  ships per-contract IV, not a model-free VIX-style number — averaging the
- *  two sides of the same strike is the simplest honest read. */
+/** ATM IV: average of the call and put IV at the ATM strike. Yahoo ships
+ *  per-contract IV, not a model-free VIX-style number — averaging the two
+ *  sides of ONE strike is the simplest honest read.
+ *
+ *  One strike is the whole point: picking the nearest call and the nearest
+ *  put independently averages two different strikes off the smile, and that
+ *  difference then shows up as "contango" in the term structure or as a
+ *  session IV delta that is really a strike delta. When no strike is quoted
+ *  on both sides, a one-sided read still beats no read — this never returns
+ *  null more often than the naive version did. */
 export function atmIv(chain) {
-  if (chain?.spot == null) return null
-  const call = atmContract(chain.calls, chain.spot)
-  const put = atmContract(chain.puts, chain.spot)
+  if (!chain?.spot) return null
+  const paired = pairedAtmStrike(chain)
+  const call = paired != null
+    ? chain.calls.find((c) => c.strike === paired)
+    : atmContract(chain.calls, chain.spot)
+  const put = paired != null
+    ? chain.puts.find((p) => p.strike === paired)
+    : atmContract(chain.puts, chain.spot)
   const ivs = [call?.iv, put?.iv].filter((v) => v != null && v > 0)
   if (!ivs.length) return null
   return ivs.reduce((a, b) => a + b, 0) / ivs.length
