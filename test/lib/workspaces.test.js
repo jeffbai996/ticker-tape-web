@@ -8,6 +8,7 @@ import {
   findWorkspace, getActiveWorkspace, importPreferences, listWorkspaces, normalizeLayout,
   renameWorkspace, saveWorkspace, setActiveWorkspace, summarizeLayout, workspaceHash,
 } from '../../src/lib/workspaces.js'
+import { WORKSPACE_EVENT } from '../../src/lib/workspaceState.js'
 import { parseCommand, HELP_TEXT } from '../../src/lib/commands.js'
 import { COMMAND_WORDS, completions } from '../../src/lib/complete.js'
 import { executePlan } from '../../src/lib/execute.js'
@@ -420,5 +421,32 @@ describe('workspaces board control', () => {
   it('translates its chrome', () => {
     expect(control).toContain("tl('Workspaces')")
     expect(control).toMatch(/tl\('Save as/)
+  })
+})
+
+/** The apply-side event name is exported for exactly one reason: so the
+ *  listener and the dispatcher cannot drift. A control that hard-codes the
+ *  string goes deaf the day the constant changes, silently. */
+describe('WORKSPACE_EVENT is the only spelling of the apply event', () => {
+  const SRC = [
+    'src/lib/workspaceState.js',
+    'src/components/WorkspacesControl.jsx',
+    'src/pages/dashboard.jsx',
+    'src/lib/commands.js',
+  ]
+
+  it('is defined once and re-used, never retyped', () => {
+    expect(WORKSPACE_EVENT).toBe('tape:workspace')
+    const literals = SRC.filter((path) =>
+      readFileSync(resolve(process.cwd(), path), 'utf8').includes("'tape:workspace'"))
+    expect(literals).toEqual(['src/lib/workspaceState.js'])
+  })
+
+  it('is what the toolbar control actually listens on', () => {
+    const control = readFileSync(
+      resolve(process.cwd(), 'src/components/WorkspacesControl.jsx'), 'utf8')
+    expect(control).toContain('WORKSPACE_EVENT')
+    expect(control).toContain('addEventListener(WORKSPACE_EVENT, onWorkspace)')
+    expect(control).toContain('removeEventListener(WORKSPACE_EVENT, onWorkspace)')
   })
 })
