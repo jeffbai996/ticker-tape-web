@@ -5,6 +5,7 @@
  *  geometry change under the pointer, amber as the only accent, and no
  *  dependence on the feed chip being rendered to keep its spacing. */
 import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const source = readFileSync('src/components/StatusBar.jsx', 'utf8')
@@ -54,5 +55,16 @@ describe('the timezone clock reads as a control', () => {
     // measure from the "ET" glyph; with an edge to measure from it is wrong
     expect(clockClass).not.toContain('pr-0')
     expect(clockClass).toContain('px-1.5')
+  })
+})
+
+describe('the clock reads as a control, not as text', () => {
+  it('carries the pointer cursor with its hairline', () => {
+    // a bordered chip that still shows the text caret reads half-interactive
+    const src = readFileSync(resolve(process.cwd(), 'src/components/StatusBar.jsx'), 'utf8')
+    const chip = src.slice(src.indexOf('board-control group ml-1'), src.indexOf('cycle timezone'))
+    expect(chip).toContain('cursor-pointer')
+    expect(chip).toContain('rounded border')
+    expect(chip).toContain('hover:border-accent/50')
   })
 })

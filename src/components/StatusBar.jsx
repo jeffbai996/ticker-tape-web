@@ -102,7 +102,7 @@ function RollingClock() {
           scroll container whose last cell can end flush at the edge, and the
           feed chip that used to sit between them shows nothing while the
           feed is healthy. */
-      class="board-control group ml-1 flex items-baseline gap-1 whitespace-nowrap font-anth px-1.5 py-0.5 rounded border transition-colors hover:border-accent/50"
+      class="board-control group ml-1 flex cursor-pointer items-baseline gap-1 whitespace-nowrap font-anth px-1.5 py-0.5 rounded border transition-colors hover:border-accent/50"
       title={tl('cycle timezone')}
     >
       {/* Anthropic Sans digits (Jeff 2026-08-06) — falls back to Jakarta on
