@@ -94,7 +94,10 @@ describe('research tabs and keys', () => {
   })
 
   it('closes the mobile rail on Escape', () => {
-    expect(research).toContain('useEscape(() => setRailOpen(false), railOpen)')
+    // Escape now arrives through the shared overlay contract (Overlay wraps the
+    // slide-over and binds useEscape once) instead of a per-page listener.
+    expect(research).toContain('<Overlay')
+    expect(research).toContain('onClose={() => setRailOpen(false)}')
   })
 
   it('requests the broker dividend report with its supported single scope', () => {
