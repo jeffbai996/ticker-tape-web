@@ -29,19 +29,51 @@ Corollaries:
 ## Current Product Surface
 
 - Dashboard with ticker-by-ticker streaming quotes, badge analytics, volume sparks, command bar,
-  customizable widget rail, and market-session status.
+  customizable widget rail, market-session status, and measured quote columns
+  (`src/lib/quoteColumns.js`) that keep every row's price box on one x.
+- Feed observability: a shell `LIVE / RECOVERING / DELAYED` chip
+  (`src/components/FeedIndicator.jsx`) over per-symbol source/freshness state
+  (`src/lib/feedHealth.js`). A snapshot is never described as live — only a
+  websocket print is.
 - Named watchlists alongside the main list, with opt-in cloud reconciliation
   (`src/lib/cloudsave.js`): pull, merge locally, push against the revision that
   was read. The server never merges.
 - Markets, per-symbol research, screening, browser alerts, and bilingual UI.
+- Event workspace: a Markets → Calendar row opens in place into the full event —
+  fields, plain-language description, prior/consensus/actual, public sector
+  proxies and watched symbols it touches, and a distinct post-print state.
+  `EventWorkspace` in `src/pages/markets.jsx`, joins in `src/lib/eventLinks.js`.
+- Signal boards at `#/screen/signals`: saved screen definitions
+  (`src/lib/screenDefs.js` — field · operator · value, AND-combined, ranked)
+  rendered by `src/pages/screenBoard.jsx` through the dashboard's own row.
+- Saved workspaces (`src/lib/workspaces.js`, `src/lib/workspaceState.js`): named
+  board layouts switched from the toolbar control or the `ws` console verb, plus
+  allowlisted preference export/import. Layout only — never quotes, positions,
+  tokens, or endpoints.
+- Options intelligence on research: expected move, IV term structure, put/call
+  skew, volume-vs-open-interest outliers (`src/lib/expmove.js`,
+  `src/lib/optionsIntel.js`), with expected-move bands on the price chart.
 - Synthetic portfolio views for account, sizing, carry, cockpit, what-if,
-  trades, thesis watcher, timeline, and backtest.
+  trades, thesis watcher, timeline, and backtest, with session-aware day P&L
+  (`src/lib/dayPnl.js`): pre-market move before the open, session compounded
+  with the extended print after the close.
 - AI briefing, memo, and multi-model chat surfaces. Public and private builds
   ship the same information architecture; publicly the AI routes render inert
   previews badged PREVIEW and never call the model service, and the private
   tailnet build activates them through Fragwire and drops the showcase badges.
-- Wire page with a synthetic public session and optional user-supplied
-  Fragwire-compatible endpoint.
+- Wire page with a synthetic public session, the public wire mirror, or an
+  optional user-supplied Fragwire-compatible endpoint. The mirror is a
+  sanitized headline snapshot pushed to the Worker (`worker/wire.js`,
+  `/wire/*`) and read back read-only; the client runs it as MIRROR mode with
+  the snapshot age on screen. The private build never falls back to it, and
+  `wireServiceUrl()` keeps mirror-backed surfaces out of chat/save/alert paths.
+- Routed pages are lazy-loaded behind `src/components/LazyPage.jsx`; the shell,
+  dashboard, and command grammar stay eager. `npm run budget` fails the build if
+  the entry chunk drifts back over budget.
+- One shared overlay contract for every modal and drawer: pure rules in
+  `src/lib/dialog.js`, Preact/DOM wiring in `src/components/Overlay.jsx` — role,
+  label, focus entry/return, Escape, backdrop dismissal, scroll containment.
+  Used by the palette, chat drawers, research rail, and ChartSuite.
 - Responsive mobile navigation and PWA installation: a bottom tab bar, a
   spotlight-style inline search, and the command console as its own phone-only
   page (desktop keeps the floating panel).
@@ -51,7 +83,7 @@ Corollaries:
 | Layer | Choice |
 |-------|--------|
 | Framework | Preact (hooks, JSX via `@preact/preset-vite`) |
-| Build | Vite 8 |
+| Build | Vite 8 (Node 22 required) |
 | CSS | Tailwind CSS v4 (CSS-first config, tokens in `src/styles/main.css`) |
 | Charts | lightweight-charts (TradingView) |
 | Fonts | Plus Jakarta Sans (UI) + IBM Plex Mono (data, tabular-nums) |
@@ -111,17 +143,24 @@ these classes over a new gradient or shadow.
 src/
 ├── main.jsx                  entry point
 ├── app.jsx                   application shell
-├── components/               shared UI components
+├── components/               shared UI components (Overlay, LazyPage, FeedIndicator…)
 ├── pages/                    routed product surfaces
+│   └── research/             research subviews + hooks behind a thin router
 ├── lib/                      data clients and testable domain logic
 └── styles/main.css           Tailwind import and design tokens
 test/
 ├── lib/                      browser/domain tests
-└── worker/                   Worker proxy and AI tests
+└── worker/                   Worker proxy, AI, and wire-mirror tests
 worker/
 ├── worker.js                 request router and Yahoo proxy
 ├── chat.js                   AI model registry and provider adapters
+├── wire.js                   public wire mirror: validated push, read-only serve
 └── wrangler.toml             Cloudflare Worker configuration
+scripts/
+├── bundle_budget.sh          entry-chunk route budget (`npm run budget`)
+├── probe_matrix.py           responsive matrix against a SERVED build
+└── deploy_tailnet.sh         private build + tailnet deploy
+docs/                         Fable design/feature handoff and run plans
 public/                       static/PWA assets
 ```
 
@@ -132,7 +171,8 @@ rewrites. The top-level registry is `src/lib/nav.js`; parsing lives in
 `src/lib/route.js`.
 
 Current nav sections are dashboard, watchlists, briefing, markets, demo
-portfolio, screening, alerts, wire, AI chat, and the phone-only console.
+portfolio, screening (compare, technicals, correlation, valuation, dividends,
+signals), alerts, wire, AI chat, and the phone-only console.
 Research has no nav entry — every entry point (search, palette, terminal, tape)
 deep-links straight to `#/research/<symbol>`, which still routes.
 
@@ -155,9 +195,14 @@ no route exposes trading capabilities.
 
 ## Commands and Deployment
 
+The build chain needs **Node 22** (Vite 8 + Tailwind v4); older Node fails the
+install.
+
 - `npm run dev` — local Vite server
 - `npm run build` — production build to `dist/`
 - `npm test` — Vitest suite
+- `npm run budget` — build, then fail if the entry chunk is over budget
+- `python3 scripts/probe_matrix.py <url>` — responsive checks on a served build
 - `cd worker && npx wrangler deploy` — deploy the Worker
 
 Pushing `main` triggers the GitHub Pages workflow. Worker changes require the
@@ -166,6 +211,8 @@ separate Wrangler deploy; pushing alone does not update the Worker.
 ## Reference Material
 
 - `README.md` documents the current user-facing features and architecture.
+- `docs/FABLE_DESIGN_FEATURE_HANDOFF.md` is the living design/feature audit with
+  per-finding status; `docs/FABLE_RUN_3_PLAN.md` is the next pass's lane plan.
 - The sibling `ticker-tape` repository is the private TUI and the source for
   financial behavior worth porting, but its private runtime data must never be
   copied here.
