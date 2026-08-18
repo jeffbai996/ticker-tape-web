@@ -38,10 +38,24 @@ describe('public demo surface parity', () => {
     expect(report).toContain('disabled={!serviceAvailable || busy}')
   })
 
-  it('keeps Fragwire synthetic by default instead of shipping a private URL', () => {
+  // The public build now defaults to the worker mirror rather than to nothing,
+  // so "contains return ''" stopped saying anything — every branch of this file
+  // contains one. What still has to hold is WHERE the default comes from and
+  // what it is allowed to do.
+  it('derives the default endpoint from the public worker, never a private host', () => {
     expect(wire).toContain("const KEY = 'tape-wire-url'")
-    expect(wire).toContain("return ''")
     expect(wire).toContain('const DEMO_FEED = [')
     expect(wire).not.toContain('VITE_PUBLIC_WIRE')
+    // the mirror base is built from proxyBase() — no host literal anywhere
+    expect(wire).toContain('export function mirrorBase()')
+    expect(wire).toContain('${proxyBase().replace(/\\/$/, \'\')}/wire')
+    expect(wire).not.toMatch(/https?:\/\/(?!example)[a-z0-9.-]+\.(ts\.net|internal|local)/i)
+    // the private build never falls back to a public copy of its own wire
+    expect(wire).toContain('if (IS_PRIVATE_BUILD) return \'\'')
+  })
+
+  it('treats the read-only mirror as no service, so nothing writes to it', () => {
+    expect(wire).toContain('export function wireServiceUrl()')
+    expect(wire).toContain("return isMirrorBase(base) ? '' : base")
   })
 })
