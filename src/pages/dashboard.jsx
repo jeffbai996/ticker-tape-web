@@ -652,7 +652,11 @@ function MarketDeckPanel() {
               {/* label ≠ value: micro-caps label in the quiet shade, tabular
                   number carrying the color — they used to blur into one line
                   (Jeff 2026-08-06: "something visually unsatisfying") */}
-              <span class="font-anth text-[9px] font-medium uppercase tracking-[0.08em] text-muted/80 truncate">{tl(item.label)}</span>
+              {/* 20 instruments in a 230px rail: a hard truncate ate half the
+                  labels ("WTI Crude Oil", "Nasdaq 100"), so the name sweeps on
+                  hover/tap like every other clipped name on the board */}
+              <Marquee text={tl(item.label)} title={tl(item.label)}
+                class="min-w-0 font-anth text-[9px] font-medium uppercase tracking-[0.08em] text-muted/80" />
               <span class={`ml-auto shrink-0 font-tick text-[11px] font-semibold tabular-nums ${!q ? 'text-muted' : q.pct >= 0 ? 'text-up' : 'text-down'}`}>
                 {q ? fmtPct(q.pct) : '—'}
               </span>

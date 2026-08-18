@@ -51,8 +51,12 @@ export function applyQuoteColumns(root, widths) {
  *  animation — they must land regardless. Returns a pending() probe. */
 const PENDING = new WeakMap()
 const FALLBACK_MS = 60
-export function scheduleQuoteColumns(root) {
-  if (!root) return () => false
+export function scheduleQuoteColumns(root, { doc = globalThis.document } = {}) {
+  // Hidden tab: rAF never fires, so the timer fallback below would win every
+  // time and run a full querySelectorAll + offsetWidth pass (a forced layout)
+  // on every render for a screen nobody can see. The columns are re-measured
+  // on the first visible render anyway.
+  if (!root || doc?.hidden) return () => false
   if (!PENDING.has(root)) {
     const run = () => {
       const p = PENDING.get(root)
