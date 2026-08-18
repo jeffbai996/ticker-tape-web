@@ -46,3 +46,17 @@ describe('portfolio translation coverage', () => {
     expect(page).not.toContain('>CONNECTING TO IBKR…<')
   })
 })
+
+describe('shortAccountLabel', () => {
+  it('collapses a multi-owner label ("A + B") to "Both" so the combined view\'s account column stays one line on phone (Jeff 2026-08-17)', async () => {
+    const { shortAccountLabel } = await import('../../src/lib/accounts.js')
+    expect(shortAccountLabel('Alice + Bob')).toBe('Both')
+    expect(shortAccountLabel('Alice & Bob')).toBe('Both')
+    expect(shortAccountLabel('Alice+Bob')).toBe('Both')
+    expect(shortAccountLabel('Alice')).toBe('Alice')
+    expect(shortAccountLabel('')).toBe('')
+    expect(shortAccountLabel(null)).toBe('')
+    // three owners is still "Both"? no — that reads wrong; leave it
+    expect(shortAccountLabel('A + B + C')).toBe('A + B + C')
+  })
+})

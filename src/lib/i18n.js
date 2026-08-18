@@ -277,6 +277,7 @@ const STRINGS = {
 const LABELS = {
   // Archive row controls
   'download .md': '下载 .md',
+  Both: '共同',
   // 2026-08-17 zh pass — rendered-audit gaps (research descriptor/technicals,
   // sidebar sort, unwatch title). Keep abbreviations where the EN is a
   // standard metric code readers already know (RSI/MACD/PEG/FCF/ROE).
