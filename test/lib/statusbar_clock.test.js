@@ -62,7 +62,7 @@ describe('the clock reads as a control, not as text', () => {
   it('carries the pointer cursor with its hairline', () => {
     // a bordered chip that still shows the text caret reads half-interactive
     const src = readFileSync(resolve(process.cwd(), 'src/components/StatusBar.jsx'), 'utf8')
-    const chip = src.slice(src.indexOf('board-control group ml-1'), src.indexOf('cycle timezone'))
+    const chip = src.split('\n').find((line) => line.includes('class="board-control group ml-1')) || ''
     expect(chip).toContain('cursor-pointer')
     expect(chip).toContain('rounded border')
     expect(chip).toContain('hover:border-accent/50')
