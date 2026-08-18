@@ -8,6 +8,7 @@ import {
 import { IS_PRIVATE_BUILD } from '../lib/nav.js'
 import { prefetchSymbol } from '../lib/history.js'
 import { useEscape } from '../hooks.js'
+import { startVisibleClock } from '../lib/idleClock.js'
 import { Empty, Loading } from '../components/Loading.jsx'
 import { getLocale, t as tt, tl } from '../lib/i18n.js'
 
@@ -500,21 +501,31 @@ export function Wire({ route }) {
 
   useEscape(() => setOpenIds(new Set()), openIds.size > 0)
 
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now() / 1000), 30_000)
-    return () => clearInterval(t)
-  }, [])
+  // Row ages are minute-grained; 30s is already twice as often as they can
+  // change, and a buried tab does not need to be told the time.
+  useEffect(() => startVisibleClock(30_000, () => setNow(Date.now() / 1000)), [])
 
+  // Each new row glows for 8s. A live burst arms a dozen of these at once and
+  // every one of them used to outlive the page, so they are tracked and
+  // dropped on unmount rather than firing into a component that is gone.
+  const hotTimers = useRef(new Set())
+  useEffect(() => () => {
+    hotTimers.current.forEach(clearTimeout)
+    hotTimers.current.clear()
+  }, [])
   const markHot = (id) => {
     setHotIds((cur) => new Set(cur).add(id))
-    setTimeout(() => setHotIds((cur) => {
-      const next = new Set(cur); next.delete(id); return next
-    }), 8000)
+    const timer = setTimeout(() => {
+      hotTimers.current.delete(timer)
+      setHotIds((cur) => {
+        const next = new Set(cur); next.delete(id); return next
+      })
+    }, 8000)
+    hotTimers.current.add(timer)
   }
 
   useEffect(() => {
     let cancelled = false
-    let revisionTimer = null
     let reArmTimer = null
     let revisionSince = 0
     if (esRef.current) { esRef.current.close(); esRef.current = null }
@@ -534,9 +545,14 @@ export function Wire({ route }) {
       }, wait)
     }
 
-    let demoTimer = null
-    let mirrorTimer = null
-    let railTimer = null
+    // Every repeating job below runs only while the tab is visible and takes
+    // one catch-up pass on the way back: a buried wire was polling revisions
+    // every two seconds, the rail every thirty, and minting demo events into
+    // a list nobody was reading.
+    let demoStop = null
+    let mirrorStop = null
+    let railStop = null
+    let revisionStop = null
     // The written session. Also the floor under the mirror: an exporter that
     // has never pushed, or a worker that is down, degrades to labeled demo
     // rather than to a blank page.
@@ -547,18 +563,20 @@ export function Wire({ route }) {
       setToday(demoToday())
       setWatchset(new Set(['AAPL', 'MSFT', 'NVDA', 'GOOG', 'AMZN', 'TSLA']))
       let nextId = 41
-      demoTimer = setInterval(() => {
+      // catchUp off: this MINTS a row rather than refreshing one, so a reader
+      // flicking between tabs must not stack up synthetic headlines.
+      demoStop = startVisibleClock(15000, () => {
         const ev = demoEvent(nextId++, Date.now() / 1000)
         ev.ts_event = Date.now() / 1000 - 2
         ev.ts_seen = Date.now() / 1000
         setEvents((cur) => [...cur.slice(-199), ev])
         markHot(ev.id)
-      }, 15000)
+      }, { catchUp: false })
     }
 
     if (!endpoint) {
       startDemo()
-      return () => { cancelled = true; clearInterval(demoTimer) }
+      return () => { cancelled = true; demoStop?.() }
     }
 
     setState('connecting')
@@ -595,7 +613,7 @@ export function Wire({ route }) {
           if (cancelled) return
           setEvents(out.events || [])
           revisionSince = out.server_ts || Date.now() / 1000
-          revisionTimer = setInterval(pollRevisions, 2000)
+          revisionStop = startVisibleClock(2000, pollRevisions)
           pollRail()
           const es = new EventSource(`${endpoint}/api/stream?since_id=${out.latest_id || 0}`)
           esRef.current = es
@@ -613,7 +631,7 @@ export function Wire({ route }) {
           setError(String(err.message || err))
           reArm()
         })
-      railTimer = setInterval(pollRail, 30_000)
+      railStop = startVisibleClock(30_000, pollRail)
     }
 
     // The public mirror is a pushed snapshot, not a stream. No EventSource to
@@ -636,8 +654,9 @@ export function Wire({ route }) {
         .catch(() => { if (!cancelled && first) startDemo() })
       pollRail()
       pull(true).then(() => {
-        if (cancelled || demoTimer) return
-        mirrorTimer = setInterval(() => { pull(false); pollRevisions() }, MIRROR_POLL_MS)
+        if (cancelled || demoStop) return
+        mirrorStop = startVisibleClock(MIRROR_POLL_MS,
+          () => { pull(false); pollRevisions() })
       })
     }
 
@@ -652,10 +671,10 @@ export function Wire({ route }) {
 
     return () => {
       cancelled = true
-      if (railTimer) clearInterval(railTimer)
-      if (demoTimer) clearInterval(demoTimer)
-      if (mirrorTimer) clearInterval(mirrorTimer)
-      if (revisionTimer) clearInterval(revisionTimer)
+      railStop?.()
+      demoStop?.()
+      mirrorStop?.()
+      revisionStop?.()
       if (reArmTimer) clearTimeout(reArmTimer)
       if (esRef.current) { esRef.current.close(); esRef.current = null }
     }

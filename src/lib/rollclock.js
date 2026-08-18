@@ -2,6 +2,12 @@
 // owns the container. Digits roll in place; non-digits rewrite in place.
 
 export function paintRollingTime(element, value) {
+  // Same string as last time = nothing to paint. Callers tick on a wall
+  // clock, so the phone's HH:MM face is asked to repaint sixty times for
+  // every change it actually has; without this guard each of those wrote an
+  // aria-label and walked every cell for nothing.
+  if (element.dataset.rollValue === value) return
+  element.dataset.rollValue = value
   element.setAttribute('aria-label', value)
   if (element.children.length !== value.length) {
     const old = [...element.children]
@@ -54,6 +60,29 @@ export function paintRollingTime(element, value) {
       cell.innerHTML = `<span class="time-wheel-face">${character}</span>`
     }, 360)
   })
+}
+
+/**
+ * Cancel every in-flight roll on an element and settle it where the timer
+ * would have.
+ *
+ * Each rolling digit arms a 360ms timer that swaps the two-face cell back to
+ * a single face. On unmount those timers were still pending against detached
+ * nodes: harmless work, but work, and it pinned the subtree in memory until
+ * they fired. Doing the settle here as well as cancelling means the same
+ * element can be repainted straight afterwards — the timezone cycle tears the
+ * effect down and paints a new zone immediately — without leaving a digit
+ * stuck mid-roll. Call this from the owning effect's cleanup.
+ */
+export function stopRollingTime(element) {
+  if (!element) return
+  for (const cell of element.children) {
+    if (!cell.rollTimer) continue
+    clearTimeout(cell.rollTimer)
+    cell.rollTimer = null
+    cell.classList.remove('rolling')
+    cell.innerHTML = `<span class="time-wheel-face">${cell.dataset.value}</span>`
+  }
 }
 
 /** IANA zones handle DST; we never do offset math ourselves. */

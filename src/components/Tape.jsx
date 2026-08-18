@@ -4,7 +4,8 @@ import { fmtPrice, fmtPct } from '../lib/format.js'
 import { FlashPrice } from './Fig.jsx'
 import { hrefFor } from '../lib/route.js'
 import { marqueeCopies } from '../lib/marquee.js'
-import { tapeBadge, tapeEntries } from '../lib/tape.js'
+import { REDUCED_MOTION, tapeBadge, tapeEntries, tapePlayState } from '../lib/tape.js'
+import { startVisibleClock } from '../lib/idleClock.js'
 import { tapeworthy, wireUrl, evHeadline } from '../lib/wire.js'
 import { getLocale } from '../lib/i18n.js'
 import { extendedLabelClass } from '../lib/extendedHours.js'
@@ -20,7 +21,12 @@ import { prefetchSymbol } from '../lib/history.js'
 // somewhere the cursor isn't. Tracking the pointer on every frame and asking
 // what's under it puts the highlight where the user is actually looking, and
 // the belt never has to stop (Jeff 2026-08-03).
-function usePointerHighlight(ref) {
+//
+// The per-frame hit test is only needed because the belt moves. When it is
+// parked — reduced motion, or a hidden tab — the item under the cursor can
+// only change when the cursor does, so the loop is dropped and the same work
+// happens on mousemove instead. Same highlight, none of the idle frames.
+function usePointerHighlight(ref, moving) {
   useEffect(() => {
     const wrap = ref.current
     if (!wrap) return
@@ -32,8 +38,7 @@ function usePointerHighlight(ref) {
       if (lit) lit.classList.remove('tape-hot')
       lit = null
     }
-    const frame = () => {
-      raf = requestAnimationFrame(frame)
+    const hit = () => {
       if (!pos) return
       const under = document.elementFromPoint(pos.x, pos.y)
       const item = under?.closest?.('[data-tape-item]')
@@ -45,8 +50,13 @@ function usePointerHighlight(ref) {
         lit = next
       }
     }
+    const frame = () => {
+      raf = requestAnimationFrame(frame)
+      hit()
+    }
     const move = (e) => {
       pos = { x: e.clientX, y: e.clientY }
+      if (!moving) { hit(); return }
       if (!raf) raf = requestAnimationFrame(frame)
     }
     const leave = () => {
@@ -64,7 +74,31 @@ function usePointerHighlight(ref) {
       cancelAnimationFrame(raf)
       clear()
     }
-  }, [ref])
+  }, [ref, moving])
+}
+
+/**
+ * `animation-play-state` for the belt, kept in sync with tab visibility and
+ * the reduced-motion setting. Both are listened to rather than read once —
+ * the reader can bury the tab or flip the OS setting at any point.
+ */
+function useTapeMotion() {
+  const [play, setPlay] = useState('running')
+  useEffect(() => {
+    const mq = globalThis.matchMedia?.(REDUCED_MOTION)
+    const sync = () => setPlay(tapePlayState({
+      hidden: document.hidden,
+      reducedMotion: !!mq?.matches,
+    }))
+    sync()
+    document.addEventListener('visibilitychange', sync)
+    mq?.addEventListener?.('change', sync)
+    return () => {
+      document.removeEventListener('visibilitychange', sync)
+      mq?.removeEventListener?.('change', sync)
+    }
+  }, [])
+  return play
 }
 
 /**
@@ -86,8 +120,10 @@ function useWireHeadlines() {
         .catch(() => {})
     }
     pull()
-    const t = setInterval(pull, 60_000)
-    return () => { dead = true; clearInterval(t) }
+    // Nothing on a hidden tab reads these headlines, so the poll stops with
+    // it and takes one catch-up read on the way back.
+    const stop = startVisibleClock(60_000, pull)
+    return () => { dead = true; stop() }
   }, [])
   return rows
 }
@@ -105,7 +141,8 @@ export function Tape() {
   const wrap = useRef(null)
   const firstCycle = useRef(null)
   const [marquee, setMarquee] = useState({ copies: 2, width: 0 })
-  usePointerHighlight(wrap)
+  const play = useTapeMotion()
+  usePointerHighlight(wrap, play === 'running')
 
   useEffect(() => {
     const viewport = wrap.current
@@ -140,6 +177,7 @@ export function Tape() {
         style={marquee.width ? {
           '--tape-cycle-width': `${marquee.width}px`,
           '--tape-cycle-duration': `${duration}s`,
+          animationPlayState: play,
         } : undefined}
       >
         {Array.from({ length: marquee.copies }, (_, copy) => (
