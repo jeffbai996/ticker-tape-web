@@ -251,10 +251,12 @@ function OptionsIntel({ symbol, chain, prevChain }) {
         {introRow(tl('Skew — where it concentrates'), (
           skew ? (
             <>
+              {/* put/call is instrument side, not direction — red and green
+                  stay reserved for a tape that actually moved */}
               <div class="text-[13px]">
-                <span class="text-down">{fmtFracPct(skew.putIv, 0)}p</span>
+                <span class="text-ink">{fmtFracPct(skew.putIv, 0)}p</span>
                 <span class="text-muted"> / </span>
-                <span class="text-up">{fmtFracPct(skew.callIv, 0)}c</span>
+                <span class="text-ink-2">{fmtFracPct(skew.callIv, 0)}c</span>
                 <span class={`ml-2 ${skew.skew >= 0 ? 'text-accent' : 'text-ink-2'}`}>
                   {skew.skew >= 0 ? '+' : ''}{(skew.skew * 100).toFixed(1)}pp
                 </span>
@@ -270,7 +272,13 @@ function OptionsIntel({ symbol, chain, prevChain }) {
         {introRow(tl('Since last session'), (
           diff ? (
             <div class="flex flex-col gap-0.5 text-[11px]">
-              <span class={diff.ivDelta >= 0 ? 'text-up' : 'text-down'}>IV {diff.ivDelta >= 0 ? '+' : ''}{(diff.ivDelta * 100).toFixed(1)}pp</span>
+              {/* a missing IV on either side is not a flat session: null here
+                  would render "+0.0pp", the invented zero diffSession refuses
+                  to return. Amber, not green — rising IV is not a rising tape. */}
+              <span class={diff.ivDelta == null ? 'text-muted' : 'text-accent'}>
+                IV {diff.ivDelta == null ? '—'
+                  : `${diff.ivDelta >= 0 ? '+' : ''}${(diff.ivDelta * 100).toFixed(1)}pp`}
+              </span>
               <span class="text-ink-2">{tl('Vol')} {diff.volumeDelta >= 0 ? '+' : ''}{fmtVol(diff.volumeDelta)}</span>
               <span class="text-ink-2">{tl('OI')} {diff.oiDelta >= 0 ? '+' : ''}{fmtVol(diff.oiDelta)}</span>
             </div>
@@ -285,7 +293,7 @@ function OptionsIntel({ symbol, chain, prevChain }) {
           <div class="flex flex-wrap gap-1.5 font-mono text-[10px]">
             {outliers.slice(0, 10).map((o) => (
               <span key={`${o.side}-${o.strike}`}
-                class={`px-1.5 py-0.5 rounded border ${o.side === 'call' ? 'border-up/40 text-up' : 'border-down/40 text-down'}`}>
+                class={`px-1.5 py-0.5 rounded border ${o.side === 'call' ? 'border-line-2 text-ink' : 'border-line text-ink-2'}`}>
                 {o.side === 'call' ? 'C' : 'P'} {fmtPrice(o.strike)} · {fmtVol(o.volume)}/{fmtVol(o.oi)}
               </span>
             ))}
