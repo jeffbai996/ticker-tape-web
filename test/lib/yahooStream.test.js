@@ -111,3 +111,42 @@ describe('createYahooStream', () => {
     stream.stop()
   })
 })
+
+describe('nudge — reconnect now when the page comes back', () => {
+  it('cancels the pending backoff and reconnects immediately when the socket is dead', () => {
+    FakeSocket.instances = []
+    const reconnects = []
+    const cleared = []
+    const stream = createYahooStream({
+      WebSocketImpl: FakeSocket,
+      onTick: vi.fn(),
+      setTimer: (fn) => { reconnects.push(fn); return reconnects.length },
+      clearTimer: (id) => cleared.push(id),
+      random: () => 0,
+    })
+    stream.setSymbols(['AAPL'])
+    FakeSocket.instances[0].open()
+    FakeSocket.instances[0].disconnect()      // backoff timer armed, socket gone
+    expect(reconnects).toHaveLength(1)
+    stream.nudge()                             // tab came back: don't wait for it
+    expect(cleared).toEqual([1])
+    expect(FakeSocket.instances).toHaveLength(2)
+    FakeSocket.instances[1].open()
+    expect(FakeSocket.instances[1].sent).toEqual([{ subscribe: ['AAPL'] }])
+    stream.stop()
+  })
+
+  it('leaves a live or connecting socket alone and is a no-op after stop', () => {
+    FakeSocket.instances = []
+    const stream = createYahooStream({ WebSocketImpl: FakeSocket, onTick: vi.fn(), random: () => 0 })
+    stream.setSymbols(['AAPL'])
+    stream.nudge()                             // connecting (readyState 0)
+    expect(FakeSocket.instances).toHaveLength(1)
+    FakeSocket.instances[0].open()
+    stream.nudge()                             // live
+    expect(FakeSocket.instances).toHaveLength(1)
+    stream.stop()
+    stream.nudge()
+    expect(FakeSocket.instances).toHaveLength(1)
+  })
+})

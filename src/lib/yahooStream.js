@@ -156,6 +156,21 @@ export function createYahooStream({
       }
     },
 
+    /** Reconnect NOW if the socket is down: a laptop lid, a phone lock or a
+     *  network flip leaves the socket dead and the backoff timer counting to
+     *  30s while the user is already looking at the board. Called on
+     *  visibility→visible and `online`; a live or connecting socket is left
+     *  alone. */
+    nudge() {
+      if (stopped || !wanted.size) return
+      if (socket && (socket.readyState === 0 || socket.readyState === 1)) return
+      if (reconnectTimer != null) clearTimer(reconnectTimer)
+      reconnectTimer = null
+      reconnectAttempt = 0
+      if (socket) { const dead = socket; socket = null; try { dead.close() } catch { /* already gone */ } }
+      connect()
+    },
+
     stop() {
       stopped = true
       if (reconnectTimer != null) clearTimer(reconnectTimer)
