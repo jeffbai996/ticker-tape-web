@@ -46,7 +46,9 @@ describe('route-level code splitting', () => {
 
   it('keeps a measurable budget on the entry chunk', () => {
     const script = source('scripts/bundle_budget.sh')
-    expect(script).toContain('BUDGET="${1:-420000}"')
+    // Tightened from 420000 once lightweight-charts left the eager set; the
+    // eager-set gate lives alongside it (see test/lib/lazy_chart.test.js).
+    expect(script).toContain('BUDGET="${1:-90000}"')
     expect(script).toContain('dist/assets/index-*.js')
     expect(source('package.json')).toContain('"budget": "bash scripts/bundle_budget.sh"')
   })
