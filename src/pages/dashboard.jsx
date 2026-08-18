@@ -1387,7 +1387,17 @@ function TickerSearch({ filter, setFilter, activeList }) {
           without changing positioning modes when focus moves to the menu. */}
       {GLASS_ICON}
       <input ref={inputRef} value={filter} onInput={(e) => setFilter(e.currentTarget.value)}
-        onFocus={() => { setExpanded(true); if (hits?.length) setOpen(true) }}
+        onFocus={(e) => {
+          // phone: hand off to the full-screen palette instead of growing a
+          // 26px control inline (Jeff 2026-08-17). Blur first so iOS doesn't
+          // keep a keyboard up for a field that just lost the job.
+          if (matchMedia('(max-width: 639px)').matches) {
+            e.currentTarget.blur()
+            dispatchEvent(new CustomEvent('open-palette', { detail: { seed: filter } }))
+            return
+          }
+          setExpanded(true); if (hits?.length) setOpen(true)
+        }}
         onClick={() => setExpanded(true)}
         onBlur={() => { if (!filter.trim()) setExpanded(false) }}
         onKeyDown={(e) => {
@@ -1397,7 +1407,7 @@ function TickerSearch({ filter, setFilter, activeList }) {
         }}
         placeholder={`${tl('Search')}…`}
         aria-label={tl('Search')}
-        class={`board-control board-search h-[26px] min-w-0 border rounded-lg pl-6 py-0 font-anth text-[10px] text-ink outline-none focus:border-accent placeholder:text-[9.5px] placeholder:text-muted/70 transition-[width,background-color,border-color,box-shadow] duration-300 ease-out ${
+        class={`board-control board-search h-[26px] min-w-0 border rounded-lg pl-6 py-0 font-anth text-[10px] max-sm:text-[16px] text-ink outline-none focus:border-accent placeholder:text-[9.5px] placeholder:text-muted/70 transition-[width,background-color,border-color,box-shadow] duration-300 ease-out ${
           expanded ? 'w-[min(6rem,24vw)] sm:w-60 pr-2'
             : 'w-[26px] sm:w-[88px] pr-0 sm:pr-2 cursor-pointer max-sm:placeholder:text-transparent'}`} />
       {open && hits?.length > 0 && (
