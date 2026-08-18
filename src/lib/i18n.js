@@ -251,6 +251,22 @@ const STRINGS = {
     en: 'the screen compares at most {max} symbols',
     zh: '筛选器最多同时比较 {max} 个代码',
   },
+  'screen.no_predicates': {
+    en: 'no filters yet — every symbol in the universe matches',
+    zh: '暂无筛选条件——范围内所有代码均匹配',
+  },
+  'screen.no_input': {
+    en: 'no {fields} yet',
+    zh: '暂无 {fields} 数据',
+  },
+  'screen.no_alertable': {
+    en: 'nothing in this screen maps to an alert for {symbols}',
+    zh: '该筛选条件无法为 {symbols} 生成提醒',
+  },
+  'screen.watching': {
+    en: 'watching for new entries to “{name}”',
+    zh: '正在监控新进入“{name}”的标的',
+  },
   'watchlists.delete_confirm': {
     en: 'Delete watchlist “{name}”?',
     zh: '删除自选股“{name}”？',
@@ -741,6 +757,21 @@ const LABELS = {
   // cruft tie-off (2026-08-11): silent caps and silent clips now speak up
   dropped: '已略过', 'label too long (120 max)': '说明过长（最多120字）',
   '~{n} min read': '约 {n} 分钟读完',
+  // Signal boards (2026-08-18): screen composer predicate lines and actions.
+  // 'save screen'/'screen name'/armed already exist above (screens.js /
+  // alerts) with the same meaning here, so they are reused rather than
+  // redefined — a second definition would just shadow the first.
+  Signals: '信号', where: '筛选', and: '且', field: '字段', operator: '条件', value: '数值',
+  'upper bound': '上限', 'remove filter': '移除条件', 'add filter': '添加条件',
+  'rank by': '排序依据', 'sort direction': '排序方向',
+  'open as watchlist': '存为自选股', 'alert when entered': '进入时提醒',
+  'watching entries': '监控中', matched: '匹配', 'pending inputs': '数据待补',
+  universe: '范围', 'watchlist board': '看盘', symbols: '个代码', 'saved screens': '已存筛选',
+  'new screen': '新建筛选', delete: '删除',
+  'nothing matched yet': '暂无匹配', 'add symbols to your board first': '请先在看盘中添加代码',
+  saved: '已保存', 'stopped watching for new entries': '已停止监控新进入标的',
+  'a watchlist already has that name': '已有同名自选股', 'screen store is full': '筛选存储已满',
+  above: '上方', below: '下方', between: '区间',
 }
 
 export function t(key, params) {
