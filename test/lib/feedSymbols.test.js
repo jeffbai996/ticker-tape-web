@@ -6,9 +6,9 @@ describe('live feed symbol registry', () => {
   it('puts the most recently mounted watchlist first and releases it on navigation', () => {
     const registry = createFeedSymbolRegistry()
     const releaseMain = registry.retain(['AAPL', 'MSFT'])
-    const releaseCustom = registry.retain(['NVDA', 'MSFT'])
+    const releaseCustom = registry.retain(['TSLA', 'AMZN'])
 
-    expect(registry.values()).toEqual(['NVDA', 'MSFT', 'AAPL', 'MSFT'])
+    expect(registry.values()).toEqual(['TSLA', 'AMZN', 'AAPL', 'MSFT'])
 
     releaseCustom()
     expect(registry.values()).toEqual(['AAPL', 'MSFT'])
@@ -19,10 +19,10 @@ describe('live feed symbol registry', () => {
   it('keeps overlapping consumers and persistent alert symbols without duplicating them', () => {
     const registry = createFeedSymbolRegistry()
     const releaseTape = registry.retain(['AAPL', 'MSFT'])
-    const releaseBoard = registry.retain(['MSFT', 'NVDA'])
+    const releaseBoard = registry.retain(['MSFT', 'TSLA'])
     registry.persist(['ALRT', 'MSFT'])
 
-    expect(registry.values()).toEqual(['MSFT', 'NVDA', 'AAPL', 'ALRT'])
+    expect(registry.values()).toEqual(['MSFT', 'TSLA', 'AAPL', 'ALRT'])
     releaseBoard()
     expect(registry.values()).toEqual(['AAPL', 'MSFT', 'ALRT'])
     releaseTape()
