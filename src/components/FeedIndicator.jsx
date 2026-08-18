@@ -6,15 +6,19 @@ import { tl, t as tt } from '../lib/i18n.js'
 // Amber carries feed state; up/down green and red stay reserved for market
 // direction, so a limping feed can never be mistaken for a falling tape.
 const STATE_CLASS = {
-  live: 'text-muted',
   recovering: 'text-accent',
   delayed: 'text-accent font-bold',
 }
 
 /**
- * Shell feed health: LIVE / RECOVERING / DELAYED, plus the age of the newest
- * data whenever it is not live. All state logic lives in feedHealth.js — this
- * only paints, on its own 10s tick so the rest of the bar doesn't repaint.
+ * Shell feed health — RECOVERING / DELAYED and the age of the newest data.
+ *
+ * A healthy feed says NOTHING. The chip shipped with a LIVE state and Jeff
+ * pulled it the same day ("remove the word LIVE here, not sure how it made
+ * it"): a status row that announces the normal case is noise, and the prices
+ * ticking are already the proof. Only the abnormal states earn a word. State
+ * logic stays in feedHealth.js — this only paints, on its own 10s tick so the
+ * rest of the bar doesn't repaint.
  */
 export function FeedIndicator() {
   const [, tick] = useState(0)
@@ -23,6 +27,7 @@ export function FeedIndicator() {
     return () => clearInterval(t)
   }, [])
   const health = feedHealth(feedStatus())
+  if (health.state === 'live') return null
   return (
     <span
       data-feed-state={health.state}
@@ -32,7 +37,7 @@ export function FeedIndicator() {
       {tl(health.state.toUpperCase())}
       {/* the age is the first thing to go on a phone header — the word alone
           still says the feed is not live */}
-      {health.state !== 'live' && health.ageLabel && (
+      {health.ageLabel && (
         <span class="max-sm:hidden text-muted">{health.ageLabel}</span>
       )}
     </span>
