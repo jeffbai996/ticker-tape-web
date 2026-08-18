@@ -10,6 +10,8 @@ import { getLocale, onLocaleChange } from './lib/i18n.js'
 import { getWatchlist, onWatchlistChange } from './lib/watchlist.js'
 import { loadWatchlists, onWatchlistsChange } from './lib/watchlists.js'
 import { createQuoteRenderGate } from './lib/quoteRenderGate.js'
+import { createInViewTracker } from './lib/inview.js'
+import { FOCUS_MAX } from './lib/feedSymbols.js'
 import { queueAlertDelivery, retryPendingAlertDeliveries } from './lib/alertDelivery.js'
 
 /** Current locale; re-renders the caller when it changes. */
@@ -105,6 +107,66 @@ export function useFocusedSymbols(symbols) {
     if (!key) return undefined
     return focus(key.split(','))
   }, [key])
+}
+
+// One array instance for "nothing on screen" so a board that never sees a
+// crossing doesn't get a new dependency value on every render.
+const NO_SYMBOLS = []
+
+/**
+ * The other half of useFocusedSymbols: which of a board's rows are actually
+ * inside the viewport. Rows are found by `data-row-symbol` under `boardRef`,
+ * watched with one IntersectionObserver for the whole board (never one per
+ * row), and reported in DOM order.
+ *
+ *   const onScreen = useInViewSymbols(boardRef, `${viewMode}:${rows.join(',')}`)
+ *   useFocusedSymbols(onScreen)
+ *
+ * `rowsKey` is the identity of what is rendered — membership, order, view mode,
+ * folded groups. The observer re-binds when it changes and only then: a quote
+ * print re-renders the board without touching the observer.
+ *
+ * Returns state, so it re-renders the caller — but only when the visible SET
+ * changes, never per intersection callback and never per scroll frame.
+ */
+export function useInViewSymbols(boardRef, rowsKey, selector = '[data-row-symbol]') {
+  const [symbols, setSymbols] = useState(NO_SYMBOLS)
+
+  useEffect(() => {
+    const board = boardRef?.current
+    // No observer (jsdom, a browser older than 2019): declare nothing. Focus
+    // is the claim that the user is LOOKING at these rows; with nothing to see
+    // through there is no evidence for it, and claiming the whole board would
+    // buy a permanent extra sweep leg on a guess. Silence leaves the board
+    // exactly as it behaved before focus existed.
+    if (!board || typeof IntersectionObserver === 'undefined') return undefined
+
+    const scheduleFrame = globalThis.requestAnimationFrame?.bind(globalThis)
+      || ((fn) => setTimeout(fn, 16))
+    const cancelFrame = globalThis.cancelAnimationFrame?.bind(globalThis)
+      || clearTimeout
+    const tracker = createInViewTracker({
+      schedule: scheduleFrame,
+      cancel: cancelFrame,
+      emit: setSymbols,
+      max: FOCUS_MAX, // a focus set is one v7 request; a taller viewport still is
+    })
+    const observer = new IntersectionObserver((entries) => tracker.apply(entries))
+    const rows = [...board.querySelectorAll(selector)]
+    tracker.setElements(rows)
+    for (const el of rows) observer.observe(el)
+
+    // Deliberately no state reset here: re-binding on a filter keystroke would
+    // otherwise blank the viewport and re-declare it a frame later, releasing
+    // and re-taking focus for nothing. The stale list survives one frame at
+    // most, and feed.focusedSymbols() already drops anything untracked.
+    return () => {
+      observer.disconnect()
+      tracker.dispose()
+    }
+  }, [rowsKey])
+
+  return symbols
 }
 
 function notifyBrowser(hits) {
