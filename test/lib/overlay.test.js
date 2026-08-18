@@ -11,7 +11,17 @@ import { Overlay } from '../../src/components/Overlay.jsx'
 // flush raced that fallback and the focus assertions flaked under a loaded
 // suite. Give the environment a rAF that fires on the next macrotask and the
 // effects land deterministically before flush() resolves.
-const flush = () => new Promise((resolve) => setTimeout(resolve, 30))
+const flush = () => new Promise((resolve) => setTimeout(resolve, 40))
+// poll a condition instead of trusting one flush — a loaded suite can hold
+// a macrotask well past the effect window
+const waitFor = async (pred, ms = 800) => {
+  const t0 = Date.now()
+  while (!pred()) {
+    if (Date.now() - t0 > ms) return false
+    await new Promise((r) => setTimeout(r, 10))
+  }
+  return true
+}
 let host = null
 let hadRaf = null
 
@@ -57,6 +67,7 @@ describe('Overlay', () => {
     const opener = document.getElementById('opener')
     opener.focus()
     await open({}, [h('button', { id: 'inside' }, 'a')])
+    await waitFor(() => document.activeElement?.id === 'inside')
     expect(document.activeElement.id).toBe('inside')
     render(null, host)
     await flush()
@@ -109,10 +120,9 @@ describe('Overlay', () => {
   it('contains page scroll while open and restores it on close', async () => {
     document.body.style.overflow = 'auto'
     await open({})
-    expect(document.body.style.overflow).toBe('hidden')
+    expect(await waitFor(() => document.body.style.overflow === 'hidden')).toBe(true)
     render(null, host)
-    await flush()
-    expect(document.body.style.overflow).toBe('auto')
+    expect(await waitFor(() => document.body.style.overflow === 'auto')).toBe(true)
   })
 
   it('applies transition classes only when the user tolerates motion', async () => {
