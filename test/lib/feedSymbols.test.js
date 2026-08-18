@@ -32,7 +32,7 @@ describe('live feed symbol registry', () => {
   it('wires useQuotes cleanup into active feed following', () => {
     const hooks = readFileSync('src/hooks.js', 'utf8')
     const feed = readFileSync('src/lib/feed.js', 'utf8')
-    expect(hooks).toContain("import { follow, track, subscribe, getCached } from './lib/feed.js'")
+    expect(hooks).toMatch(/^import \{[^}]*\bfollow\b[^}]*\} from '\.\/lib\/feed\.js'$/m)
     expect(hooks).toContain('const unfollow = follow(symbols)')
     expect(hooks).toMatch(/return \(\) => \{[\s\S]*unfollow\(\)[\s\S]*gate\.dispose\(\)/)
     expect(feed).toContain('export function follow(symbols)')

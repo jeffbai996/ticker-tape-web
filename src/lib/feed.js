@@ -11,7 +11,9 @@ import { wireServiceUrl } from './wire.js'
 import { createYahooStream } from './yahooStream.js'
 import { techBadges, histoBars } from './badges.js'
 import { createPCache } from './pcache.js'
-import { createFeedSymbolRegistry } from './feedSymbols.js'
+import {
+  FOCUS_MAX, createFeedSymbolRegistry, nextPumpIndex, orderFocusedFirst,
+} from './feedSymbols.js'
 import { symbolFreshness } from './feedHealth.js'
 
 // RS badge benchmark (TUI: RS vs QQQ, 20d). Its daily closes are kept in
@@ -44,6 +46,46 @@ export function sweepIntervalMs(state, overnight = false) {
   if (state === 'open') return QUOTE_SWEEP_MS
   return overnight ? QUOTE_SWEEP_MS : 120_000
 }
+
+const FAST_SWEEP_MS = 10_000        // focused rows while a session is printing
+const FAST_IDLE_CHECK_MS = 60_000   // no fast sweep this session: re-check later
+/** A full sweep that just ran already carries every focused row, so the extra
+ *  request would be a duplicate of a print seconds old. */
+export const FOCUS_SWEEP_GRACE_MS = 3_000
+
+/** Cadence for the focused-only leg. It exists to make the rows on screen feel
+ *  live, so it runs only while something is actually printing; closed and
+ *  overnight get nothing at all (the overnight book has its own sidecar leg,
+ *  which this must never touch). Always faster than sweepIntervalMs for the
+ *  same session, and exactly one request wide — see FOCUS_MAX. */
+export function fastSweepIntervalMs(state) {
+  return state === 'open' || state === 'pre' || state === 'post' ? FAST_SWEEP_MS : 0
+}
+
+/** Whether the focused leg is worth a request right now. Pure so the budget is
+ *  reviewable: the only way this costs anything is a visible, non-hidden board
+ *  in a printing session that the full sweep hasn't just covered. */
+export function shouldFastSweep({ intervalMs, focusedCount, hidden, sinceFullSweepMs }) {
+  if (!intervalMs) return false          // closed / overnight: nothing prints
+  if (hidden) return false               // a background tab gets no extra load
+  if (!focusedCount) return false        // nothing declared on screen
+  return sinceFullSweepMs >= FOCUS_SWEEP_GRACE_MS
+}
+
+/** Age of the price on a row, by the newest of the three quote clocks. `ts`
+ *  is deliberately excluded — it stamps the 1Y chart fetch, not the quote. */
+export function quoteAgeMs(entry, now = Date.now()) {
+  const newest = Math.max(entry?.streamTs || 0, entry?.snapshotTs || 0, entry?.overnightTs || 0)
+  return newest ? now - newest : Infinity
+}
+
+/** Rows entering the viewport whose quote is older than the sweep that was
+ *  supposed to keep them current — those are the ones worth a request now
+ *  rather than at the next sweep. */
+export function staleFocusSymbols(symbols, entryOf, intervalMs, now = Date.now()) {
+  return (symbols || []).filter((symbol) => quoteAgeMs(entryOf(symbol), now) >= intervalMs)
+}
+
 const STREAM_FRESH_MS = 90_000   // snapshots stay fallback while ticks flow
 
 // Proxy resolution order: explicit build-time override, per-browser setting,
@@ -69,6 +111,7 @@ const listeners = new Set()
 let queue = []
 let pumping = false
 let sweepTimer = null
+let fastTimer = null
 let liveStream = null
 
 export function getCached(symbol) {
@@ -189,7 +232,11 @@ async function pump() {
   if (pumping) return
   pumping = true
   while (queue.length) {
-    const symbol = queue.shift()
+    // re-read the focus set every iteration: the user can scroll mid-pump, and
+    // the chart they're looking at should not wait behind the tail of the board
+    const [symbol] = queue.splice(
+      nextPumpIndex(queue, symbolRegistry.focused(), benchCloses ? null : RS_BENCH), 1,
+    )
     try {
       await fetchSymbol(symbol)
     } catch (e) {
@@ -233,6 +280,7 @@ export function getFreshness(symbol, now = Date.now()) {
 // behind it to fill sparks. Coalesced so several track() calls in one render
 // pass cost one request.
 let batchTimer = null
+let batchInFlight = false
 const batchWanted = new Set()
 
 function scheduleBatch(symbols) {
@@ -242,7 +290,26 @@ function scheduleBatch(symbols) {
 }
 
 async function runBatch() {
-  const syms = [...batchWanted]
+  // one batch at a time, always: a sweep landing on top of a focused refresh
+  // would double the in-flight request count for no fresher a print. The
+  // wanted set is untouched here, so the re-armed run picks it up.
+  if (batchInFlight) {
+    clearTimeout(batchTimer)
+    batchTimer = setTimeout(runBatch, 50)
+    return
+  }
+  batchInFlight = true
+  try {
+    await drainBatch()
+  } finally {
+    batchInFlight = false
+  }
+}
+
+async function drainBatch() {
+  // on-screen rows lead, so with more symbols than fit in one request the
+  // visible ones are never in chunk 2 waiting on chunk 1's round trip
+  const syms = orderFocusedFirst([...batchWanted], symbolRegistry.focused())
   batchWanted.clear()
   for (let i = 0; i < syms.length; i += 40) {
     const chunk = syms.slice(i, i + 40)
@@ -282,12 +349,40 @@ async function runBatch() {
 
 const tracked = new Set()
 const symbolRegistry = createFeedSymbolRegistry()
+// when the whole tracked set was last requested — the focused leg stands down
+// inside FOCUS_SWEEP_GRACE_MS of it rather than re-asking for the same print
+let lastFullSweepTs = 0
 
 function syncTracked() {
   const symbols = symbolRegistry.values()
   tracked.clear()
   for (const symbol of symbols) tracked.add(symbol)
   streamSymbols(symbols)
+}
+
+/** Symbols declared on screen AND still tracked. The intersection is what
+ *  makes a leaked focus harmless: unmounting the surface drops it here. */
+export function focusedSymbols() {
+  return symbolRegistry.focused().filter((symbol) => tracked.has(symbol))
+}
+
+function fullSweep() {
+  lastFullSweepTs = Date.now()
+  scheduleBatch([...tracked])
+}
+
+/** The focused leg: at most ONE extra v7 request per tick, never while hidden,
+ *  never on top of a full sweep, and never near the overnight sidecar. */
+function fastSweep() {
+  const focused = focusedSymbols()
+  const go = shouldFastSweep({
+    intervalMs: fastSweepIntervalMs(marketState().state),
+    focusedCount: focused.length,
+    hidden: typeof document !== 'undefined' && document.hidden,
+    sinceFullSweepMs: Date.now() - lastFullSweepTs,
+  })
+  if (!go) return
+  scheduleBatch(focused.slice(0, FOCUS_MAX)) // one chunk, one request
 }
 
 /** Overnight, the wire's IBKR-backed /api/quotes fills the thin-stream gap:
@@ -329,7 +424,7 @@ function hookVisibility() {
   const wake = () => {
     if (!tracked.size) return
     liveStream?.nudge?.()          // a dead socket reconnects now, not in 30s
-    scheduleBatch([...tracked])
+    fullSweep()
     setTimeout(overnightSweep, 5_000)
   }
   document.addEventListener('visibilitychange', () => {
@@ -357,6 +452,7 @@ function activate(symbols, register) {
   }
   if (priority.length) {
     queue = [...priority, ...queue.filter((s) => !priority.includes(s))]
+    lastFullSweepTs = Date.now()
     scheduleBatch(priority) // instant first paint; the pump follows with charts
   }
   // RS benchmark first, so badge rows can diff against it from the start.
@@ -376,7 +472,7 @@ function activate(symbols, register) {
     const beat = () => {
       const every = sweepIntervalMs(marketState().state, isOvernight())
       sweepTimer = setTimeout(() => {
-        scheduleBatch([...tracked])
+        fullSweep()
         setTimeout(overnightSweep, 5_000)
         sinceCharts += every
         if (sinceCharts >= REFRESH_MS) {
@@ -388,6 +484,18 @@ function activate(symbols, register) {
       }, every)
     }
     beat()
+    // The focused leg rides its own clock so the rows on screen refresh
+    // faster than the tail. When the session has no fast sweep the timer
+    // still ticks — cheaply, requesting nothing — so a board left open into
+    // the pre-market open picks the cadence up without a remount.
+    const fastBeat = () => {
+      const every = fastSweepIntervalMs(marketState().state) || FAST_IDLE_CHECK_MS
+      fastTimer = setTimeout(() => {
+        fastSweep()
+        fastBeat()
+      }, every)
+    }
+    fastBeat()
   }
   return release
 }
@@ -397,6 +505,41 @@ function activate(symbols, register) {
  *  instead of growing one session-long WebSocket subscription forever. */
 export function follow(symbols) {
   const release = activate(symbols, (items) => symbolRegistry.retain(items))
+  return () => {
+    release()
+    syncTracked()
+  }
+}
+
+/**
+ * Declare which of the tracked symbols are on screen — the rows inside the
+ * viewport, the open research symbol. Focus never adds or removes symbols from
+ * the feed; it decides who goes first:
+ *
+ *   - the v7 batch chunks focused symbols into the FIRST request
+ *   - the per-symbol chart pump dequeues them ahead of the rest
+ *   - they get their own faster sweep while a session is printing
+ *   - a row entering the set with a quote older than the current sweep is
+ *     requested immediately, coalesced into the existing 50ms batch window
+ *
+ * Mirrors follow(): call it with the visible list, call the returned release
+ * when it changes or the surface unmounts.
+ */
+export function focus(symbols) {
+  const list = [...new Set((symbols || []).filter(Boolean))]
+  if (!list.length) return () => {}
+  const before = new Set(symbolRegistry.focused())
+  const release = symbolRegistry.focus(list)
+  syncTracked() // re-order the tracked set (and the stream list) behind them
+  // Scroll-in freshness — only rows ENTERING the set, so a surface that
+  // re-declares the same viewport every frame costs nothing.
+  const entering = list.filter((symbol) => !before.has(symbol))
+  const stale = staleFocusSymbols(
+    entering,
+    (symbol) => cache.get(symbol),
+    sweepIntervalMs(marketState().state, isOvernight()),
+  )
+  if (stale.length) scheduleBatch(stale.slice(0, FOCUS_MAX))
   return () => {
     release()
     syncTracked()
