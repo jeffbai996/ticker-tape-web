@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
-import { createChart, AreaSeries } from 'lightweight-charts'
 import { boundedTimeScale } from '../lib/chartview.js'
 import { useNamedWatchlists, useQuotes, useWatchlist } from '../hooks.js'
 import { etParts, marketState, rollCashSession } from '../lib/marketState.js'
@@ -40,7 +39,8 @@ import { SPARK_TYPES, DEFAULT_SPARK, isSparkType,
   historyBarsToSparkBars } from '../lib/sparks.js'
 import { Marquee } from '../components/Marquee.jsx'
 import { FlashMetric, FlashPrice } from '../components/Fig.jsx'
-import { Empty } from '../components/Loading.jsx'
+import { Empty, Loading } from '../components/Loading.jsx'
+import { ChartMount } from '../components/LazyChart.jsx'
 import { WorkspacesControl } from '../components/WorkspacesControl.jsx'
 import { t as tt, tl } from '../lib/i18n.js'
 import { extendedLabelClass } from '../lib/extendedHours.js'
@@ -733,11 +733,11 @@ function MoversPanel({ quotes }) {
 }
 
 function MiniChart({ symbol }) {
-  const el = useRef(null)
   const [err, setErr] = useState(false)
-  useEffect(() => {
-    if (!el.current) return
-    const chart = createChart(el.current, {
+  // Runs once the chart chunk is on the page; identical to the effect this was
+  // before the library moved behind ChartMount, teardown included.
+  const draw = (host, { createChart, AreaSeries }) => {
+    const chart = createChart(host, {
       autoSize: true,
       layout: { background: { color: 'transparent' }, textColor: '#79828d', fontSize: 9, fontFamily: "'IBM Plex Mono', monospace" },
       grid: { vertLines: { visible: false }, horzLines: { color: 'rgba(255,255,255,0.04)' } },
@@ -761,10 +761,12 @@ function MiniChart({ symbol }) {
       })
       .catch(() => !dead && setErr(true))
     return () => { dead = true; chart.remove() }
-  }, [symbol])
+  }
   return err
     ? <div class="h-[110px] flex items-center justify-center font-mono text-[10px] text-muted">{tl('no chart')}</div>
-    : <div ref={el} class="h-[110px]" />
+    : <ChartMount class="h-[110px]" deps={[symbol]} mount={draw}
+      placeholder={<Loading label={tt('common.loading')} />}
+      error={<span class="font-mono text-[10px] text-muted">{tl('no chart')}</span>} />
 }
 
 function ChartWidget({ symbol }) {
