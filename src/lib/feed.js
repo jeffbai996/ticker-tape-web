@@ -1,6 +1,12 @@
 // Live quote feed: Yahoo's WebSocket updates one symbol at a time; batched v7
 // snapshots provide first paint/recovery, and spaced v8 charts fill analytics.
 // No secrets, no cron, no build-time data — the browser is the pipeline.
+//
+// EXCEPTION — futures do not stream. Yahoo's public WebSocket stopped pushing
+// tick updates for futures contracts (ES, NQ, YM, GC, CL); they only advance on
+// the v7 batch poll. So a futures row that looks frozen between polls is the
+// upstream feed, not a bug here — check the batch cadence before hunting a
+// stall in the stream path.
 
 import {
   barsFromChart, mergeSnapshotQuote, quoteFromStream, quoteFromV7,
