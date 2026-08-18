@@ -86,4 +86,27 @@ describe('lazyPage', () => {
     expect(second.querySelector('.page').textContent).toBe('QQQ')
     expect(loads).toBe(1)
   })
+
+  // A chunk request fails for exactly one common reason: the page has been
+  // open across a deploy and the hashed file is gone. Caching that rejection
+  // forever pins the route on its spinner until the tab is reloaded, so the
+  // next visit has to be allowed to ask again.
+  it('retries the chunk after a failed fetch instead of spinning forever', async () => {
+    let attempts = 0
+    const Page = lazyPage(async () => {
+      attempts += 1
+      if (attempts === 1) throw new Error('Failed to fetch dynamically imported module')
+      return () => h('div', { class: 'page' }, 'ok')
+    })
+
+    const first = document.createElement('div')
+    render(h(Page), first)
+    await waitFor(() => expect(attempts).toBe(1))
+    expect(first.querySelector('.page')).toBe(null)
+
+    const second = document.createElement('div')
+    render(h(Page), second)
+    await waitFor(() => expect(second.querySelector('.page')?.textContent).toBe('ok'))
+    expect(attempts).toBe(2)
+  })
 })

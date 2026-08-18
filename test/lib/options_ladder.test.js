@@ -20,7 +20,11 @@ describe('options butterfly ladder', () => {
 
   it('prices the expected move from the ATM straddle', () => {
     expect(research).toContain('function straddleSummary')
-    expect(research).toContain('movePct: ((cm + pm) / chain.spot) * 100')
+    // one implementation, in optionsIntel: the strip, the intel panel and the
+    // chart bands print the same number only if they call the same function
+    expect(research).toContain('const em = expectedMove(chain)')
+    expect(research).toContain('movePct: em.pct')
+    expect(research).not.toContain('function optMid')
   })
 
   it('replaces the expiry dropdown with a DTE pill row', () => {

@@ -6,7 +6,7 @@ import {
 } from '../lib/eventLinks.js'
 import { addAlert, getAlertDeliveryPrefs } from '../lib/alerts.js'
 import { fetchAlertDestinations } from '../lib/alertDelivery.js'
-import { evHeadline, fetchSymbolWire, peekSymbolWire, wireUrl } from '../lib/wire.js'
+import { evHeadline, fetchSymbolWire, peekSymbolWire, wireServiceUrl } from '../lib/wire.js'
 import { getLocale } from '../lib/i18n.js'
 import { BUCKETS } from '../lib/symbols.js'
 import { useEscape, useQuotes, useWatchlist } from '../hooks.js'
@@ -808,7 +808,10 @@ function EventLinkRow({ row, quotes }) {
 // or the wire being unreachable both degrade to a plain line — never a
 // broken panel (this page is public and ships with no wire by default).
 function EventWire({ symbol }) {
-  const base = wireUrl()
+  // Symbol-scoped reads are a Fragwire feature: the public mirror ships no
+  // symbol index and answers ?symbols= with an empty list, so asking it can
+  // only cost a request and then read as "wire unavailable".
+  const base = wireServiceUrl()
   const [rows, setRows] = useState(() => (symbol ? peekSymbolWire(symbol) : null))
   useEffect(() => {
     if (!symbol) { setRows(null); return undefined }

@@ -82,7 +82,8 @@ describe('event workspace content', () => {
     expect(markets).toContain('function EventWire')
     expect(markets).toContain('peekSymbolWire(')
     expect(markets).toContain('fetchSymbolWire(')
-    expect(markets).toContain('wireUrl()')
+    // the mirror has no symbol index, so "connected" here means a real service
+    expect(markets).toContain('wireServiceUrl()')
     expect(markets).toContain("{tl('no wire endpoint configured')}")
     expect(markets).toContain('.catch(')
   })

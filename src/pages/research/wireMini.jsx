@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'preact/hooks'
 import { getLocale, tl } from '../../lib/i18n.js'
-import { fetchSymbolWire, peekSymbolWire, wireUrl } from '../../lib/wire.js'
+import { fetchSymbolWire, peekSymbolWire, wireServiceUrl } from '../../lib/wire.js'
 
 // Dense symbol tape under the DES band — the overview's dead zone becomes
 // the last 10 things fragwire caught on this name. Hidden when no wire.
 export function WireMini({ symbol }) {
   const [rows, setRows] = useState(() => peekSymbolWire(symbol) ?? null)
-  const base = wireUrl()
+  // Symbol-scoped reads are a Fragwire feature: the public mirror ships no
+  // symbol index and answers ?symbols= with an empty list, so asking it can
+  // only cost a request and then read as "wire unavailable".
+  const base = wireServiceUrl()
   useEffect(() => {
     let dead = false
     setRows(peekSymbolWire(symbol) ?? null)

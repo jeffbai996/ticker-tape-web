@@ -113,6 +113,14 @@ describe('service-only surfaces stay off the mirror', () => {
     'src/lib/alertDelivery.js', 'src/lib/watchlistExport.js', 'src/lib/chatContext.js',
     'src/lib/tools.js', 'src/lib/feed.js', 'src/pages/chat.jsx',
     'src/pages/portfolio.jsx', 'src/pages/watchlists.jsx',
+    // Reads too, when the endpoint they want is Fragwire-only: the mirror has
+    // no symbol index (?symbols= answers empty), no /api/search, no article
+    // extractor and no /api/ibkr/*. Pointing these at the mirror does not
+    // degrade gracefully — it renders "wire unavailable" over a wire that is
+    // up, and pays a request per render to get there.
+    'src/pages/markets.jsx', 'src/pages/research/news.jsx',
+    'src/pages/research/wireMini.jsx', 'src/pages/research/dividends.jsx',
+    'src/components/EarningsDay.jsx',
   ]
   for (const path of serviceOnly) {
     it(`${path} resolves its endpoint through wireServiceUrl`, () => {
