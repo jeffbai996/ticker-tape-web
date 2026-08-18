@@ -759,9 +759,6 @@ export function thesisTerm(term) {
   return THESIS_TERMS[term] ?? LABELS[term] ?? term
 }
 
-export function hasThesisTerm(term) {
-  return Object.hasOwn(THESIS_TERMS, term)
-}
 
 export function hasLabelTranslation(label) {
   return Object.hasOwn(LABELS, label)
