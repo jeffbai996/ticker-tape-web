@@ -245,3 +245,35 @@ describe('diffSession', () => {
     expect(out.oiDelta).toBe(0)
   })
 })
+
+describe('atmIv prefers a strike quoted on both sides', () => {
+  // Same defect class the earnings straddle had: picking the nearest call and
+  // the nearest put INDEPENDENTLY averages the IV of two different strikes and
+  // calls it "ATM IV". It feeds the term-structure label (contango vs
+  // backwardation) and the session IV delta, where a strike difference then
+  // masquerades as a time difference (2026-08-18).
+  const chain = (spot, calls, puts) => ({ spot, calls, puts })
+  const c = (strike, iv) => ({ strike, iv, bid: 1, ask: 1.2 })
+
+  it('reads both legs off one strike when the ladders disagree', () => {
+    // puts have no 100; nearest put is 105 with a much fatter smile
+    const out = atmIv(chain(102, [c(100, 0.30), c(105, 0.34)], [c(95, 0.50), c(105, 0.36)]))
+    expect(out).toBeCloseTo(0.35, 5)     // (0.34 + 0.36) / 2, both at 105
+  })
+
+  it('still averages the pair when the ladders line up', () => {
+    expect(atmIv(chain(100, [c(100, 0.20)], [c(100, 0.30)]))).toBeCloseTo(0.25, 5)
+  })
+
+  it('falls back to whichever side is quoted when no strike is shared', () => {
+    // never returns null more often than before: a one-sided read beats none
+    expect(atmIv(chain(100, [c(100, 0.22)], [c(105, 0.40)]))).toBeCloseTo(0.31, 5)
+  })
+
+  it('ignores missing, zero and negative IV, and needs a spot', () => {
+    expect(atmIv(chain(100, [c(100, 0)], [c(100, 0.4)]))).toBeCloseTo(0.4, 5)
+    expect(atmIv(chain(100, [c(100, null)], [c(100, null)]))).toBeNull()
+    expect(atmIv(chain(0, [c(100, 0.2)], [c(100, 0.2)]))).toBeNull()
+    expect(atmIv(null)).toBeNull()
+  })
+})
