@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { boundedTimeScale } from '../lib/chartview.js'
-import { useNamedWatchlists, useQuotes, useWatchlist } from '../hooks.js'
+import {
+  useFocusedSymbols, useInViewSymbols, useNamedWatchlists, useQuotes, useWatchlist,
+} from '../hooks.js'
 import { etParts, marketState, rollCashSession } from '../lib/marketState.js'
 import { BUCKETS } from '../lib/symbols.js'
 import { pulseStats } from '../lib/pulse.js'
@@ -1644,6 +1646,20 @@ export function Dashboard({ listId = null }) {
   // measured column widths — re-taken whenever a print can change (quotes,
   // membership, view). One rAF, offsetWidth reads, vars on the board root.
   useEffect(() => { scheduleQuoteColumns(boardRef.current) })
+
+  // ── On-screen-first data ──
+  //
+  // The rows the board actually painted, in the order it painted them: flat
+  // rows as sorted, grouped rows minus whatever is folded away. This string is
+  // the observer's binding key, so it re-binds when membership, order, view,
+  // filter or a folded group changes — and never on a quote print, which is
+  // the common case by three orders of magnitude.
+  const renderedRows = viewMode === 'flat'
+    ? flatRows.map((r) => r.symbol)
+    : ordered.flatMap((g) => isCollapsed(g.name, groupPrefs) ? [] : g.symbols)
+  const onScreen = useInViewSymbols(boardRef, `${viewMode}:${renderedRows.join(',')}`)
+  useFocusedSymbols(onScreen)
+
   const dropLineRef = useRef(null)
   const dragRef = useRef(null)
   const [dragSym, setDragSym] = useState(null)
