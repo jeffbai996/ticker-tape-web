@@ -5,7 +5,7 @@
 import {
   barsFromChart, mergeSnapshotQuote, quoteFromStream, quoteFromV7,
 } from './yahoo.js'
-import { isOvernight } from './marketState.js'
+import { isOvernight, marketState } from './marketState.js'
 import { applyOvernightFill } from './overnightFill.js'
 import { wireServiceUrl } from './wire.js'
 import { createYahooStream } from './yahooStream.js'
@@ -32,6 +32,18 @@ function crumbBase() {
 const REQUEST_SPACING_MS = 350   // min gap between proxy requests
 const REFRESH_MS = 60_000        // full sweep cadence (charts + technicals)
 const QUOTE_SWEEP_MS = 30_000    // price-only v7 batch — extended hours ticks
+
+/** Sweep cadence follows the tape. Regular hours: the websocket carries every
+ *  print, the batch is a safety net → 30s. Pre/post: the stream is thin for
+ *  most names and the ext print IS the number people watch → 15s. Overnight:
+ *  the sidecar fill runs behind each sweep, so 30s keeps that leg unchanged
+ *  (it is the only leg that touches the private server). Closed with no
+ *  overnight session (weekends, holidays): nothing prints → 120s. */
+export function sweepIntervalMs(state, overnight = false) {
+  if (state === 'pre' || state === 'post') return 15_000
+  if (state === 'open') return QUOTE_SWEEP_MS
+  return overnight ? QUOTE_SWEEP_MS : 120_000
+}
 const STREAM_FRESH_MS = 90_000   // snapshots stay fallback while ticks flow
 
 // Proxy resolution order: explicit build-time override, per-browser setting,
@@ -236,7 +248,9 @@ async function runBatch() {
     const chunk = syms.slice(i, i + 40)
     try {
       const url = `${crumbBase()}/v7/finance/quote?symbols=${encodeURIComponent(chunk.join(','))}`
-      const resp = await fetch(url, { signal: AbortSignal.timeout(10_000) })
+      // no-store: an identical sweep URL must never be answered by the
+      // browser's HTTP cache — that turned a 30s sweep into a 60s one
+      const resp = await fetch(url, { signal: AbortSignal.timeout(10_000), cache: 'no-store' })
       if (!resp.ok) continue // pump fills the gap one by one
       const data = await resp.json()
       const rows = data?.quoteResponse?.result || []
@@ -312,11 +326,18 @@ let visibilityHooked = false
 function hookVisibility() {
   if (visibilityHooked || typeof document === 'undefined') return
   visibilityHooked = true
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState !== 'visible' || !tracked.size) return
+  const wake = () => {
+    if (!tracked.size) return
+    liveStream?.nudge?.()          // a dead socket reconnects now, not in 30s
     scheduleBatch([...tracked])
     setTimeout(overnightSweep, 5_000)
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return
+    wake()
   })
+  // a network flip (wifi → cellular, VPN up) drops the socket the same way
+  globalThis.addEventListener?.('online', wake)
 }
 
 /** Track symbols: serve the persisted snapshot immediately, fetch only what's
@@ -345,21 +366,28 @@ function activate(symbols, register) {
   pump()
   hookVisibility()
   if (!sweepTimer) {
-    // prices twice as often as charts: the v7 batch is one cheap request,
-    // and pre/after-hours reads freeze visibly at a 60s cadence
-    let beat = 0
     // the fill runs AFTER each v7 batch lands: the batch's frozen 20:00
     // print would otherwise overwrite the live overnight number it just wrote
     setTimeout(overnightSweep, 5_000)
-    sweepTimer = setInterval(() => {
-      scheduleBatch([...tracked])
-      setTimeout(overnightSweep, 5_000)
-      beat += 1
-      if (beat % 2 === 0) {
-        queue.push(...tracked)
-        pump()
-      }
-    }, QUOTE_SWEEP_MS)
+    // Self-rescheduling so the cadence follows the session (sweepIntervalMs).
+    // Charts + technicals still refresh every ~REFRESH_MS of sweep time
+    // whatever the price cadence is.
+    let sinceCharts = 0
+    const beat = () => {
+      const every = sweepIntervalMs(marketState().state, isOvernight())
+      sweepTimer = setTimeout(() => {
+        scheduleBatch([...tracked])
+        setTimeout(overnightSweep, 5_000)
+        sinceCharts += every
+        if (sinceCharts >= REFRESH_MS) {
+          sinceCharts = 0
+          queue.push(...tracked)
+          pump()
+        }
+        beat()
+      }, every)
+    }
+    beat()
   }
   return release
 }
