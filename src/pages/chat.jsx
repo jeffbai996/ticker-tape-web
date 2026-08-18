@@ -4,6 +4,7 @@ import { runAgentic, trimHistory } from '../lib/agent.js'
 import { toolLabel, toolRunLabel } from '../lib/tools.js'
 import { BrandSpinner } from '../components/BrandSpinner.jsx'
 import { Loading } from '../components/Loading.jsx'
+import { Overlay } from '../components/Overlay.jsx'
 import { MdLite } from '../components/AiReport.jsx'
 import { getLocale, tl, t as tt } from '../lib/i18n.js'
 import { applyLanguagePreference } from '../lib/aidials.js'
@@ -1495,8 +1496,8 @@ export function Chat() {
         </div>
 
       {drawer === 'sessions' && (
-        <div class="fixed inset-0 z-50 bg-black/55 grid place-items-center p-4" onClick={() => setDrawer(null)}>
-        <div class="max-w-xl w-full bg-surface-1 border border-line rounded-2xl px-4 py-3 max-h-[72vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <Overlay onClose={() => setDrawer(null)} label={tl('Chat sessions')}
+          class="max-w-xl w-full bg-surface-1 border border-line rounded-2xl px-4 py-3 max-h-[72vh] overflow-y-auto">
           <div class="flex items-center gap-3 pb-3 border-b border-line">
             <div>
               <div class="font-anth text-[15px] font-semibold text-ink">{tl('Chat sessions')}</div>
@@ -1517,13 +1518,12 @@ export function Chat() {
                 onDelete={() => deleteSession(thread.id)} />
             ))}
           </div>
-        </div>
-        </div>
+        </Overlay>
       )}
 
       {drawer === 'mem' && (
-        <div class="fixed inset-0 z-50 bg-black/55 grid place-items-center p-4" onClick={() => setDrawer(null)}>
-        <div class="max-w-xl w-full bg-surface-1 border border-line rounded-2xl px-4 py-3 max-h-[72vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <Overlay onClose={() => setDrawer(null)} label={tl('Memories')}
+          class="max-w-xl w-full bg-surface-1 border border-line rounded-2xl px-4 py-3 max-h-[72vh] overflow-y-auto">
           <div class="flex items-start gap-3 pb-3 border-b border-line">
             <div><div class="font-anth text-[15px] font-semibold text-ink">{tl('Memories')}</div>
               <div class="font-anth text-[11px] text-muted">{tl('Details the assistant should remember in future chats.')}</div></div>
@@ -1541,13 +1541,12 @@ export function Chat() {
           ))}
           <NoteAdd placeholder={`${tl('add a memory')}…`}
             onAdd={(t) => { addMemory(t); setMemories(loadMemories()) }} />
-        </div>
-        </div>
+        </Overlay>
       )}
 
       {drawer === 'journal' && (
-        <div class="fixed inset-0 z-50 bg-black/55 grid place-items-center p-4" onClick={() => setDrawer(null)}>
-        <div class="max-w-xl w-full bg-surface-1 border border-line rounded-2xl px-4 py-3 max-h-[72vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <Overlay onClose={() => setDrawer(null)} label={tl('Trade journal')}
+          class="max-w-xl w-full bg-surface-1 border border-line rounded-2xl px-4 py-3 max-h-[72vh] overflow-y-auto">
           <div class="flex items-center gap-2 pb-3 border-b border-line">
             <div><div class="font-anth text-[15px] font-semibold text-ink">{tl('Trade journal')}</div>
               <div class="font-anth text-[11px] text-muted">{tl('Your decisions, rationale, and notes—not AI settings.')}</div></div>
@@ -1568,8 +1567,7 @@ export function Chat() {
           )}
           <NoteAdd placeholder={`${tl('log a decision, a read, a why')}…`}
             onAdd={(t) => { addJournalEntry(t); setJournal(loadJournal()) }} />
-        </div>
-        </div>
+        </Overlay>
       )}
 
       {/* safe centering: plain justify-center clips the top of the launchpad
