@@ -330,6 +330,7 @@ html, body {
       z-index: 2;
       opacity: 1;
       transform: translateY(0);
+      text-overflow: clip;   /* the auto-marquee inside does the revealing */
     }
   }
   
