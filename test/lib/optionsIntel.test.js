@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { bsDelta } from '../../src/lib/bs.js'
 import {
-  atmIv, chainTotals, diffSession, expectedMove, ivTermStructure,
+  atmIv, chainTotals, contractMid, diffSession, expectedMove, ivTermStructure,
   skew25Delta, volumeOiOutliers, yearsTo,
 } from '../../src/lib/optionsIntel.js'
 
@@ -17,6 +17,29 @@ describe('yearsTo', () => {
   })
   it('returns null with no expiration', () => {
     expect(yearsTo(null)).toBeNull()
+  })
+})
+
+// The one mid rule in the app: expmove.js used to keep a stricter private copy
+// for the earnings card, which read a live one-sided quote as "no market" and
+// reached for a possibly hours-old last print instead.
+describe('contractMid', () => {
+  it('averages a two-sided market', () => {
+    expect(contractMid(contract(100, { bid: 4, ask: 6 }))).toBe(5)
+  })
+
+  it('falls back to last only when the book is entirely empty', () => {
+    expect(contractMid(contract(100, { last: 4.2 }))).toBe(4.2)
+    expect(contractMid(contract(100, { bid: 0, ask: 0, last: 3 }))).toBe(3)
+  })
+
+  it('is null when there is no market and no print at all', () => {
+    expect(contractMid(contract(100, { bid: 0, ask: 0, last: 0 }))).toBe(null)
+    expect(contractMid(null)).toBe(null)
+  })
+
+  it('takes a live one-sided quote over a stale last print', () => {
+    expect(contractMid(contract(100, { bid: 0, ask: 2, last: 9 }))).toBe(1)
   })
 })
 
@@ -36,6 +59,12 @@ describe('expectedMove', () => {
   it('is null without a spot or a priceable ATM pair', () => {
     expect(expectedMove({ spot: null, calls: [], puts: [] })).toBeNull()
     expect(expectedMove({ spot: 100, calls: [], puts: [] })).toBeNull()
+    // a zero spot has no percentage to be a percentage of — not an Infinity
+    expect(expectedMove({
+      spot: 0,
+      calls: [contract(100, { bid: 3, ask: 3.2 })],
+      puts: [contract(100, { bid: 2.6, ask: 2.8 })],
+    })).toBeNull()
   })
 
   // A straddle is ONE strike bought twice. Picking the nearest call and the

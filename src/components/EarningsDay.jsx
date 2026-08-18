@@ -5,9 +5,8 @@ import { fetchOptions } from '../lib/options.js'
 import { getCached } from '../lib/feed.js'
 import { wireServiceUrl } from '../lib/wire.js'
 import { fmtPct, fmtPctPlain, fmtPrice } from '../lib/format.js'
-import {
-  expectedMovePct, expiryForEvent, moveEdge, typicalMovePct,
-} from '../lib/expmove.js'
+import { expiryForEvent, moveEdge, typicalMovePct } from '../lib/expmove.js'
+import { expectedMove } from '../lib/optionsIntel.js'
 import { tl } from '../lib/i18n.js'
 import { Loading } from './Loading.jsx'
 
@@ -69,7 +68,9 @@ function EventPanel({ symbol, date, epsEstimate }) {
         const chain = want && want !== front.expiration
           ? await fetchOptions(symbol, want).catch(() => front)
           : front
-        return expectedMovePct(chain)
+        // one straddle implementation, shared with the options panel and
+        // the chart's expected-move bands
+        return expectedMove(chain)?.pct ?? null
       })
       .then((v) => { if (!dead) setImplied(v) })
       .catch(() => { if (!dead) setImplied(null) })
