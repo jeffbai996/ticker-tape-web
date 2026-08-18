@@ -1,6 +1,13 @@
 # Fable Design and Feature Pass Handoff
 
-Audit date: 2026-08-17
+Audit date: 2026-08-17. Living document — statuses last reconciled against the
+tree on **2026-08-18**, after the sweep lanes landed.
+
+This file is no longer a one-shot brief. Findings and feature items carry a
+status (**Done**, **Partial**, **Open**) plus a pointer to the module, route, or
+test that settles the question. Anything still Partial or Open is scheduled in
+[`FABLE_RUN_3_PLAN.md`](FABLE_RUN_3_PLAN.md), which is the executable plan for
+the next pass.
 
 ## Outcome to design for
 
@@ -36,23 +43,54 @@ generic rounded-card dashboard treatment.
 
 ## Current product map
 
-The shell contains the session/status row, scrolling tape, responsive side or
-bottom navigation, routed work area, and the `ticker>` terminal. Major surfaces:
+The shell contains the session/status row, feed-health chip, scrolling tape,
+responsive side or bottom navigation, routed work area, and the `ticker>`
+terminal. Routed pages load as separate chunks behind `components/LazyPage.jsx`;
+the shell, dashboard, and command grammar stay eager. Major surfaces:
 
 - Dashboard and named watchlists with streaming quotes, technical badges,
-  selectable spark windows, sector grouping, selection actions, and a widget
-  rail.
+  selectable spark windows, sector grouping, selection actions, a widget rail,
+  measured quote columns (`src/lib/quoteColumns.js`), per-row freshness markers,
+  and a saved-workspaces toolbar control.
 - Briefing with market context and private AI report generation.
-- Markets: movers, sectors, heatmap, commodities, earnings, and calendar.
-- Research: overview/chart, news, options, earnings, analysts, financials,
-  ownership, filings, profile, and Fragwire trail.
+- Markets: movers, sectors, heatmap, commodities, earnings, and calendar —
+  where a calendar row now opens **in place** into an event workspace
+  (`EventWorkspace` in `src/pages/markets.jsx`, domain logic in
+  `src/lib/eventLinks.js`).
+- Research, now a directory (`src/pages/research/`) behind a 72-line router:
+  overview/chart, news, options (with expected-move intelligence), earnings,
+  analysts, financials, dividends, ownership, filings, profile, and the
+  Fragwire trail rail.
+- Screening: compare, technicals, correlation, valuation, dividends, and
+  **signals** (`#/screen/signals`) — saved screen definitions ranked into a
+  board that reuses the dashboard row grammar.
 - Synthetic portfolio: account, sizing, carry, cockpit, what-if, trades, time
-  travel, thesis watcher, timeline, and backtest.
-- Screening, alerts, Fragwire, custom watchlist management, and AI chat.
+  travel, thesis watcher, timeline, and backtest, with session-aware day P&L
+  (`src/lib/dayPnl.js`).
+- Alerts, custom watchlist management, and AI chat.
+- Wire: a synthetic public session, the **public wire mirror** (a sanitized
+  headline snapshot pushed to the Worker's `/wire/*` routes and read back in
+  client MIRROR mode), or a user-supplied Fragwire-compatible endpoint. The
+  private build never falls back to the mirror.
 - Public/private parity: disabled AI previews publicly; active server-backed
   features on the tailnet build.
 
 ## Audit snapshot
+
+Measured on 2026-08-18 with Node 22 (`v22.22.2` — the current build chain
+requires it; older Node fails the Vite 8 / Tailwind v4 install).
+
+| Metric | 2026-08-17 audit | 2026-08-18 |
+|---|---|---|
+| Tests | 942 passing | **1257 passing** across 121 files (`npx vitest run`) |
+| Public bundle | ~732 kB single bundle | entry chunk **68.8 kB** (24.4 kB gzip); first-paint set (entry + preloads) **493 kB** raw / **171 kB** gzip; ~902 kB total JS emitted across all route chunks |
+| Private bundle | ~806 kB single bundle | same entry chunk; ~903 kB total JS across chunks |
+| Largest route chunks | — | `chartview` 165 kB, `research` 103 kB, `dashboard` 91 kB, `portfolio` 67 kB, `chat` 60 kB |
+| Route budget | none | `npm run budget` (`scripts/bundle_budget.sh`), currently a 420 kB ceiling on the entry chunk |
+
+The 420 kB entry ceiling has a lot of daylight under it now. It is a
+regression tripwire, not a target; tighten it only alongside a lane that
+deliberately moves work out of the shell.
 
 ### What is strong
 
@@ -69,30 +107,39 @@ bottom navigation, routed work area, and the `ticker>` terminal. Major surfaces:
 - Named watchlists support create/rename/delete, export, cloud reconciliation,
   whole-list conflict resolution, and deletion tombstones.
 - Public/private separation is deliberate and testable rather than a CSS hide.
+  The mirror extends it: `worker/wire.js` re-validates every pushed event
+  against a seven-field contract, so a private field cannot ride along.
 
 ### Findings to address
 
-| Priority | Finding | Evidence | Recommended response |
+| Priority | Finding | Status | Where it landed / what remains |
 |---|---|---|---|
-| P0 | Live-data health is not observable enough | The feed has stream, v7 recovery, v8 analytics, and overnight fill, but the UI mostly exposes one global freshness timestamp. | Add per-symbol source/freshness state and a compact `LIVE / RECOVERING / DELAYED` feed indicator with reconnect age. Never imply a quote is live when it is a snapshot. |
-| P0 | Served UI regression coverage is thinner than unit coverage | 942 tests pass, but many layout tests assert source strings. Fresh served-device verification still depends on an attached browser. | Add a small Playwright matrix for 390x844, iPad portrait/landscape, 1024px, and 1376px at 100/125% zoom. Cover toolbar geometry, horizontal overflow, chart range labels, article expansion, and navigation back. |
-| P0 | Dependency chain needs an update pass | `npm audit --omit=dev` reports three fixable high-severity findings involving Vite, PostCSS, and Nanoid. | Upgrade the locked build chain in its own commit, run both builds and all worker/browser tests, then repeat the audit. Treat these mainly as dev/build exposure, but do not leave them stale. |
-| P1 | Initial route cost is too large | No dynamic imports. Current builds are roughly 732 KB public and 806 KB private before gzip; Vite warns above 500 KB. | Lazy-load routed pages and private-only AI implementation. Keep shell, dashboard first paint, and command grammar eager. Set a measured route budget rather than splitting every small module. |
-| P1 | Four pages have become feature monoliths | `research.jsx` is about 2.6K lines; dashboard, chat, and portfolio are each about 1.7K–1.8K lines. | Split by routed subview and move stateful controllers into focused hooks. Do not create a generic component framework; extract only stable product concepts. |
-| P1 | Mobile sizing rules fight component geometry | A global 16px form-control guard and global tiny-type floor recently stretched the dashboard search until it received an explicit height. | Replace arbitrary per-element heights with semantic density tokens: compact toolbar control, standard toolbar control, data row, panel header, and touch target. Keep 16px focus-safe inputs but constrain their boxes explicitly. |
-| P1 | Written design rules and implementation have drifted | The guide says flat surfaces/no gradients or soft shadows, while toolbar controls currently use gradients and shadows. Many components carry one-off radii and font sizes. | Decide the actual operator language, update the guide, then encode it in a small set of tokens/primitives. Do not blindly remove working contrast before the replacement is tested. |
-| P1 | Accessibility is inconsistent in complex overlays | Chat drawers use clickable backdrop `div`s without dialog semantics or a shared focus-trap contract. Keyboard behavior is implemented locally across surfaces. | Establish one modal/drawer contract: role, label, focus entry/return, Escape, backdrop dismissal, reduced motion, and scroll containment. |
-| P2 | Persistence is fragmented | Watchlists have cloud sync, but many screen, chart, rail, console, and AI preferences use independent localStorage keys. | Add versioned workspace export/import and optionally sync non-sensitive layout preferences. Keep capability tokens and private endpoints out of exported files. |
-| P2 | Documentation is drifting | README still advertises `500 passing`; current suite is 942 tests. Feature descriptions lag recent public/private parity and watchlist work. | Refresh README metrics and the hero/device captures after the design pass, not before it. |
+| P0 | Live-data health is not observable enough | **Done (2026-08-18)** | `src/lib/feedHealth.js` states per-symbol source/age; `src/components/FeedIndicator.jsx` paints the shell `LIVE / RECOVERING / DELAYED` chip; a snapshot is never labeled live. Tests: `test/lib/feedHealth.test.js`, `feed_freshness.test.js`, `feed_indicator.test.js`. |
+| P0 | Served UI regression coverage is thinner than unit coverage | **Partial** | `scripts/probe_matrix.py` runs the responsive matrix against a *served* build (Playwright + chromium). It is still a manual command — not wired into CI, so nothing fails a deploy. Run 3 lane (d). |
+| P0 | Dependency chain needs an update pass | **Done (2026-08-18)** | Three high-severity findings cleared in `1886b08`; build chain moved to Node 22 in `9051444`. Re-run `npm audit --omit=dev` before the next release. |
+| P1 | Initial route cost is too large | **Done (2026-08-18)** | `src/components/LazyPage.jsx` splits every routed page; shell + dashboard + command grammar stay eager. Guarded by `test/lib/lazy_routes.test.js` (source contract) and `npm run budget` (emitted bytes). |
+| P1 | Four pages have become feature monoliths | **Partial** | `research.jsx` went 2.6K lines → a 72-line router over `src/pages/research/` (`research_split.test.js`). `dashboard.jsx` (~1863), `chat.jsx` (~1769), and `portfolio.jsx` (~1737) are untouched. Run 3 lane (a); research is the template. |
+| P1 | Mobile sizing rules fight component geometry | **Partial** | `src/lib/quoteColumns.js` replaced fixed price/change/ext reservations with measured widths, so board rows stopped fighting the mobile floor. The semantic density tokens were not built: 22 distinct arbitrary `text-[Npx]` sizes remain across ~727 call sites. Run 3 lane (e). |
+| P1 | Written design rules and implementation have drifted | **Partial** | `CLAUDE.md` now documents the *actual* operator language, including the explicit allowlist of gradient/shadow classes (`a5b6ccf`). The tokens/primitives that would make the rule enforceable rather than described are still open — Run 3 lanes (e) and (f). |
+| P1 | Accessibility is inconsistent in complex overlays | **Done (2026-08-18)** | One contract: pure rules in `src/lib/dialog.js`, Preact/DOM wiring in `src/components/Overlay.jsx` — role, label, focus entry/return, Escape, backdrop dismissal, scroll containment. Adopted by Palette, the chat drawers, the research rail, and ChartSuite. Tests: `dialog.test.js`, `overlay.test.js`. |
+| P2 | Persistence is fragmented | **Done (2026-08-18)** | `src/lib/workspaces.js` (schema + allowlisted `exportPreferences`/`importPreferences`), `src/lib/workspaceState.js` (binding), `src/components/WorkspacesControl.jsx` (toolbar), and the `ws` console verbs. Layout only — never quotes, positions, tokens, or endpoints. Test: `workspaces.test.js`. |
+| P2 | Documentation is drifting | **Done (2026-08-18)** | README metrics and feature list corrected (`9848570`), CLAUDE.md operator surface corrected (`a5b6ccf`), and this pass. Hero/device captures still predate the design pass — reshoot after Run 3, not before. |
 
-Coverage snapshot from the audit: 68.01% statements, 63.06% branches,
-72.23% functions, and 69.03% lines. The highest-risk exception is
-`src/lib/feed.js` at roughly 13% statement coverage. Increase behavioral feed
-coverage before changing reconnect, throttling, or merge semantics again.
+Coverage snapshot from the original audit: 68.01% statements, 63.06% branches,
+72.23% functions, and 69.03% lines. The highest-risk exception was
+`src/lib/feed.js` at roughly 13% statement coverage; the feed-observability work
+added behavioral tests around it, but re-measure with
+`npm run test:coverage` before changing reconnect, throttling, or merge
+semantics again.
 
 ## Recommended feature pass
 
 ### 1. Event workspace — highest-value new workflow
+
+**Done (2026-08-18)** — Markets → Calendar → an in-place workspace panel.
+`EventWorkspace` in `src/pages/markets.jsx`; all joins (event kind, sector ETF
+proxy, affected watchlist symbols, pre/post-print state) are pure functions in
+`src/lib/eventLinks.js`. Tests: `event_workspace.test.js`, `eventLinks.test.js`.
 
 Turn calendar entries into an actionable workspace rather than a date list.
 Opening an event should show every available field, a plain-language
@@ -100,55 +147,77 @@ description, prior/consensus/actual where applicable, affected sectors and
 watchlist symbols, related Fragwire stories, and alert controls. After release,
 the same view should switch to surprise and first-market-reaction mode.
 
-Why first: calendar, quote, alert, watchlist, and wire data already exist. This
-joins them into a daily decision surface without requiring a new provider.
-
 Acceptance signals:
 
 - one tap from calendar to full metadata;
 - pre-event and post-event states are visually distinct;
-- related symbols come from configured/public mappings, never private source;
+- related symbols come from configured/public mappings, never private source —
+  `eventLinks.js` ships a constant of public instruments (index proxies,
+  sector/theme ETFs, macro hedges); a company name enters only through an event
+  the viewer put on their own calendar;
 - event alert creation shows channel, cooldown, and delivery budget before arm.
 
 ### 2. Saved screens and ranked signal boards
 
-The existing feed already computes RSI, relative strength, volume ratio,
-SMA50/200 position, distance from the 52-week high, and quote spread. Build a
-screen composer around those exact fields, with saved definitions, rank order,
-and `open as watchlist` / `alert when entered` actions.
+**Done (2026-08-18)** — `#/screen/signals`. Definitions and evaluation in
+`src/lib/screenDefs.js` (field · operator · value, AND-combined, with a rank
+field and an explicit `MAX_PREDICATES`); the board is `src/pages/screenBoard.jsx`
+and reuses the dashboard's `TuiRow`, so screen results and watchlists share one
+row grammar. `open as watchlist` and `alert when entered` are wired through
+`watchlists.js` / `alerts.js`. Test: `screenDefs.test.js`.
 
-Start with a compact predicate set rather than a query language. A saved screen
-should explain why each symbol matched and which inputs are stale or missing.
+Deliberately not a query language. A saved screen explains why each symbol
+matched and which inputs are stale or missing.
 
 ### 3. Options intelligence, not a larger chain table
 
-Add expected move for the selected expiry, IV term structure, put/call skew,
-volume-to-open-interest outliers, and expected-move bands on the price chart.
-The first pass should answer three questions: what move is priced, where skew
-is concentrated, and what changed today. Avoid declaring activity "unusual"
-without a documented baseline.
+**Done (2026-08-18)** — `src/lib/expmove.js` (ATM straddle, typical realized
+move) and `src/lib/optionsIntel.js` (IV term structure, put/call skew,
+volume-to-open-interest outliers) feed `src/pages/research/options.jsx`, with
+expected-move bands drawn on `src/pages/research/overviewChart.jsx`. Tests:
+`expmove.test.js`, `optionsIntel.test.js`, `options_ladder.test.js`.
+
+The three questions it answers: what move is priced, where skew is concentrated,
+what changed today. Activity is never called "unusual" without a stated
+baseline.
 
 ### 4. Portfolio analytics on the private build
 
-Use server-fetched IBKR position data only; keep the public version synthetic.
-Prioritize contribution, drawdown, sector/factor exposure, rolling correlation,
-and concentration under common shocks. The cockpit should explain which
-positions drive a number instead of showing another aggregate tile.
+**Open** — Run 3 lane (c). `src/lib/dayPnl.js` landed as a precursor: day P&L
+now follows the tape (pre-market move before the open, session compounded with
+the extended print after the close) instead of the last completed session.
+Contribution, drawdown, sector/factor exposure, rolling correlation, and
+concentration under shocks are all unbuilt.
+
+Use server-fetched position data only; keep the public version synthetic. The
+cockpit should explain which positions drive a number instead of showing another
+aggregate tile.
 
 ### 5. Wire clustering and event linkage
 
-Collapse duplicate stories by entity/event, rank by watchlist relevance,
-novelty, and source weight, and retain a visible source count. Link a cluster to
-the relevant symbol and calendar event. Summaries should be optional, disclose
-the model lane, and prefer unmetered/private capacity before metered APIs.
+**Partial** — the distribution half shipped, the intelligence half did not.
+Shipped: the public wire mirror (`worker/wire.js`, `/wire/public`,
+`/wire/api/{events,updates,meta,today}`; client MIRROR mode in
+`src/pages/wire.jsx` polling every 60 s against a ~5-minute push, with
+`wireServiceUrl()` keeping mirror-backed surfaces out of chat/save/alert paths).
+Tests: `wire_mirror.test.js`, `test/worker/wire.test.js`.
+
+Still open (Run 3 lane (b)): collapse duplicate stories by entity/event, rank by
+watchlist relevance, novelty, and source weight, retain a visible source count,
+and link a cluster to the relevant symbol and calendar event. Summaries should
+be optional, disclose the model lane, and prefer unmetered/private capacity
+before metered APIs.
 
 ### 6. Saved workspaces
 
-Support a small number of named layouts such as `opening`, `research`, and
-`event day`: active watchlist, group mode, spark mode/window, right-rail
-widgets, selected market subview, and optional research symbol. This is more
-useful than adding more isolated preferences and makes the terminal feel like a
-workstation. Do not persist transient quotes or private payloads.
+**Done (2026-08-18)** — `src/lib/workspaces.js` + `src/lib/workspaceState.js`,
+driven from the `WorkspacesControl` toolbar popover and the `ws` console verbs
+(`ws`, `ws NAME`, `ws save NAME`, `ws rm NAME`, `ws rename OLD / NEW`). A
+workspace records active watchlist, group mode, spark shape/window, rail
+widgets, market subview, and optional research symbol — layout switches the user
+could have flipped by hand. Applying one never reloads and never disturbs the
+feed. No quotes, positions, tokens, or endpoints cross the storage boundary;
+both `normalizeLayout` and `importPreferences` work off explicit allowlists.
 
 ## Design pass targets
 
@@ -157,23 +226,26 @@ workstation. Do not persist transient quotes or private payloads.
 - Preserve tick-by-tick geometry: numeric changes may flash but must not resize
   rows, shift columns, or animate backgrounds.
 - Give every quote an optional freshness/source affordance without adding a
-  permanent verbose column.
+  permanent verbose column. *(Shipped — per-row freshness marker.)*
 - Keep all controls in one non-wrapping toolbar. The sector strip may scroll;
-  control groups must not fall onto a second row.
+  control groups must not fall onto a second row. *(The workspaces control was
+  built as a 26px popover control for exactly this reason.)*
 - Retain the current mobile ticker interaction: first tap on the ticker identity
   reveals the name, second identity tap opens research, and one tap elsewhere
   on the row opens research directly while prices remain visible.
 - Make saved-screen results and named watchlists use the same row grammar.
+  *(Shipped — `screenBoard.jsx` renders `TuiRow`.)*
 
 ### Research
 
 - Establish a stable header rail: identity can scroll, but regular price,
   percent change, and the active extended-hours print remain visible whenever
-  possible.
+  possible. *(`src/pages/research/header.jsx`.)*
 - Make the current section unmistakable without turning all ten research tabs
   into equal-weight pills.
 - Convert the right rail into independently scrollable, reorderable modules on
   wide screens; stack them in task order on narrow screens.
+  *(`src/pages/research/rail.jsx`, `useRailModules.js`.)*
 - Use `NEWS FEED` for provider news and `FRAGWIRE` for event intelligence.
 - Keep date axes range-aware: intraday shows exchange time; multi-day ranges
   show dates. Overlay toggles must be idempotent under repeated clicks.
@@ -184,6 +256,8 @@ workstation. Do not persist transient quotes or private payloads.
 - The entire headline row needs a visible hover/focus state.
 - On narrow or short viewports, allow the intelligence rail to scroll or move
   below the feed; never clip half its panels inside a fixed-height column.
+- MIRROR state must be as legible as LIVE and DEMO, and must say how old the
+  pushed snapshot is. *(Shipped; the shared token work is Run 3 lane (f).)*
 
 ### Terminal
 
@@ -191,7 +265,7 @@ workstation. Do not persist transient quotes or private payloads.
 - Make command output copyable and keyboard navigable without losing the live
   page context behind it.
 - Future command additions should update parsing, completion, help text, and a
-  route/action test together.
+  route/action test together. *(The `ws` verbs followed this.)*
 
 ### AI surfaces
 
@@ -218,41 +292,69 @@ Every Fable change should be checked on the served private and public builds:
 | 1376px desktop at 100/125% | right rail visibility, chart labels, full company-name thresholds, terminal two-column help |
 | Public Pages build | same IA, working local/cloud-capability watchlists, synthetic wire, inert AI, no private URLs |
 
-For live-price verification, use at least one symbol unique to a named watchlist
-and assert that two WebSocket prints update the rendered row without waiting for
-the 30-second snapshot sweep. Also assert that navigating away unsubscribes that
-list unless another mounted surface still consumes it.
+`scripts/probe_matrix.py` automates the geometry half of this table against a
+**served** build rather than source strings:
 
-## Suggested implementation order
+```bash
+python3 scripts/probe_matrix.py http://localhost:8098 [--route '#/'] [--json]
+```
 
-1. Feed observability and served-browser regression matrix.
-2. Semantic density/control tokens and modal contract.
-3. Route-level lazy loading and page-module splits.
-4. Event workspace.
-5. Saved screens/ranked boards.
-6. Options intelligence.
-7. Portfolio analytics and wire clustering.
-8. Saved workspaces and full preference export/import.
+It walks iPhone 390, iPad portrait 834, iPad landscape 1194, desktop 1024, and
+desktop 1376 at 100% and 125%, asserting no horizontal page scroll, a
+single-row dashboard toolbar, fully painted quote clusters, one shared price-box
+left edge (the measured columns actually landed), bottom-nav clearance, and no
+console errors. It needs a venv with Playwright + chromium. Headless caveat:
+`device_scale_factor != 1` or `is_mobile=True` stalls the compositor,
+so phones are emulated by viewport only. It is not yet in CI — see Run 3 lane
+(d).
+
+## Next pass
+
+The remaining Partial/Open items are ordered and scoped in
+[`FABLE_RUN_3_PLAN.md`](FABLE_RUN_3_PLAN.md). Each lane there owns a disjoint
+file set so lanes can run in parallel worktrees.
 
 Each step should be independently shippable. Do not combine a visual system
 rewrite, data-provider change, and new market feature in one release.
 
 ## Code map for the pass
 
-- Shell/navigation: `src/app.jsx`, `src/lib/nav.js`, `src/lib/route.js`
+- Shell/navigation: `src/app.jsx`, `src/lib/nav.js`, `src/lib/route.js`,
+  `src/components/LazyPage.jsx`
 - Design tokens/global responsive rules: `src/styles/main.css`
-- Dashboard/watchlists: `src/pages/dashboard.jsx`, `src/pages/watchlists.jsx`
+- Dashboard/watchlists: `src/pages/dashboard.jsx`, `src/pages/watchlists.jsx`,
+  `src/lib/dashboardRows.js`, `src/lib/quoteColumns.js`
 - Quote lifecycle: `src/hooks.js`, `src/lib/feed.js`,
   `src/lib/feedSymbols.js`, `src/lib/yahooStream.js`
-- Research/chart: `src/pages/research.jsx`, `src/components/ChartSuite.jsx`
-- Wire: `src/pages/wire.jsx`, `src/lib/wire.js`
+- Feed observability: `src/lib/feedHealth.js`,
+  `src/components/FeedIndicator.jsx`
+- Research/chart: `src/pages/research.jsx` (router) over
+  `src/pages/research/` (`header`, `overview`, `overviewChart`, `news`,
+  `options`, `earnings`, `analysts`, `financials`, `dividends`, `ownership`,
+  `filings`, `profile`, `rail`, `wireMini`, plus the `use*` hooks), and
+  `src/components/ChartSuite.jsx`
+- Options intelligence: `src/lib/expmove.js`, `src/lib/optionsIntel.js`
+- Events: `src/lib/eventLinks.js`, `EventWorkspace` in `src/pages/markets.jsx`
+- Screens/signals: `src/lib/screenDefs.js`, `src/pages/screenBoard.jsx`,
+  `src/pages/screen.jsx`
+- Wire: `src/pages/wire.jsx`, `src/lib/wire.js`, `worker/wire.js`
 - Terminal: `src/components/CommandBar.jsx`, `src/lib/commands.js`,
   `src/lib/execute.js`, `src/lib/complete.js`
 - AI: `src/pages/chat.jsx`, `src/pages/chatPreview.jsx`,
   `src/components/AiReport.jsx`
-- Persistence: `src/lib/cloudsave.js`, `src/lib/watchlists.js`
+- Overlays: `src/lib/dialog.js`, `src/components/Overlay.jsx`
+- Persistence: `src/lib/cloudsave.js`, `src/lib/watchlists.js`,
+  `src/lib/workspaces.js`, `src/lib/workspaceState.js`,
+  `src/components/WorkspacesControl.jsx`
+- Portfolio math: `src/lib/dayPnl.js`, `src/lib/demo.js`
 - Public/private contracts: `test/lib/public_parity.test.js`, build scripts,
   and `.github/workflows/deploy.yml`
+- Tooling: `scripts/bundle_budget.sh` (`npm run budget`),
+  `scripts/probe_matrix.py`, `scripts/deploy_tailnet.sh`
+
+Tests live in `test/lib` (browser/domain) and `test/worker` (Worker proxy, AI,
+wire mirror); the older top-level `tests/` directory was consolidated away and
+the Vitest include glob is pinned.
 
 ## Definition of done
 
