@@ -911,7 +911,7 @@ function AddSymbolRow({ onAdd, isPresent, isFull, cap }) {
                   title={h.exch} />
               )}
               <span class="font-mono font-bold text-[11px] text-accent shrink-0">{h.symbol}</span>
-              <span class="font-anth text-[10.5px] text-ink-2 truncate">{h.name}</span>
+              <Marquee text={h.name} class="block min-w-0 font-anth text-[10.5px] text-ink-2" />
               <span class="ml-auto font-mono text-[8.5px] uppercase tracking-wider text-muted shrink-0">{h.exch}</span>
             </button>
           ))}
@@ -1001,7 +1001,7 @@ function HeatPanel({ watchlist, quotes }) {
         <div key={r.name} class="relative px-3 py-[3px] flex items-center gap-2 overflow-hidden">
           <span class={`absolute inset-y-[2px] left-0 rounded-r-sm ${r.avg >= 0 ? 'bg-up/15' : 'bg-down/15'}`}
             style={`width:${Math.max(4, Math.min(100, (Math.abs(r.avg) / span) * 100))}%`} />
-          <span class="relative font-anth text-[10px] text-ink-2 truncate flex-1">{r.name}</span>
+          <Marquee text={r.name} class="relative block min-w-0 flex-1 font-anth text-[10px] text-ink-2" />
           <span class="relative font-mono text-[9px] text-muted shrink-0">{r.up}/{r.count}</span>
           <span class={`relative font-mono text-[10.5px] w-[3.4rem] text-right shrink-0 ${r.avg >= 0 ? 'text-up' : 'text-down'}`}>
             {fmtPct(r.avg)}
@@ -1440,7 +1440,7 @@ function TickerSearch({ filter, setFilter, activeList }) {
                     title={h.exch} />
                 )}
                 <span class="font-mono font-bold text-[10.5px] text-accent shrink-0">{h.symbol}</span>
-                <span class="font-anth text-[10.5px] text-ink-2 truncate">{h.name}</span>
+                <Marquee text={h.name} class="block min-w-0 font-anth text-[10.5px] text-ink-2" />
                 <SearchResultSpark symbol={h.symbol} />
                 <span class="font-mono text-[8.5px] uppercase tracking-wider text-muted shrink-0">{h.exch}</span>
                 <button
@@ -1681,7 +1681,7 @@ export function Dashboard({ listId = null }) {
           {activeList && (
             <div class="min-w-0 mr-1">
               <div class="font-mono text-[8px] uppercase tracking-wider text-muted">{tl('Watchlist')}</div>
-              <div class="font-anth font-bold text-[13px] text-ink truncate">{activeList.name}</div>
+              <Marquee text={activeList.name} class="block min-w-0 font-anth font-bold text-[13px] text-ink" />
             </div>
           )}
           <div class={`${activeList ? 'ml-auto' : ''} board-control inline-flex rounded-lg border p-0.5 shrink-0`}>

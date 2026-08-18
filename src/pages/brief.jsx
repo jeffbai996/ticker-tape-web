@@ -8,6 +8,7 @@ import { AiReport, MdLite } from '../components/AiReport.jsx'
 import { Empty } from '../components/Loading.jsx'
 import { loadArchive, onArchiveChange, removeReport } from '../lib/archive.js'
 import { formatBriefTechnicalNote, getLocale, tl } from '../lib/i18n.js'
+import { Marquee } from '../components/Marquee.jsx'
 import { fmtPct } from '../lib/format.js'
 
 const INDEX_SYMBOLS = INDICES.map((i) => i.symbol)
@@ -46,7 +47,7 @@ function ArchivePanel() {
                   {r.kind}
                 </span>
                 {r.symbol && <span class="text-ink font-bold">{r.symbol}</span>}
-                <span class="text-ink-2 truncate">{r.title}</span>
+                <Marquee text={r.title} class="block min-w-0 flex-1 text-ink-2" />
                 <span class="text-muted ml-auto shrink-0">
                   {new Date(r.ts).toLocaleString(getLocale() === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                 </span>
@@ -132,7 +133,7 @@ function BriefData({ s }) {
             {/* the dead middle of the row carries the full name in the quiet
                 shade (Jeff 2026-08-06: "put down the full name in smaller/
                 different shade text") */}
-            {m.name && <span class="min-w-0 flex-1 truncate font-anth text-[10px] text-muted">{m.name}</span>}
+            {m.name && <Marquee text={m.name} class="block min-w-0 flex-1 font-anth text-[10px] text-muted" />}
             <span class="ml-auto text-ink-2">{m.price.toFixed(2)}</span>
             <span class={`w-16 text-right ${upDown(m.pct)}`}>{fmtPct(m.pct)}</span>
           </div>

@@ -6,7 +6,7 @@ import { useEffect, useRef } from 'preact/hooks'
  *  on other baicloud services"). The box stays put; only the inner span moves,
  *  so nothing around it reflows. Same 52px/s travel and .38s snap-back.
  */
-export function Marquee({ text, class: cls = '', title, auto = false }) {
+export function Marquee({ text, class: cls = '', title, auto = false, ...rest }) {
   const box = useRef(null)
   const inner = useRef(null)
 
@@ -38,12 +38,13 @@ export function Marquee({ text, class: cls = '', title, auto = false }) {
   }
   const stop = () => box.current?.classList.remove('is-scrolling')
 
-  // `auto`: sweep once on mount — out to the end, hold, and back — for
-  // surfaces with no hover, like the phone's tap-to-reveal company name
-  // (Jeff 2026-08-17: NAURA Techn… sat truncated). Timing keys off the same
-  // --mq-dur the hover path sets, so speed matches everywhere.
-  useEffect(() => {
-    if (!auto) return
+  // One full sweep — out to the end, hold, and back — for surfaces with no
+  // hover: the phone's tap-to-reveal company name (Jeff 2026-08-17: NAURA
+  // Techn… sat truncated) and any truncated name you tap. `auto` runs it on
+  // mount; onClick runs it on demand. Speed keys off the same --mq-dur the
+  // hover path sets so it matches everywhere.
+  const sweepTimers = useRef([])
+  const sweep = () => {
     const b = box.current
     const i = inner.current
     if (!b || !i) return
@@ -52,18 +53,28 @@ export function Marquee({ text, class: cls = '', title, auto = false }) {
     const dur = Math.max(1.5, distance / 52)
     b.style.setProperty('--mq-dist', `${distance}px`)
     b.style.setProperty('--mq-dur', `${dur}s`)
-    const t0 = setTimeout(() => b.classList.add('is-scrolling'), 350)
-    const t1 = setTimeout(() => b.classList.remove('is-scrolling'), 350 + dur * 1000 + 900)
-    return () => { clearTimeout(t0); clearTimeout(t1); b.classList.remove('is-scrolling') }
+    sweepTimers.current.forEach(clearTimeout)
+    b.classList.remove('is-scrolling')
+    sweepTimers.current = [
+      setTimeout(() => b.classList.add('is-scrolling'), 120),
+      setTimeout(() => b.classList.remove('is-scrolling'), 120 + dur * 1000 + 900),
+    ]
+  }
+  useEffect(() => {
+    if (!auto) return
+    const t0 = setTimeout(sweep, 230)
+    return () => { clearTimeout(t0); sweepTimers.current.forEach(clearTimeout); box.current?.classList.remove('is-scrolling') }
   }, [auto, text])
 
   return (
     <span
+      {...rest}
       ref={box}
       class={`mq ${cls}`}
       title={title ?? text}
       onMouseEnter={start}
       onMouseLeave={stop}
+      onClick={sweep}
     >
       <span ref={inner} class="mq-inner">{text}</span>
     </span>

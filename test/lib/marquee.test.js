@@ -29,3 +29,32 @@ describe('auto marquee for the mobile ticker-name reveal', () => {
     expect(swap).not.toMatch(/>\s*\{q\.name\}\s*<\/span>/)
   })
 })
+
+describe('tap-to-sweep on every truncated name (Jeff 2026-08-17)', () => {
+  it('Marquee sweeps on tap as well as hover, and the truncated-name sites use it', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const src = (p) => readFileSync(resolve(process.cwd(), p), 'utf8')
+    const mq = src('src/components/Marquee.jsx')
+    expect(mq).toMatch(/onClick=\{/)                       // tap sweeps
+    expect(mq).toMatch(/onMouseEnter=\{start\}/)           // hover still sweeps
+    // research header company name is a Marquee, not a shrink-0 nowrap span
+    const research = src('src/pages/research.jsx')
+    const at = research.indexOf('data-research-company-name')
+    const tagStart = research.lastIndexOf('<', at)
+    const tagEnd = research.indexOf('/>', at)
+    const tag = research.slice(tagStart, tagEnd)
+    expect(tag).toMatch(/^<Marquee/)
+    expect(tag).not.toMatch(/shrink-0 whitespace-nowrap/)
+    // sector-strip / holdings / list-name sites on the dashboard use Marquee
+    const dash = src('src/pages/dashboard.jsx')
+    for (const marker of ['{h.name}', '{r.name}', '{activeList.name}']) {
+      // every raw-render of these names must be gone
+      expect(dash, marker).not.toMatch(new RegExp('truncate[^>]*>\\s*' + marker.replace(/[{}.]/g, '\\$&')))
+    }
+    // brief archive title + model name
+    const brief = src('src/pages/brief.jsx')
+    expect(brief).not.toMatch(/truncate">\{r\.title\}/)
+    expect(brief).not.toMatch(/truncate[^>]*>\{m\.name\}/)
+  })
+})

@@ -23,6 +23,7 @@ import {
 } from '../lib/format.js'
 import { hrefFor } from '../lib/route.js'
 import { getLocale, tl, t as tt } from '../lib/i18n.js'
+import { Marquee } from '../components/Marquee.jsx'
 import { Fig, FlashMetric, FlashPrice } from '../components/Fig.jsx'
 import { Loading } from '../components/Loading.jsx'
 import { getWatchlist, watch, unwatch } from '../lib/watchlist.js'
@@ -2416,9 +2417,11 @@ export function Research({ route }) {
           <WatchStar symbol={symbol} />
           <AlertButton symbol={symbol} price={q?.price} />
           {q?.name && (
-            <span data-research-company-name class="shrink-0 whitespace-nowrap text-[12px] text-muted font-anth">
-              {q.name}
-            </span>
+            /* bounded + sweepable: tap (phone) or hover (desktop) scrolls a
+               long legal name; the identity lane no longer relies on the
+               user discovering it's finger-scrollable (Jeff 2026-08-17) */
+            <Marquee data-research-company-name text={q.name} title={`${symbol} — ${q.name}`}
+              class="block min-w-0 max-w-[46vw] sm:max-w-[28rem] text-[12px] text-muted font-anth" />
           )}
         </div>
         {q && (
