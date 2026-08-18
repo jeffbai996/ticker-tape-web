@@ -202,11 +202,6 @@ export async function fetchToday(base) {
   return resp.json()
 }
 
-export async function fetchQuotes(base) {
-  const resp = await fetch(`${base}/api/quotes`)
-  if (!resp.ok) throw new Error(`wire ${resp.status}`)
-  return resp.json()
-}
 
 export async function fetchMeta(base) {
   const resp = await fetch(`${base}/api/meta`)
