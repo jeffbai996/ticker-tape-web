@@ -2,6 +2,7 @@ import { useEffect, useState } from 'preact/hooks'
 import { feedStatus } from '../lib/feed.js'
 import { feedHealth } from '../lib/feedHealth.js'
 import { tl, t as tt } from '../lib/i18n.js'
+import { startVisibleClock } from '../lib/idleClock.js'
 
 // Amber carries feed state; up/down green and red stay reserved for market
 // direction, so a limping feed can never be mistaken for a falling tape.
@@ -22,10 +23,9 @@ const STATE_CLASS = {
  */
 export function FeedIndicator() {
   const [, tick] = useState(0)
-  useEffect(() => {
-    const t = setInterval(() => tick((n) => n + 1), 10_000)
-    return () => clearInterval(t)
-  }, [])
+  // a buried tab has nothing to re-render for; the clock resumes with a
+  // catch-up tick so the age is current before it can be read (idleClock.js)
+  useEffect(() => startVisibleClock(10_000, () => tick((n) => n + 1)), [])
   const health = feedHealth(feedStatus())
   if (health.state === 'live') return null
   return (

@@ -45,8 +45,11 @@ describe('compact dashboard company name', () => {
 
   it('flashes the regular print as ticker-by-ticker updates land', () => {
     expect(dashboard).toContain('<FlashPrice price={q.price} fmt={fmtPrice} />')
+    // rebaselines on the way back from a hidden tab so the reader never gets
+    // a flash for a move they missed — through the shared visibility hub
+    // since 2026-08-18 (one listener for the board, not one per cell)
     expect(readFileSync(resolve(process.cwd(), 'src/components/Fig.jsx'), 'utf8'))
-      .toContain("document.addEventListener('visibilitychange', rebaseline)")
+      .toContain('onVisibilityChange(rebaseline)')
     expect(css).toContain('.px-flash-up { background: #00ff55; }')
     expect(css).not.toContain('@keyframes tick-flash')
   })
