@@ -38,6 +38,23 @@ describe('the batch print is never a cached artefact', () => {
   })
 })
 
+describe('the sweep legs stop when nothing is tracked', () => {
+  it('takes both timers down with the last surface, and puts them back', () => {
+    const feed = src('src/lib/feed.js')
+    // a永-running sweep would wake a buried tab forever to refresh an empty set
+    expect(feed).toContain('function stopSweeps()')
+    expect(feed).toContain('if (!tracked.size) stopSweeps()')
+    // both legs, not just the full sweep the audit already knew about
+    const stop = feed.slice(feed.indexOf('function stopSweeps()'),
+      feed.indexOf('function syncTracked()'))
+    expect(stop).toContain('sweepTimer = null')
+    expect(stop).toContain('fastTimer = null')
+    // …and activate() re-arms both behind the same guard
+    expect(feed).toContain('if (!sweepTimer) {')
+    expect(feed).toContain('fastBeat()')
+  })
+})
+
 describe('a returning tab wakes the whole feed', () => {
   it('nudges the socket and re-sweeps on visibility and on online', () => {
     const feed = src('src/lib/feed.js')

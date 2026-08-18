@@ -360,11 +360,22 @@ const symbolRegistry = createFeedSymbolRegistry()
 // inside FOCUS_SWEEP_GRACE_MS of it rather than re-asking for the same print
 let lastFullSweepTs = 0
 
+/** Both sweep legs exist to refresh TRACKED symbols. With nothing tracked
+ *  they would wake a buried tab forever to look at an empty set — the last
+ *  surface unmounting has to take them down, and activate() puts them back. */
+function stopSweeps() {
+  clearTimeout(sweepTimer)
+  sweepTimer = null
+  clearTimeout(fastTimer)
+  fastTimer = null
+}
+
 function syncTracked() {
   const symbols = symbolRegistry.values()
   tracked.clear()
   for (const symbol of symbols) tracked.add(symbol)
   streamSymbols(symbols)
+  if (!tracked.size) stopSweeps()
 }
 
 /** Symbols declared on screen AND still tracked. The intersection is what
@@ -494,7 +505,8 @@ function activate(symbols, register) {
     // The focused leg rides its own clock so the rows on screen refresh
     // faster than the tail. When the session has no fast sweep the timer
     // still ticks — cheaply, requesting nothing — so a board left open into
-    // the pre-market open picks the cadence up without a remount.
+    // the pre-market open picks the cadence up without a remount. It stops
+    // with the sweep leg when the last tracked surface goes away.
     const fastBeat = () => {
       const every = fastSweepIntervalMs(marketState().state) || FAST_IDLE_CHECK_MS
       fastTimer = setTimeout(() => {
