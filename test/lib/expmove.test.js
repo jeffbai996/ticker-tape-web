@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   atmContract, expectedMovePct, expiryForEvent, mid, moveEdge, typicalMovePct,
-} from '../src/lib/expmove.js'
+} from '../../src/lib/expmove.js'
 
 const c = (strike, bid, ask, last = null) => ({ strike, bid, ask, last })
 

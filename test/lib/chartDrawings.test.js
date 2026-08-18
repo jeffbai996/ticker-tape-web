@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import {
   DRAWINGS_KEY, readAll, loadDrawings, saveDrawings, addDrawing,
   removeDrawing, clearDrawings, newId, sanitizeDrawing,
-} from '../src/lib/chartDrawings.js'
+} from '../../src/lib/chartDrawings.js'
 
 // A throwaway Storage stand-in so tests never depend on jsdom's shared
 // localStorage leaking between files.
