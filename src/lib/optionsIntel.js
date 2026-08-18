@@ -6,10 +6,10 @@
 // test with synthetic data and easy to reuse from the ladder or a summary
 // strip.
 
-import { atmContract, expiryForEvent, mid, moveEdge, typicalMovePct } from './expmove.js'
+import { atmContract, expiryForEvent, moveEdge, typicalMovePct } from './expmove.js'
 import { bsDelta } from './bs.js'
 
-export { atmContract, expiryForEvent, mid, moveEdge, typicalMovePct }
+export { atmContract, expiryForEvent, moveEdge, typicalMovePct }
 
 /** Years-to-expiry off epoch-seconds, floored so a same-day expiry still
  *  prices (bsDelta divides by sqrt(t)). */
@@ -19,11 +19,11 @@ export function yearsTo(expirationSec, nowMs = Date.now()) {
 }
 
 /**
- * Straddle mid for one contract. A one-sided book (0 × ask, normal after
- * hours) is still a real market and mids to half the ask; only an entirely
- * empty book falls back to the last print, and a non-positive number is not a
- * price. Wider than expmove.js's `mid`, which the earnings card keeps for its
- * own stricter contract.
+ * Straddle mid for one contract — the one mid rule in the app. A one-sided
+ * book (0 × ask, normal after hours) is still a real market and mids to half
+ * the ask; only an entirely empty book falls back to the last print, and a
+ * non-positive number is not a price. A live one-sided quote beats a stale
+ * last print, which is why this replaced the earnings card's stricter rule.
  */
 export function contractMid(c) {
   if (c?.bid != null && c?.ask != null && (c.bid > 0 || c.ask > 0)) return (c.bid + c.ask) / 2
@@ -40,7 +40,8 @@ export function contractMid(c) {
  * premiums prices a strangle while calling it a straddle.
  */
 export function expectedMove(chain) {
-  if (chain?.spot == null || !chain.calls?.length || !chain.puts?.length) return null
+  // A zero/absent spot has no percentage to be a percentage of.
+  if (!chain?.spot || !chain.calls?.length || !chain.puts?.length) return null
   const puts = new Map(chain.puts.map((p) => [p.strike, p]))
   let call = null
   for (const c of chain.calls) {
