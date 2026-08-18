@@ -246,7 +246,10 @@ function CompactDayRange({ lo, hi, v, cls = '' }) {
   )
 }
 
-function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggleSelect,
+// Exported so a result grammar outside the board (screenBoard.jsx's ranked
+// signal results) can render the identical row rather than forking it —
+// same badges, same layout, same truth about what the feed knows.
+export function TuiRow({ symbol, data, earnDays, onRemove = () => {}, selecting, selected, onToggleSelect,
                    spark = DEFAULT_SPARK, sparkWin = DEFAULT_WINDOW,
                    intradayBars = null, revealed = false, onReveal,
                    dragScope = null, dragging = false, drag = null }) {
