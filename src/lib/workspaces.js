@@ -135,11 +135,20 @@ const SETTERS = {
 export function applyWorkspace(ws, setters = {}) {
   const layout = normalizeLayout(ws?.layout)
   const applied = []
+  // A board workspace naming no list IS the main board — normalizeLayout drops
+  // the null, so without an explicit reset the landing preference from wherever
+  // the user happened to be survives the apply, and `#/` resolves straight back
+  // to it (resolveDashboardLanding). It also keeps the per-list sort key the
+  // setters write in step with the one the getters read.
+  const fields = { ...layout }
+  if (ws && !fields.researchSymbol && !fields.marketView && !Object.hasOwn(fields, 'listId')) {
+    fields.listId = null
+  }
   for (const [field, setterName] of Object.entries(SETTERS)) {
-    if (!Object.hasOwn(layout, field)) continue
+    if (!Object.hasOwn(fields, field)) continue
     const set = setters[setterName]
     if (typeof set !== 'function') continue
-    set(layout[field])
+    set(fields[field])
     applied.push(field)
   }
   if (typeof setters.navigate === 'function') setters.navigate(workspaceHash(layout))

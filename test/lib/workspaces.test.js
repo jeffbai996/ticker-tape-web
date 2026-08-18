@@ -167,6 +167,32 @@ describe('applying a workspace', () => {
     expect(setSpark).not.toHaveBeenCalled()
   })
 
+  // A main-board capture stores no listId (normalizeLayout drops the null), so
+  // without an explicit reset the landing preference from wherever the user
+  // happened to be survives the apply — and `#/` resolves straight back to it
+  // (resolveDashboardLanding), so the "main board" workspace never lands on
+  // the main board.
+  it('returns a board workspace with no named list to the main board', () => {
+    const setListId = vi.fn()
+    const navigate = vi.fn()
+    const ws = captureWorkspace({
+      ...GETTERS, listId: () => null, marketView: () => null, researchSymbol: () => null,
+    }, 'opening')
+    expect(ws.layout.listId).toBeUndefined()
+    const applied = applyWorkspace(ws, { setListId, navigate })
+    expect(setListId).toHaveBeenCalledWith(null)
+    expect(applied).toContain('listId')
+    expect(navigate).toHaveBeenCalledWith('#/')
+  })
+
+  it('leaves the board alone when the workspace lands somewhere else', () => {
+    const setListId = vi.fn()
+    for (const layout of [{ researchSymbol: 'MSFT' }, { marketView: 'sectors' }]) {
+      applyWorkspace({ v: 1, name: 'x', layout }, { setListId, navigate: vi.fn() })
+    }
+    expect(setListId).not.toHaveBeenCalled()
+  })
+
   it('routes research first, then a market view, then the board', () => {
     expect(workspaceHash({ researchSymbol: 'MSFT', marketView: 'sectors', listId: 'megacaps' }))
       .toBe('#/research/msft')
@@ -365,7 +391,20 @@ describe('workspaces board control', () => {
     expect(control).toContain('capturedAgo')
   })
 
+  // It shipped on a `ws-pop` class nobody ever wrote, so the panel had no
+  // position and laid out inside the toolbar row instead of over it.
+  it('anchors on the same popover class as the other toolbar menu', () => {
+    const css = readFileSync(resolve(process.cwd(), 'src/styles/main.css'), 'utf8')
+    const cls = control.match(/class="([a-z-]*pop[a-z-]*)/)?.[1]
+    expect(cls).toBeTruthy()
+    expect(css).toContain(`.${cls} {`)
+    expect(cls).toBe('board-menu-pop')
+    expect(dashboard).toContain('board-menu-pop')
+  })
+
   it('drives from the keyboard and closes on Escape', () => {
+    // the panel takes focus on open, or none of these keys ever reach it
+    expect(control).toContain('popRef.current?.focus')
     expect(control).toContain("case 'ArrowDown'")
     expect(control).toContain("case 'ArrowUp'")
     expect(control).toContain("case 'Enter'")
