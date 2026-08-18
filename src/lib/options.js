@@ -27,6 +27,16 @@ function slim(contracts) {
   }))
 }
 
+/** Whatever chain is already sitting in the persistent cache for this key,
+ *  with its fetch timestamp — read-only, never triggers a request. This is
+ *  the "previous session" snapshot the options intelligence panel diffs the
+ *  freshly-fetched chain against; call it BEFORE fetchOptions so the compare
+ *  isn't diffing a chain against itself. */
+export function peekOptions(symbol, expiration) {
+  const key = `${symbol}:${expiration || 'front'}`
+  return cache.peek(key) ?? null
+}
+
 export async function fetchOptions(symbol, expiration) {
   const key = `${symbol}:${expiration || 'front'}`
   const hit = cache.get(key)

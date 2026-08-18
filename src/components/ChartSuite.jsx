@@ -7,6 +7,8 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { createChart, CandlestickSeries, LineSeries, AreaSeries,
          HistogramSeries } from 'lightweight-charts'
 import { fetchHistory, RANGES } from '../lib/history.js'
+import { fetchOptions } from '../lib/options.js'
+import { expectedMove } from '../lib/optionsIntel.js'
 import { smaSeries, emaSeries, rsiSeries, macdSeries, bollingerSeries,
          normalizedSeries } from '../lib/chartmath.js'
 import { vwapSeries } from '../lib/vwap.js'
@@ -83,6 +85,11 @@ export function ChartSuite({ symbol }) {
   const [mode, setMode] = useState(null) // null | 'hline' | 'trend'
   const [pending, setPending] = useState(null) // first point of a trendline
   const [sel, setSel] = useState(null) // id of the tapped drawing, for delete
+  // Expected-move bands: the front-month ATM straddle's implied move, lazy-
+  // fetched only once the EM overlay is switched on so plain chart views
+  // never pay for an options-chain request.
+  const [emMove, setEmMove] = useState(null)
+  const emLinesRef = useRef([])
   const comparing = !!(cmp && cmpBars && cmpBars.length)
   // A fixed 430px left a black void under the chart on tall windows and at
   // low zoom (Jeff 2026-08-07). Measure the room actually left below the
@@ -354,6 +361,41 @@ export function ChartSuite({ symbol }) {
     }
   }, [drawings, sel, epoch, comparing])
 
+  useEffect(() => {
+    if (!prefs.ov.em) { setEmMove(null); return }
+    let dead = false
+    fetchOptions(symbol).then((chain) => {
+      if (!dead) setEmMove(expectedMove(chain))
+    }).catch(() => { if (!dead) setEmMove(null) })
+    return () => { dead = true }
+  }, [symbol, prefs.ov.em])
+
+  // Two amber price lines at the last close ± the priced move. Applied
+  // straight to the series (not part of the chart-rebuild effect above) so
+  // toggling EM, or the fetch resolving after the fact, doesn't tear down and
+  // recreate the whole chart — and idempotent by construction: every run
+  // clears its own previous pair before drawing (or not drawing) a new one,
+  // so repeated toggles can't accumulate stray lines.
+  useEffect(() => {
+    const series = seriesRef.current
+    for (const line of emLinesRef.current) {
+      try { series?.removePriceLine(line) } catch { /* series already gone */ }
+    }
+    emLinesRef.current = []
+    if (!series || comparing || !prefs.ov.em || !emMove || !bars?.length) return
+    const anchor = bars[bars.length - 1].close
+    const title = `EM ±${emMove.pct.toFixed(1)}%`
+    const up = series.createPriceLine({
+      price: anchor + emMove.dollars, color: 'rgba(245,158,11,0.65)',
+      lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title,
+    })
+    const down = series.createPriceLine({
+      price: anchor - emMove.dollars, color: 'rgba(245,158,11,0.65)',
+      lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '',
+    })
+    emLinesRef.current = [up, down]
+  }, [epoch, prefs.ov.em, emMove, bars, comparing])
+
   // Taps: place a drawing while a mode is armed, otherwise select one to delete.
   useEffect(() => {
     const chart = chartRef.current
@@ -477,6 +519,8 @@ export function ChartSuite({ symbol }) {
         {chip(prefs.ov.bb, 'BB', () => toggleOv('bb'), null, 'Bollinger bands — 20-period mean ±2 standard deviations')}
         {intraday && chip(prefs.ov.vwap, 'VWAP', () => toggleOv('vwap'), null, 'volume-weighted average price, intraday only')}
         {chip(prefs.ov.vol, 'VOL', () => toggleOv('vol'), null, 'volume histogram under the price')}
+        {!comparing && chip(prefs.ov.em, 'EM', () => toggleOv('em'), '#f59e0b',
+          'expected-move bands — the front-month ATM straddle priced ± around the last close')}
         <span class="w-2" />
         {chip(prefs.panes.rsi, 'RSI', () => togglePane('rsi'), null, 'relative strength index in its own pane — 70 overbought, 30 oversold')}
         {chip(prefs.panes.macd, 'MACD', () => togglePane('macd'), null, 'MACD 12/26/9 in its own pane')}

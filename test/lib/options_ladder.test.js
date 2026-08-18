@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { researchSource } from './researchSource.js'
 
-const research = readFileSync(resolve(process.cwd(), 'src/pages/research.jsx'), 'utf8')
+const research = researchSource()
 const screen = readFileSync(resolve(process.cwd(), 'src/pages/screen.jsx'), 'utf8')
 const nav = readFileSync(resolve(process.cwd(), 'src/lib/nav.js'), 'utf8')
 
