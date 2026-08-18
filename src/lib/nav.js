@@ -62,6 +62,9 @@ export const NAV = [
   { id: 'alerts', label: 'Alerts', subs: [] },
   { id: 'wire', label: 'Wire', badge: 'DEMO', subs: [] },
   CHAT_SECTION,
+  // phone-only: the console as its own page in the chin (desktop has the
+  // floating panel). Sidebar/desktop nav skips `phoneOnly` entries.
+  { id: 'console', label: '>_', subs: [], phoneOnly: true }
 ]
 
 // The private build isn't a demo: the portfolio is real (fragwire fronts the
