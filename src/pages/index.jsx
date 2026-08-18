@@ -1,19 +1,25 @@
 import { Placeholder } from '../components/Placeholder.jsx'
-import { Dashboard } from './dashboard.jsx'
-import { WatchlistsPage } from './watchlists.jsx'
-import { Markets } from './markets.jsx'
-import { Research } from './research.jsx'
-import { Screen } from './screen.jsx'
-import { Alerts } from './alerts.jsx'
-import { Portfolio } from './portfolio.jsx'
-import { Chat } from './chat.jsx'
-import { ChatPreview } from './chatPreview.jsx'
-import { Brief } from './brief.jsx'
-import { Wire } from './wire.jsx'
-import { ConsolePage } from './console.jsx'
 import { IS_PRIVATE_BUILD } from '../lib/nav.js'
 import { useNamedWatchlists } from '../hooks.js'
 import { resolveDashboardLanding } from '../lib/dashboardLanding.js'
+import { lazyPage } from '../components/LazyPage.jsx'
+// The dashboard is the landing route: it stays in the entry chunk so first
+// paint costs one request. Everything else is fetched on first visit.
+import { Dashboard } from './dashboard.jsx'
+
+const WatchlistsPage = lazyPage(() => import('./watchlists.jsx').then((m) => m.WatchlistsPage))
+const Markets = lazyPage(() => import('./markets.jsx').then((m) => m.Markets))
+const Research = lazyPage(() => import('./research.jsx').then((m) => m.Research))
+const Screen = lazyPage(() => import('./screen.jsx').then((m) => m.Screen))
+const Alerts = lazyPage(() => import('./alerts.jsx').then((m) => m.Alerts))
+const Portfolio = lazyPage(() => import('./portfolio.jsx').then((m) => m.Portfolio))
+// The live chat implementation is private-build only; the public preview is a
+// separate chunk, so neither one rides along in the other's build.
+const Chat = lazyPage(() => import('./chat.jsx').then((m) => m.Chat))
+const ChatPreview = lazyPage(() => import('./chatPreview.jsx').then((m) => m.ChatPreview))
+const Brief = lazyPage(() => import('./brief.jsx').then((m) => m.Brief))
+const Wire = lazyPage(() => import('./wire.jsx').then((m) => m.Wire))
+const ConsolePage = lazyPage(() => import('./console.jsx').then((m) => m.ConsolePage))
 
 const PAGES = {
   markets: {
