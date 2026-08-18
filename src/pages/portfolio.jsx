@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
+import { useEffect, useMemo, useState } from 'preact/hooks'
 import { shortAccountLabel } from '../lib/accounts.js'
-import { createChart, AreaSeries } from 'lightweight-charts'
 import { boundedTimeScale } from '../lib/chartview.js'
 import { useEscape, useQuotes } from '../hooks.js'
 import {
@@ -11,6 +10,7 @@ import { fmtPrice, fmtPct, fmtPctPlain, fmtChange, fmtRatio } from '../lib/forma
 import { getLocale, tl, thesisTerm, t as tt } from '../lib/i18n.js'
 import { FlashPrice } from '../components/Fig.jsx'
 import { Empty, Loading } from '../components/Loading.jsx'
+import { ChartMount } from '../components/LazyChart.jsx'
 import {
   parseFillsCsv, assembleBacktest, convertFills, convertBars, needsFx, symbolCurrency,
   serverFillsToLedger,
@@ -462,7 +462,6 @@ function Cockpit({ priceMap, positions }) {
 }
 
 function Timeline({ priceMap, positions, accountId }) {
-  const el = useRef(null)
   const s = accountSummary(positions, priceMap)
   // real accrued NLV rows from fragwire's snapshot store — the curve is
   // honest: it starts the day the store went live and grows forward
@@ -480,11 +479,13 @@ function Timeline({ priceMap, positions, accountId }) {
   }, [accountId])
   const real = wired && Array.isArray(days) && days.length >= 2
 
-  useEffect(() => {
-    if (!el.current) return
-    if (wired && !real) return          // never draw the fake walk on the wire build
-    if (!real && s.nlv == null) return
-    const chart = createChart(el.current, {
+  // Runs once the chart chunk is on the page. The `wired && !real` guard the
+  // effect used to carry now lives in the render condition below — the box is
+  // simply not mounted in that state — so nothing here draws the fake walk on
+  // the wire build.
+  const draw = (host, { createChart, AreaSeries }) => {
+    if (!real && s.nlv == null) return undefined
+    const chart = createChart(host, {
       autoSize: true,
       layout: {
         background: { color: 'transparent' },
@@ -510,7 +511,7 @@ function Timeline({ priceMap, positions, accountId }) {
       : nlvWalk('ttw-demo-nlv', 252, s.nlv))
     chart.timeScale().fitContent()
     return () => chart.remove()
-  }, [s.nlv, real, days])
+  }
 
   return (
     <section class="bg-surface-1 border border-line rounded-xl p-2 max-w-4xl min-w-0">
@@ -521,7 +522,10 @@ function Timeline({ priceMap, positions, accountId }) {
             ? `${tl('snapshot store live — the curve draws itself as daily history accrues')}${days?.length ? ` (${days.length}/2)` : ''}`
             : tt('demo.timeline_note')}
       </div>
-      {(real || !wired) && <div ref={el} class="h-[380px] w-full" />}
+      {(real || !wired) && (
+        <ChartMount class="h-[380px] w-full" deps={[s.nlv, real, days]} mount={draw}
+          placeholder={<Loading label={tt('common.loading')} />} />
+      )}
     </section>
   )
 }
