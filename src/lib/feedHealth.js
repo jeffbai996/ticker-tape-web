@@ -32,6 +32,11 @@ export function fmtAge(ms) {
  *
  * `ageMs` is the age of the newest data of any kind, which is what "+ age"
  * means next to a non-live label.
+ *
+ * The tooltip comes back as `titleKey` + `titleParams` rather than a finished
+ * sentence: a string with the age already interpolated into it can only ever
+ * be shown in English, which is how three of these four explanations shipped
+ * untranslated.
  */
 export function feedHealth({ streamConnected, lastStreamTs, lastSnapshotTs } = {}, now = Date.now()) {
   const newest = Math.max(lastStreamTs || 0, lastSnapshotTs || 0)
@@ -39,28 +44,34 @@ export function feedHealth({ streamConnected, lastStreamTs, lastSnapshotTs } = {
   const ageMs = newest ? now - newest : null
 
   let state
-  let title
+  let titleKey
   if (ageMs == null) {
     // Nothing has landed yet. Claiming DELAYED one second into a cold start
     // is a lie in the other direction, so the shell simply says it is working.
     state = 'recovering'
-    title = 'waiting for the first quote'
+    titleKey = 'feed.title_cold'
   } else if (ageMs >= FEED_DELAYED_MS) {
     state = 'delayed'
-    title = `feed not answering — last data ${fmtAge(ageMs)} ago`
+    titleKey = 'feed.title_delayed'
   } else if (!streamConnected || snapshotAge >= SNAPSHOT_LIVE_MS) {
     state = 'recovering'
-    title = streamConnected
-      ? `snapshot sweep is late — last data ${fmtAge(ageMs)} ago`
-      : `stream reconnecting — last data ${fmtAge(ageMs)} ago`
+    titleKey = streamConnected ? 'feed.title_snapshot_late' : 'feed.title_reconnecting'
   } else {
     state = 'live'
-    title = 'streaming prints, 30s snapshot sweep'
+    titleKey = 'feed.title_live'
   }
 
   const word = state.toUpperCase()
   const ageLabel = state === 'live' ? '' : fmtAge(ageMs)
-  return { state, ageMs, ageLabel, label: ageLabel ? `${word} ${ageLabel}` : word, title }
+  return {
+    state,
+    ageMs,
+    ageLabel,
+    label: ageLabel ? `${word} ${ageLabel}` : word,
+    titleKey,
+    // only the states whose sentence quotes an age carry one
+    titleParams: state === 'live' || ageMs == null ? {} : { age: fmtAge(ageMs) },
+  }
 }
 
 const SOURCE_CLOCKS = [
