@@ -383,6 +383,10 @@ const LABELS = {
   'loading earnings dates…': '加载财报日期…',
   today: '今日', advancing: '上涨', avg: '均', est: '预期',
   updated: '更新于', 'STALE — last good fetch': '数据过期 — 上次成功获取', ago: '前',
+  // feed health chip (feedHealth.js states + its tooltips)
+  LIVE: '实时', RECOVERING: '恢复中', DELAYED: '延迟',
+  'streaming prints, 30s snapshot sweep': '实时逐笔 + 30秒快照轮询',
+  'waiting for the first quote': '等待首次报价',
   General: '其他',
   All: '全部', Sort: '排序', Ticker: '代码', Spread: '价差', Search: '搜索', Select: '多选',
   'Selection actions': '多选操作', 'expand all': '全部展开',
