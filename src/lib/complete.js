@@ -16,7 +16,8 @@ export const COMMAND_WORDS = [
   'nlv', 'opt', 'options', 'pnl', 'pos', 'prof', 'pt', 'q', 'quit', 'rating',
   'replay', 'resume', 'risk', 's', 'scr', 'screen', 'screening', 'sectors',
   'surprises', 't', 'ta', 'timeline', 'tl', 'today', 'trades', 'tt', 'tw',
-  'unwatch', 'uw', 'vs', 'w', 'watch', 'whatif', 'wi', 'wire',
+  'unwatch', 'uw', 'vs', 'w', 'watch', 'whatif', 'wi', 'wire', 'workspace',
+  'workspaces', 'ws',
 ]
 
 const tokens = (line) => line.split(/\s+/)
