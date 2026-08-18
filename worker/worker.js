@@ -114,7 +114,7 @@ async function proxyDirect(path, search) {
 
     return new Response(await resp.text(), {
         status: 200,
-        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=30' },
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json', 'Cache-Control': quoteCacheControl(path) },
     });
 }
 
@@ -166,7 +166,7 @@ async function proxyWithCrumb(path, search, body = null) {
 
     return new Response(await resp.text(), {
         status: 200,
-        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=30' },
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json', 'Cache-Control': quoteCacheControl(path) },
     });
 }
 
@@ -240,6 +240,15 @@ async function proxySec(target, maxAge) {
     } catch (err) {
         return jsonResp({ error: `SEC proxy error: ${err.message}` }, 502);
     }
+}
+
+/** The v7 quote batch is a LIVE print the app re-requests on a fixed cadence
+ *  with an identical URL — under `max-age=30` the browser's HTTP cache served
+ *  the previous sweep back for up to 30s, so a 30s sweep read as a 60s one
+ *  and the visibility re-sweep showed nothing new (2026-08-18). Prints are
+ *  never cached; charts / fundamentals / search keep 30s. */
+export function quoteCacheControl(path) {
+    return path.startsWith('/v7/finance/quote') ? 'no-store' : 'public, max-age=30';
 }
 
 function jsonResp(data, status = 200) {
