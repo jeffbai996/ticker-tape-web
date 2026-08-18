@@ -37,7 +37,8 @@ describe('research header', () => {
   it('keeps the full company name in the bounded identity scroller', () => {
     expect(research).toContain('class="@container flex-1 p-3 select-text min-w-0"')
     expect(research).toContain('data-research-identity-scroll class="flex items-center gap-3 flex-1 min-w-0 overflow-x-auto')
-    expect(research).toContain('data-research-company-name class="shrink-0 whitespace-nowrap')
+    // the name is a Marquee now — bounded and sweepable on tap/hover (2026-08-17)
+    expect(research).toMatch(/<Marquee data-research-company-name text=\{q\.name\}/)
     expect(research).not.toContain('hidden @min-[1180px]:block')
   })
 })
