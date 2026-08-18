@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'preact/hooks'
 import { fetchHistory } from '../lib/history.js'
+import { startVisibleClock } from '../lib/idleClock.js'
 import {
   eventAlertPlan, eventClock, eventKind, eventLinkedSymbols, eventNarrative,
   eventNumbers, eventPhase, eventReaction, eventSurprise, formatCountdown,
@@ -313,16 +314,20 @@ function SectorRotation() {
   const [hist, setHist] = useState({})
   useEffect(() => {
     let dead = false
-    SECTORS.forEach(({ symbol }, i) => {
-      setTimeout(() => {
-        if (!dead) {
-          fetchHistory(symbol, '3M')
-            .then((h) => !dead && setHist((cur) => ({ ...cur, [symbol]: h?.bars || [] })))
-            .catch(() => {})
-        }
-      }, i * 150)
-    })
-    return () => { dead = true }
+    // One request every 150ms so eleven sector histories do not go out as a
+    // single burst. The handles are kept: leaving the tab drops the queue
+    // instead of walking it out over the next second and a half against a
+    // component that no longer exists.
+    const queued = SECTORS.map(({ symbol }, i) => setTimeout(() => {
+      if (dead) return
+      fetchHistory(symbol, '3M')
+        .then((h) => !dead && setHist((cur) => ({ ...cur, [symbol]: h?.bars || [] })))
+        .catch(() => {})
+    }, i * 150))
+    return () => {
+      dead = true
+      queued.forEach(clearTimeout)
+    }
   }, [])
   const ret = (bars, days) => {
     if (!bars?.length) return null
@@ -911,10 +916,11 @@ function EventWorkspace({ event, details }) {
   const symbols = useMemo(() => links.map((l) => l.symbol), [links])
   const clock = useMemo(() => eventClock(event, details.time), [event.date, details.time])
   const [now, setNow] = useState(Date.now())
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(id)
-  }, [])
+  // The countdown prints seconds, so it has to be 1 Hz — but only while
+  // someone can see it. This re-renders the entire workspace (numbers, links,
+  // wire panel, reaction table) on every tick, which is the most expensive
+  // second-hand in the app to leave running against a buried tab.
+  useEffect(() => startVisibleClock(1000, () => setNow(Date.now())), [])
   const phase = eventPhase(clock.at, now)
   const quotes = useQuotes(symbols)
   const numbers = eventNumbers(event)

@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { useQuotes } from '../hooks.js'
 import { INDICES } from '../lib/symbols.js'
 import { marketState } from '../lib/marketState.js'
-import { paintRollingTime, CLOCK_ZONES } from '../lib/rollclock.js'
+import { paintRollingTime, stopRollingTime, CLOCK_ZONES } from '../lib/rollclock.js'
+import { startVisibleClock } from '../lib/idleClock.js'
 import { hrefFor } from '../lib/route.js'
 import { fmtPrice, fmtPct } from '../lib/format.js'
 import { FlashPrice } from './Fig.jsx'
@@ -67,8 +68,16 @@ function RollingClock() {
       if (mobileClock.current) paintRollingTime(mobileClock.current, value.slice(0, 5))
     }
     paint()
-    const t = setInterval(paint, 1000)
-    return () => clearInterval(t)
+    // This clock sits in the shell, so it is the one timer that runs on every
+    // route: 1 Hz of DOM writes plus a forced reflow per rolling digit, for a
+    // face nobody can read while the tab is buried. Aligned to the second so
+    // the painted value is never a beat stale, and off entirely while hidden.
+    const stop = startVisibleClock(1000, paint)
+    return () => {
+      stop()
+      stopRollingTime(desktopClock.current)
+      stopRollingTime(mobileClock.current)
+    }
   }, [zi])
   const cycle = () => {
     const n = (zi + 1) % CLOCK_ZONES.length
@@ -129,8 +138,9 @@ export function StatusBar() {
     // 30s, not 1s: `now` only feeds the session chip + countdown title, and a
     // per-second re-render of the whole bar was one of the 1Hz layout pokes
     // behind the zh-zoom shimmer (Jeff 2026-08-11). The clock paints itself.
-    const t = setInterval(() => setNow(new Date()), 30_000)
-    return () => clearInterval(t)
+    // Hidden tabs skip it outright — the session chip is recomputed on the
+    // way back, before the reader has had time to look at it.
+    return startVisibleClock(30_000, () => setNow(new Date()))
   }, [])
 
   const { state, holiday } = marketState(now)
