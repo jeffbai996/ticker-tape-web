@@ -19,7 +19,7 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 # The build chain (vite 8.2 / rolldown) needs Node >= 20.12 (`util.styleText`);
-# host-a's system node is 18. Prefer the newest nvm-installed Node when the
+# the host's system node may be 18. Prefer the newest nvm-installed Node when the
 # one on PATH is too old, so a cron/hook/bot shell can still publish.
 if ! node -e "if (!require('node:util').styleText) process.exit(1)" >/dev/null 2>&1; then
   newest="$(ls -d "$HOME"/.nvm/versions/node/v*/bin 2>/dev/null | sort -V | tail -1 || true)"
