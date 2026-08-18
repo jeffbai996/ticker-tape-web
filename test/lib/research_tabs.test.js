@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import fs from 'node:fs'
+import { researchSource } from './researchSource.js'
 
-const src = fs.readFileSync('src/pages/research.jsx', 'utf8')
+const src = researchSource()
 const route = fs.readFileSync('src/lib/route.js', 'utf8')
 
 describe('research tab shortcuts', () => {
@@ -27,7 +28,8 @@ describe('research tab shortcuts', () => {
 describe('research quote header', () => {
   it('says so when the quote feed has gone quiet', () => {
     expect(src).toContain('function StaleQuoteTag()')
-    expect(src).toContain("import { getCached, lastGoodTs } from '../lib/feed.js'")
+    // the lane moved a directory deeper — same import, re-pointed path
+    expect(src).toContain("import { getCached, lastGoodTs } from '../../lib/feed.js'")
     expect(src).toContain('<StaleQuoteTag />')
     // same 5-minute threshold and tone as the sidebar's banner
     expect(src).toContain('if (mins < 5) return null')

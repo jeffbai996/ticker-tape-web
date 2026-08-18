@@ -1,9 +1,10 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { researchSource } from './researchSource.js'
 
 const read = (p) => readFileSync(resolve(process.cwd(), p), 'utf8')
-const research = read('src/pages/research.jsx')
+const research = researchSource()
 const chartSuite = read('src/components/ChartSuite.jsx')
 const app = read('src/app.jsx')
 const alerts = read('src/pages/alerts.jsx')
@@ -112,8 +113,9 @@ describe('research DES band', () => {
   })
 
   it('reuses the existing spread and off-high helpers for the new cells', () => {
-    expect(research).toContain("import { techBadges } from '../lib/badges.js'")
-    expect(research).toContain("import { quoteSpread } from '../lib/dashboardRows.js'")
+    // the lane moved a directory deeper — same helpers, re-pointed import path
+    expect(research).toContain("import { techBadges } from '../../lib/badges.js'")
+    expect(research).toContain("import { quoteSpread } from '../../lib/dashboardRows.js'")
     expect(research).toContain("label={tl('Bid/Ask · SPR')}")
     expect(research).toContain("label={tl('% off 52w high')}")
   })
