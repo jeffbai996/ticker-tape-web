@@ -12,6 +12,7 @@ import { createYahooStream } from './yahooStream.js'
 import { techBadges, histoBars } from './badges.js'
 import { createPCache } from './pcache.js'
 import { createFeedSymbolRegistry } from './feedSymbols.js'
+import { symbolFreshness } from './feedHealth.js'
 
 // RS badge benchmark (TUI: RS vs QQQ, 20d). Its daily closes are kept in
 // module memory and prioritized in the queue so other symbols can diff
@@ -93,6 +94,7 @@ function streamSymbols(symbols) {
           streamTs: Date.now(),
         })
         goodTs = Date.now()
+        lastStreamTs = Date.now()
         emit(tick.symbol)
       },
     })
@@ -127,6 +129,7 @@ async function fetchSymbol(symbol) {
       cache.get(symbol).quote = quote
     }
   }
+  const derivedFromChart = !quote
   if (!quote) {
     // Batch hasn't landed (or failed): derive an honest day quote from the
     // daily series — last close vs the one before it.
@@ -152,13 +155,20 @@ async function fetchSymbol(symbol) {
     }
   }
 
+  const prior = cache.get(symbol)
   cache.set(symbol, {
     quote,
     histo: histoBars(bars),
     tech: techBadges({ closes, volumes }, symbol === RS_BENCH ? null : benchCloses),
     ts: Date.now(),
-    streamTs: cache.get(symbol)?.streamTs ?? 0,
+    streamTs: prior?.streamTs ?? 0,
+    // Only claim a snapshot clock when this fetch actually produced the price
+    // on the row; a chart refresh behind a live stream is chart data, not a
+    // new quote print.
+    snapshotTs: derivedFromChart ? Date.now() : (prior?.snapshotTs ?? 0),
+    overnightTs: prior?.overnightTs ?? 0,
   })
+  if (derivedFromChart) lastSnapshotTs = Date.now()
   goodTs = Date.now()
   emit(symbol)
 }
@@ -185,6 +195,27 @@ export function lastGoodTs() {
   return goodTs
 }
 
+// The three clocks the UI reasons about separately: websocket prints and REST
+// snapshots. `goodTs` above is the union of both and stays what it always was
+// (the "updated HH:MM:SS" line); these two let the shell say WHICH pipe is
+// carrying the board.
+let lastStreamTs = 0
+let lastSnapshotTs = 0
+
+/** Shell-level feed inputs. Pure interpretation lives in feedHealth.js. */
+export function feedStatus() {
+  return {
+    streamConnected: liveStream?.isConnected() ?? false,
+    lastStreamTs,
+    lastSnapshotTs,
+  }
+}
+
+/** Per-symbol {source, receivedAt, ageMs} — 'stream' is the only live one. */
+export function getFreshness(symbol, now = Date.now()) {
+  return symbolFreshness(cache.get(symbol), now)
+}
+
 // Batch first paint: one v7 request prices a whole page at once, so quotes
 // don't trickle in at pump spacing. The per-symbol chart pump still runs
 // behind it to fill sparks. Coalesced so several track() calls in one render
@@ -209,7 +240,10 @@ async function runBatch() {
       if (!resp.ok) continue // pump fills the gap one by one
       const data = await resp.json()
       const rows = data?.quoteResponse?.result || []
-      if (rows.length) goodTs = Date.now()
+      if (rows.length) {
+        goodTs = Date.now()
+        lastSnapshotTs = Date.now()
+      }
       for (const row of rows) {
         const prev = cache.get(row.symbol)
         const snapshot = quoteFromV7(row)
@@ -222,6 +256,9 @@ async function runBatch() {
           tech: prev?.tech || null,
           ts: prev?.ts ?? 0,
           streamTs: prev?.streamTs ?? 0,
+          // a v7 print landed for this symbol, whichever price the merge kept
+          snapshotTs: Date.now(),
+          overnightTs: prev?.overnightTs ?? 0,
         })
         emit(row.symbol)
       }
@@ -259,7 +296,7 @@ async function overnightSweep() {
       if (!hit?.quote) continue
       const merged = applyOvernightFill(hit.quote, row, nowSec)
       if (merged === hit.quote) continue
-      cache.set(sym, { ...hit, quote: merged })
+      cache.set(sym, { ...hit, quote: merged, overnightTs: Date.now() })
       emit(sym)
     }
   } catch { /* the stream and v7 batch still carry the page */ }
