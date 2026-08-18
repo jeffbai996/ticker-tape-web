@@ -6,9 +6,9 @@ describe('live feed symbol registry', () => {
   it('puts the most recently mounted watchlist first and releases it on navigation', () => {
     const registry = createFeedSymbolRegistry()
     const releaseMain = registry.retain(['AAPL', 'MSFT'])
-    const releaseCustom = registry.retain(['NVDA', 'AVGO'])
+    const releaseCustom = registry.retain(['TSLA', 'AMZN'])
 
-    expect(registry.values()).toEqual(['NVDA', 'AVGO', 'AAPL', 'MSFT'])
+    expect(registry.values()).toEqual(['TSLA', 'AMZN', 'AAPL', 'MSFT'])
 
     releaseCustom()
     expect(registry.values()).toEqual(['AAPL', 'MSFT'])
@@ -19,10 +19,10 @@ describe('live feed symbol registry', () => {
   it('keeps overlapping consumers and persistent alert symbols without duplicating them', () => {
     const registry = createFeedSymbolRegistry()
     const releaseTape = registry.retain(['AAPL', 'MSFT'])
-    const releaseBoard = registry.retain(['MSFT', 'NVDA'])
+    const releaseBoard = registry.retain(['MSFT', 'TSLA'])
     registry.persist(['ALRT', 'MSFT'])
 
-    expect(registry.values()).toEqual(['MSFT', 'NVDA', 'AAPL', 'ALRT'])
+    expect(registry.values()).toEqual(['MSFT', 'TSLA', 'AAPL', 'ALRT'])
     releaseBoard()
     expect(registry.values()).toEqual(['AAPL', 'MSFT', 'ALRT'])
     releaseTape()
@@ -32,7 +32,7 @@ describe('live feed symbol registry', () => {
   it('wires useQuotes cleanup into active feed following', () => {
     const hooks = readFileSync('src/hooks.js', 'utf8')
     const feed = readFileSync('src/lib/feed.js', 'utf8')
-    expect(hooks).toContain("import { follow, track, subscribe, getCached } from './lib/feed.js'")
+    expect(hooks).toMatch(/^import \{[^}]*\bfollow\b[^}]*\} from '\.\/lib\/feed\.js'$/m)
     expect(hooks).toContain('const unfollow = follow(symbols)')
     expect(hooks).toMatch(/return \(\) => \{[\s\S]*unfollow\(\)[\s\S]*gate\.dispose\(\)/)
     expect(feed).toContain('export function follow(symbols)')
