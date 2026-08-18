@@ -18,7 +18,13 @@ describe('compact dashboard company name', () => {
     expect(css).toMatch(/\.tui-company-identity\s*\{[\s\S]*overflow: hidden;/)
     expect(dashboard).toContain('class="tui-quote-cluster flex items-baseline gap-1.5 max-sm:gap-1 shrink-0"')
     expect(dashboard).toContain('max-w-[220px] @min-[1080px]:max-w-[300px]')
-    expect(dashboard).toContain('@min-[820px]:min-w-[7rem] @min-[545px]:text-right')
+    // wide-band floors sit at the WIDEST normal print so every row's price
+    // shares one x — a row with no PM/AH (or a two-digit move) must not sit
+    // left of its neighbours (Jeff 2026-08-18)
+    expect(dashboard.match(/@min-\[545px\]:min-w-\[7\.5rem\] @min-\[545px\]:text-right/g)).toHaveLength(2)
+    expect(dashboard).toContain('@min-[545px]:min-w-[8.4rem] shrink-0')
+    expect(dashboard).not.toContain('@min-[820px]:min-w-[7rem]')
+    expect(dashboard).not.toContain('@min-[820px]:min-w-[7.7rem]')
     expect(dashboard).not.toContain('@min-[820px]:min-w-[9.4rem]')
     expect(dashboard).toMatch(/tui-quote-cluster[\s\S]*q\.extLabel[\s\S]*q\.extPrice/)
   })

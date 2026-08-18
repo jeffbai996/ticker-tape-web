@@ -367,9 +367,17 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
                   while narrower ones still line up. Reserving it below 820px
                   cost the company name ~40px it needed more (Jeff 2026-08-07:
                   "the company names r cut off") — under that the columns size
-                  to content and hand the slack to the name gutter. */}
+                  to content and hand the slack to the name gutter.
+                  The floors are the WIDEST normal print, not the typical one:
+                  at 7.7rem a two-digit move (▲ 11.03 (+1.44%)) still grew the
+                  column, so a row's price slid left by content — NAURA with
+                  no PM/AH sat 15px left of its neighbours (Jeff 2026-08-18:
+                  "shift it to the right, dont let em go left"). 8.4rem holds
+                  an 18-char crash-day print; every row's price shares one x.
+                  From 545px up, not 820: the iPad sits in the 730–820 band and
+                  that is where the jitter showed. Phones stay content-sized. */}
               {q && (
-                <span class={`${up ? 'text-up' : 'text-down'} whitespace-nowrap @min-[820px]:min-w-[7.7rem] shrink-0`}>
+                <span class={`${up ? 'text-up' : 'text-down'} whitespace-nowrap @min-[545px]:min-w-[8.4rem] shrink-0`}>
                   {up ? '▲' : '▼'} <FlashMetric value={q.change} fmt={fmtAbsChange} kind="change" />{' '}
                   <span class="font-normal text-[11px] max-sm:text-[10px]">
                     ({fmtPct(q.pct)})
@@ -384,7 +392,7 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
                   (Jeff 2026-08-18). The slot grows to its content; the
                   identity gutter is what yields. */}
               {q?.extLabel && q.extPrice != null ? (
-                <span class="whitespace-nowrap text-[11px] max-sm:text-[10px] shrink-0 max-sm:ml-auto max-sm:min-w-[6.2rem] @min-[820px]:min-w-[7rem] @min-[545px]:text-right">
+                <span class="whitespace-nowrap text-[11px] max-sm:text-[10px] shrink-0 max-sm:ml-auto max-sm:min-w-[6.2rem] @min-[545px]:min-w-[7.5rem] @min-[545px]:text-right">
                   {/* only the PERCENT drops a weight tier (Jeff 2026-08-06);
                       the extended price keeps its weight and runs a size
                       bigger than the tag beside it — it's the figure you read,
@@ -404,7 +412,7 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
               ) : (
                 /* Ghost slot at every session and width: a temporarily absent
                    extended print must not move the regular quote. */
-                <span class="whitespace-nowrap text-[11px] max-sm:text-[10px] shrink-0 invisible max-sm:min-w-[6.2rem] @min-[820px]:min-w-[7rem] @min-[545px]:text-right" aria-hidden="true">
+                <span class="whitespace-nowrap text-[11px] max-sm:text-[10px] shrink-0 invisible max-sm:min-w-[6.2rem] @min-[545px]:min-w-[7.5rem] @min-[545px]:text-right" aria-hidden="true">
                   {/* mirrors the real print part for part, including the
                       larger price — a ghost narrower than the thing it
                       reserves space for lets the column shift when data lands */}
