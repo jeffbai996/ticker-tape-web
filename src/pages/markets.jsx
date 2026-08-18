@@ -1,5 +1,13 @@
-import { useEffect, useState } from 'preact/hooks'
+import { useEffect, useMemo, useState } from 'preact/hooks'
 import { fetchHistory } from '../lib/history.js'
+import {
+  eventAlertPlan, eventClock, eventKind, eventLinkedSymbols, eventNarrative,
+  eventNumbers, eventPhase, eventReaction, eventSurprise, formatCountdown,
+} from '../lib/eventLinks.js'
+import { addAlert, getAlertDeliveryPrefs } from '../lib/alerts.js'
+import { fetchAlertDestinations } from '../lib/alertDelivery.js'
+import { evHeadline, fetchSymbolWire, peekSymbolWire, wireUrl } from '../lib/wire.js'
+import { getLocale } from '../lib/i18n.js'
 import { BUCKETS } from '../lib/symbols.js'
 import { useEscape, useQuotes, useWatchlist } from '../hooks.js'
 import { AiReport } from '../components/AiReport.jsx'
@@ -731,6 +739,312 @@ function CatalystAdd({ today }) {
   )
 }
 
+// Live mono countdown: `time to event` while pre, `since release` after —
+// the same field just flips which direction it counts (Jeff wanted the panel
+// itself to read as a clock, not a static timestamp).
+function EventCountdown({ at, phase, now }) {
+  if (at == null) return null
+  const ms = phase === 'pre' ? at - now : now - at
+  return (
+    <span class="font-mono text-[11px] tabular-nums text-accent whitespace-nowrap">
+      {phase === 'pre' ? <>{tl('time to event')}</> : <>{tl('since release')}</>} {formatCountdown(ms)}
+    </span>
+  )
+}
+
+// Prior · consensus · actual in one tabular-mono strip. An absent number is
+// an honest em dash — this is the one place in the workspace that would be
+// lying if it ever filled a blank in.
+function EventNumbers({ event }) {
+  const nums = eventNumbers(event)
+  const cell = (labelNode, value) => (
+    <div class="flex flex-col items-center gap-0.5 flex-1">
+      <dt class="font-mono text-[9px] uppercase tracking-wider text-muted">{labelNode}</dt>
+      <dd class="font-mono text-[13px] tabular-nums text-ink">
+        {value == null ? '—' : `${value}${nums.unit}`}
+      </dd>
+    </div>
+  )
+  const empty = nums.prior == null && nums.consensus == null && nums.actual == null
+  return (
+    <div class="border border-line rounded-lg px-3 py-2">
+      <dl class="flex items-stretch justify-around gap-3">
+        {cell(<>{tl('Prior')}</>, nums.prior)}
+        {cell(<>{tl('Consensus')}</>, nums.consensus)}
+        {cell(<>{tl('Actual')}</>, nums.actual)}
+      </dl>
+      {empty && (
+        <p class="mt-1.5 text-center font-mono text-[10px] text-muted">
+          {tl('no consensus published for this event')}
+        </p>
+      )}
+    </div>
+  )
+}
+
+// One linked symbol in the dashboard's own row grammar — price + change,
+// nothing bespoke. Market direction is the only thing on this row allowed
+// red/green; the "why" stays muted amber-adjacent text.
+function EventLinkRow({ row, quotes }) {
+  const q = quotes[row.symbol]
+  const up = (q?.pct ?? 0) >= 0
+  return (
+    <a href={hrefFor('research', row.symbol.toLowerCase())}
+      class="flex items-center justify-between gap-2 px-1.5 py-1 rounded hover:bg-surface-3">
+      <span class="min-w-0">
+        <span class="font-mono text-[11px] font-semibold text-ink">{row.symbol}</span>
+        <span class="block text-[9.5px] text-muted truncate max-w-[220px]">{tl(row.why)}</span>
+      </span>
+      <span class="flex items-baseline gap-1.5 shrink-0 font-mono text-[11px]">
+        {q ? <FlashPrice price={q.price} fmt={fmtPrice} /> : '—'}
+        {q && <span class={up ? 'text-up' : 'text-down'}>{fmtPct(q.pct)}</span>}
+      </span>
+    </a>
+  )
+}
+
+// Related fragwire stories for the event's own symbol (or its lead link when
+// the event has none of its own, e.g. a macro print). No endpoint configured
+// or the wire being unreachable both degrade to a plain line — never a
+// broken panel (this page is public and ships with no wire by default).
+function EventWire({ symbol }) {
+  const base = wireUrl()
+  const [rows, setRows] = useState(() => (symbol ? peekSymbolWire(symbol) : null))
+  useEffect(() => {
+    if (!symbol) { setRows(null); return undefined }
+    let dead = false
+    setRows(peekSymbolWire(symbol) ?? null)
+    if (!base) return undefined
+    fetchSymbolWire(base, symbol)
+      .then((events) => { if (!dead) setRows(events) })
+      .catch(() => { if (!dead) setRows([]) })
+    return () => { dead = true }
+  }, [symbol, base])
+
+  return (
+    <div class="border border-line rounded-lg px-3 py-2">
+      <h4 class="font-mono text-[10px] uppercase tracking-wider text-accent mb-1">{tl('Related stories')}</h4>
+      {!base ? (
+        <p class="font-mono text-[10px] text-muted">{tl('no wire endpoint configured')}</p>
+      ) : !rows?.length ? (
+        <p class="font-mono text-[10px] text-muted">{tl('wire unavailable')}</p>
+      ) : (
+        <ul class="flex flex-col gap-1">
+          {rows.slice(0, 5).map((e) => (
+            <li key={e.id} class="font-mono text-[10.5px] text-ink-2 truncate">
+              {evHeadline(e, getLocale())}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+// What arming this event's alert would actually do, disclosed BEFORE the arm
+// button — channel, cooldown, hourly budget — then a single browser alert on
+// a 2% trigger above the last print. Browser alerts only: this never places
+// or submits an order, it just watches a symbol.
+function EventAlertArm({ event, links, quotes }) {
+  const [destinations, setDestinations] = useState([])
+  const [armed, setArmed] = useState(false)
+  useEffect(() => {
+    let dead = false
+    fetchAlertDestinations().then((d) => { if (!dead) setDestinations(d) }).catch(() => {})
+    return () => { dead = true }
+  }, [])
+  const symbol = event.symbol || links[0]?.symbol || ''
+  const q = quotes[symbol]
+  const delivery = getAlertDeliveryPrefs()
+  const plan = eventAlertPlan({ symbol, price: q?.price ?? null, delivery, destinations })
+
+  const arm = () => {
+    if (!plan.ready || !plan.suggested) return
+    addAlert({
+      symbol: plan.symbol, type: 'price',
+      operator: plan.suggested.operator, value: plan.suggested.value,
+      delivery,
+    })
+    setArmed(true)
+  }
+
+  return (
+    <div class="border border-line rounded-lg px-3 py-2 flex flex-col gap-1.5">
+      <dl class="grid grid-cols-3 gap-2 font-mono text-[9.5px]">
+        <div>
+          <dt class="uppercase tracking-wider text-muted">{tl('Channel')}</dt>
+          <dd class="text-ink truncate">{plan.channel}</dd>
+        </div>
+        <div>
+          <dt class="uppercase tracking-wider text-muted">{tl('Cooldown')}</dt>
+          <dd class="text-ink">{plan.cooldownMinutes}m</dd>
+        </div>
+        <div>
+          <dt class="uppercase tracking-wider text-muted">{tl('Delivery budget')}</dt>
+          <dd class="text-ink">{plan.budget}</dd>
+        </div>
+      </dl>
+      {plan.suggested && (
+        <p class="font-mono text-[10px] text-muted">
+          {tl('Level')} {plan.suggested.operator} {plan.suggested.value}
+        </p>
+      )}
+      <button onClick={arm} disabled={!plan.ready || !plan.suggested || armed}
+        class="self-start font-mono text-[11px] px-2 py-1 rounded-md border border-accent text-accent bg-accent-soft hover:bg-accent hover:text-black disabled:opacity-40">
+        {armed ? <>{tl('Alert armed')}</> : <>{tl('Arm alert')}</>}
+      </button>
+      <p class="font-mono text-[9px] text-muted">{tl('browser alert only — nothing is ordered')}</p>
+    </div>
+  )
+}
+
+// The full event workspace: opens IN PLACE of the calendar list (see Calendar
+// below) rather than as a card or a modal — one hairline-structured panel
+// that owns the column, facts on the left and links/wire/alert on the right.
+function EventWorkspace({ event, details }) {
+  const kind = eventKind(event)
+  const narrative = eventNarrative(event)
+  const links = useMemo(() => eventLinkedSymbols(event), [event.type, event.symbol])
+  const symbols = useMemo(() => links.map((l) => l.symbol), [links])
+  const clock = useMemo(() => eventClock(event, details.time), [event.date, details.time])
+  const [now, setNow] = useState(Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [])
+  const phase = eventPhase(clock.at, now)
+  const quotes = useQuotes(symbols)
+  const numbers = eventNumbers(event)
+  const surprise = eventSurprise(numbers)
+
+  const [bars, setBars] = useState({})
+  useEffect(() => {
+    if (phase === 'pre') { setBars({}); return undefined }
+    let dead = false
+    Promise.all(symbols.map((s) =>
+      fetchHistory(s, '1D').then((r) => [s, r.bars || []]).catch(() => [s, []]),
+    )).then((pairs) => { if (!dead) setBars(Object.fromEntries(pairs)) })
+    return () => { dead = true }
+  }, [phase, symbols.join(',')])
+
+  const reaction = eventReaction(links, { bars, quotes, at: clock.at })
+
+  return (
+    <section data-event-phase={phase}
+      class="bg-surface-1 border border-line rounded-xl overflow-hidden flex-1 min-w-0 flex flex-col">
+      <header class="px-3 py-2 border-b border-line-2 bg-surface-2 flex items-center justify-between gap-3 flex-wrap">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="font-mono text-[10px] font-bold text-accent border border-accent/30 rounded px-1.5 py-0.5">
+            {kind}
+          </span>
+          <span class="font-mono text-[10px] uppercase tracking-wider text-muted">
+            {phase === 'pre'
+              ? <>{tl('awaiting release')}</>
+              : phase === 'post' ? <>{tl('released')}</> : <>{tl('in release window')}</>}
+          </span>
+        </div>
+        <EventCountdown at={clock.at} phase={phase} now={now} />
+      </header>
+
+      <div class="px-3 py-2 border-b border-line">
+        <h2 class="font-anth font-semibold text-[16px] text-ink">
+          {event.user ? event.label : tl(event.label)}
+        </h2>
+        {!clock.exact && (
+          <p class="mt-0.5 font-mono text-[9.5px] text-muted">
+            {tl('counting to the cash open — this event has no fixed print time')}
+          </p>
+        )}
+      </div>
+
+      <div class="grid lg:grid-cols-[minmax(0,1fr)_320px] gap-3 p-3 overflow-x-auto">
+        <div class="min-w-0 flex flex-col gap-3">
+          <EventNumbers event={event} />
+          {phase !== 'pre' && surprise && (
+            <div class="font-mono text-[11px] text-ink">
+              {tl('Surprise')}:{' '}
+              <span class={
+                surprise.direction === 'above' ? 'text-up'
+                  : surprise.direction === 'below' ? 'text-down' : 'text-ink-2'
+              }>
+                {surprise.delta > 0 ? '+' : ''}{surprise.delta}{numbers.unit}
+              </span>
+            </div>
+          )}
+
+          <div class="border border-line rounded-lg px-3 py-2">
+            <h4 class="font-mono text-[10px] uppercase tracking-wider text-accent mb-1">{tl('What it is')}</h4>
+            <p class="text-[12px] text-ink-2 leading-relaxed">{tl(narrative.plain)}</p>
+            <h4 class="font-mono text-[10px] uppercase tracking-wider text-accent mt-2 mb-1">{tl('Why it matters')}</h4>
+            <p class="text-[12px] text-ink-2 leading-relaxed">{tl(narrative.matters)}</p>
+            <h4 class="font-mono text-[10px] uppercase tracking-wider text-accent mt-2 mb-1">{tl('Affected sectors')}</h4>
+            <p class="text-[11px] text-ink-2">{narrative.sectors.map((s) => tl(s)).join(' · ')}</p>
+          </div>
+
+          {phase !== 'pre' && (
+            <div class="border border-line rounded-lg px-3 py-2">
+              <h4 class="font-mono text-[10px] uppercase tracking-wider text-accent mb-1">
+                {tl('first market reaction')}
+              </h4>
+              {!reaction.ready ? (
+                <p class="font-mono text-[10px] text-muted">{tl('no reaction data yet')}</p>
+              ) : (
+                <div class="flex flex-col gap-1">
+                  {reaction.rows.map((row) => (
+                    <div key={row.symbol} class="flex items-center justify-between font-mono text-[11px] gap-2">
+                      <span class="text-ink">{row.symbol}</span>
+                      <span class="text-muted text-[9.5px] flex-1 text-right truncate">
+                        {row.source === 'session' ? tl('session move') : tl('move since the release')}
+                      </span>
+                      <span class={row.pct == null ? 'text-muted' : row.pct >= 0 ? 'text-up' : 'text-down'}>
+                        {row.pct == null ? '—' : fmtPct(row.pct)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {details.facts.length > 0 && (
+            <div class="border border-line rounded-lg px-3 py-2">
+              <h4 class="font-mono text-[10px] uppercase tracking-wider text-accent mb-1">{tl('Event facts')}</h4>
+              <dl class="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                {details.facts.map((fact) => (
+                  <div key={fact.label}>
+                    <dt class="font-mono text-[9px] uppercase tracking-wider text-muted">{tl(fact.label)}</dt>
+                    <dd class="font-mono text-[11px] text-ink break-words">{tl(fact.value)}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          )}
+
+          {details.url && (
+            <a href={details.url} target="_blank" rel="noreferrer"
+              class="self-start inline-flex font-mono text-[10px] text-accent hover:underline">
+              {tl('Open official source')} ↗
+            </a>
+          )}
+        </div>
+
+        <div class="flex flex-col gap-3 min-w-0">
+          <div class="border border-line rounded-lg px-2 py-2">
+            <h4 class="font-mono text-[10px] uppercase tracking-wider text-accent mb-1 px-1">
+              {tl('Linked symbols')}
+            </h4>
+            <div class="flex flex-col">
+              {links.map((row) => <EventLinkRow key={row.symbol} row={row} quotes={quotes} />)}
+            </div>
+          </div>
+          <EventWire symbol={event.symbol || links[0]?.symbol} />
+          <EventAlertArm event={event} links={links} quotes={quotes} />
+        </div>
+      </div>
+    </section>
+  )
+}
+
 function Calendar() {
   const today = new Date().toISOString().slice(0, 10)
   const [cats, setCats] = useState(loadCatalysts)
@@ -746,6 +1060,21 @@ function Calendar() {
   const details = openEvent ? calendarEventDetails(openEvent) : null
   // Index of the first row that has not happened yet — where the rule goes.
   const firstFuture = events.findIndex((e) => e.days >= 0)
+
+  // Opening an event routes IN PLACE of the calendar list — the panel owns
+  // the full column instead of stacking a second surface under the table.
+  // "back to calendar" (or Escape, still wired above) is the only way out.
+  if (openEvent && details) {
+    return (
+      <div class="flex-1 min-w-0 flex flex-col gap-2">
+        <button onClick={() => setOpenKey('')}
+          class="self-start font-mono text-[11px] text-muted hover:text-accent">
+          ← {tl('back to calendar')}
+        </button>
+        <EventWorkspace event={openEvent} details={details} />
+      </div>
+    )
+  }
 
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden max-w-3xl">
@@ -810,55 +1139,6 @@ function Calendar() {
           })}
         </tbody>
       </table>
-      {openEvent && details && (
-        <aside class="border-t border-line-2 bg-surface-2 px-3 py-3" aria-label={tl('Event details')}>
-          <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0">
-              <div class="flex flex-wrap items-center gap-2">
-                <span class="font-mono text-[10px] font-bold text-accent border border-accent/30 rounded px-1.5 py-0.5">
-                  {openEvent.type}
-                </span>
-                <h3 class="font-anth font-semibold text-[14px] text-ink">
-                  {openEvent.user ? openEvent.label : tl(openEvent.label)}
-                </h3>
-              </div>
-              {details.description && (
-                <p class="mt-2 text-[12px] leading-relaxed text-ink-2 max-w-2xl">{tl(details.description)}</p>
-              )}
-            </div>
-            <button onClick={() => setOpenKey('')} class="shrink-0 text-muted hover:text-ink px-1"
-                    aria-label={tl('Close event details')}>✕</button>
-          </div>
-
-          <dl class="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-x-5 gap-y-2">
-            <div>
-              <dt class="font-mono text-[9px] uppercase tracking-wider text-muted">{tl('Date')}</dt>
-              <dd class="font-mono text-[12px] text-ink">{openEvent.date}</dd>
-            </div>
-            <div>
-              <dt class="font-mono text-[9px] uppercase tracking-wider text-muted">{tl('Typical time')}</dt>
-              <dd class="font-mono text-[12px] text-ink">{details.time || '—'}</dd>
-            </div>
-            <div>
-              <dt class="font-mono text-[9px] uppercase tracking-wider text-muted">{tl('Source')}</dt>
-              <dd class="text-[12px] text-ink">{tl(details.source) || '—'}</dd>
-            </div>
-            {details.facts.map((fact) => (
-              <div key={fact.label}>
-                <dt class="font-mono text-[9px] uppercase tracking-wider text-muted">{tl(fact.label)}</dt>
-                <dd class="font-mono text-[12px] text-ink break-words">{tl(fact.value)}</dd>
-              </div>
-            ))}
-          </dl>
-
-          {details.url && (
-            <a href={details.url} target="_blank" rel="noreferrer"
-               class="inline-flex mt-3 font-mono text-[10px] text-accent hover:underline">
-              {tl('Open official source')} ↗
-            </a>
-          )}
-        </aside>
-      )}
       <CatalystAdd today={today} />
     </section>
   )
