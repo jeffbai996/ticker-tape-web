@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
+import { shortAccountLabel } from '../lib/accounts.js'
 import { createChart, AreaSeries } from 'lightweight-charts'
 import { boundedTimeScale } from '../lib/chartview.js'
 import { useEscape, useQuotes } from '../hooks.js'
@@ -209,7 +210,7 @@ function Positions({ priceMap, positions, margin, accountId }) {
             <tr key={`${r.account || ''}-${r.symbol}-${r.currency || ''}`} class="border-t border-line hover:bg-surface-3 cursor-pointer"
               onClick={() => (location.hash = `#/research/${r.symbol.toLowerCase()}`)}>
               <td class="px-3 py-[3px] font-bold text-accent">{r.symbol}</td>
-              {combined && <td class="px-2 py-[3px] font-anth text-[10px] text-muted">{r.accountLabel || r.account_label || '—'}</td>}
+              {combined && <td class="px-2 py-[3px] font-anth text-[10px] text-muted whitespace-nowrap">{tl(shortAccountLabel(r.accountLabel || r.account_label)) || '—'}</td>}
               <td class="px-2 py-[3px] text-right text-muted text-[10.5px]">{r.shares}</td>
               <td class="px-2 py-[3px] text-right text-muted text-[10.5px]">{fmtPrice(r.avgCost)}</td>
               <td class="px-2 py-[3px] text-right text-ink-2 font-medium"><FlashPrice price={r.price} fmt={fmtPrice} /></td>
