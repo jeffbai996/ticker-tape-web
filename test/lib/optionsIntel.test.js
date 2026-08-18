@@ -37,6 +37,39 @@ describe('expectedMove', () => {
     expect(expectedMove({ spot: null, calls: [], puts: [] })).toBeNull()
     expect(expectedMove({ spot: 100, calls: [], puts: [] })).toBeNull()
   })
+
+  // A straddle is ONE strike bought twice. Picking the nearest call and the
+  // nearest put independently can land on two different strikes on a chain
+  // whose sides are not symmetric, and summing those two premiums prices a
+  // strangle while calling it a straddle.
+  it('prices one shared strike, never a call and a put from different ones', () => {
+    const chain = {
+      spot: 100,
+      calls: [contract(100, { bid: 3, ask: 3.2 }), contract(110, { bid: 0.8, ask: 1 })],
+      puts: [contract(90, { bid: 0.9, ask: 1.1 }), contract(110, { bid: 10.8, ask: 11.2 })],
+    }
+    const em = expectedMove(chain)
+    expect(em.strike).toBe(110)
+    expect(em.price).toBeCloseTo(0.9 + 11, 5)
+  })
+
+  it('is null when no strike is quoted on both sides', () => {
+    expect(expectedMove({
+      spot: 100,
+      calls: [contract(100, { bid: 3, ask: 3.2 })],
+      puts: [contract(105, { bid: 5, ask: 5.2 })],
+    })).toBeNull()
+  })
+
+  // A side quoted 0 x 2 is a real one-sided market; mid is 1, not "no market".
+  it('takes a one-sided book at its mid rather than dropping the strike', () => {
+    const em = expectedMove({
+      spot: 100,
+      calls: [contract(100, { bid: 0, ask: 2 })],
+      puts: [contract(100, { bid: 1.8, ask: 2.2 })],
+    })
+    expect(em.price).toBeCloseTo(1 + 2, 5)
+  })
 })
 
 describe('atmIv', () => {
