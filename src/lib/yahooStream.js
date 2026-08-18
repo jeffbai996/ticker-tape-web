@@ -135,6 +135,12 @@ export function createYahooStream({
   }
 
   return {
+    /** Connection state for the shell's feed indicator — read-only, and
+     *  deliberately not a subscription: the status chrome already ticks. */
+    isConnected() {
+      return socket?.readyState === 1
+    },
+
     setSymbols(symbols) {
       const next = new Set((symbols || []).filter(Boolean))
       const added = [...next].filter((symbol) => !subscribed.has(symbol))
