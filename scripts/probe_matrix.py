@@ -47,10 +47,29 @@ CHECKS_JS = """() => {
   }
   const rows = [...document.querySelectorAll('.tui-row')];
   out.rows = rows.length;
+  // Bottom chrome (the ticker> console, the phone nav) sits OVER the board by
+  // design — fixed on some breakpoints, sticky in a flex shell on others — so
+  // a row behind it is scrolled-past, not clipped. Find the floor by asking
+  // the page what actually paints at the bottom edge rather than by position.
+  let floor = innerHeight;
+  for (const x of [innerWidth * 0.25, innerWidth * 0.5, innerWidth * 0.75]) {
+    let el = document.elementFromPoint(x, innerHeight - 2);
+    while (el && el !== document.body) {
+      const r = el.getBoundingClientRect();
+      // full-width band pinned to the bottom edge = chrome, not board content
+      if (r.width > innerWidth * 0.9 && r.bottom >= innerHeight - 2
+          && r.top > innerHeight * 0.5 && !el.closest('.tui-row')) {
+        floor = Math.min(floor, r.top);
+        break;
+      }
+      el = el.parentElement;
+    }
+  }
+  out.floor = Math.round(floor);
   let clipped = 0, unpainted = 0; const priceX = new Set();
   for (const row of rows) {
     const rr = row.getBoundingClientRect();
-    if (rr.top > innerHeight || rr.bottom < 0) continue;
+    if (rr.top > floor || rr.bottom < 0) continue;
     const cl = row.querySelector('.tui-quote-cluster'); if (!cl) continue;
     const kids = [...cl.children];
     const price = kids[0]; if (price) priceX.add(Math.round(price.getBoundingClientRect().left - rr.left));
@@ -60,8 +79,10 @@ CHECKS_JS = """() => {
     const ext = kids[kids.length - 1];
     if (ext && ext.getAttribute('aria-hidden') !== 'true') {
       const r = ext.getBoundingClientRect();
-      const hit = document.elementFromPoint(r.right - 2, r.top + r.height / 2);
-      if (!(hit && ext.contains(hit))) unpainted++;
+      if (r.bottom <= floor) {
+        const hit = document.elementFromPoint(r.right - 2, r.top + r.height / 2);
+        if (!(hit && ext.contains(hit))) unpainted++;
+      }
     }
   }
   out.clippedRows = clipped; out.unpaintedExt = unpainted; out.priceXValues = [...priceX].sort((a,b)=>a-b);
