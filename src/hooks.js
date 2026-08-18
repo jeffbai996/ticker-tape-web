@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { follow, track, subscribe, getCached } from './lib/feed.js'
+import { follow, focus, track, subscribe, getCached } from './lib/feed.js'
 import {
   loadAlerts, onAlertsChange, markTriggered, conditionText,
   evaluatePriceAlerts, evaluateTechnicalAlerts,
@@ -87,6 +87,24 @@ export function useQuotes(symbols) {
   const out = {}
   for (const s of symbols) out[s] = getCached(s)
   return out
+}
+
+/**
+ * Opt-in: declare which of the symbols this surface follows are actually on
+ * screen — the rows inside the viewport, or the open research symbol. The feed
+ * puts them in the first quote request, pumps their charts first, sweeps them
+ * faster, and refetches one the moment it scrolls in stale. Purely a priority
+ * hint: useQuotes/follow still decides what is tracked at all.
+ *
+ *   const rows = useVisibleRows(...)   // whatever the surface already knows
+ *   useFocusedSymbols(rows)
+ */
+export function useFocusedSymbols(symbols) {
+  const key = (symbols || []).filter(Boolean).join(',')
+  useEffect(() => {
+    if (!key) return undefined
+    return focus(key.split(','))
+  }, [key])
 }
 
 function notifyBrowser(hits) {
