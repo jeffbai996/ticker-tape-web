@@ -6,6 +6,7 @@ import { researchSource } from './researchSource.js'
 const research = researchSource()
 const screen = readFileSync(resolve(process.cwd(), 'src/pages/screen.jsx'), 'utf8')
 const nav = readFileSync(resolve(process.cwd(), 'src/lib/nav.js'), 'utf8')
+const earningsDay = readFileSync(resolve(process.cwd(), 'src/components/EarningsDay.jsx'), 'utf8')
 
 describe('options butterfly ladder', () => {
   it('renders one joined ladder, not two sibling tables', () => {
@@ -25,6 +26,18 @@ describe('options butterfly ladder', () => {
     expect(research).toContain('const em = expectedMove(chain)')
     expect(research).toContain('movePct: em.pct')
     expect(research).not.toContain('function optMid')
+  })
+
+  it('prices the earnings card off that same straddle, not a second one', () => {
+    // expmove.js used to carry its own expectedMovePct/mid pair, which chose
+    // the nearest call and the nearest put independently — a strangle on any
+    // chain whose two sides quote different strikes
+    expect(earningsDay).toContain("import { expectedMove } from '../lib/optionsIntel.js'")
+    expect(earningsDay).toContain('expectedMove(chain)?.pct')
+    expect(earningsDay).not.toContain('expectedMovePct')
+    const expmove = readFileSync(resolve(process.cwd(), 'src/lib/expmove.js'), 'utf8')
+    expect(expmove).not.toContain('expectedMovePct')
+    expect(expmove).not.toContain('export function mid')
   })
 
   it('replaces the expiry dropdown with a DTE pill row', () => {
