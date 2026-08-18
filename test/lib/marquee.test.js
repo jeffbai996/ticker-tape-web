@@ -39,7 +39,8 @@ describe('tap-to-sweep on every truncated name (Jeff 2026-08-17)', () => {
     expect(mq).toMatch(/onClick=\{/)                       // tap sweeps
     expect(mq).toMatch(/onMouseEnter=\{start\}/)           // hover still sweeps
     // research header company name is a Marquee, not a shrink-0 nowrap span
-    const research = src('src/pages/research.jsx')
+    const { researchSource } = await import('./researchSource.js')
+    const research = researchSource()
     const at = research.indexOf('data-research-company-name')
     const tagStart = research.lastIndexOf('<', at)
     const tagEnd = research.indexOf('/>', at)

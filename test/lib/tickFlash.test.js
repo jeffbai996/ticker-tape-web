@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { researchSource } from './researchSource.js'
 import {
   TICK_FLASH_MS,
   metricFlashDirection,
@@ -46,9 +47,10 @@ describe('tickFlashDirection', () => {
       'src/components/Tape.jsx',
       'src/pages/dashboard.jsx',
       'src/pages/markets.jsx',
-      'src/pages/research.jsx',
       'src/pages/screen.jsx',
-    ].map((file) => readFileSync(resolve(process.cwd(), file), 'utf8')).join('\n')
+    ].map((file) => readFileSync(resolve(process.cwd(), file), 'utf8'))
+      .concat(researchSource())
+      .join('\n')
 
     expect(files).not.toMatch(/<FlashMetric[^>]+fmt=\{fmtPct\}/)
     expect(files).toContain('<FlashPrice price={q.price} fmt={fmtPrice} />')

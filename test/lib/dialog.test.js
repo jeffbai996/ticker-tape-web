@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { researchSource } from './researchSource.js'
 import {
   FOCUSABLE_SELECTOR, createScrollLock, focusables, isBackdropDismiss,
   prefersReducedMotion, shouldCloseOnKey, tabTarget,
@@ -199,12 +200,13 @@ describe('the shared overlay contract is what the surfaces actually use', () => 
   const surfaces = {
     'src/components/Palette.jsx': 1,
     'src/pages/chat.jsx': 3,
-    'src/pages/research.jsx': 1,
+    // research is a directory of subviews now; the contract holds over the lane
+    'src/pages/research': 1,
   }
 
   for (const [path, count] of Object.entries(surfaces)) {
     it(`${path} routes its overlays through Overlay`, () => {
-      const code = src(path)
+      const code = path === 'src/pages/research' ? researchSource() : src(path)
       expect(code).toMatch(/import \{ Overlay \} from/)
       expect(code.match(/<Overlay\b/g) || []).toHaveLength(count)
       // no hand-rolled clickable backdrop divs left behind
