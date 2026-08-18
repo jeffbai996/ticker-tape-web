@@ -5,9 +5,30 @@
 // their browser. Without an endpoint the panel runs on synthetic demo events.
 
 import { IS_PRIVATE_BUILD } from './nav.js'
+import { proxyBase } from './feed.js'
 import { createPCache } from './pcache.js'
 
 const KEY = 'tape-wire-url'
+
+/** The public wire mirror: a sanitized headline snapshot the owner's exporter
+ *  pushes to the Worker every few minutes, served back read-only. It is a
+ *  flat archive — no stream, no symbol index, no article extraction, no chat.
+ *  Lazy on purpose: proxyBase() reads a per-browser override at call time. */
+export function mirrorBase() {
+  return `${proxyBase().replace(/\/$/, '')}/wire`
+}
+
+export function isMirrorBase(base) {
+  return !!base && String(base).replace(/\/$/, '') === mirrorBase()
+}
+
+/** Whole minutes since the mirror snapshot was generated, null before the
+ *  first push ever lands. Floor, and never negative: a browser clock running
+ *  ahead of the exporter must not print a story from the future. */
+export function mirrorAgeMinutes(generatedAt, now = Date.now() / 1000) {
+  if (!generatedAt) return null
+  return Math.max(0, Math.floor((now - generatedAt) / 60))
+}
 
 export function wireUrl() {
   // Private tailnet build: ALWAYS derive from the host already serving this
@@ -24,7 +45,20 @@ export function wireUrl() {
     const saved = localStorage.getItem(KEY)
     if (saved) return saved
   } catch { /* fall through to the build default */ }
-  return ''
+  // Public build with nothing configured reads the mirror, so the demo page
+  // shows the real headline flow. The private build has its own Fragwire and
+  // must never fall back to a public copy of it.
+  if (IS_PRIVATE_BUILD) return ''
+  return mirrorBase()
+}
+
+/** A wire that can do more than answer headlines — chat, saves, alert
+ *  delivery, watchlist push, overnight quotes. The public mirror is none of
+ *  those, so surfaces gated on "is a wire connected" ask here instead, and
+ *  the public build keeps showing its own local behaviour. */
+export function wireServiceUrl() {
+  const base = wireUrl()
+  return isMirrorBase(base) ? '' : base
 }
 
 export function setWireUrl(url) {

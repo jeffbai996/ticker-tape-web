@@ -17,7 +17,7 @@ import {
 } from '../lib/backtest.js'
 import { demoFillsCsv, loadFillsCsv, saveFillsCsv, closesByDateFromChart } from '../lib/backtestData.js'
 import { proxyBase } from '../lib/feed.js'
-import { wireUrl } from '../lib/wire.js'
+import { wireServiceUrl } from '../lib/wire.js'
 import { AiReport, MdLite } from '../components/AiReport.jsx'
 import { fetchHistory, prefetchSymbol } from '../lib/history.js'
 import { createPCache } from '../lib/pcache.js'
@@ -841,7 +841,7 @@ function Backtest({ accountId }) {
   )
 }
 
-const wireBase = () => (wireUrl() ? wireUrl().replace(/\/$/, '') : '')
+const wireBase = () => (wireServiceUrl() ? wireServiceUrl().replace(/\/$/, '') : '')
 
 function NeedsWire() {
   return (
@@ -1564,7 +1564,7 @@ function useLiveBook(account) {
   // tailnet: fragwire fronts ibkr-mcp — the real book replaces the demo
   const [book, setBook] = useState(null)
   useEffect(() => {
-    const base = wireUrl()
+    const base = wireServiceUrl()
     if (!base) return
     if (!account) return
     setBook(null)
@@ -1617,7 +1617,7 @@ function useLiveBook(account) {
 function usePortfolioAccounts() {
   const [accounts, setAccounts] = useState(null)
   useEffect(() => {
-    const base = wireUrl()
+    const base = wireServiceUrl()
     if (!base) return
     fetch(`${base.replace(/\/$/, '')}/api/portfolio/accounts`, { signal: AbortSignal.timeout(10_000) })
       .then((r) => r.json())
@@ -1694,7 +1694,7 @@ export function Portfolio({ route }) {
   const book = useLiveBook(account)
   // a configured wire NEVER falls back to synthetic numbers — the demo book
   // only exists for the keyless public build (Jeff 2026-08-05)
-  const wired = !!wireUrl()
+  const wired = !!wireServiceUrl()
   const positions = book?.positions || (wired ? [] : DEMO_POSITIONS)
   const symbols = positions.map((p) => p.symbol)
   const live = useQuotes(symbols)

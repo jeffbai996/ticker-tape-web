@@ -7,7 +7,7 @@ import {
 } from './yahoo.js'
 import { isOvernight } from './marketState.js'
 import { applyOvernightFill } from './overnightFill.js'
-import { wireUrl } from './wire.js'
+import { wireServiceUrl } from './wire.js'
 import { createYahooStream } from './yahooStream.js'
 import { techBadges, histoBars } from './badges.js'
 import { createPCache } from './pcache.js'
@@ -281,7 +281,7 @@ function syncTracked() {
  *  that happen to trade, while the sidecar always has the OVERNIGHT book.
  *  Wired builds only — without an endpoint this never fires. */
 async function overnightSweep() {
-  const base = wireUrl()
+  const base = wireServiceUrl()
   if (!base || !isOvernight() || !tracked.size) return
   try {
     const syms = [...tracked].filter((s) => /^[A-Z0-9.-]{1,10}$/.test(s)).slice(0, 60)

@@ -26,7 +26,7 @@ import {
   fetchThreadList, hydrateActiveThread, loadActiveHistory, migrateLegacy,
   openThread, removeThread, saveActiveHistory, startNewThread, currentThreadId,
 } from '../lib/threads.js'
-import { wireUrl } from '../lib/wire.js'
+import { wireServiceUrl } from '../lib/wire.js'
 
 // Base prompt stays generic in source. Whether the assistant has a real book
 // is decided at runtime by whether the viewer wired in their own fragwire —
@@ -145,7 +145,7 @@ function MemoryComposer({ memories, onApplied }) {
         + 'Allowed ops: {"op":"add","text":"..."}, {"op":"edit","id":N,"text":"..."}, '
         + '{"op":"delete","id":N}. Apply the smallest set of changes that satisfies '
         + 'the request; reply [] if nothing applies.'
-      const resp = await fetch(`${wireUrl().replace(/\/$/, '')}/api/chat`, {
+      const resp = await fetch(`${wireServiceUrl().replace(/\/$/, '')}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         // 'auto' was retired from the registry (2026-08-05) and turned this
@@ -1197,7 +1197,7 @@ export function Chat() {
         const blob = new Blob(chunks, { type: mr.mimeType || 'audio/webm' })
         setNotice(tl('transcribing…'))
         try {
-          const resp = await fetch(`${wireUrl().replace(/\/$/, '')}/api/transcribe`, {
+          const resp = await fetch(`${wireServiceUrl().replace(/\/$/, '')}/api/transcribe`, {
             method: 'POST', headers: { 'Content-Type': blob.type }, body: blob,
           })
           const out = await resp.json()
