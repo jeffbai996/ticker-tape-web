@@ -3,7 +3,7 @@ import { fetchEarningsDate } from '../lib/fundamentals.js'
 import { fetchEarningsImpact } from '../lib/earnings.js'
 import { fetchOptions } from '../lib/options.js'
 import { getCached } from '../lib/feed.js'
-import { wireUrl } from '../lib/wire.js'
+import { wireServiceUrl } from '../lib/wire.js'
 import { fmtPct, fmtPctPlain, fmtPrice } from '../lib/format.js'
 import {
   expectedMovePct, expiryForEvent, moveEdge, typicalMovePct,
@@ -74,7 +74,10 @@ function EventPanel({ symbol, date, epsEstimate }) {
       .then((v) => { if (!dead) setImplied(v) })
       .catch(() => { if (!dead) setImplied(null) })
 
-    const base = wireUrl()
+  // Symbol-scoped reads are a Fragwire feature: the public mirror ships no
+  // symbol index and answers ?symbols= with an empty list, so asking it can
+  // only cost a request and then read as "wire unavailable".
+    const base = wireServiceUrl()
     if (base) {
       fetch(`${base.replace(/\/$/, '')}/api/events?symbols=${encodeURIComponent(symbol)}&limit=8&newest=1`,
             { signal: AbortSignal.timeout(8000) })

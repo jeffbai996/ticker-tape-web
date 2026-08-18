@@ -2,7 +2,7 @@ import { useState, useEffect } from 'preact/hooks'
 import { getLocale, tl } from '../../lib/i18n.js'
 import { fetchDividends as fetchDivHistory, fetchSplits } from '../../lib/history.js'
 import { fetchFundamentals } from '../../lib/fundamentals.js'
-import { wireUrl } from '../../lib/wire.js'
+import { wireServiceUrl } from '../../lib/wire.js'
 import { fmtPrice, fmtFracPct } from '../../lib/format.js'
 import { MdLite } from '../../components/AiReport.jsx'
 
@@ -18,7 +18,10 @@ export function DividendsView({ symbol }) {
     fetchFundamentals(symbol).then(setF).catch(() => setF({}))
     fetchDivHistory(symbol).then(setHist).catch(() => setHist([]))
     fetchSplits(symbol).then(setSplits).catch(() => setSplits([]))
-    const base = wireUrl()
+    // wireServiceUrl, not wireUrl: /api/ibkr/* is a broker-backed route only a
+    // real Fragwire answers. The public mirror is a headline archive, so asking
+    // it burns a request to earn a 404.
+    const base = wireServiceUrl()
     if (base) {
       fetch(`${base.replace(/\/$/, '')}/api/ibkr/dividends?scope=single&symbol=${encodeURIComponent(symbol)}`,
         { signal: AbortSignal.timeout(25_000) })
