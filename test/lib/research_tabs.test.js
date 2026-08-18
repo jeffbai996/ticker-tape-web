@@ -29,7 +29,7 @@ describe('research quote header', () => {
   it('says so when the quote feed has gone quiet', () => {
     expect(src).toContain('function StaleQuoteTag()')
     // the lane moved a directory deeper — same import, re-pointed path
-    expect(src).toContain("import { getCached, lastGoodTs } from '../../lib/feed.js'")
+    expect(src).toContain("import { lastGoodTs } from '../../lib/feed.js'")
     expect(src).toContain('<StaleQuoteTag />')
     // same 5-minute threshold and tone as the sidebar's banner
     expect(src).toContain('if (mins < 5) return null')
