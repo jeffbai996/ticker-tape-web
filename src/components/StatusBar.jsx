@@ -6,6 +6,7 @@ import { paintRollingTime, CLOCK_ZONES } from '../lib/rollclock.js'
 import { hrefFor } from '../lib/route.js'
 import { fmtPrice, fmtPct } from '../lib/format.js'
 import { FlashPrice } from './Fig.jsx'
+import { FeedIndicator } from './FeedIndicator.jsx'
 import { tl, getLocale, setLocale } from '../lib/i18n.js'
 
 // Session-state chip styling mirrors the extended-quote grammar: blue PM and
@@ -190,6 +191,9 @@ export function StatusBar() {
         </div>
       </div>
 
+      {/* feed health sits with the other truth-about-the-connection chrome:
+          clock, feed state, browser online dot — one line, never a new row */}
+      <FeedIndicator />
       <RollingClock />
       <span
         class={`inline-block w-1.5 h-1.5 rounded-full ${online ? 'bg-up' : 'bg-down'}`}
