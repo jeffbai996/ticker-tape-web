@@ -29,6 +29,7 @@ export function WorkspacesControl({
   const [prompt, setPrompt] = useState(null)
   const [draft, setDraft] = useState('')
   const ref = useRef(null)
+  const popRef = useRef(null)
   const inputRef = useRef(null)
 
   const refresh = () => { setItems(listWorkspaces()); setActive(getActiveWorkspace()) }
@@ -52,6 +53,10 @@ export function WorkspacesControl({
   useEffect(() => {
     if (!open) return undefined
     refresh()
+    // Arrow keys and Escape hang off the panel, so the panel has to hold focus
+    // the moment it opens — otherwise focus is still on the trigger button and
+    // the whole keyboard contract is dead on arrival.
+    popRef.current?.focus?.({ preventScroll: true })
     const close = (e) => { if (!ref.current?.contains(e.target)) setOpen(false) }
     addEventListener('pointerdown', close)
     return () => removeEventListener('pointerdown', close)
@@ -132,9 +137,14 @@ export function WorkspacesControl({
         </svg>
       </button>
 
+      {/* board-menu-pop, not a class of its own: this is the second popover
+          hanging off the same toolbar and it has to anchor, size and animate
+          exactly like the sort/spark menu. (It shipped on a `ws-pop` that was
+          never written, so the panel had no `position` at all and laid out in
+          the toolbar flow, breaking the one-row rule.) */}
       {open && (
-        <div class="ws-pop z-40 overflow-hidden border border-line bg-surface-1/95 backdrop-blur"
-          role="listbox" aria-label={tl('Workspaces')} tabIndex={0} onKeyDown={onKeyDown}>
+        <div class="board-menu-pop z-40 overflow-hidden border border-line bg-surface-1/95 backdrop-blur"
+          ref={popRef} role="listbox" aria-label={tl('Workspaces')} tabIndex={0} onKeyDown={onKeyDown}>
           <div class="flex items-center justify-between border-b border-line px-2.5 py-1.5">
             <span class="font-mono text-[8.5px] uppercase tracking-wider text-muted">{tl('Workspaces')}</span>
             <span class="font-mono text-[8.5px] text-muted">↑↓ · ⏎ · esc</span>
