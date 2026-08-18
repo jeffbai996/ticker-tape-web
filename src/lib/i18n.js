@@ -53,6 +53,7 @@ const STRINGS = {
     en: 'no matches — Enter opens {q} in research',
     zh: '无匹配 — 回车直接打开 {q} 的研究页',
   },
+  'palette.close': { en: 'close search', zh: '关闭搜索' },
   'alerts.subtitle': {
     en: 'checked against the live feed · triggered alerts stay put until re-armed',
     zh: '基于实时行情检查 · 触发后的提醒保留至重置',

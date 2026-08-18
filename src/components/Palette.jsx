@@ -14,14 +14,22 @@ import { t as tt } from '../lib/i18n.js'
 
 const TAGS = { command: 'run', symbol: 'sym', nav: 'go to', list: 'list' }
 
-export function Palette({ onClose }) {
-  const [query, setQuery] = useState('')
+export function Palette({ onClose, seed = '' }) {
+  // `seed`: text already typed into a phone search field before it handed
+  // off to the sheet — never lose the user's first keystroke
+  const [query, setQuery] = useState(seed)
   const [symbols, setSymbols] = useState([])
   const [selected, setSelected] = useState(0)
   const inputRef = useRef(null)
   const debounce = useRef(null)
 
-  useEffect(() => inputRef.current?.focus(), [])
+  useEffect(() => {
+    const el = inputRef.current
+    if (!el) return
+    el.focus()
+    // caret after the seed, not before it
+    try { el.setSelectionRange(el.value.length, el.value.length) } catch { /* not a text input */ }
+  }, [])
   useEscape(onClose)
 
   useEffect(() => {
@@ -92,18 +100,26 @@ export function Palette({ onClose }) {
   }
 
   return (
-    <div class="fixed inset-0 z-50 bg-black/60 flex items-start justify-center pt-[15vh]"
+    /* Desktop: a centered card. Phone: a full-screen sheet — the whole page if
+       results need it (Jeff 2026-08-17). The input is 16px on phone so iOS
+       Safari doesn't zoom the viewport on focus. */
+    <div class="fixed inset-0 z-50 bg-black/60 flex items-start justify-center pt-[15vh] max-sm:pt-0 max-sm:bg-surface-0"
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
-      <div class="w-full max-w-lg bg-surface-1 border border-line rounded-xl shadow-2xl overflow-hidden">
-        <input
-          ref={inputRef}
-          value={query}
-          onInput={(e) => { setQuery(e.currentTarget.value); setSelected(0) }}
-          onKeyDown={onKey}
-          placeholder={tt('palette.placeholder')}
-          class="w-full bg-surface-2 px-4 py-3 font-mono text-[13px] text-ink outline-none border-b border-line placeholder:text-muted"
-        />
-        <div class="max-h-80 overflow-y-auto">
+      <div class="w-full max-w-lg bg-surface-1 border border-line rounded-xl shadow-2xl overflow-hidden max-sm:max-w-none max-sm:h-full max-sm:rounded-none max-sm:border-0 max-sm:flex max-sm:flex-col">
+        <div class="flex items-center gap-2 border-b border-line bg-surface-2 max-sm:pt-[env(safe-area-inset-top)]">
+          <input
+            ref={inputRef}
+            value={query}
+            onInput={(e) => { setQuery(e.currentTarget.value); setSelected(0) }}
+            onKeyDown={onKey}
+            placeholder={tt('palette.placeholder')}
+            autocapitalize="off" autocorrect="off" spellcheck={false} enterkeyhint="go"
+            class="flex-1 min-w-0 bg-transparent px-4 py-3 font-mono text-[13px] max-sm:text-[16px] max-sm:py-3.5 text-ink outline-none placeholder:text-muted"
+          />
+          <button type="button" onClick={onClose} aria-label={tt('palette.close')}
+            class="sm:hidden shrink-0 mr-2 w-8 h-8 grid place-items-center rounded-lg text-muted active:text-ink font-mono text-[14px]">✕</button>
+        </div>
+        <div class="max-h-80 overflow-y-auto max-sm:max-h-none max-sm:flex-1 max-sm:pb-[env(safe-area-inset-bottom)]">
           {entries.length === 0 && query.trim() && (
             <div class="px-4 py-3 font-mono text-[11px] text-muted">
               {tt('palette.no_match', { q: query.trim().toUpperCase() })}
@@ -119,7 +135,7 @@ export function Palette({ onClose }) {
               key={`${entry.kind}:${entry.label}`}
               onClick={() => go(entry)}
               onMouseEnter={() => setSelected(i)}
-              class={`w-full flex items-center gap-3 px-4 py-2 text-left font-mono text-[12px] ${
+              class={`w-full flex items-center gap-3 px-4 py-2 max-sm:py-3 text-left font-mono text-[12px] max-sm:text-[14px] ${
                 i === sel ? 'bg-accent-soft text-accent' : 'text-ink hover:bg-surface-3'
               }`}
             >
