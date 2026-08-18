@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'preact/hooks'
-import { fetchOptions } from '../../lib/options.js'
+import { fetchOptions, peekOptions } from '../../lib/options.js'
 import { bsDelta } from '../../lib/bs.js'
 import { fmtPrice, fmtVol, fmtFracPct } from '../../lib/format.js'
 import { tl, t as tt } from '../../lib/i18n.js'
 import { consumePrefill } from './useResearchChart.js'
+import {
+  chainTotals, diffSession, expectedMove, ivTermStructure,
+  skew25Delta, volumeOiOutliers, yearsTo,
+} from '../../lib/optionsIntel.js'
 
 /** Mid price; falls back to last when the book is empty (after hours). */
 function optMid(c) {
@@ -174,9 +178,144 @@ function OptionsLadder({ chain, t }) {
   )
 }
 
+const TERM_DELAY_MS = 350   // matches the worker's own request spacing
+const TERM_COUNT = 5        // enough to see the shape without hammering the chain endpoint
+
+/** Fetch a handful of nearby expiries' chains, sequentially and gently
+ *  spaced, purely to read their ATM IV for the term-structure strip. Reuses
+ *  the currently-loaded chain instead of refetching it. */
+function useTermChains(symbol, chain) {
+  const [chains, setChains] = useState([])
+  useEffect(() => {
+    let dead = false
+    setChains(chain ? [chain] : [])
+    const targets = (chain?.expirations || []).slice(0, TERM_COUNT)
+    if (!targets.length) return undefined
+    async function run() {
+      const out = []
+      for (const exp of targets) {
+        if (dead) return
+        if (exp === chain.expiration) {
+          out.push(chain)
+        } else {
+          try { out.push(await fetchOptions(symbol, exp)) } catch { /* thin/unavailable expiry — skip it */ }
+          await new Promise((r) => setTimeout(r, TERM_DELAY_MS))
+        }
+        if (!dead) setChains([...out])
+      }
+    }
+    run()
+    return () => { dead = true }
+  }, [symbol, chain?.expiration])
+  return chains
+}
+
+const introRow = (label, children) => (
+  <div class="flex flex-col gap-1 min-w-0">
+    <div class="font-mono text-[9px] text-muted uppercase tracking-wider">{label}</div>
+    {children}
+  </div>
+)
+
+/** Options intelligence, not a bigger chain table: what move is priced,
+ *  where the skew is concentrated, and what changed since this browser last
+ *  cached the chain — in that order, because that's the order a trader reads
+ *  them in. */
+function OptionsIntel({ symbol, chain, prevChain }) {
+  const termChains = useTermChains(symbol, chain)
+  const term = ivTermStructure(termChains)
+  const t = yearsTo(chain.expiration)
+  const skew = skew25Delta(chain, { t })
+  const em = expectedMove(chain)
+  const outliers = volumeOiOutliers(chain)
+  const diff = diffSession(chain, prevChain)
+  const totals = chainTotals(chain)
+
+  return (
+    <section class="bg-surface-1 border border-line rounded-xl overflow-hidden mb-2">
+      <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
+        <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Options intelligence')}</h2>
+      </header>
+      <div class="grid gap-3 p-3 sm:grid-cols-3 font-mono">
+        {introRow(tl('Expected move — priced'), (
+          <>
+            <div class="text-[13px] text-ink">
+              {em ? <>±{em.pct.toFixed(1)}% <span class="text-muted text-[10px]">({fmtPrice(em.price)})</span></> : '—'}
+            </div>
+            {/* term-structure strip: dte/IV pairs, not a table */}
+            <div class="flex gap-2 overflow-x-auto no-scrollbar pt-0.5">
+              {term.points.map((p) => (
+                <div key={p.expiration} class="flex flex-col items-center shrink-0 px-1.5 py-0.5 rounded border border-line-2 min-w-[42px]">
+                  <span class="text-[8.5px] text-muted">{p.dte}d</span>
+                  <span class="text-[10.5px] text-ink-2">{(p.atmIv * 100).toFixed(0)}%</span>
+                </div>
+              ))}
+            </div>
+            {term.shape && (
+              <div class="text-[9.5px] text-accent">
+                {term.shape === 'contango' ? tl('contango — later dates priced richer')
+                  : term.shape === 'backwardation' ? tl('backwardation — near date is the stressed one')
+                  : tl('flat term structure')}
+              </div>
+            )}
+          </>
+        ))}
+        {introRow(tl('Skew — where it concentrates'), (
+          skew ? (
+            <>
+              <div class="text-[13px]">
+                <span class="text-down">{fmtFracPct(skew.putIv, 0)}p</span>
+                <span class="text-muted"> / </span>
+                <span class="text-up">{fmtFracPct(skew.callIv, 0)}c</span>
+                <span class={`ml-2 ${skew.skew >= 0 ? 'text-accent' : 'text-ink-2'}`}>
+                  {skew.skew >= 0 ? '+' : ''}{(skew.skew * 100).toFixed(1)}pp
+                </span>
+              </div>
+              <div class="text-[9.5px] text-muted">
+                {skew.method === 'delta'
+                  ? tt('research.skew_method_delta', { call: fmtPrice(skew.callStrike), put: fmtPrice(skew.putStrike) })
+                  : tt('research.skew_method_band', { call: fmtPrice(skew.callStrike), put: fmtPrice(skew.putStrike) })}
+              </div>
+            </>
+          ) : <div class="text-[11px] text-muted">{tl('not enough chain to price a skew')}</div>
+        ))}
+        {introRow(tl('Since last session'), (
+          diff ? (
+            <div class="flex flex-col gap-0.5 text-[11px]">
+              <span class={diff.ivDelta >= 0 ? 'text-up' : 'text-down'}>IV {diff.ivDelta >= 0 ? '+' : ''}{(diff.ivDelta * 100).toFixed(1)}pp</span>
+              <span class="text-ink-2">{tl('Vol')} {diff.volumeDelta >= 0 ? '+' : ''}{fmtVol(diff.volumeDelta)}</span>
+              <span class="text-ink-2">{tl('OI')} {diff.oiDelta >= 0 ? '+' : ''}{fmtVol(diff.oiDelta)}</span>
+            </div>
+          ) : <div class="text-[11px] text-muted">{tl('no prior session cached')}</div>
+        ))}
+      </div>
+      {outliers.length > 0 && (
+        <div class="border-t border-line px-3 py-2">
+          <div class="font-mono text-[9px] text-muted uppercase tracking-wider pb-1">
+            {tt('research.outlier_baseline')}
+          </div>
+          <div class="flex flex-wrap gap-1.5 font-mono text-[10px]">
+            {outliers.slice(0, 10).map((o) => (
+              <span key={`${o.side}-${o.strike}`}
+                class={`px-1.5 py-0.5 rounded border ${o.side === 'call' ? 'border-up/40 text-up' : 'border-down/40 text-down'}`}>
+                {o.side === 'call' ? 'C' : 'P'} {fmtPrice(o.strike)} · {fmtVol(o.volume)}/{fmtVol(o.oi)}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      <div class="border-t border-line px-3 py-1 font-mono text-[9px] text-muted flex justify-between">
+        <span>{tl('chain totals')}: {tl('Vol')} {fmtVol(totals.volume)} · {tl('OI')} {fmtVol(totals.oi)}</span>
+        <span class="text-muted/70">{tl('EM = ATM straddle · skew = BS-delta proxy, not exchange greeks')}</span>
+      </div>
+    </section>
+  )
+}
+
 export function OptionsView({ symbol }) {
   const [expiration, setExpiration] = useState(null)
   const [chain, setChain] = useState(null)
+  const [prevChain, setPrevChain] = useState(null)
   const [err, setErr] = useState(null)
   // `opt SYM 2026-09-18` from the command bar: hold the wanted date until the
   // chain arrives, then snap to the exact expiry or the first one after it.
@@ -190,6 +329,10 @@ export function OptionsView({ symbol }) {
   useEffect(() => {
     setChain(null)
     setErr(null)
+    // read whatever this browser already had cached for this exact chain key
+    // BEFORE the fetch below overwrites it — that's the "previous session"
+    // snapshot the intelligence panel diffs against.
+    setPrevChain(peekOptions(symbol, expiration)?.value ?? null)
     fetchOptions(symbol, expiration)
       .then(setChain)
       .catch((e) => setErr(String(e.message || e)))
@@ -234,6 +377,7 @@ export function OptionsView({ symbol }) {
           {tl('move by')} {new Date(chain.expiration * 1000).toISOString().slice(5, 10)}
         </div>
       )}
+      <OptionsIntel symbol={symbol} chain={chain} prevChain={prevChain} />
       <OptionsLadder chain={chain} t={t} />
     </div>
   )

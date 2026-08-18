@@ -98,6 +98,18 @@ const STRINGS = {
     en: 'spot {spot} · amber rule = spot · shaded = ITM · Δ via Black-Scholes from IV · vol = vol>OI',
     zh: '现价 {spot} · 琥珀线 = 现价 · 阴影 = 价内 · Δ 由隐波经 Black-Scholes 计算 · 成交量高亮 = 成交量>未平仓量',
   },
+  'research.skew_method_delta': {
+    en: 'via Black-Scholes delta from each strike’s own IV (proxy for exchange greeks) — call {call} / put {put}',
+    zh: '经各行权价自身隐波以 Black-Scholes 计算 delta 得出（非交易所希腊值）— 看涨 {call} / 看跌 {put}',
+  },
+  'research.skew_method_band': {
+    en: 'delta unpriced on this chain — using strikes ± the expected move as a 25Δ proxy: call {call} / put {put}',
+    zh: '本链无法定价 delta — 以现价 ± 预期波动幅度的行权价近似 25Δ：看涨 {call} / 看跌 {put}',
+  },
+  'research.outlier_baseline': {
+    en: 'volume/OI outliers — baseline: volume ≥ 500 and (OI = 0 or volume ≥ 3× OI)',
+    zh: '成交量/未平仓量异常 — 判定标准：成交量 ≥ 500 且（未平仓量 = 0 或 成交量 ≥ 未平仓量的 3 倍）',
+  },
   'research.nothing_on_wire': { en: 'nothing on the wire for {symbol} yet', zh: '快讯中暂时没有 {symbol} 的动态' },
   'research.landing_hint': {
     en: 'type a symbol — or hit a number once a name is open. every function below works on any listed security.',
@@ -663,6 +675,14 @@ const LABELS = {
   // options ladder (2026-08-13)
   spot: '现价', straddle: '跨式', ATM: '平值', 'market prices a': '市场定价',
   'move by': '波动幅度，截至', 'loading chain…': '期权链加载中…',
+  // options intelligence (2026-08-18)
+  'Options intelligence': '期权情报', 'Expected move — priced': '预期波动幅度（定价）',
+  'Skew — where it concentrates': '偏度 — 集中位置', 'Since last session': '较上次快照',
+  'contango — later dates priced richer': '正向期限结构 — 远月定价更高',
+  'backwardation — near date is the stressed one': '反向期限结构 — 近月更紧张',
+  'flat term structure': '期限结构平坦', 'not enough chain to price a skew': '期权链数据不足，无法计算偏度',
+  'no prior session cached': '本机无历史快照缓存', 'chain totals': '期权链合计',
+  'EM = ATM straddle · skew = BS-delta proxy, not exchange greeks': 'EM = 平值跨式 · 偏度 = BS-delta 近似值，非交易所希腊值',
   // dividends sweep (2026-08-13)
   'Payment history': '派息历史', 'Ex-date': '除息日', Amount: '每股金额',
   Splits: '拆股', 'partial year — 5y window': '不完整年份 — 5年窗口',
