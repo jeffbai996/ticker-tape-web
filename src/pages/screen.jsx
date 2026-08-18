@@ -13,6 +13,7 @@ import { Loading } from '../components/Loading.jsx'
 import { BUCKETS, SYMBOL_RE } from '../lib/symbols.js'
 import { isWatched, watch, unwatch } from '../lib/watchlist.js'
 import { loadScreens, saveScreen, deleteScreen, passesScreenFilters } from '../lib/screens.js'
+import { ScreenBoard } from './screenBoard.jsx'
 
 const DEFAULT_SYMBOLS = 'AAPL MSFT NVDA GOOG AMZN SPY'
 const LINE_COLORS = ['#f59e0b', '#22d3ee', '#3fb950', '#f85149', '#a78bfa', '#ec4899', '#e7ecf3', '#79828d']
@@ -530,12 +531,16 @@ export function Screen({ route }) {
   const view = route.sub || 'screen'
   const [raw, setRaw] = useState(() => localStorage.getItem('screen_symbols') || DEFAULT_SYMBOLS)
   const { symbols, dropped } = useMemo(() => parseSymbols(raw), [raw])
-  const hist = useHistories(symbols)
+  // Signals runs over the board/watchlists, not the typed symbol list — no
+  // point paying for a year of history per symbol on a view that never reads it.
+  const hist = useHistories(view === 'signals' ? [] : symbols)
 
   const update = (v) => {
     setRaw(v)
     localStorage.setItem('screen_symbols', v)
   }
+
+  if (view === 'signals') return <ScreenBoard />
 
   return (
     <div class="flex-1 p-3 select-text min-w-0">
