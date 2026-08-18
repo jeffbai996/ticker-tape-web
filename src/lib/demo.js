@@ -5,6 +5,8 @@
 // single real number in them. Mirrors the CLI's demo_data.py stance:
 // "Nothing here may reference a real portfolio." Don't improve realism.
 
+import { sessionDayPct, dayPnlFromValue } from './dayPnl.js'
+
 export const DEMO_ACCOUNT_ID = 'U1234567'
 export const DEMO_CASH = 3200
 export const DEMO_MARGIN_RATE = 5.5 // %, demo broker rate for carry math
@@ -74,12 +76,14 @@ export function positionRows(positions, priceMap) {
       const mktValue = p.liveBase ?? native
       const costBasis = p.avgCost * p.shares * fx
       const unrealPnl = p.liveUnreal != null ? p.liveUnreal * fx : mktValue - costBasis
-      const dayPct = q?.pct ?? null
+      // day = since the last close at the latest print (PM of a new day is
+      // the pre-market move, not yesterday's session) — see dayPnl.js
+      const dayPct = sessionDayPct(q)
       return {
         ...p,
         price: p.livePrice,
         mktValue,
-        dayPnl: dayPct != null ? (dayPct / 100) * mktValue : null,
+        dayPnl: dayPnlFromValue(mktValue, dayPct),
         dayPct,
         unrealPnl,
         unrealPct: costBasis > 0 ? (unrealPnl / costBasis) * 100 : null,
@@ -92,12 +96,17 @@ export function positionRows(positions, priceMap) {
     }
     const mktValue = q.price * p.shares
     const costBasis = p.avgCost * p.shares
+    const dayPct = sessionDayPct(q)
     return {
       ...p,
       price: q.price,
       mktValue,
-      dayPnl: (q.change ?? 0) * p.shares,
-      dayPct: q.pct ?? null,
+      // regular session: (price − prevClose)·shares, same as before; with an
+      // extended print the base is the last close and the mark is that print
+      dayPnl: q.extLabel && q.extPrice != null
+        ? dayPnlFromValue(q.extPrice * p.shares, dayPct)
+        : (q.change ?? 0) * p.shares,
+      dayPct,
       unrealPnl: mktValue - costBasis,
       unrealPct: costBasis > 0 ? ((mktValue - costBasis) / costBasis) * 100 : null,
       weight: null, // filled below once gross is known
