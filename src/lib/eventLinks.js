@@ -232,13 +232,22 @@ export const EVENT_LINKS = {
   },
 }
 
-/** Normalized kind for an event row. Unknown kinds fall to OTHER rather than
- *  disappearing — an unmapped catalyst still deserves a workspace. */
+/** The badge is a fixed terminal mark, not a text field. An unmapped kind is
+ *  still shown verbatim — the calendar knows about catalysts this table does
+ *  not — but a calendar row is remote input, so what reaches the DOM is
+ *  bounded: uppercase alphanumerics only, `MAX_KIND_CHARS` of them. */
+export const MAX_KIND_CHARS = 12
+
+/** Normalized kind for an event row. A known kind maps to its workspace entry;
+ *  an unknown one is passed through sanitized (and still resolves to OTHER for
+ *  the narrative) rather than disappearing — an unmapped catalyst still
+ *  deserves a workspace. Junk with no printable kind falls to OTHER. */
 export function eventKind(event) {
   const raw = String(event?.type || '').toUpperCase()
   if (!raw) return 'OTHER'
   if (raw === 'EARN' || raw === 'EARNINGS') return 'ERN'
-  return Object.hasOwn(EVENT_LINKS, raw) ? raw : (raw || 'OTHER')
+  if (Object.hasOwn(EVENT_LINKS, raw)) return raw
+  return raw.replace(/[^A-Z0-9]+/g, '').slice(0, MAX_KIND_CHARS) || 'OTHER'
 }
 
 function entryFor(event) {
