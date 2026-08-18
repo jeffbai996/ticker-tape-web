@@ -28,6 +28,29 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: npm run build
+      # The responsive matrix runs against the bytes that are about to ship,
+      # served the way Pages serves them (base path, real origin), and blocks
+      # the deploy on a regression. Playwright is installed with pip rather
+      # than npm so the browser toolchain never enters the app's dependency
+      # tree; setup-python gives an interpreter whose pip is not
+      # externally-managed, which the runner's system python is.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install probe browser
+        run: |
+          python3 -m pip install --quiet --upgrade playwright
+          python3 -m playwright install --with-deps chromium
+      - name: Responsive matrix gate
+        timeout-minutes: 12
+        run: npm run probe -- --json-out probe-matrix.json
+      - name: Upload probe results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: probe-matrix
+          path: probe-matrix.json
+          if-no-files-found: warn
       - uses: actions/configure-pages@v4
       - uses: actions/upload-pages-artifact@v3
         with:
