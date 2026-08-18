@@ -7,15 +7,15 @@ import { parseRich } from '../lib/rich.js'
 import { isTypingTarget, watchMedia } from '../lib/keys.js'
 import { tl } from '../lib/i18n.js'
 import { consoleHeightAt, nextConsolePosture, isTap, COMPACT_H } from '../lib/consoleResize.js'
+import * as consoleStore from '../lib/consoleStore.js'
 
 // The TUI's bottom command line, with a real output console: every command
 // echoes into a drop-up log (like the CLI's main pane) instead of a blink-
 // and-you-miss-it flash. ↑/↓ recalls history, Esc closes the console.
 
-let nextId = 1
 
 /** Console line: TUI rich markup → colored spans. */
-function Rich({ text }) {
+export function Rich({ text }) {
   return parseRich(text).map((s, i) => (
     <span
       key={i}
@@ -32,14 +32,16 @@ function Rich({ text }) {
 
 export function CommandBar() {
   const [value, setValue] = useState('')
-  const [log, setLog] = useState([])
+  // the log lives in consoleStore (shared with the phone's #/console page);
+  // this is just the subscription mirror for rendering
+  const [log, setLogState] = useState(consoleStore.getLog)
+  useEffect(() => consoleStore.subscribe(setLogState), [])
   const [open, setOpen] = useState(false)
   // `hot` = the user started typing with nothing else focused, so the line
   // grows and lights up — it was too easy to type into an invisible console
   // (Jeff 2026-08-05)
   const [hot, setHot] = useState(false)
   const [histIdx, setHistIdx] = useState(-1)
-  const history = useRef([])
   const scrollRef = useRef(null)
   const panelRef = useRef(null)
   // console height is a preference: drag the top edge, it sticks
@@ -136,7 +138,7 @@ export function CommandBar() {
   }, [wide])
 
   const print = (cmd, text) => {
-    setLog((l) => [...l.slice(-40), { id: nextId++, cmd, text }])
+    consoleStore.print(cmd, text)
     setOpen(true)
   }
 
@@ -148,14 +150,14 @@ export function CommandBar() {
       if (cmd) print(cmd, `[red]unknown:[/] ${cmd} [#808080]— try h for help[/]`)
       return
     }
-    history.current.push(cmd)
+    consoleStore.pushHistory(cmd)
     setHistIdx(-1)
     setValue('')
 
     executePlan(plan, cmd, {
       print,
-      getLog: () => log,
-      clearConsole: () => { setLog([]); closeConsole() },
+      getLog: consoleStore.getLog,
+      clearConsole: () => { consoleStore.clear(); closeConsole() },
     })
   }
 
@@ -187,7 +189,7 @@ export function CommandBar() {
     : [], [value])
 
   const onKey = (e) => {
-    const h = history.current
+    const h = consoleStore.getHistory()
     if (e.key === 'Enter') {
       e.preventDefault()
       e.currentTarget.form?.requestSubmit()

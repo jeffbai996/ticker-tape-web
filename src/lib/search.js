@@ -65,6 +65,7 @@ export function filterNav(query) {
   const q = (query || '').trim().toLowerCase()
   const out = []
   for (const section of NAV) {
+    if (section.phoneOnly) continue   // the console page is chin-only, not a palette destination
     if (!q || section.label.toLowerCase().includes(q)) {
       out.push({ kind: 'nav', label: section.label, href: hrefFor(section.id) })
     }

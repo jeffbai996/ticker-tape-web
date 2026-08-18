@@ -140,7 +140,7 @@ export function Sidebar({ route }) {
     <nav class="w-52 shrink-0 bg-black border-r border-line flex flex-col max-md:hidden min-h-0">
       <UpdatedLine />
       <div class="pb-2">
-        {NAV.map((section) => (
+        {NAV.filter((s) => !s.phoneOnly).map((section) => (
           <div key={section.id}>
             <a
               href={hrefFor(section.id)}

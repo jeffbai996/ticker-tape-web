@@ -10,6 +10,7 @@ import { Chat } from './chat.jsx'
 import { ChatPreview } from './chatPreview.jsx'
 import { Brief } from './brief.jsx'
 import { Wire } from './wire.jsx'
+import { ConsolePage } from './console.jsx'
 import { IS_PRIVATE_BUILD } from '../lib/nav.js'
 import { useNamedWatchlists } from '../hooks.js'
 import { resolveDashboardLanding } from '../lib/dashboardLanding.js'
@@ -56,6 +57,7 @@ export function Page({ route }) {
   if (route.section === 'screen') return <Screen route={route} />
   if (route.section === 'alerts') return <Alerts />
   if (route.section === 'wire') return <Wire route={route} />
+  if (route.section === 'console') return <ConsolePage />
   if (route.section === 'portfolio') return <Portfolio route={route} />
   if (route.section === 'chat') {
     return IS_PRIVATE_BUILD ? <Chat /> : <ChatPreview />
