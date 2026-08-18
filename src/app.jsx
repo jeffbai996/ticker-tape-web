@@ -106,6 +106,14 @@ export function App() {
   const { toasts, dismiss } = useAlertEngine()
   useLocale() // locale toggle re-renders the whole shell
   const [paletteOpen, setPaletteOpen] = useState(false)
+  const [paletteSeed, setPaletteSeed] = useState('')
+  // phone search fields hand off to the palette sheet instead of expanding
+  // inline (Jeff 2026-08-17: spotlight-style search on mobile)
+  useEffect(() => {
+    const open = (e) => { setPaletteSeed(e.detail?.seed || ''); setPaletteOpen(true) }
+    addEventListener('open-palette', open)
+    return () => removeEventListener('open-palette', open)
+  }, [])
   const mainRef = useRef(null)
   useScrollRestore(route, mainRef)
 
@@ -144,7 +152,7 @@ export function App() {
       <CommandBar />
       <BottomNav route={route} />
       <AlertToasts toasts={toasts} dismiss={dismiss} />
-      {paletteOpen && <Palette onClose={() => setPaletteOpen(false)} />}
+      {paletteOpen && <Palette seed={paletteSeed} onClose={() => { setPaletteOpen(false); setPaletteSeed('') }} />}
     </div>
   )
 }
