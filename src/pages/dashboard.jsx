@@ -339,7 +339,11 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
               )}
               {q?.name && (
                 <span class="tui-company-name-swap @min-[545px]:hidden" aria-hidden="true">
-                  {q.name}
+                  {/* long names sweep once on reveal instead of truncating —
+                      only mounted while revealed so the sweep starts on tap */}
+                  {revealed
+                    ? <Marquee auto text={q.name} title={`${symbol} — ${q.name}`} class="block min-w-0" />
+                    : q.name}
                 </span>
               )}
             </span>

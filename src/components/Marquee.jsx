@@ -6,7 +6,7 @@ import { useEffect, useRef } from 'preact/hooks'
  *  on other baicloud services"). The box stays put; only the inner span moves,
  *  so nothing around it reflows. Same 52px/s travel and .38s snap-back.
  */
-export function Marquee({ text, class: cls = '', title }) {
+export function Marquee({ text, class: cls = '', title, auto = false }) {
   const box = useRef(null)
   const inner = useRef(null)
 
@@ -37,6 +37,25 @@ export function Marquee({ text, class: cls = '', title }) {
     b.classList.add('is-scrolling')
   }
   const stop = () => box.current?.classList.remove('is-scrolling')
+
+  // `auto`: sweep once on mount — out to the end, hold, and back — for
+  // surfaces with no hover, like the phone's tap-to-reveal company name
+  // (Jeff 2026-08-17: NAURA Techn… sat truncated). Timing keys off the same
+  // --mq-dur the hover path sets, so speed matches everywhere.
+  useEffect(() => {
+    if (!auto) return
+    const b = box.current
+    const i = inner.current
+    if (!b || !i) return
+    const distance = Math.max(0, i.scrollWidth - b.clientWidth + 4)
+    if (!distance) return
+    const dur = Math.max(1.5, distance / 52)
+    b.style.setProperty('--mq-dist', `${distance}px`)
+    b.style.setProperty('--mq-dur', `${dur}s`)
+    const t0 = setTimeout(() => b.classList.add('is-scrolling'), 350)
+    const t1 = setTimeout(() => b.classList.remove('is-scrolling'), 350 + dur * 1000 + 900)
+    return () => { clearTimeout(t0); clearTimeout(t1); b.classList.remove('is-scrolling') }
+  }, [auto, text])
 
   return (
     <span
