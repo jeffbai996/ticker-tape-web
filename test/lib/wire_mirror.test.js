@@ -66,7 +66,7 @@ describe('wire page mirror mode', () => {
 
   it('opens no EventSource on the mirror — it polls once a minute', () => {
     expect(page).toContain('const MIRROR_POLL_MS = 60_000')
-    expect(page).toContain('mirrorTimer = setInterval')
+    expect(page).toContain('mirrorStop = startVisibleClock(MIRROR_POLL_MS,')
     // the only stream construction lives in the live path
     const live = page.slice(page.indexOf('const startLive ='), page.indexOf('const startMirror ='))
     expect(live).toContain('new EventSource(')

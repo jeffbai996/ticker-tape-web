@@ -233,14 +233,46 @@ export const SECTORS = [
 ]
 
 /** The highest-signal cross-asset prints, reused by the dashboard market deck. */
+/** The landing page's one macro read, painted as a two-column grid of
+ *  percentage moves. Rows are paired left/right in source order, so the list
+ *  is ordered by what belongs beside what: US size ladder, then equity
+ *  outside the US, then the two risk gauges, the curve, the dollar and its
+ *  crosses, metals, energy, and crypto last.
+ *
+ *  On the Treasury rows: Yahoo publishes ^IRX (13-week bill), ^FVX (5Y),
+ *  ^TNX (10Y) and ^TYX (30Y) — there is no 2-year series to add, so the
+ *  front end here is the bill. ^FVX is left out because the belly moves with
+ *  the 10Y closely enough that a second near-identical row buys nothing on a
+ *  glance panel.
+ *
+ *  HYG is the only credit row and the only ETF: nothing else in the deck
+ *  prices spread. A duration ETF such as TLT would add no information — its
+ *  move is the inverse of the yields already on the panel.
+ *
+ *  Every symbol verified against the Worker quote path (2026-08-18); each
+ *  returns a live price. Labels reuse the strings the market groups already
+ *  use, which is what keeps the zh side complete.
+ */
 export const MARKET_DECK = [
   { symbol: '^GSPC', label: 'S&P 500' },
   { symbol: '^NDX', label: 'Nasdaq 100' },
+  { symbol: '^DJI', label: 'Dow Jones' },
+  { symbol: '^RUT', label: 'Russell 2000' },
+  { symbol: '^STOXX50E', label: 'Euro Stoxx 50' },
+  { symbol: '^N225', label: 'Nikkei 225' },
   { symbol: '^VIX', label: 'VIX' },
+  { symbol: 'HYG', label: 'US high yield' },
+  { symbol: '^IRX', label: '3M Bill' },
   { symbol: '^TNX', label: '10Y Yield' },
+  { symbol: '^TYX', label: '30Y Yield' },
   { symbol: 'DX-Y.NYB', label: 'DXY' },
+  { symbol: 'EURUSD=X', label: 'EUR/USD' },
+  { symbol: 'USDJPY=X', label: 'USD/JPY' },
   { symbol: 'GC=F', label: 'Gold' },
+  { symbol: 'SI=F', label: 'Silver' },
+  { symbol: 'HG=F', label: 'Copper' },
   { symbol: 'CL=F', label: 'WTI Crude Oil' },
+  { symbol: 'NG=F', label: 'Natural Gas' },
   { symbol: 'BTC-USD', label: 'Bitcoin' },
 ]
 

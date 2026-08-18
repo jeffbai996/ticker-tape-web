@@ -19,7 +19,8 @@ describe('event workspace shell', () => {
   it('carries an eyebrow with the kind and a live mono countdown', () => {
     expect(markets).toContain('function EventCountdown')
     expect(markets).toContain('formatCountdown')
-    expect(markets).toContain('setInterval')
+    // ticks every second, but only while the tab is visible (perf pass 2026-08-18)
+    expect(markets).toContain('startVisibleClock(1000, () => setNow(Date.now()))')
     expect(markets).toContain('tabular-nums')
     expect(markets).toContain("{tl('time to event')}")
     expect(markets).toContain("{tl('since release')}")

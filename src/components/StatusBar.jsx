@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { useQuotes } from '../hooks.js'
 import { INDICES } from '../lib/symbols.js'
 import { marketState } from '../lib/marketState.js'
-import { paintRollingTime, CLOCK_ZONES } from '../lib/rollclock.js'
+import { paintRollingTime, stopRollingTime, CLOCK_ZONES } from '../lib/rollclock.js'
+import { startVisibleClock } from '../lib/idleClock.js'
 import { hrefFor } from '../lib/route.js'
 import { fmtPrice, fmtPct } from '../lib/format.js'
 import { FlashPrice } from './Fig.jsx'
@@ -67,8 +68,16 @@ function RollingClock() {
       if (mobileClock.current) paintRollingTime(mobileClock.current, value.slice(0, 5))
     }
     paint()
-    const t = setInterval(paint, 1000)
-    return () => clearInterval(t)
+    // This clock sits in the shell, so it is the one timer that runs on every
+    // route: 1 Hz of DOM writes plus a forced reflow per rolling digit, for a
+    // face nobody can read while the tab is buried. Aligned to the second so
+    // the painted value is never a beat stale, and off entirely while hidden.
+    const stop = startVisibleClock(1000, paint)
+    return () => {
+      stop()
+      stopRollingTime(desktopClock.current)
+      stopRollingTime(mobileClock.current)
+    }
   }, [zi])
   const cycle = () => {
     const n = (zi + 1) % CLOCK_ZONES.length
@@ -78,10 +87,22 @@ function RollingClock() {
   return (
     <button
       onClick={cycle}
-      /* phones: the clock button's right padding stacked on the header gap,
-          so the online dot sat closer to "ET" than to the locale button —
-          dropping pr on mobile centres the dot between them (Jeff 2026-08-06) */
-      class="flex items-baseline gap-1 whitespace-nowrap font-anth group px-1.5 max-sm:pr-0 py-0.5 rounded hover:bg-accent-soft hover:outline hover:outline-1 hover:outline-accent/50"
+      /* Clicking this cycles the timezone, and nothing said so: amber text
+          against amber text with no edge of its own. It now wears the house
+          `board-control` chip — hairline, faint vertical lift, brighter on
+          hover — at status-row scale, matching the locale button beside it.
+          The border is there at REST and only its colour moves on hover, so
+          nothing in a 32px header shifts under the pointer.
+          Padding is even again. The phone-only `pr-0` existed because a
+          borderless clock made the eye measure from the "ET" glyph, which
+          put the online dot closer to the clock than to the locale button
+          (Jeff 2026-08-06); with a real edge to measure from, symmetric
+          padding IS the centred one.
+          `ml-1` is the clock's own gap: the index strip on its left is a
+          scroll container whose last cell can end flush at the edge, and the
+          feed chip that used to sit between them shows nothing while the
+          feed is healthy. */
+      class="board-control group ml-1 flex items-baseline gap-1 whitespace-nowrap font-anth px-1.5 py-0.5 rounded border transition-colors hover:border-accent/50"
       title={tl('cycle timezone')}
     >
       {/* Anthropic Sans digits (Jeff 2026-08-06) — falls back to Jakarta on
@@ -129,8 +150,9 @@ export function StatusBar() {
     // 30s, not 1s: `now` only feeds the session chip + countdown title, and a
     // per-second re-render of the whole bar was one of the 1Hz layout pokes
     // behind the zh-zoom shimmer (Jeff 2026-08-11). The clock paints itself.
-    const t = setInterval(() => setNow(new Date()), 30_000)
-    return () => clearInterval(t)
+    // Hidden tabs skip it outright — the session chip is recomputed on the
+    // way back, before the reader has had time to look at it.
+    return startVisibleClock(30_000, () => setNow(new Date()))
   }, [])
 
   const { state, holiday } = marketState(now)
