@@ -2,11 +2,12 @@
 // snapshots provide first paint/recovery, and spaced v8 charts fill analytics.
 // No secrets, no cron, no build-time data — the browser is the pipeline.
 //
-// EXCEPTION — futures do not stream. Yahoo's public WebSocket stopped pushing
-// tick updates for futures contracts (ES, NQ, YM, GC, CL); they only advance on
-// the v7 batch poll. So a futures row that looks frozen between polls is the
-// upstream feed, not a bug here — check the batch cadence before hunting a
-// stall in the stream path.
+// Futures (ES, NQ, YM, GC, CL) ride the batch, not the stream. Yahoo's public
+// WebSocket carries no ticks for them — verified 2026-08-18: zero futures ticks
+// in a 45s window while SPY and AAPL streamed normally on the same socket. Their
+// prices are live and correct, they just refresh on the batch cadence instead of
+// printing tick by tick. A futures row sitting still between polls is that
+// cadence, not a stall in the stream path.
 
 import {
   barsFromChart, mergeSnapshotQuote, quoteFromStream, quoteFromV7,
