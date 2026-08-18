@@ -9,6 +9,7 @@ import { createChart, CandlestickSeries, LineSeries, AreaSeries,
 import { fetchHistory, RANGES } from '../lib/history.js'
 import { fetchOptions } from '../lib/options.js'
 import { expectedMove } from '../lib/optionsIntel.js'
+import { memoWindow, overlayAutoscale } from '../lib/chartScale.js'
 import { smaSeries, emaSeries, rsiSeries, macdSeries, bollingerSeries,
          normalizedSeries } from '../lib/chartmath.js'
 import { vwapSeries } from '../lib/vwap.js'
@@ -59,9 +60,12 @@ const CHART_OPTS = {
     vertLines: { color: 'rgba(255,255,255,0.05)' },
     horzLines: { color: 'rgba(255,255,255,0.05)' },
   },
-  rightPriceScale: { borderColor: 'rgba(255,255,255,0.10)' },
+  rightPriceScale: { borderColor: 'rgba(255,255,255,0.10)', autoScale: true },
   timeScale: boundedTimeScale(false),
   crosshair: { mode: 0 },
+  // dragging the price axis latches autoScale off; a double click on either
+  // axis puts it back, and the FIT chip below does the same explicitly
+  handleScale: { axisDoubleClickReset: { time: true, price: true } },
 }
 
 export function ChartSuite({ symbol }) {
@@ -180,6 +184,17 @@ export function ChartSuite({ symbol }) {
       },
     })
     chartRef.current = chart
+    // Overlays (MAs, bands, VWAP) may stretch the price scale past the bars
+    // by a bounded fraction and no further — otherwise an SMA200 anchored in
+    // yesterday's prices flattens today's candles into the bottom of the pane
+    // (chartScale.js). The price series itself always drives the scale.
+    const windowAt = memoWindow(bars)
+    const overlayScale = {
+      autoscaleInfoProvider: overlayAutoscale(() => {
+        const lr = chart.timeScale().getVisibleLogicalRange()
+        return lr ? windowAt(lr.from, lr.to) : null
+      }),
+    }
     let priceSeries
     if (comparing) {
       priceSeries = chart.addSeries(LineSeries,
@@ -212,25 +227,28 @@ export function ChartSuite({ symbol }) {
         const n = Number(k.slice(3))
         if (bars.length < n) continue
         chart.addSeries(LineSeries, { color: SMA_COLORS[k], lineWidth: 1,
-          priceLineVisible: false, lastValueVisible: false })
+          priceLineVisible: false, lastValueVisible: false, ...overlayScale })
           .setData(smaSeries(bars, n))
       }
       if (prefs.ov.ema21 && bars.length >= 21) {
         chart.addSeries(LineSeries, { color: '#e7ecf3', lineWidth: 1,
-          lineStyle: 2, priceLineVisible: false, lastValueVisible: false })
+          lineStyle: 2, priceLineVisible: false, lastValueVisible: false,
+          ...overlayScale })
           .setData(emaSeries(bars, 21))
       }
       if (prefs.ov.bb && bars.length >= 20) {
         const bb = bollingerSeries(bars)
         for (const part of [bb.upper, bb.lower]) {
           chart.addSeries(LineSeries, { color: 'rgba(192,132,252,.5)',
-            lineWidth: 1, priceLineVisible: false, lastValueVisible: false })
+            lineWidth: 1, priceLineVisible: false, lastValueVisible: false,
+            ...overlayScale })
             .setData(part)
         }
       }
       if (prefs.ov.vwap && intraday) {
         chart.addSeries(LineSeries, { color: '#f59e0b', lineWidth: 1,
-          lineStyle: 2, priceLineVisible: false, lastValueVisible: false })
+          lineStyle: 2, priceLineVisible: false, lastValueVisible: false,
+          ...overlayScale })
           .setData(vwapSeries(bars))
       }
       if (prefs.ov.vol && bars.some((b) => b.volume)) {
@@ -524,7 +542,13 @@ export function ChartSuite({ symbol }) {
         <span class="w-2" />
         {chip(prefs.panes.rsi, 'RSI', () => togglePane('rsi'), null, 'relative strength index in its own pane — 70 overbought, 30 oversold')}
         {chip(prefs.panes.macd, 'MACD', () => togglePane('macd'), null, 'MACD 12/26/9 in its own pane')}
-        {chip(false, 'FIT', () => chartRef.current?.timeScale().fitContent(), null, 'reset zoom to the full loaded history')}
+        {chip(false, 'FIT', () => {
+          const c = chartRef.current
+          if (!c) return
+          c.timeScale().fitContent()
+          // an axis drag latches the price scale; FIT means fit BOTH axes
+          c.priceScale('right').applyOptions({ autoScale: true })
+        }, null, 'reset zoom and re-arm the auto price scale')}
         {/* Drawing tools. Hidden outright in compare mode: the frame is % change
             there, so a price anchored line would be a lie, not a limitation. */}
         {!comparing && (
