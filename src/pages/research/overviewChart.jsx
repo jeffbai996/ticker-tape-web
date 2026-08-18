@@ -6,6 +6,7 @@ import { fmtPct, fmtVol } from '../../lib/format.js'
 import { tl } from '../../lib/i18n.js'
 import { emaSeries, macdSeries, trimToWindow, warmedBars } from '../../lib/chartmath.js'
 import { boundedTimeScale, marketTimeLabel } from '../../lib/chartview.js'
+import { memoWindow, overlayAutoscale } from '../../lib/chartScale.js'
 
 const OV_KEY = 'tape-chart-ov'
 const SMA_COLORS = { 20: '#f59e0b', 50: '#22d3ee', 200: '#c084fc' }
@@ -95,7 +96,10 @@ export function Candles({ bars, warmPad, intraday, timeAxis, ticks, tick, onTick
         vertLines: { color: 'rgba(255,255,255,0.05)' },
         horzLines: { color: 'rgba(255,255,255,0.05)' },
       },
-      rightPriceScale: { borderColor: 'rgba(255,255,255,0.10)' },
+      rightPriceScale: { borderColor: 'rgba(255,255,255,0.10)', autoScale: true },
+      // an axis drag latches autoScale off; double-clicking either axis and
+      // the FIT button below both put it back
+      handleScale: { axisDoubleClickReset: { time: true, price: true } },
       // Bar resolution and window scale are separate. A 1Y window drawn with
       // 1h candles still needs calendar dates on the x-axis, not "09:30" for
       // every session; only the true 1D/5D windows use exchange-time labels.
@@ -149,6 +153,16 @@ export function Candles({ bars, warmPad, intraday, timeAxis, ticks, tick, onTick
     // window — otherwise RSI starts 14 bars in and MACD 34, which reads as the
     // indicator "not going back as far as the candles" (Jeff 2026-08-06)
     const warmed = warmedBars(bars, warmPad)
+    // Overlays get a bounded vote on the price scale: on an intraday window a
+    // moving average is anchored in older, far-away prices and would otherwise
+    // flatten the candles into a corner of the pane (chartScale.js).
+    const windowAt = memoWindow(bars)
+    const overlayScale = {
+      autoscaleInfoProvider: overlayAutoscale(() => {
+        const lr = c.chart.timeScale().getVisibleLogicalRange()
+        return lr ? windowAt(lr.from, lr.to) : null
+      }),
+    }
     if (c.type === 'candles') {
       c.series.setData(bars)
     } else {
@@ -173,7 +187,7 @@ export function Candles({ bars, warmPad, intraday, timeAxis, ticks, tick, onTick
       if (!ov['sma' + n] || warmed.length < n) continue
       const line = c.chart.addSeries(LineSeries, {
         color: SMA_COLORS[n], lineWidth: 1,
-        priceLineVisible: false, lastValueVisible: false,
+        priceLineVisible: false, lastValueVisible: false, ...overlayScale,
       })
       line.setData(trimToWindow(rollingSma(warmed, n), bars))
       c.extra.push(line)
@@ -181,7 +195,7 @@ export function Candles({ bars, warmPad, intraday, timeAxis, ticks, tick, onTick
     if (ov.ema21 && bars.length >= 21) {
       const line = c.chart.addSeries(LineSeries, {
         color: '#e7ecf3', lineWidth: 1, lineStyle: 2,
-        priceLineVisible: false, lastValueVisible: false,
+        priceLineVisible: false, lastValueVisible: false, ...overlayScale,
       })
       line.setData(trimToWindow(emaSeries(warmed, 21), bars))
       c.extra.push(line)
@@ -194,7 +208,7 @@ export function Candles({ bars, warmPad, intraday, timeAxis, ticks, tick, onTick
         const line = c.chart.addSeries(LineSeries, {
           color: BB_COLOR, lineWidth: 1, lineStyle: style,
           priceLineVisible: false, lastValueVisible: false,
-          crosshairMarkerVisible: false,
+          crosshairMarkerVisible: false, ...overlayScale,
         })
         line.setData(data)
         c.extra.push(line)
@@ -203,7 +217,7 @@ export function Candles({ bars, warmPad, intraday, timeAxis, ticks, tick, onTick
     if (ov.vwap && intraday && bars.some((b) => b.volume)) {
       const line = c.chart.addSeries(LineSeries, {
         color: '#f59e0b', lineWidth: 1, lineStyle: 2,
-        priceLineVisible: false, lastValueVisible: false,
+        priceLineVisible: false, lastValueVisible: false, ...overlayScale,
       })
       line.setData(vwapSeries(bars))
       c.extra.push(line)
@@ -327,7 +341,12 @@ export function Candles({ bars, warmPad, intraday, timeAxis, ticks, tick, onTick
           </button>
         ))}
         <button
-          onClick={() => chartRef.current?.chart.timeScale().fitContent()}
+          onClick={() => {
+            const c = chartRef.current
+            if (!c) return
+            c.chart.timeScale().fitContent()
+            c.chart.priceScale('right').applyOptions({ autoScale: true })
+          }}
           title={tl('reset full history')}
           class="font-mono text-[9.5px] px-1.5 py-0.5 rounded border tracking-wider whitespace-nowrap shrink-0 border-line text-muted hover:text-ink"
         >

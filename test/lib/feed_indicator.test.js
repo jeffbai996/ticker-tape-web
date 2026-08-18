@@ -13,7 +13,14 @@ const dashboard = read('src/pages/dashboard.jsx')
 const css = read('src/styles/main.css')
 
 describe('shell feed indicator', () => {
-  it('renders the three states from the pure health module', () => {
+  it('says nothing at all while the feed is healthy', () => {
+    // Jeff 2026-08-18: "remove the word LIVE here" — a status row that
+    // announces the normal case is noise; only trouble earns a word.
+    expect(indicator).toContain("if (health.state === 'live') return null")
+    expect(indicator).not.toMatch(/live:\s*'text-/)
+  })
+
+  it('renders the abnormal states from the pure health module', () => {
     expect(indicator).toContain("from '../lib/feedHealth.js'")
     expect(indicator).toContain("from '../lib/feed.js'")
     expect(indicator).toContain('feedStatus()')
@@ -38,9 +45,8 @@ describe('shell feed indicator', () => {
     expect(statusbar).toContain("import { FeedIndicator } from './FeedIndicator.jsx'")
   })
 
-  it('shows the reconnect age only when the feed is not live', () => {
+  it('shows the reconnect age beside the state word', () => {
     expect(indicator).toContain('health.ageLabel')
-    expect(indicator).toContain("health.state !== 'live'")
   })
 })
 
