@@ -9,6 +9,7 @@ import { fetchEarningsDate } from '../lib/fundamentals.js'
 import { EARNINGS_UNIVERSE, EARNINGS_NAMES, ECON_EVENTS, MARKET_DECK, upcomingEvents, eventDayLabel } from '../lib/markets.js'
 import { loadCatalysts, onCatalystsChange, mergedEvents } from '../lib/catalysts.js'
 import { fetchHistory, prefetchSymbol } from '../lib/history.js'
+import { scheduleQuoteColumns } from '../lib/quoteColumns.js'
 import {
   getWidgets, addWidget, removeWidget, moveWidget, onWidgetsChange, WIDGET_TYPES,
 } from '../lib/widgets.js'
@@ -359,8 +360,11 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
             {/* The quote cluster is indivisible. The identity slot gets the
                 row's spare width, but must yield before PRE/AH is clipped. */}
             <span class="tui-quote-cluster flex items-baseline gap-1.5 max-sm:gap-1 shrink-0">
-              <span class="text-ink font-semibold w-[4.4rem] max-sm:w-[4.1rem] text-right shrink-0">
-                {q ? <FlashPrice price={q.price} fmt={fmtPrice} /> : '—'}
+              {/* Columns share the board's measured max (quoteColumns.js): a
+                  fixed 4.4rem box left dead air beside every 3-digit price,
+                  right where the company name wanted it (Jeff 2026-08-18). */}
+              <span class="text-ink font-semibold min-w-(--col-price) text-right shrink-0">
+                <span data-col="price" class="inline-block whitespace-nowrap">{q ? <FlashPrice price={q.price} fmt={fmtPrice} /> : '—'}</span>
               </span>
               {/* min-width, not width: a wide print (▼ 15.22 (-4.05%)) used to
                   overflow the fixed box and land flush against the ON label,
@@ -368,19 +372,19 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
                   cost the company name ~40px it needed more (Jeff 2026-08-07:
                   "the company names r cut off") — under that the columns size
                   to content and hand the slack to the name gutter.
-                  The floors are the WIDEST normal print, not the typical one:
-                  at 7.7rem a two-digit move (▲ 11.03 (+1.44%)) still grew the
-                  column, so a row's price slid left by content — NAURA with
-                  no PM/AH sat 15px left of its neighbours (Jeff 2026-08-18:
-                  "shift it to the right, dont let em go left"). 8.4rem holds
-                  an 18-char crash-day print; every row's price shares one x.
-                  From 545px up, not 820: the iPad sits in the 730–820 band and
-                  that is where the jitter showed. Phones stay content-sized. */}
+                  Since 2026-08-18 the floor is the board's MEASURED widest
+                  print (--col-change, quoteColumns.js), from 545px up: fixed
+                  floors either jittered (7.7rem let ▲ 11.03 grow the column —
+                  NAURA sat 15px left of its neighbours) or wasted the width a
+                  crash-day print needs on every calm day. Phones stay
+                  content-sized. */}
               {q && (
-                <span class={`${up ? 'text-up' : 'text-down'} whitespace-nowrap @min-[545px]:min-w-[8.4rem] shrink-0`}>
-                  {up ? '▲' : '▼'} <FlashMetric value={q.change} fmt={fmtAbsChange} kind="change" />{' '}
-                  <span class="font-normal text-[11px] max-sm:text-[10px]">
-                    ({fmtPct(q.pct)})
+                <span class={`${up ? 'text-up' : 'text-down'} whitespace-nowrap @min-[545px]:min-w-(--col-change) shrink-0`}>
+                  <span data-col="change" class="inline-block whitespace-nowrap">
+                    {up ? '▲' : '▼'} <FlashMetric value={q.change} fmt={fmtAbsChange} kind="change" />{' '}
+                    <span class="font-normal text-[11px] max-sm:text-[10px]">
+                      ({fmtPct(q.pct)})
+                    </span>
                   </span>
                 </span>
               )}
@@ -392,7 +396,8 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
                   (Jeff 2026-08-18). The slot grows to its content; the
                   identity gutter is what yields. */}
               {q?.extLabel && q.extPrice != null ? (
-                <span class="whitespace-nowrap text-[11px] max-sm:text-[10px] shrink-0 max-sm:ml-auto max-sm:min-w-[6.2rem] @min-[545px]:min-w-[7.5rem] @min-[545px]:text-right">
+                <span class="whitespace-nowrap text-[11px] max-sm:text-[10px] shrink-0 max-sm:ml-auto max-sm:min-w-[6.2rem] @min-[545px]:min-w-(--col-ext) @min-[545px]:text-right">
+                  <span data-col="ext" class="inline-block whitespace-nowrap">
                   {/* only the PERCENT drops a weight tier (Jeff 2026-08-06);
                       the extended price keeps its weight and runs a size
                       bigger than the tag beside it — it's the figure you read,
@@ -408,16 +413,18 @@ function TuiRow({ symbol, data, earnDays, onRemove, selecting, selected, onToggl
                   <span class={`font-normal ${extUp ? 'text-up' : 'text-down'}`}>
                     {extUp ? '▲' : '▼'}{fmtPctPlain(Math.abs(q.extPct ?? 0))}
                   </span>
+                  </span>
                 </span>
               ) : (
                 /* Ghost slot at every session and width: a temporarily absent
                    extended print must not move the regular quote. */
-                <span class="whitespace-nowrap text-[11px] max-sm:text-[10px] shrink-0 invisible max-sm:min-w-[6.2rem] @min-[545px]:min-w-[7.5rem] @min-[545px]:text-right" aria-hidden="true">
-                  {/* mirrors the real print part for part, including the
-                      larger price — a ghost narrower than the thing it
-                      reserves space for lets the column shift when data lands */}
+                <span class="whitespace-nowrap text-[11px] max-sm:text-[10px] shrink-0 invisible max-sm:min-w-[6.2rem] @min-[545px]:min-w-(--col-ext) @min-[545px]:text-right" aria-hidden="true">
+                  {/* mirrors the real print part for part — a typical shape,
+                      not the widest: the board's measured --col-ext carries
+                      the real column width, so the ghost never dictates it
+                      (a 4-digit ghost pinned every board to a 4-digit slot) */}
                   <span class="font-semibold">PM</span>{' '}
-                  <span class="font-semibold text-[12px]">0000.00</span>{' '}
+                  <span class="font-semibold text-[12px]">000.00</span>{' '}
                   <span class="font-normal">▼0.0%</span>
                 </span>
               )}
@@ -1613,6 +1620,9 @@ export function Dashboard({ listId = null }) {
   // drag can't start the measurement/reflow feedback loop this board has been
   // burned by. The dragged row only changes opacity.
   const boardRef = useRef(null)
+  // measured column widths — re-taken whenever a print can change (quotes,
+  // membership, view). One rAF, offsetWidth reads, vars on the board root.
+  useEffect(() => { scheduleQuoteColumns(boardRef.current) })
   const dropLineRef = useRef(null)
   const dragRef = useRef(null)
   const [dragSym, setDragSym] = useState(null)
