@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { createChart, CandlestickSeries, HistogramSeries } from 'lightweight-charts'
-import { useEscape, useQuotes } from '../hooks.js'
+import { useQuotes } from '../hooks.js'
+import { Overlay } from '../components/Overlay.jsx'
 import { fetchDividends as fetchDivHistory, fetchHistory, fetchNews, fetchSplits, peekHistory, RANGES, rangeReturn } from '../lib/history.js'
 import { fetchFinancials, statementRows } from '../lib/financials.js'
 import { alignedReturns, regressStats } from '../lib/regress.js'
@@ -2325,7 +2326,6 @@ export function Research({ route }) {
   // the mobile rail's state lives above the no-symbol early return so the
   // hook order can't shift when the landing page renders instead
   const [railOpen, setRailOpen] = useState(false)
-  useEscape(() => setRailOpen(false), railOpen)
 
   useEffect(() => {
     if (!symbol) return
@@ -2550,9 +2550,16 @@ export function Research({ route }) {
             ⋮
           </button>
           {railOpen && (
-            <aside class="lg:hidden fixed right-0 top-0 bottom-0 w-[320px] z-40 overflow-y-auto bg-surface-0 border-l border-line p-2 flex flex-col gap-3">
+            /* a bare panel: the slide-over deliberately keeps no scrim, so the
+               chart behind it stays readable while the rail is open */
+            <Overlay
+              onClose={() => setRailOpen(false)}
+              label={tl('rail')}
+              backdrop={false}
+              class="lg:hidden fixed right-0 top-0 bottom-0 w-[320px] z-40 overflow-y-auto bg-surface-0 border-l border-line p-2 flex flex-col gap-3"
+            >
               {rail}
-            </aside>
+            </Overlay>
           )}
         </div>
       )}
