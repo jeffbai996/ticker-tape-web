@@ -6,10 +6,21 @@ import { Overlay } from '../../src/components/Overlay.jsx'
 // than JSX because the vitest config carries no JSX transform — the rest of the
 // suite tests logic modules and source contracts.
 
-const flush = () => new Promise((resolve) => setTimeout(resolve, 25))
+// Preact flushes effects after paint: via requestAnimationFrame when the
+// host has one, else a 100ms setTimeout fallback. jsdom has no rAF, so a 25ms
+// flush raced that fallback and the focus assertions flaked under a loaded
+// suite. Give the environment a rAF that fires on the next macrotask and the
+// effects land deterministically before flush() resolves.
+const flush = () => new Promise((resolve) => setTimeout(resolve, 30))
 let host = null
+let hadRaf = null
 
 beforeEach(() => {
+  hadRaf = globalThis.requestAnimationFrame
+  if (typeof hadRaf !== 'function') {
+    globalThis.requestAnimationFrame = (cb) => setTimeout(() => cb(Date.now()), 0)
+    globalThis.cancelAnimationFrame = (id) => clearTimeout(id)
+  }
   document.body.innerHTML = '<button id="opener">open</button><div id="host"></div>'
   host = document.getElementById('host')
 })
@@ -17,6 +28,10 @@ beforeEach(() => {
 afterEach(() => {
   render(null, host)
   document.body.innerHTML = ''
+  if (typeof hadRaf !== 'function') {
+    delete globalThis.requestAnimationFrame
+    delete globalThis.cancelAnimationFrame
+  }
 })
 
 const open = async (props = {}, children = []) => {
