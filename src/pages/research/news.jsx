@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'preact/hooks'
 import { fetchNews } from '../../lib/history.js'
-import { wireUrl } from '../../lib/wire.js'
+import { wireServiceUrl } from '../../lib/wire.js'
 import { getLocale, tl, t as tt } from '../../lib/i18n.js'
 import { SectionCard } from './shared.jsx'
 
@@ -61,7 +61,10 @@ export function SymbolNewsView({ symbol, name }) {
   const [wireType, setWireType] = useState('all')
   const [yahoo, setYahoo] = useState(null)
   const [wireRows, setWireRows] = useState(null)
-  const base = wireUrl()
+  // The symbol index, /api/search and the article extractor are all Fragwire
+  // features; the read-only mirror has none of them and would answer every one
+  // of these with an empty list or a 404. Ask for a real service or show none.
+  const base = wireServiceUrl()
   useEffect(() => {
     let dead = false
     setYahoo(null)

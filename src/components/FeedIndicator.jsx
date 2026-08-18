@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'preact/hooks'
 import { feedStatus } from '../lib/feed.js'
 import { feedHealth } from '../lib/feedHealth.js'
-import { tl } from '../lib/i18n.js'
+import { tl, t as tt } from '../lib/i18n.js'
 
 // Amber carries feed state; up/down green and red stay reserved for market
 // direction, so a limping feed can never be mistaken for a falling tape.
@@ -26,7 +26,7 @@ export function FeedIndicator() {
   return (
     <span
       data-feed-state={health.state}
-      title={tl(health.title)}
+      title={tt(health.titleKey, health.titleParams)}
       class={`inline-flex items-baseline gap-1 shrink-0 whitespace-nowrap font-mono text-[10px] tracking-wider ${STATE_CLASS[health.state]}`}
     >
       {tl(health.state.toUpperCase())}

@@ -1,6 +1,13 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { fetchHistory, peekHistory, RANGES } from '../../lib/history.js'
 
+const read = (key) => {
+  try { return localStorage.getItem(key) } catch { return null }
+}
+const write = (key, value) => {
+  try { localStorage.setItem(key, value) } catch { /* best-effort */ }
+}
+
 /** Read-and-clear a command-bar ride-along (chart range, options expiry). */
 export function consumePrefill(key) {
   try {
@@ -16,14 +23,17 @@ export function consumePrefill(key) {
 export function useResearchChart(symbol) {
   const [rangeKey, setRangeKey] = useState(() => {
     const prefill = consumePrefill('chart_range')
-    const saved = localStorage.getItem('research_overview_range_v1')
+    // Every other read in this file is guarded; these three were not, and an
+    // unguarded getItem inside a useState initializer takes the whole research
+    // page down (blocked storage in an iframe or private window throws).
+    const saved = read('research_overview_range_v1')
     const prior = prefill || saved
     const candidate = prior === '1D' ? '2D' : (prior || '6M')
     return RANGES.some((range) => range.key === candidate) ? candidate : '6M'
   })
   const selectRange = (nextRange) => {
     setRangeKey(nextRange)
-    localStorage.setItem('research_overview_range_v1', nextRange)
+    write('research_overview_range_v1', nextRange)
   }
   useEffect(() => {
     const onRange = (e) => { selectRange(e.detail); sessionStorage.removeItem('chart_range') }
@@ -38,21 +48,21 @@ export function useResearchChart(symbol) {
   // was the ONLY resolution and that's no way to read an open (Jeff
   // 2026-08-06). Persisted per range so 1D can live on 1m while 5D stays 15m.
   const [ticks, setTicks] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('research_ticks_v1')) || {} } catch { return {} }
+    try { return JSON.parse(read('research_ticks_v1')) || {} } catch { return {} }
   })
   // extended-hours bars on the Overview chart (Jeff 2026-08-10) — same
   // 04:00-20:00 ET series ChartSuite's EXT chip fetches; sticky across visits
-  const [ovExt, setOvExtState] = useState(() => localStorage.getItem('research_ov_ext') === '1')
+  const [ovExt, setOvExtState] = useState(() => read('research_ov_ext') === '1')
   const setOvExt = (on) => {
     setOvExtState(on)
-    try { localStorage.setItem('research_ov_ext', on ? '1' : '0') } catch { /* best-effort */ }
+    write('research_ov_ext', on ? '1' : '0')
   }
   const activeRange = RANGES.find((x) => x.key === rangeKey)
   const tick = activeRange?.ticks?.includes(ticks[rangeKey]) ? ticks[rangeKey] : null
   const setTick = (value) => {
     const next = { ...ticks, [rangeKey]: value }
     setTicks(next)
-    try { localStorage.setItem('research_ticks_v1', JSON.stringify(next)) } catch { /* best-effort */ }
+    write('research_ticks_v1', JSON.stringify(next))
   }
 
   useEffect(() => {

@@ -30,8 +30,18 @@ function PageFallback() {
 export function lazyPage(load) {
   let Comp = null
   let pending = null
+  // A chunk fetch fails for one common reason: the tab has been open across a
+  // deploy and the hashed file is gone. The in-flight promise is cached so a
+  // route is only fetched once — but caching the REJECTION pins the route on
+  // its fallback until the tab is reloaded, so a failure clears the slot and
+  // the next visit is allowed to ask again.
   const preload = () => {
-    if (!pending) pending = Promise.resolve().then(load).then((c) => { Comp = c; return c })
+    if (!pending) {
+      pending = Promise.resolve().then(load).then(
+        (c) => { Comp = c; return c },
+        (err) => { pending = null; throw err },
+      )
+    }
     return pending
   }
 
@@ -41,7 +51,10 @@ export function lazyPage(load) {
     useEffect(() => {
       if (Comp) return undefined
       let alive = true
-      preload().then(() => { if (alive) bump((n) => n + 1) })
+      preload().then(
+        () => { if (alive) bump((n) => n + 1) },
+        () => { /* the fallback stays up; re-entering the route retries */ },
+      )
       return () => { alive = false }
     }, [])
     return Comp ? <Comp {...props} /> : <PageFallback />

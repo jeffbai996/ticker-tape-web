@@ -192,6 +192,13 @@ const STRINGS = {
   'chat.action_stretched': { en: "{symbol}'s RSI is {rsi} — trending or overextended?", zh: '{symbol} 的 RSI 为 {rsi}，是趋势还是超买？' },
   'chat.action_rs': { en: '{symbol} is {pct}pp ahead of the market over 20d — why?', zh: '{symbol} 近 20 日跑赢大盘 {pct} 个百分点，原因是什么？' },
   'chat.action_overnight': { en: '{symbol} moved {pct}% after hours — does it hold?', zh: '{symbol} 盘后波动 {pct}%，能守住吗？' },
+  // Feed-health tooltips. Keys rather than built sentences: feedHealth used to
+  // interpolate the age into English prose, which no locale could ever reach.
+  'feed.title_live': { en: 'streaming prints, 30s snapshot sweep', zh: '实时逐笔推送，每 30 秒快照轮询' },
+  'feed.title_cold': { en: 'waiting for the first quote', zh: '正在等待第一笔报价' },
+  'feed.title_delayed': { en: 'feed not answering — last data {age} ago', zh: '数据源无响应 — 最后一次数据在 {age} 前' },
+  'feed.title_snapshot_late': { en: 'snapshot sweep is late — last data {age} ago', zh: '快照轮询滞后 — 最后一次数据在 {age} 前' },
+  'feed.title_reconnecting': { en: 'stream reconnecting — last data {age} ago', zh: '实时流重连中 — 最后一次数据在 {age} 前' },
   'wire.sync_ok': { en: 'synced {count} symbols → wire', zh: '已同步 {count} 只股票 → 快讯' },
   'wire.sync_failed': { en: 'sync failed', zh: '同步失败' },
   'wire.mirror_note': {
@@ -416,10 +423,8 @@ const LABELS = {
   'loading earnings dates…': '加载财报日期…',
   today: '今日', advancing: '上涨', avg: '均', est: '预期',
   updated: '更新于', 'STALE — last good fetch': '数据过期 — 上次成功获取', ago: '前',
-  // feed health chip (feedHealth.js states + its tooltips)
+  // feed health chip — the state words; its tooltips are `feed.title_*` STRINGS
   LIVE: '实时', RECOVERING: '恢复中', DELAYED: '延迟',
-  'streaming prints, 30s snapshot sweep': '实时逐笔 + 30秒快照轮询',
-  'waiting for the first quote': '等待首次报价',
   General: '其他',
   All: '全部', Sort: '排序', Ticker: '代码', Spread: '价差', Search: '搜索', Select: '多选',
   'Selection actions': '多选操作', 'expand all': '全部展开',
@@ -592,8 +597,7 @@ const LABELS = {
   'source: standard': '信源：普通',
   'e.g. focus on rates, compare against consensus, flag stale inputs': '例如：聚焦利率、对比市场预期、标记过期数据',
   flash: '速览', trader: '交易员', catalyst: '催化剂', risk: '风险',
-  'Event details': '事件详情', 'Close event details': '关闭事件详情',
-  Date: '日期', 'Typical time': '通常时间', Source: '来源', 'Open official source': '打开官方来源',
+  Date: '日期', Source: '来源', 'Open official source': '打开官方来源',
   Actual: '实际', Estimate: '预期', Consensus: '市场预期', Previous: '前值', Revised: '修正',
   Period: '期间', Symbol: '代码', Location: '地点', Category: '类别', Yes: '是', No: '否',
   'User catalyst': '用户催化剂', 'All session': '全交易时段', 'Schedule varies': '日程不定',
@@ -808,9 +812,9 @@ const LABELS = {
   'wire unavailable': '快讯不可用', 'Arm alert': '设置提醒',
   'Channel': '推送渠道', Cooldown: '冷却时间', 'Delivery budget': '推送额度',
   'browser only': '仅浏览器', 'up to {n} per hour': '每小时最多 {n} 条',
-  'at most one every {n} min': '每 {n} 分钟最多一条', 'Alert armed': '提醒已设置',
+  'Alert armed': '提醒已设置',
   'Level': '触发价', 'arm': '设置', 'browser alert only — nothing is ordered': '仅浏览器提醒 — 不会下单',
-  'Official source': '官方来源', 'Event facts': '事件字段',
+  'Event facts': '事件字段',
   // link reasons
   'the broad tape': '大盘整体', 'long-duration growth': '长久期成长股',
   'how much move is being paid for': '市场为波动付出的价格',
