@@ -14,9 +14,10 @@ export function BottomNav({ route }) {
           onClick={section.id === 'chat' ? goChatHome : undefined}
           class={`flex-1 min-w-fit text-center px-3 py-2.5 text-[10px] font-mono whitespace-nowrap ${
             route.section === section.id ? 'text-accent border-t-2 border-accent -mt-px' : 'text-muted'
-          }`}
+          }${section.phoneOnly ? ' font-bold tracking-tight' : ''}`}
+          title={section.id === 'console' ? tl('console') : undefined}
         >
-          {tl(section.label)}
+          {section.phoneOnly ? section.label : tl(section.label)}
         </a>
       ))}
     </nav>
