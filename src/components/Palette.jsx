@@ -4,7 +4,7 @@ import { venueFlag } from '../lib/venueFlag.js'
 import { hrefFor } from '../lib/route.js'
 import { parseCommand, describePlan } from '../lib/commands.js'
 import { executePlan } from '../lib/execute.js'
-import { useEscape } from '../hooks.js'
+import { Overlay } from './Overlay.jsx'
 import { t as tt } from '../lib/i18n.js'
 
 // Ctrl/Cmd+K command palette: run a command, jump to a section, or pull up any
@@ -26,11 +26,10 @@ export function Palette({ onClose, seed = '' }) {
   useEffect(() => {
     const el = inputRef.current
     if (!el) return
-    el.focus()
-    // caret after the seed, not before it
+    // Overlay puts focus here on open; this only fixes the caret, which must
+    // land after the seed rather than before it
     try { el.setSelectionRange(el.value.length, el.value.length) } catch { /* not a text input */ }
   }, [])
-  useEscape(onClose)
 
   useEffect(() => {
     clearTimeout(debounce.current)
@@ -103,52 +102,55 @@ export function Palette({ onClose, seed = '' }) {
     /* Desktop: a centered card. Phone: a full-screen sheet — the whole page if
        results need it (Jeff 2026-08-17). The input is 16px on phone so iOS
        Safari doesn't zoom the viewport on focus. */
-    <div class="fixed inset-0 z-50 bg-black/60 flex items-start justify-center pt-[15vh] max-sm:pt-0 max-sm:bg-surface-0"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
-      <div class="w-full max-w-lg bg-surface-1 border border-line rounded-xl shadow-2xl overflow-hidden max-sm:max-w-none max-sm:h-full max-sm:rounded-none max-sm:border-0 max-sm:flex max-sm:flex-col">
-        <div class="flex items-center gap-2 border-b border-line bg-surface-2 max-sm:pt-[env(safe-area-inset-top)]">
-          <input
-            ref={inputRef}
-            value={query}
-            onInput={(e) => { setQuery(e.currentTarget.value); setSelected(0) }}
-            onKeyDown={onKey}
-            placeholder={tt('palette.placeholder')}
-            autocapitalize="off" autocorrect="off" spellcheck={false} enterkeyhint="go"
-            class="flex-1 min-w-0 bg-transparent px-4 py-3 font-mono text-[13px] max-sm:text-[16px] max-sm:py-3.5 text-ink outline-none placeholder:text-muted"
-          />
-          <button type="button" onClick={onClose} aria-label={tt('palette.close')}
-            class="sm:hidden shrink-0 mr-2 w-8 h-8 grid place-items-center rounded-lg text-muted active:text-ink font-mono text-[14px]">✕</button>
-        </div>
-        <div class="max-h-80 overflow-y-auto max-sm:max-h-none max-sm:flex-1 max-sm:pb-[env(safe-area-inset-bottom)]">
-          {entries.length === 0 && query.trim() && (
-            <div class="px-4 py-3 font-mono text-[11px] text-muted">
-              {tt('palette.no_match', { q: query.trim().toUpperCase() })}
-            </div>
-          )}
-          {!query.trim() && (
-            <div class="px-4 py-2 font-mono text-[10px] text-muted border-b border-line-2">
-              alt+1…9 jumps to a section · type a command (chart NVDA 6M)
-            </div>
-          )}
-          {entries.map((entry, i) => (
-            <button
-              key={`${entry.kind}:${entry.label}`}
-              onClick={() => go(entry)}
-              onMouseEnter={() => setSelected(i)}
-              class={`w-full flex items-center gap-3 px-4 py-2 max-sm:py-3 text-left font-mono text-[12px] max-sm:text-[14px] ${
-                i === sel ? 'bg-accent-soft text-accent' : 'text-ink hover:bg-surface-3'
-              }`}
-            >
-              <span class="text-[9px] uppercase tracking-wider text-muted w-12 shrink-0">
-                {entry.source || TAGS[entry.kind]}
-              </span>
-              {entry.flag && <img src={entry.flag} alt="" class="w-4 h-3 rounded-[1px] shrink-0" />}
-              <span class="font-bold">{entry.label}</span>
-              {entry.detail && <span class="text-[10px] text-muted truncate">{entry.detail}</span>}
-            </button>
-          ))}
-        </div>
+    <Overlay
+      onClose={onClose}
+      label={tt('palette.placeholder')}
+      initialFocus={inputRef}
+      backdropClass="fixed inset-0 z-50 bg-black/60 flex items-start justify-center pt-[15vh] max-sm:pt-0 max-sm:bg-surface-0"
+      class="w-full max-w-lg bg-surface-1 border border-line rounded-xl shadow-2xl overflow-hidden max-sm:max-w-none max-sm:h-full max-sm:rounded-none max-sm:border-0 max-sm:flex max-sm:flex-col"
+    >
+      <div class="flex items-center gap-2 border-b border-line bg-surface-2 max-sm:pt-[env(safe-area-inset-top)]">
+        <input
+          ref={inputRef}
+          value={query}
+          onInput={(e) => { setQuery(e.currentTarget.value); setSelected(0) }}
+          onKeyDown={onKey}
+          placeholder={tt('palette.placeholder')}
+          autocapitalize="off" autocorrect="off" spellcheck={false} enterkeyhint="go"
+          class="flex-1 min-w-0 bg-transparent px-4 py-3 font-mono text-[13px] max-sm:text-[16px] max-sm:py-3.5 text-ink outline-none placeholder:text-muted"
+        />
+        <button type="button" onClick={onClose} aria-label={tt('palette.close')}
+          class="sm:hidden shrink-0 mr-2 w-8 h-8 grid place-items-center rounded-lg text-muted active:text-ink font-mono text-[14px]">✕</button>
       </div>
-    </div>
+      <div class="max-h-80 overflow-y-auto max-sm:max-h-none max-sm:flex-1 max-sm:pb-[env(safe-area-inset-bottom)]">
+        {entries.length === 0 && query.trim() && (
+          <div class="px-4 py-3 font-mono text-[11px] text-muted">
+            {tt('palette.no_match', { q: query.trim().toUpperCase() })}
+          </div>
+        )}
+        {!query.trim() && (
+          <div class="px-4 py-2 font-mono text-[10px] text-muted border-b border-line-2">
+            alt+1…9 jumps to a section · type a command (chart NVDA 6M)
+          </div>
+        )}
+        {entries.map((entry, i) => (
+          <button
+            key={`${entry.kind}:${entry.label}`}
+            onClick={() => go(entry)}
+            onMouseEnter={() => setSelected(i)}
+            class={`w-full flex items-center gap-3 px-4 py-2 max-sm:py-3 text-left font-mono text-[12px] max-sm:text-[14px] ${
+              i === sel ? 'bg-accent-soft text-accent' : 'text-ink hover:bg-surface-3'
+            }`}
+          >
+            <span class="text-[9px] uppercase tracking-wider text-muted w-12 shrink-0">
+              {entry.source || TAGS[entry.kind]}
+            </span>
+            {entry.flag && <img src={entry.flag} alt="" class="w-4 h-3 rounded-[1px] shrink-0" />}
+            <span class="font-bold">{entry.label}</span>
+            {entry.detail && <span class="text-[10px] text-muted truncate">{entry.detail}</span>}
+          </button>
+        ))}
+      </div>
+    </Overlay>
   )
 }
