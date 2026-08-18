@@ -87,10 +87,22 @@ function RollingClock() {
   return (
     <button
       onClick={cycle}
-      /* phones: the clock button's right padding stacked on the header gap,
-          so the online dot sat closer to "ET" than to the locale button —
-          dropping pr on mobile centres the dot between them (Jeff 2026-08-06) */
-      class="flex items-baseline gap-1 whitespace-nowrap font-anth group px-1.5 max-sm:pr-0 py-0.5 rounded hover:bg-accent-soft hover:outline hover:outline-1 hover:outline-accent/50"
+      /* Clicking this cycles the timezone, and nothing said so: amber text
+          against amber text with no edge of its own. It now wears the house
+          `board-control` chip — hairline, faint vertical lift, brighter on
+          hover — at status-row scale, matching the locale button beside it.
+          The border is there at REST and only its colour moves on hover, so
+          nothing in a 32px header shifts under the pointer.
+          Padding is even again. The phone-only `pr-0` existed because a
+          borderless clock made the eye measure from the "ET" glyph, which
+          put the online dot closer to the clock than to the locale button
+          (Jeff 2026-08-06); with a real edge to measure from, symmetric
+          padding IS the centred one.
+          `ml-1` is the clock's own gap: the index strip on its left is a
+          scroll container whose last cell can end flush at the edge, and the
+          feed chip that used to sit between them shows nothing while the
+          feed is healthy. */
+      class="board-control group ml-1 flex items-baseline gap-1 whitespace-nowrap font-anth px-1.5 py-0.5 rounded border transition-colors hover:border-accent/50"
       title={tl('cycle timezone')}
     >
       {/* Anthropic Sans digits (Jeff 2026-08-06) — falls back to Jakarta on
