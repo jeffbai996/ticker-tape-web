@@ -9,14 +9,14 @@ import { getCached } from './feed.js'
 import { getWatchlist } from './watchlist.js'
 import { fetchNews } from './history.js'
 import { memoriesForPrompt, MEMORY_PROMPT } from './chatMemory.js'
-import { wireUrl } from './wire.js'
+import { wireServiceUrl } from './wire.js'
 
 // ── portfolio snapshot, cached so chat turns don't hammer the gateway ──
 let bookCache = { ts: 0, block: '' }
 const BOOK_TTL = 60_000
 
 async function portfolioBlock() {
-  const base = wireUrl()
+  const base = wireServiceUrl()
   if (!base) return ''
   if (Date.now() - bookCache.ts < BOOK_TTL) return bookCache.block
   try {
@@ -107,7 +107,7 @@ export async function buildChatContext(question) {
 let bookJsonCache = { ts: 0, data: null }
 
 export async function fetchBookJson() {
-  const base = wireUrl()
+  const base = wireServiceUrl()
   if (!base) return null
   if (Date.now() - bookJsonCache.ts < BOOK_TTL) return bookJsonCache.data
   try {
@@ -123,5 +123,5 @@ export async function fetchBookJson() {
 
 /** Does this browser have a live book wired in (affects the base prompt)? */
 export function hasLiveBook() {
-  return !!wireUrl()
+  return !!wireServiceUrl()
 }

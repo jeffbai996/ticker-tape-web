@@ -1,6 +1,6 @@
 import { getCached, subscribe } from './feed.js'
 import { getWatchlist, onWatchlistChange } from './watchlist.js'
-import { wireUrl } from './wire.js'
+import { wireServiceUrl } from './wire.js'
 
 function instrumentEntries(symbols, quoteLookup = getCached) {
   return symbols.map((symbol) => ({
@@ -38,7 +38,7 @@ function signature(symbols) {
  * trigger one follow-up when provider instrument types become available. */
 export function startWireWatchlistSync() {
   if (started || typeof localStorage === 'undefined') return
-  const endpoint = wireUrl()
+  const endpoint = wireServiceUrl()
   if (!endpoint) return
   started = true
 

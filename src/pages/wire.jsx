@@ -3,7 +3,7 @@ import {
   wireUrl, setWireUrl, fragwireHome, calendarSubscriptionUrl, fetchEvents, fetchUpdates, fetchToday, fetchMeta,
   demoBackfill, demoEvent, demoToday, rankEvents, collapseSessions, clusterStories,
   srcCred, evHeadline, evBody, matchesWireQuery, pubDisplayName, readMinutes,
-  toggleWireArticle,
+  toggleWireArticle, isMirrorBase, mirrorAgeMinutes,
 } from '../lib/wire.js'
 import { IS_PRIVATE_BUILD } from '../lib/nav.js'
 import { prefetchSymbol } from '../lib/history.js'
@@ -98,6 +98,10 @@ function ReadBody({ ev }) {
     let dead = false
     const base = wireUrl()
     if (!base || ev.demo) { setState({ status: 'off', paras: [] }); return }
+    // The public mirror carries headlines and source links only — there is no
+    // extractor behind it. Fall straight to the "open the page" line instead
+    // of burning a request on a 404.
+    if (isMirrorBase(base)) { setState({ status: 'empty', paras: [] }); return }
     fetch(`${base.replace(/\/$/, '')}/api/read?id=${ev.id}&fast=1`,
       { signal: AbortSignal.timeout(20_000) })
       .then((r) => r.json())
@@ -442,6 +446,10 @@ function Rail({ today, now, events, watchset, onHide }) {
 // (2026-08-10). Module-level, so it dies with the tab and not before.
 const openStore = new Set()
 
+// The mirror snapshot is pushed every ~5 minutes; a read a minute keeps the
+// page honest without hammering the worker.
+const MIRROR_POLL_MS = 60_000
+
 export function Wire({ route }) {
   const [endpoint, setEndpoint] = useState(() => wireUrl())
   const [draft, setDraft] = useState(() => wireUrl())
@@ -453,7 +461,9 @@ export function Wire({ route }) {
   const [mode, setMode] = useState(() => localStorage.getItem('tape-wire-mode') || 'top')
   // rail off = full-width reading; sticky, it's a layout preference
   const [rail, setRail] = useState(() => localStorage.getItem('tape-wire-rail') !== '0')
-  const [state, setState] = useState('demo')   // demo | connecting | live | error
+  const [state, setState] = useState('demo')   // demo | connecting | live | mirror | error
+  // when the feed is the public mirror: unix seconds of the pushed snapshot
+  const [generatedAt, setGeneratedAt] = useState(null)
   const [error, setError] = useState('')
   const [today, setToday] = useState(null)
   const [watchset, setWatchset] = useState(new Set())
@@ -524,20 +534,31 @@ export function Wire({ route }) {
       }, wait)
     }
 
-    if (!endpoint) {
+    let demoTimer = null
+    let mirrorTimer = null
+    let railTimer = null
+    // The written session. Also the floor under the mirror: an exporter that
+    // has never pushed, or a worker that is down, degrades to labeled demo
+    // rather than to a blank page.
+    const startDemo = () => {
       setState('demo')
+      setGeneratedAt(null)
       setEvents(demoBackfill())
       setToday(demoToday())
       setWatchset(new Set(['AAPL', 'MSFT', 'NVDA', 'GOOG', 'AMZN', 'TSLA']))
       let nextId = 41
-      const timer = setInterval(() => {
+      demoTimer = setInterval(() => {
         const ev = demoEvent(nextId++, Date.now() / 1000)
         ev.ts_event = Date.now() / 1000 - 2
         ev.ts_seen = Date.now() / 1000
         setEvents((cur) => [...cur.slice(-199), ev])
         markHot(ev.id)
       }, 15000)
-      return () => { cancelled = true; clearInterval(timer) }
+    }
+
+    if (!endpoint) {
+      startDemo()
+      return () => { cancelled = true; clearInterval(demoTimer) }
     }
 
     setState('connecting')
@@ -567,36 +588,73 @@ export function Wire({ route }) {
         })
         .catch(() => {})              // SSE still owns connection state
     }
+    // A real Fragwire: backfill, then live over SSE.
+    const startLive = () => {
+      fetchEvents(endpoint, { limit: 300, newest: true })
+        .then((out) => {
+          if (cancelled) return
+          setEvents(out.events || [])
+          revisionSince = out.server_ts || Date.now() / 1000
+          revisionTimer = setInterval(pollRevisions, 2000)
+          pollRail()
+          const es = new EventSource(`${endpoint}/api/stream?since_id=${out.latest_id || 0}`)
+          esRef.current = es
+          es.onopen = () => { attemptsRef.current = 0; setState('live') }
+          es.onerror = () => { setState('error'); reArm() }
+          es.addEventListener('wire', (msg) => {
+            const ev = JSON.parse(msg.data)
+            setEvents((cur) => [...cur.slice(-399), ev])
+            markHot(ev.id)
+          })
+        })
+        .catch((err) => {
+          if (cancelled) return
+          setState('error')
+          setError(String(err.message || err))
+          reArm()
+        })
+      railTimer = setInterval(pollRail, 30_000)
+    }
+
+    // The public mirror is a pushed snapshot, not a stream. No EventSource to
+    // open and nothing to reconnect to — one read a minute is already four
+    // times finer than the push cadence.
+    const startMirror = () => {
+      let seen = new Set()
+      const pull = (first) => fetchEvents(endpoint, { limit: 300, newest: true })
+        .then((out) => {
+          if (cancelled) return
+          const rows = out.events || []
+          if (first && !rows.length) { startDemo(); return }
+          if (!first) rows.filter((ev) => !seen.has(ev.id)).forEach((ev) => markHot(ev.id))
+          seen = new Set(rows.map((ev) => ev.id))
+          setEvents(rows)
+          setGeneratedAt(out.generated_at ?? null)
+          revisionSince = out.server_ts || revisionSince || Date.now() / 1000
+          setState('mirror')
+        })
+        .catch(() => { if (!cancelled && first) startDemo() })
+      pollRail()
+      pull(true).then(() => {
+        if (cancelled || demoTimer) return
+        mirrorTimer = setInterval(() => { pull(false); pollRevisions() }, MIRROR_POLL_MS)
+      })
+    }
+
     fetchMeta(endpoint)
-      .then((out) => !cancelled && setWatchset(new Set(out.watchlist || [])))
-      .catch(() => {})
-    fetchEvents(endpoint, { limit: 300, newest: true })
       .then((out) => {
         if (cancelled) return
-        setEvents(out.events || [])
-        revisionSince = out.server_ts || Date.now() / 1000
-        revisionTimer = setInterval(pollRevisions, 2000)
-        pollRail()
-        const es = new EventSource(`${endpoint}/api/stream?since_id=${out.latest_id || 0}`)
-        esRef.current = es
-        es.onopen = () => { attemptsRef.current = 0; setState('live') }
-        es.onerror = () => { setState('error'); reArm() }
-        es.addEventListener('wire', (msg) => {
-          const ev = JSON.parse(msg.data)
-          setEvents((cur) => [...cur.slice(-399), ev])
-          markHot(ev.id)
-        })
+        setWatchset(new Set(out.watchlist || []))
+        if (out.mirror) startMirror()
+        else startLive()
       })
-      .catch((err) => {
-        if (cancelled) return
-        setState('error')
-        setError(String(err.message || err))
-        reArm()
-      })
-    const railTimer = setInterval(pollRail, 30_000)
+      .catch(() => { if (!cancelled) startLive() })
+
     return () => {
       cancelled = true
-      clearInterval(railTimer)
+      if (railTimer) clearInterval(railTimer)
+      if (demoTimer) clearInterval(demoTimer)
+      if (mirrorTimer) clearInterval(mirrorTimer)
       if (revisionTimer) clearInterval(revisionTimer)
       if (reArmTimer) clearTimeout(reArmTimer)
       if (esRef.current) { esRef.current.close(); esRef.current = null }
@@ -681,14 +739,17 @@ export function Wire({ route }) {
   const calendarUrl = calendarSubscriptionUrl()
 
   const connState = state === 'live' ? 'live' : state === 'error' ? 'down'
+    : state === 'mirror' ? 'mirror'
     : state === 'connecting' ? 'connecting' : 'demo'
   const CONN_TONE = {
-    live: 'text-up', connecting: 'text-accent', down: 'text-down', demo: 'text-muted',
+    live: 'text-up', mirror: 'text-accent', connecting: 'text-accent',
+    down: 'text-down', demo: 'text-muted',
   }
   // Solid dots, no glow (Jeff 2026-08-07). The colour already carries the
   // state; a halo on top of a 6px dot just reads as a smudge at this size.
   const CONN_DOT = {
     live: 'bg-up',
+    mirror: 'bg-accent',
     connecting: 'bg-accent',
     down: 'bg-down',
     demo: 'bg-muted',
@@ -724,6 +785,14 @@ export function Wire({ route }) {
           <i class={`w-1.5 h-1.5 rounded-full ${CONN_DOT[connState]}`} />
           {tl(state === 'demo' ? 'demo' : state)}
         </span>
+        {state === 'mirror' && (
+          <span data-wire-mirror-age class="shrink-0 font-mono text-[10px] text-muted"
+                title={tl('a public copy of the wire, pushed every 5 minutes')}>
+            {mirrorAgeMinutes(generatedAt, now) == null
+              ? tl('≤5 min')
+              : tt('wire.mirror_age', { n: mirrorAgeMinutes(generatedAt, now) })}
+          </span>
+        )}
         {wireHome && (
           <nav class="inline-flex gap-1 shrink-0">
             {[['board', ''], ['calendar', '/today'], ['week', '/week'], ['stats', '/stats']].map(([label, path]) => (
@@ -820,7 +889,7 @@ export function Wire({ route }) {
       </div>
       {!IS_PRIVATE_BUILD && (
         <p class="font-mono text-[10.5px] text-muted max-w-[74ch]">
-          {tt('wire.byo_note')}
+          {tt(state === 'mirror' ? 'wire.mirror_note' : 'wire.byo_note')}
         </p>
       )}
     </div>

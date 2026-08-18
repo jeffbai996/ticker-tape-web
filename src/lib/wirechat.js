@@ -5,16 +5,16 @@
 // wants a tool, and prose otherwise.
 
 import { TOOL_DEFS } from './tools.js'
-import { wireUrl } from './wire.js'
+import { wireServiceUrl } from './wire.js'
 
 /** Is the private, subscription-backed path available in this browser? */
 export function wireChatAvailable() {
-  return !!wireUrl()
+  return !!wireServiceUrl()
 }
 
 /** Fetch the selectable subscription models from the live router. */
 export async function fetchWireChatModels() {
-  const base = wireUrl().replace(/\/$/, '')
+  const base = wireServiceUrl().replace(/\/$/, '')
   const resp = await fetch(`${base}/api/chat/models`, {
     signal: AbortSignal.timeout(10_000),
   })
@@ -75,7 +75,7 @@ export function parseToolCall(text, defs = TOOL_DEFS) {
  */
 export async function wireStream({ model, effort, system, messages, onDelta, onThinking,
                                   onThinkingTokens, onUsage, signal }) {
-  const base = wireUrl().replace(/\/$/, '')
+  const base = wireServiceUrl().replace(/\/$/, '')
   const resp = await fetch(`${base}/api/chat/stream`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -130,7 +130,7 @@ export async function wireStream({ model, effort, system, messages, onDelta, onT
 
 /** One turn against fragwire's router. Returns the assistant's raw text. */
 export async function wireComplete({ model, effort, system, messages, signal }) {
-  const base = wireUrl().replace(/\/$/, '')
+  const base = wireServiceUrl().replace(/\/$/, '')
   const resp = await fetch(`${base}/api/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

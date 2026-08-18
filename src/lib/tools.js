@@ -19,7 +19,7 @@ import { ECON_EVENTS } from './markets.js'
 import { loadCatalysts, addCatalyst, mergedEvents, CATALYST_TYPES } from './catalysts.js'
 import { addMemory, editMemory, removeMemory } from './chatMemory.js'
 import { addJournalEntry, searchJournal, loadJournal } from './journal.js'
-import { wireUrl } from './wire.js'
+import { wireServiceUrl } from './wire.js'
 import { SYMBOL_ANY_CASE_RE } from './symbols.js'
 
 const MAX_SYMBOLS = 15
@@ -410,7 +410,7 @@ export const TOOL_DEFS = [
 
 const EXECUTORS = {
   wire_search: async ({ q, symbol }) => {
-    const base = wireUrl()
+    const base = wireServiceUrl()
     if (!base) return { error: 'no wire connected in this browser' }
     const b = base.replace(/\/$/, '')
     const url = q

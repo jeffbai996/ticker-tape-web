@@ -182,6 +182,11 @@ const STRINGS = {
   'chat.action_overnight': { en: '{symbol} moved {pct}% after hours — does it hold?', zh: '{symbol} 盘后波动 {pct}%，能守住吗？' },
   'wire.sync_ok': { en: 'synced {count} symbols → wire', zh: '已同步 {count} 只股票 → 快讯' },
   'wire.sync_failed': { en: 'sync failed', zh: '同步失败' },
+  'wire.mirror_note': {
+    en: 'Public mirror of the operator\u2019s wire \u2014 a sanitized headline snapshot, pushed every 5 minutes. Read-only: no stream, no article text, no watchlist. Point the box above at a fragwire-compatible endpoint to read your own instead.',
+    zh: '\u516c\u5f00\u955c\u50cf\uff1a\u6bcf 5 \u5206\u949f\u63a8\u9001\u4e00\u6b21\u7684\u6807\u9898\u5feb\u7167\uff08\u5df2\u8131\u654f\uff09\u3002\u53ea\u8bfb\uff1a\u65e0\u5b9e\u65f6\u6d41\u3001\u65e0\u6b63\u6587\u3001\u65e0\u81ea\u9009\u80a1\u3002\u5728\u4e0a\u65b9\u586b\u5165\u517c\u5bb9 Fragwire \u7684\u5730\u5740\u53ef\u6539\u8bfb\u4f60\u81ea\u5df1\u7684\u5feb\u8baf\u3002',
+  },
+  'wire.mirror_age': { en: 'updated {n}m ago', zh: '{n} \u5206\u949f\u524d\u66f4\u65b0' },
   'wire.byo_note': {
     en: 'Demo wire — a sample session of earnings, filings, Fed and macro events. Nothing here is a live print. Point it at a fragwire-compatible endpoint to see your own, rendered in your browser only.',
     zh: '自带快讯源：此页不内置地址或数据。连接任意兼容 Fragwire 的服务后，内容只会在浏览器中渲染；地址留空则使用模拟数据。',
@@ -692,6 +697,8 @@ const LABELS = {
   'exported ✓': '已导出 ✓', 'export failed': '导出失败', rename: '重命名',
   rail: '侧栏', 'rail ⨯': '侧栏 ⨯', 'wire connection': '快讯连接',
   board: '看板', week: '周历', stats: '统计', demo: '演示', subscribe: '订阅',
+  mirror: '镜像', '≤5 min': '≤5 分钟',
+  'a public copy of the wire, pushed every 5 minutes': '快讯的公开副本，每 5 分钟推送一次',
   'Subscribe to Fragwire calendar': '订阅 Fragwire 日历',
   'hide the side panels': '隐藏侧栏', 'show the side panels': '显示侧栏',
   earnings: '财报', filings: '申报文件', headlines: '新闻', 'macro + fed': '宏观 + 美联储', 'live audio': '实时音频',

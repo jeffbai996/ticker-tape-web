@@ -8,6 +8,7 @@
 
 import { handleChat } from './chat.js'
 import { handleWatchlists } from './watchlists.js'
+import { handleWire } from './wire.js'
 
 const CORS_HEADERS = {
     'Access-Control-Allow-Origin': '*',
@@ -41,6 +42,12 @@ export default {
         // not proxy the private Fragwire API.
         if (path.startsWith('/watchlists/')) {
             return handleWatchlists(request, env, path);
+        }
+
+        // Public wire mirror: a pushed, sanitized headline snapshot read by
+        // the public site. Read-only for everyone but the pusher.
+        if (path === '/wire' || path.startsWith('/wire/')) {
+            return handleWire(request, env, path);
         }
 
         if (request.method === 'OPTIONS') {
