@@ -1,6 +1,24 @@
 // What one marquee cycle contains, and how each item is labelled. The
 // renderer duplicates the whole sequence to loop seamlessly.
 
+/** The media query the belt honours. */
+export const REDUCED_MOTION = '(prefers-reduced-motion: reduce)'
+
+/**
+ * Whether the belt should be moving, expressed as the `animation-play-state`
+ * the element wants — the marquee is a CSS animation, so this is the whole
+ * control surface.
+ *
+ * Hidden pauses it because "the tab is not on screen" and "the compositor has
+ * stopped animating" are not the same claim: an occluded, minimised or
+ * offscreen window can keep producing frames for a `transform` animation, and
+ * a belt scrolling for nobody is pure heat. Reduced motion parks it outright —
+ * an endlessly moving strip is exactly what that setting is asking us to stop.
+ */
+export function tapePlayState({ hidden = false, reducedMotion = false } = {}) {
+  return hidden || reducedMotion ? 'paused' : 'running'
+}
+
 const TYPE_CODE = {
   price_move: 'MOVE',
   earnings_release: 'ERN',
