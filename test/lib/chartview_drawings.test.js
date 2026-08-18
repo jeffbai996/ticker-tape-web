@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   boundedTimeScale, projectSegment, trendlinePrimitive,
-} from '../src/lib/chartview.js'
+} from '../../src/lib/chartview.js'
 
 // Minimal stand-ins for the two lightweight-charts APIs the projection uses.
 const fakeSeries = (map) => ({

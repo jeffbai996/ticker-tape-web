@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import {
   getGroupPrefs, isCollapsed, moveGroup, orderGroups, resetGroupOrder,
   setGroupsCollapsed, toggleCollapsed,
-} from '../src/lib/catgroups.js'
+} from '../../src/lib/catgroups.js'
 
 const NAMES = ['Megacaps', 'Semis & AI', 'Financials']
 const groups = (names = NAMES) => names.map((name) => ({ name, symbols: [] }))

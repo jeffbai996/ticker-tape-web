@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { formatBriefTechnicalNote, setLocale, t, tl } from '../src/lib/i18n.js'
+import { formatBriefTechnicalNote, setLocale, t, tl } from '../../src/lib/i18n.js'
 
 afterEach(() => setLocale('en'))
 

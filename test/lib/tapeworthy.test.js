@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { tapeworthy } from '../src/lib/wire.js'
+import { tapeworthy } from '../../src/lib/wire.js'
 
 const NOW = 1_700_000_000
 const ev = (over = {}) => ({

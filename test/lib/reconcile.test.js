@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   fiscalMonths, medianReportLag, quarterForReport, reconcileQuarters,
-} from '../src/lib/earnings.js'
+} from '../../src/lib/earnings.js'
 
 const utc = (y, m, d) => Date.UTC(y, m - 1, d)
 
