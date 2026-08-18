@@ -5,7 +5,7 @@ import {
   capturedAgo, cleanWorkspaceName, deleteWorkspace, getActiveWorkspace, listWorkspaces,
   onWorkspacesChange, renameWorkspace, saveWorkspace, summarizeLayout,
 } from '../lib/workspaces.js'
-import { applyToBoard, captureBoard } from '../lib/workspaceState.js'
+import { applyToBoard, captureBoard, WORKSPACE_EVENT } from '../lib/workspaceState.js'
 
 // Saved workspaces, as a board control rather than a page: the toolbar is one
 // row at every width, so this is a 26px control with a popover — the same
@@ -46,8 +46,8 @@ export function WorkspacesControl({
       if (layout.sparkWindow) setSparkWin?.(layout.sparkWindow)
       refresh()
     }
-    addEventListener('tape:workspace', onWorkspace)
-    return () => removeEventListener('tape:workspace', onWorkspace)
+    addEventListener(WORKSPACE_EVENT, onWorkspace)
+    return () => removeEventListener(WORKSPACE_EVENT, onWorkspace)
   }, [setViewMode, setSort, setSpark, setSparkWin])
 
   useEffect(() => {

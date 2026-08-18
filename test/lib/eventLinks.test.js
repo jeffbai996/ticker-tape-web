@@ -3,6 +3,7 @@ import { setLocale, tl } from '../../src/lib/i18n.js'
 import { SYMBOL_RE } from '../../src/lib/symbols.js'
 import {
   EVENT_LINKS, LIVE_WINDOW_MS,
+  MAX_KIND_CHARS,
   etOffsetMinutes, eventAlertPlan, eventClock, eventKind, eventLinkedSymbols,
   eventNarrative, eventNumbers, eventPhase, eventReaction, eventSurprise,
   formatCountdown, parseNumeric, sectorEtfFor,
@@ -82,6 +83,25 @@ describe('event link mapping', () => {
     expect(links.map((l) => l.symbol)).toContain('SPY')
     expect(eventKind({ type: 'ern' })).toBe('ERN')
     expect(eventKind({})).toBe('OTHER')
+  })
+
+  it('bounds an unknown kind before it reaches the badge', () => {
+    // a calendar row is remote input and `kind` is rendered verbatim, so the
+    // passthrough is capped and stripped rather than trusted
+    const long = eventKind({ type: 'a'.repeat(400) })
+    expect(long).toBe('A'.repeat(MAX_KIND_CHARS))
+    expect(long.length).toBe(MAX_KIND_CHARS)
+    expect(eventKind({ type: '<img src=x onerror=alert(1)>' }))
+      .toBe('IMGSRCXONERR')
+    expect(eventKind({ type: 'jobs report' })).toBe('JOBSREPORT')
+    expect(eventKind({ type: '  ' })).toBe('OTHER')     // nothing printable
+    expect(eventKind({ type: '***' })).toBe('OTHER')
+    expect(eventKind({ type: 42 })).toBe('42')
+    // a known kind is never touched by the sanitiser
+    expect(eventKind({ type: 'FOMC' })).toBe('FOMC')
+    // and an unknown one still resolves to the broad-market workspace
+    expect(eventNarrative({ type: 'a'.repeat(400) }).plain)
+      .toBe(EVENT_LINKS.OTHER.plain)
   })
 
   it('prefers the event own description over the shipped one', () => {
