@@ -3,6 +3,7 @@ import {
   FEED_DELAYED_MS, SNAPSHOT_LIVE_MS, SYMBOL_STALE_MS,
   feedHealth, fmtAge, freshnessTitle, isLiveSource, symbolFreshness,
 } from '../../src/lib/feedHealth.js'
+import { hasLabelTranslation, setLocale, t } from '../../src/lib/i18n.js'
 
 const NOW = 1_700_000_000_000
 
@@ -69,13 +70,34 @@ describe('feedHealth', () => {
     expect(h.label).toBe('RECOVERING')
   })
 
-  it('always explains itself in the tooltip', () => {
+  // The tooltip has to survive translation, so it is a key plus params rather
+  // than a sentence with the age already baked into it — a built string can
+  // only ever be shown in English.
+  it('always explains itself with a translatable tooltip', () => {
     for (const input of [
       { streamConnected: true, lastStreamTs: NOW, lastSnapshotTs: NOW },
+      { streamConnected: true, lastStreamTs: NOW, lastSnapshotTs: NOW - 2 * SNAPSHOT_LIVE_MS },
       { streamConnected: false, lastStreamTs: NOW - 1_000, lastSnapshotTs: NOW - 1_000 },
       { streamConnected: false, lastStreamTs: 0, lastSnapshotTs: NOW - FEED_DELAYED_MS },
+      { streamConnected: false, lastStreamTs: 0, lastSnapshotTs: 0 },
     ]) {
-      expect(feedHealth(input, NOW).title.length).toBeGreaterThan(0)
+      const h = feedHealth(input, NOW)
+      expect(h.titleKey).toMatch(/^feed\./)
+      setLocale('en')
+      const en = t(h.titleKey, h.titleParams)
+      expect(en.length).toBeGreaterThan(0)
+      expect(en).not.toBe(h.titleKey)          // an unknown key echoes itself
+      setLocale('zh')
+      const zh = t(h.titleKey, h.titleParams)
+      expect(zh).toMatch(/[一-鿿]/)
+      if (h.titleParams?.age) expect(zh).toContain(h.titleParams.age)
+      setLocale('en')
+    }
+  })
+
+  it('gives every state word a translation of its own', () => {
+    for (const state of ['live', 'recovering', 'delayed']) {
+      expect(hasLabelTranslation(state.toUpperCase())).toBe(true)
     }
   })
 })
