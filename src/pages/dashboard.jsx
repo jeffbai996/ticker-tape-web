@@ -680,7 +680,7 @@ function EarningsPanel({ symbols, quotes = {} }) {
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden flex flex-col max-h-[42vh]">
       <header class="flex items-center px-3 py-[3px] border-b border-line-2 bg-surface-2">
-        <a href="#/markets/earnings" class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase hover:no-underline">
+        <a href="#/markets/earnings" class="font-anth font-bold text-[12px] tracking-wider text-accent uppercase hover:no-underline">
           {tl('Earnings')}
         </a>
         <a href="#/markets/earnings" aria-label={tl('Open earnings')} class="ml-auto text-[12px] leading-none text-muted hover:text-accent hover:no-underline">→</a>
@@ -696,12 +696,12 @@ function EarningsPanel({ symbols, quotes = {} }) {
           const mine = held.has(symbol)
           return (
             <a key={symbol} href={`#/research/${symbol.toLowerCase()}/earnings`}
-              class="grid grid-cols-[2.55rem_minmax(0,1fr)_2rem] items-baseline gap-1.5 px-3 py-[2px] font-mono text-[11px] hover:bg-surface-3 hover:no-underline"
+              class="grid grid-cols-[2.75rem_minmax(0,1fr)_2.2rem] items-baseline gap-1.5 px-3 py-[3px] font-mono text-[12px] hover:bg-surface-3 hover:no-underline"
               title={name || symbol}>
               <span class={`font-[650] font-anth truncate ${mine ? 'text-ink' : 'text-ink-2'}`}>{symbol}</span>
               {/* company name, quiet — the CLI's `[dim]{name}[/]`, sliding into
                   view on hover when the rail is too narrow to hold it */}
-              <Marquee text={name} class="min-w-0 text-left text-[9px] text-muted font-anth font-light" />
+              <Marquee text={name} class="min-w-0 text-left text-[11px] text-muted font-anth font-light" />
               <span class={`text-right ${d <= 0 ? 'text-imminent font-bold'
                 : d <= 7 ? 'text-down' : d <= 21 ? 'text-accent' : 'text-ink-2'}`}>{d}d</span>
             </a>
