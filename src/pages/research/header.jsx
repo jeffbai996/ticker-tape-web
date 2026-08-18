@@ -4,9 +4,9 @@ import { Marquee } from '../../components/Marquee.jsx'
 import { FlashMetric, FlashPrice } from '../../components/Fig.jsx'
 import { fmtPrice, fmtPct, fmtChange, fmtVol } from '../../lib/format.js'
 import { extendedLabelClass } from '../../lib/extendedHours.js'
-import { getWatchlist, watch, unwatch } from '../../lib/watchlist.js'
+import { watch, unwatch } from '../../lib/watchlist.js'
 import { useWatchlist } from '../../hooks.js'
-import { getCached, lastGoodTs } from '../../lib/feed.js'
+import { lastGoodTs } from '../../lib/feed.js'
 
 function WatchStar({ symbol }) {
   const watched = useWatchlist().includes(symbol)
@@ -63,7 +63,9 @@ function StaleQuoteTag() {
   const mins = Math.floor((Date.now() - good) / 60_000)
   if (mins < 5) return null      // same threshold as the sidebar's banner
   return (
-    <span class="font-mono text-[10px] text-down whitespace-nowrap"
+    // amber, not red: this is feed health, and a limping feed must not read as
+    // a falling tape (same rule FeedIndicator states for the shell chip)
+    <span class="font-mono text-[10px] text-accent font-bold whitespace-nowrap"
       title={tl('quotes stopped updating — the feed is not answering')}>
       ⚠ {tl('STALE')} {mins < 60 ? `${mins}m` : `${Math.floor(mins / 60)}h`}
     </span>
