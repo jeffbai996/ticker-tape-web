@@ -220,8 +220,11 @@ export function scrubBadPrints(bars) {
   const pool = (traded.length >= 3 ? traded : bars).map(range).sort((a, b) => a - b)
   const median = pool[Math.floor(pool.length / 2)]
   const scale = bars[Math.floor(bars.length / 2)].close || 1
-  // 8× the typical range, but never below 5% of price — a quiet tape's median
-  // can be tiny and we don't want to scrub an honest 30¢ wick
-  const limit = Math.max(median * 8, scale * 0.05)
+  // Extended-hours volume is often reported as zero, so range has to carry
+  // the decision. Keep twelve ordinary bars of headroom and a 1.5%-of-price
+  // floor: enough for a genuine thin-session candle, but not Yahoo's isolated
+  // $10–$20 wicks on a $480 stock that flatten the rest of the chart. A true
+  // whole-bar repricing remains because its own high-low range stays tight.
+  const limit = Math.max(median * 12, scale * 0.015)
   return bars.filter((b) => (b.volume ?? 0) > 0 || range(b) <= limit)
 }
