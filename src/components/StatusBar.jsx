@@ -87,23 +87,20 @@ function RollingClock() {
   return (
     <button
       onClick={cycle}
-      /* Clicking this cycles the timezone, and nothing said so: amber text
-          against amber text with no edge of its own. It now wears the house
-          `board-control` chip — hairline, faint vertical lift, brighter on
-          hover — at status-row scale, matching the locale button beside it.
-          The border is there at REST and only its colour moves on hover, so
-          nothing in a 32px header shifts under the pointer.
-          Padding is even again. The phone-only `pr-0` existed because a
-          borderless clock made the eye measure from the "ET" glyph, which
-          put the online dot closer to the clock than to the locale button
-          (Jeff 2026-08-06); with a real edge to measure from, symmetric
-          padding IS the centred one.
+      /* Clicking this cycles the timezone, so it keeps a real edge at rest.
+          It deliberately does not use the lifted board-control treatment:
+          this is status chrome, not a dashboard action. An explicit 20px
+          height matches the locale and market-state pills; only border/text
+          colour changes on hover, so the 32px header never shifts.
+          Padding is even. The old phone-only `pr-0` made the online dot look
+          off-centre once the clock gained a border (Jeff 2026-08-06).
           `ml-1` is the clock's own gap: the index strip on its left is a
           scroll container whose last cell can end flush at the edge, and the
           feed chip that used to sit between them shows nothing while the
           feed is healthy. */
-      class="board-control group ml-1 flex cursor-pointer items-baseline gap-1 whitespace-nowrap font-anth px-1.5 py-0.5 rounded border transition-colors hover:border-accent/50"
       title={tl('cycle timezone')}
+      data-status-clock
+      class="h-5 group ml-1 flex cursor-pointer items-center gap-1 whitespace-nowrap font-anth px-1.5 py-0 rounded border border-line/70 bg-white/[0.018] transition-colors hover:border-line-2"
     >
       {/* Anthropic Sans digits (Jeff 2026-08-06) — falls back to Jakarta on
           the public build, where the licensing-gated woff2 never ships */}
@@ -223,8 +220,9 @@ export function StatusBar() {
       />
       <button
         onClick={() => setLocale(getLocale() === 'en' ? 'zh' : 'en')}
-        class="px-1.5 py-0.5 rounded border border-line text-muted hover:text-ink hover:border-line-2"
         title="EN / 中文"
+        data-status-locale
+        class="h-5 inline-flex items-center px-1.5 py-0 rounded border border-line text-muted hover:text-ink hover:border-line-2"
       >
         {getLocale() === 'en' ? '中' : 'EN'}
       </button>

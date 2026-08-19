@@ -97,17 +97,24 @@ describe('the timezone clock is a control, not a caption', () => {
   })
 })
 
-describe('the timezone clock wears the house chip', () => {
+describe('the timezone clock stays aligned and quiet', () => {
   // classList, not a substring of the source: these are the rules, and the
   // order they happen to be written in is not one of them
   let cls = null
   beforeEach(async () => { cls = (await clock()).classList })
 
-  it('carries a real border and the pointer cursor at rest', () => {
-    expect(cls.contains('board-control')).toBe(true)
+  it('carries a real but subdued border and the pointer cursor at rest', () => {
+    expect(cls.contains('board-control')).toBe(false)
     expect(cls.contains('border')).toBe(true)
+    expect(cls.contains('border-line/70')).toBe(true)
+    expect(cls.contains('bg-white/[0.018]')).toBe(true)
     expect(cls.contains('rounded')).toBe(true)
     expect(cls.contains('cursor-pointer')).toBe(true)
+  })
+
+  it('uses the same explicit row-control height without padding inflating it', () => {
+    expect(cls.contains('h-5')).toBe(true)
+    expect(cls.contains('py-0')).toBe(true)
   })
 
   it('changes nothing but colour on hover — no box growing under the pointer', () => {
@@ -119,7 +126,8 @@ describe('the timezone clock wears the house chip', () => {
   })
 
   it('keeps the accent amber and never borrows the market colours', () => {
-    expect(cls.contains('hover:border-accent/50')).toBe(true)
+    expect(cls.contains('hover:border-line-2')).toBe(true)
+    expect(cls.contains('hover:border-accent/50')).toBe(false)
     expect(cls.contains('text-up')).toBe(false)
     expect(cls.contains('text-down')).toBe(false)
   })
