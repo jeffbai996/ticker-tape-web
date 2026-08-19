@@ -90,8 +90,8 @@ function RollingClock() {
       /* Clicking this cycles the timezone, so it keeps a real edge at rest.
           It deliberately does not use the lifted board-control treatment:
           this is status chrome, not a dashboard action. An explicit 20px
-          height matches the locale and market-state pills; only border/text
-          colour changes on hover, so the 32px header never shifts.
+          height matches the locale and market-state pills; only colour changes
+          on hover/focus, so the 32px header never shifts.
           Padding is even. The old phone-only `pr-0` made the online dot look
           off-centre once the clock gained a border (Jeff 2026-08-06).
           `ml-1` is the clock's own gap: the index strip on its left is a
@@ -100,7 +100,7 @@ function RollingClock() {
           feed is healthy. */
       title={tl('cycle timezone')}
       data-status-clock
-      class="h-5 group ml-1 flex cursor-pointer items-center gap-1 whitespace-nowrap font-anth px-1.5 py-0 rounded border border-line/70 bg-white/[0.018] transition-colors hover:border-line-2"
+      class="h-5 group ml-1 flex cursor-pointer items-center gap-1 whitespace-nowrap font-anth px-1.5 py-0 rounded border border-line/70 bg-white/[0.018] transition-colors hover:border-line-2 hover:bg-white/[0.045] focus-visible:border-line-2 focus-visible:bg-white/[0.045] focus-visible:outline-none"
     >
       {/* Anthropic Sans digits (Jeff 2026-08-06) — falls back to Jakarta on
           the public build, where the licensing-gated woff2 never ships */}
