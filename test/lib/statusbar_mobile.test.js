@@ -9,4 +9,11 @@ describe('status bar responsive labels', () => {
     expect(source).toContain('class="md:hidden">S&P</span>')
     expect(source).toContain('class="max-md:hidden">{tl(label)}</span>')
   })
+
+  it('pins the clock and locale controls to the same row height', () => {
+    expect(source).toContain('data-status-clock')
+    expect(source).toContain('data-status-locale')
+    expect(source).toContain('data-status-clock\n      class="h-5')
+    expect(source).toContain('data-status-locale\n        class="h-5')
+  })
 })
