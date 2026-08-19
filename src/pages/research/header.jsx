@@ -144,9 +144,11 @@ export function ResearchHeader({ symbol, q, route }) {
           <a
             key={tab.label}
             href={tab.href}
-            class={route.view === tab.id
-              ? 'font-mono text-[9.5px] pb-1 hover:no-underline whitespace-nowrap shrink-0 border-b-2 border-accent text-accent'
-              : 'font-mono text-[9.5px] pb-1 hover:no-underline whitespace-nowrap shrink-0 border-b-2 border-transparent text-muted hover:text-ink'}
+            class={`font-mono text-[9.5px] px-2.5 py-1 rounded-md border hover:no-underline whitespace-nowrap shrink-0 ${
+              route.view === tab.id
+                ? 'border-accent-2 text-accent-2 bg-accent-2-soft'
+                : 'border-white/25 text-muted hover:text-ink hover:bg-surface-3'
+            }`}
           >
             {/* Weight lives on the WORD only. It used to sit on the anchor, so
                 the accent-coloured "1)" bolded along with it and the label never

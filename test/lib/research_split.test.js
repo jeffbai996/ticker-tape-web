@@ -83,13 +83,12 @@ describe('research header rail (design pass target)', () => {
     expect(ext).not.toContain('max-sm:hidden">\n                  <span class={extendedLabelClass')
   })
 
-  it('marks the current section instead of drawing ten equal-weight pills', () => {
+  it('marks the current section while keeping every numbered target button-shaped', () => {
     const src = header()
-    // active section: amber word on an underline. Inactive: quiet text, no box.
-    expect(src).toContain('border-b-2 border-accent')
-    expect(src).toContain('border-b-2 border-transparent')
-    // the old uniform bordered-pill treatment is gone
-    expect(src).not.toContain("'border-accent-2 text-accent-2 bg-accent-2-soft'\n                : 'border-white/25 text-muted hover:text-ink hover:bg-surface-3'")
+    expect(src).toContain('px-2.5 py-1 rounded-md border')
+    expect(src).toContain('border-accent-2 text-accent-2 bg-accent-2-soft')
+    expect(src).toContain('border-white/25 text-muted hover:text-ink hover:bg-surface-3')
+    expect(src).not.toContain('border-b-2 border-transparent')
   })
 })
 
