@@ -30,4 +30,11 @@ describe('research overview header', () => {
     expect(research).toContain("ext ? 'border-accent/70 text-accent bg-surface-3' : 'border-line-2/70 bg-surface-3 text-ink-2 hover:text-ink'")
     expect(research).toContain('class="flex gap-1 px-1 pb-1.5 select-none flex-nowrap overflow-x-auto no-scrollbar"')
   })
+
+  it('renders the numbered research tabs as bordered buttons', () => {
+    expect(research).toContain('px-2.5 py-1 rounded-md border')
+    expect(research).toContain('border-accent-2 text-accent-2 bg-accent-2-soft')
+    expect(research).toContain('border-white/25 text-muted hover:text-ink hover:bg-surface-3')
+    expect(research).not.toContain('border-b-2 border-accent text-accent')
+  })
 })
