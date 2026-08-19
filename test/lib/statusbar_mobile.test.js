@@ -1,9 +1,22 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import { INDICES } from '../../src/lib/symbols.js'
 
 const source = readFileSync('src/components/StatusBar.jsx', 'utf8')
 
 describe('status bar responsive labels', () => {
+  it('covers the major cross-asset macro gauges', () => {
+    expect(INDICES).toEqual(expect.arrayContaining([
+      { symbol: 'CL=F', label: 'WTI' },
+      { symbol: 'NG=F', label: 'HH GAS' },
+      { symbol: 'BZ=F', label: 'BRENT' },
+      { symbol: 'DX-Y.NYB', label: 'DXY' },
+      { symbol: 'HG=F', label: 'COPPER' },
+      { symbol: 'BTC-USD', label: 'BTC' },
+    ]))
+    expect(new Set(INDICES.map(({ symbol }) => symbol)).size).toBe(INDICES.length)
+  })
+
   it('shows S&P only on mobile and retains S&P 500 on desktop', () => {
     expect(source).toContain("label === 'S&P 500'")
     expect(source).toContain('class="md:hidden">S&P</span>')
@@ -15,5 +28,12 @@ describe('status bar responsive labels', () => {
     expect(source).toContain('data-status-locale')
     expect(source).toContain('data-status-clock\n      class="h-5')
     expect(source).toContain('data-status-locale\n        class="h-5')
+  })
+
+  it('subtly lifts the clock on hover and keyboard focus', () => {
+    expect(source).toContain('hover:border-line-2')
+    expect(source).toContain('hover:bg-white/[0.045]')
+    expect(source).toContain('focus-visible:border-line-2')
+    expect(source).toContain('focus-visible:bg-white/[0.045]')
   })
 })
