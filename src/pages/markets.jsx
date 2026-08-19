@@ -53,7 +53,7 @@ function DayMeter({ q }) {
     + (q.prevClose != null ? ` · ${tl('prev close')} ${fmtPrice(q.prevClose)}` : '')
     + (m.gap ? ` · ${tl('gap')}` : '')
   return (
-    <span class="grid grid-cols-[10px_1fr_10px] items-center gap-1 w-[88px] h-[14px]"
+    <span class="grid grid-cols-[12px_minmax(0,1fr)_12px] items-center gap-1 w-[92px] h-[14px]"
           role="img" aria-label={title} title={title}>
       <span class="font-mono text-[7px] leading-none text-muted">{tl('Lo')}</span>
       <span class="relative block h-[11px]">
@@ -139,13 +139,13 @@ function QuoteRow({ label, symbol, data, unit, withUnits = false,
       </td>
       {visual == null ? (
         <>
-          <td class="px-2 py-[3px] hidden @[380px]:table-cell w-14"><DayMeter q={q} /></td>
+          <td class="pl-1 pr-2 py-[3px] hidden @[380px]:table-cell w-[104px] min-w-[104px]"><DayMeter q={q} /></td>
           <td class="px-2 py-[3px] hidden @[460px]:table-cell">
             <Histo bars={data?.histo} width={84} class="w-[84px] @max-[560px]:w-[52px]" />
           </td>
         </>
       ) : visual !== 'off' ? (
-        <td class="pl-1 pr-2 py-[3px] hidden @[380px]:table-cell w-[98px]">
+        <td class="pl-1 pr-2 py-[3px] hidden @[380px]:table-cell w-[104px] min-w-[104px]">
           <MarketVisual visual={visual} window={visualWindow} data={data} />
         </td>
       ) : null}
