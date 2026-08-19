@@ -328,6 +328,34 @@ describe('barsFromChart bad-print scrub', () => {
     expect(barsFromChart(result)).toHaveLength(3)
   })
 
+  it('drops isolated zero-volume extended-hours wicks before they distort the price scale', () => {
+    const result = {
+      timestamp: [1, 2, 3, 4, 5, 6, 7],
+      indicators: { quote: [{
+        open:   [481.1, 481.2, 481.3, 481.35, 481.4, 481.3, 481.2],
+        high:   [481.5, 481.6, 481.7, 489.14, 481.8, 481.7, 481.6],
+        low:    [480.9, 481.0, 481.1, 473.41, 481.2, 481.1, 481.0],
+        close:  [481.2, 481.3, 481.4, 481.34, 481.5, 481.4, 481.3],
+        volume: [900, 1100, 800, 0, 1000, 700, 1200],
+      }] },
+    }
+
+    expect(barsFromChart(result).map((b) => b.time)).toEqual([1, 2, 3, 5, 6, 7])
+  })
+
+  it('keeps a zero-volume whole-bar repricing when its candle range stays tight', () => {
+    const result = {
+      timestamp: [1, 2, 3, 4, 5],
+      indicators: { quote: [{
+        open: [100, 100.1, 112, 112.1, 112.2], high: [100.4, 100.5, 112.4, 112.5, 112.6],
+        low: [99.8, 99.9, 111.8, 111.9, 112], close: [100.2, 100.3, 112.2, 112.3, 112.4],
+        volume: [1000, 900, 0, 0, 1200],
+      }] },
+    }
+
+    expect(barsFromChart(result)).toHaveLength(5)
+  })
+
   it('does not scrub a genuine wide-range bar that carries volume (a real gap or halt-reopen prints volume)', () => {
     const result = {
       timestamp: [1, 2, 3],
