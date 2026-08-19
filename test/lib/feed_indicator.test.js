@@ -1,7 +1,6 @@
 // Contract for the two places feed health surfaces: the shell status row and
-// the dashboard rows. The dashboard assertions exist mostly to defend row
-// geometry — a freshness affordance that resizes a row on a tick is worse
-// than no affordance at all.
+// the dashboard price tooltip. Row-level freshness must stay discoverable
+// without adding visible chrome beside every quote.
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -52,23 +51,15 @@ describe('shell feed indicator', () => {
 
 describe('dashboard row freshness affordance', () => {
   it('puts source and age on the price cell tooltip', () => {
-    expect(dashboard).toContain("import { freshnessTitle, isLiveSource, symbolFreshness } from '../lib/feedHealth.js'")
+    expect(dashboard).toContain("import { freshnessTitle, symbolFreshness } from '../lib/feedHealth.js'")
     expect(dashboard).toContain('symbolFreshness(data)')
     expect(dashboard).toContain('freshnessTitle(fresh)')
   })
 
-  it('marks only rows that are not live, and never with a new column', () => {
-    expect(dashboard).toContain('isLiveSource(fresh.source)')
-    expect(dashboard).toContain('class="tui-fresh-dot"')
-    expect(dashboard).toContain('data-fresh-source={fresh.source}')
-    expect(dashboard).toContain('aria-hidden="true"')
-  })
-
-  it('takes the marker out of the flow so a tick cannot move the row', () => {
-    expect(css).toMatch(/\.tui-fresh-dot\s*\{[\s\S]*position: absolute;/)
-    expect(css).toMatch(/\.tui-fresh-dot\s*\{[\s\S]*width: 3px;/)
-    // no animation on the marker: the board must not breathe once a minute
-    expect(css).not.toMatch(/\.tui-fresh-dot[\s\S]{0,200}animation:/)
+  it('does not paint a marker beside snapshot or stale quotes', () => {
+    expect(dashboard).not.toContain('tui-fresh-dot')
+    expect(dashboard).not.toContain('data-fresh-source')
+    expect(css).not.toContain('.tui-fresh-dot')
   })
 
   it('leaves the measured quote columns untouched', () => {
