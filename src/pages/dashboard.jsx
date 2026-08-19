@@ -46,7 +46,7 @@ import { ChartMount } from '../components/LazyChart.jsx'
 import { WorkspacesControl } from '../components/WorkspacesControl.jsx'
 import { t as tt, tl } from '../lib/i18n.js'
 import { extendedLabelClass } from '../lib/extendedHours.js'
-import { freshnessTitle, isLiveSource, symbolFreshness } from '../lib/feedHealth.js'
+import { freshnessTitle, symbolFreshness } from '../lib/feedHealth.js'
 import { rememberDashboardLanding } from '../lib/dashboardLanding.js'
 
 const DAY = 86_400_000
@@ -279,8 +279,7 @@ export function TuiRow({ symbol, data, earnDays, onRemove = () => {}, selecting,
   const hasRange = q?.dayHigh != null && q?.dayLow != null && q?.price > 0
   const grabbable = selecting && !!dragScope && !!drag
   // Which pipe printed this row, and how long ago. Cheap and pure: no extra
-  // fetch, no extra column — it rides the price cell's tooltip, and only
-  // leaves a mark when the row is NOT live.
+  // fetch or visible row chrome — it rides the price cell's tooltip.
   const fresh = symbolFreshness(data)
   return (
     <a
@@ -376,11 +375,6 @@ export function TuiRow({ symbol, data, earnDays, onRemove = () => {}, selecting,
                   right where the company name wanted it (Jeff 2026-08-18). */}
               <span class="relative text-ink font-semibold min-w-(--col-price) text-right shrink-0"
                 title={`${symbol} — ${freshnessTitle(fresh)}`}>
-                {/* absolutely positioned, no animation: a row flipping between
-                    stream and snapshot must not resize, shift, or blink */}
-                {q && !isLiveSource(fresh.source) && (
-                  <span class="tui-fresh-dot" data-fresh-source={fresh.source} aria-hidden="true" />
-                )}
                 <span data-col="price" class="inline-block whitespace-nowrap">{q ? <FlashPrice price={q.price} fmt={fmtPrice} /> : '—'}</span>
               </span>
               {/* min-width, not width: a wide print (▼ 15.22 (-4.05%)) used to
