@@ -49,6 +49,7 @@ beforeEach(() => {
     globalThis.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} }
   }
   localStorage.setItem('watchlist_v1', JSON.stringify(WATCHLIST))
+  sessionStorage.clear()
   feed.goodTs = Date.now()
   location.hash = ''
   document.body.innerHTML = '<div id="host"></div>'
@@ -165,6 +166,19 @@ describe('research tab shortcuts', () => {
 
 describe('research quote header', () => {
   const quote = { price: 190.12, change: 1.4, pct: 0.74, volume: 1_000_000, name: 'Example Corp' }
+
+  it('hands the current quote to the alert form', async () => {
+    await mount({ q: quote })
+    const button = host.querySelector('button[title="alert on this symbol"]')
+
+    button.click()
+
+    expect(JSON.parse(sessionStorage.getItem('alert_prefill'))).toEqual({
+      symbol: SYMBOL,
+      value: 190.12,
+    })
+    expect(location.hash).toBe('#/alerts')
+  })
 
   it('says so when the quote feed has gone quiet', async () => {
     feed.goodTs = Date.now() - 12 * 60_000

@@ -21,7 +21,7 @@ const FIELD = 'bg-surface-2 border border-line rounded-md px-2 py-1.5 font-mono 
 
 /** Read-and-clear a ride-along from the research header's ⏰ (mirrors the
  *  command bar's chat_prefill). One-shot: a reload starts empty. */
-function consumeAlertPrefill() {
+export function consumeAlertPrefill() {
   try {
     const raw = sessionStorage.getItem('alert_prefill')
     if (!raw) return {}
