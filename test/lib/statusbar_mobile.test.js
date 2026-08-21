@@ -30,7 +30,8 @@ describe('status bar responsive labels', () => {
     expect(source).toContain('data-status-clock')
     expect(source).toContain('data-status-locale')
     expect(source).toContain('data-status-clock\n      class="h-5')
-    expect(source).toContain('data-status-locale\n        class="h-5')
+    expect(source).toContain('data-status-locale')
+    expect(source).toMatch(/data-status-locale\s+class="h-5/)
   })
 
   it('subtly lifts the clock on hover and keyboard focus', () => {
