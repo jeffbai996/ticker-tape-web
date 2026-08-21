@@ -8,6 +8,7 @@
 
 import { handleChat } from './chat.js'
 import { handleWatchlists } from './watchlists.js'
+import { handlePortfolios } from './portfolios.js'
 import { handleWire } from './wire.js'
 
 const CORS_HEADERS = {
@@ -42,6 +43,9 @@ export default {
         // not proxy the private Fragwire API.
         if (path.startsWith('/watchlists/')) {
             return handleWatchlists(request, env, path);
+        }
+        if (path.startsWith('/portfolios/')) {
+            return handlePortfolios(request, env, path);
         }
 
         // Public wire mirror: a pushed, sanitized headline snapshot read by
