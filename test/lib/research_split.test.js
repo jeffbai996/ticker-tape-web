@@ -100,11 +100,19 @@ describe('research right rail modules (design pass target)', () => {
     expect(src).toContain('data-research-rail-modules')
   })
 
-  it('lets a module be reordered without a drag-and-drop dependency', () => {
+  it('renders the rail in the fixed task order — the reorder arrows are gone whole (Jeff 2026-08-21)', () => {
     const src = lane('rail.jsx')
-    expect(src).toContain('onMove')
-    expect(src).toContain('▲')
-    expect(src).toContain('▼')
+    expect(src).not.toContain('onMove')
+    expect(src).not.toContain('REORDER_BTN')
+    expect(src).not.toContain('useRailModules')
+    // synthesize → technicals → valuation → news, in source order
+    const order = ['<AiReport', '<Technicals', '<Fundamentals', '<News']
+    let at = src.indexOf('data-research-rail-modules')
+    for (const tag of order) {
+      const next = src.indexOf(tag, at)
+      expect(next, tag).toBeGreaterThan(at)
+      at = next
+    }
   })
 })
 
