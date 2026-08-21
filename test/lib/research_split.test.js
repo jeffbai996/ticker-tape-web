@@ -73,7 +73,7 @@ describe('research header rail (design pass target)', () => {
 
   it('keeps regular price, percent change and the live extended print in the pinned cluster', () => {
     const cluster = header().slice(header().indexOf('data-research-quote-cluster'))
-    expect(cluster).toContain('<FlashPrice price={q.price} fmt={fmtPrice} />')
+    expect(cluster).toContain('<FlashPrice price={q.price} fmt={fmtPriceWide} />')
     expect(cluster).toContain('{fmtPct(q.pct)}')
     expect(cluster).toContain('{q.extLabel}')
     // the extended print survives the phone breakpoint — it is the whole point

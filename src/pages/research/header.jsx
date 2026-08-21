@@ -2,7 +2,7 @@ import { useEffect, useState } from 'preact/hooks'
 import { tl } from '../../lib/i18n.js'
 import { Marquee } from '../../components/Marquee.jsx'
 import { FlashMetric, FlashPrice } from '../../components/Fig.jsx'
-import { fmtPrice, fmtPct, fmtChange, fmtVol } from '../../lib/format.js'
+import { fmtPrice, fmtPriceWide, fmtPct, fmtChange, fmtVol } from '../../lib/format.js'
 import { extendedLabelClass } from '../../lib/extendedHours.js'
 import { watch, unwatch } from '../../lib/watchlist.js'
 import { useWatchlist } from '../../hooks.js'
@@ -112,7 +112,7 @@ export function ResearchHeader({ symbol, q, route }) {
         </div>
         {q && (
           <span data-research-quote-cluster class="ml-auto flex items-baseline gap-x-3 max-sm:gap-x-2 shrink-0 whitespace-nowrap">
-              <span class="font-mono font-bold text-lg max-sm:text-[15px] text-ink"><FlashPrice price={q.price} fmt={fmtPrice} /></span>
+              <span class="font-mono font-bold text-lg max-sm:text-[15px] text-ink"><FlashPrice price={q.price} fmt={fmtPriceWide} /></span>
               <span class={`font-mono text-[15px] max-sm:text-[12px] ${up ? 'text-up' : 'text-down'}`}>
                 <span class="font-semibold max-sm:hidden"><FlashMetric value={q.change} fmt={fmtChange} /></span>{' '}
                 <span class="font-normal">{fmtPct(q.pct)}</span>
@@ -124,7 +124,7 @@ export function ResearchHeader({ symbol, q, route }) {
               {q.extLabel && q.extPrice != null && (
                 <span class="font-mono text-[12px] max-sm:text-[11px] whitespace-nowrap">
                   <span class={extendedLabelClass(q.extLabel)}>{q.extLabel}</span>{' '}
-                  <span class="text-ink-2"><FlashPrice price={q.extPrice} fmt={fmtPrice} /></span>
+                  <span class="text-ink-2"><FlashPrice price={q.extPrice} fmt={fmtPriceWide} /></span>
                   {q.extPct != null && (
                     <span class={`ml-1.5 max-sm:hidden ${extUp ? 'text-up' : 'text-down'}`}>
                       {extUp ? '▲' : '▼'}{Math.abs(q.extPct).toFixed(2)}%
