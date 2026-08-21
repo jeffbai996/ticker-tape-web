@@ -16,6 +16,7 @@ export function quoteFromChart(result) {
     symbol: m.symbol || '',
     name: m.longName || m.shortName || '',   // shortName is Yahoo-truncated at 31 chars
     price,
+    currency: m.currency || null,
     change,
     pct,
     prevClose: prev ?? null,
@@ -60,6 +61,7 @@ export function quoteFromV7(row, now = new Date()) {
     symbol: row?.symbol || '',
     name: row?.longName || row?.shortName || '',   // shortName is Yahoo-truncated
     price,
+    currency: row?.currency || null,
     change,
     pct,
     prevClose: prev,
