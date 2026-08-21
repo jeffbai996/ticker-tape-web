@@ -289,6 +289,10 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
             {readMinutes(body) > 0 && (
               <span class="text-muted">{tl('~{n} min read').replace('{n}', readMinutes(body))}</span>
             )}
+            {(ev.meta || {}).model && (
+              // auto reports say which brain wrote them (Jeff 2026-08-21)
+              <span class="text-muted">{tl('Model')}{' '}<span class="text-ink-2">{ev.meta.model}</span></span>
+            )}
           </p>
           {Object.keys(ev.numbers || {}).length > 0 && (
             <div class="flex flex-wrap gap-1.5 mt-1.5 mb-1.5">

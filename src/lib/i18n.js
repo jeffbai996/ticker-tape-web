@@ -539,6 +539,7 @@ const LABELS = {
   'Thesis Watcher': '论点监测', 'Thesis signals': '论点信号', 'New candidates': '新候选', 'Rotation estimate': '轮动预期',
   'No thesis-tagged wire signals in this window.': '当前窗口没有标记为论点相关的快讯。',
   'grounded in watcher conditions and wire evidence': '基于监测条件与快讯证据',
+  'grounded in supplied conditions and market evidence': '基于所给条件与市场证据',
   'AI thesis read': 'AI 论点研判', GOOD: '良好', BREACHED: '已破坏',
   'NEEDS REVIEW': '待复核',
   // Watcher verdicts/severities/categories live in THESIS_TERMS, not here:
