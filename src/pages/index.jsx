@@ -1,5 +1,5 @@
 import { Placeholder } from '../components/Placeholder.jsx'
-import { IS_PRIVATE_BUILD } from '../lib/nav.js'
+import { IS_FAMILY_BUILD, IS_PRIVATE_BUILD } from '../lib/nav.js'
 import { useNamedWatchlists } from '../hooks.js'
 import { resolveDashboardLanding } from '../lib/dashboardLanding.js'
 import { lazyPage } from '../components/LazyPage.jsx'
@@ -57,7 +57,7 @@ export function Page({ route }) {
   if (route.section === 'watchlists') return route.sub
     ? <Dashboard listId={route.sub === 'main' ? null : route.sub} />
     : <WatchlistsPage />
-  if (route.section === 'brief') return import.meta.env.VITE_SYNC_CAPABILITY ? <Dashboard /> : <Brief />
+  if (route.section === 'brief') return IS_FAMILY_BUILD ? <Dashboard /> : <Brief />
   if (route.section === 'markets') return <Markets route={route} />
   if (route.section === 'research') return <Research route={route} />
   if (route.section === 'screen') return <Screen route={route} />

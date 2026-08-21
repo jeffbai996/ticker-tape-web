@@ -29,9 +29,9 @@ jobs:
       - run: npm ci
       - run: npm run build
         env:
-          # family-instance store: persistence baked into the build; the
-          # value lives only in repo secrets, never in source
-          VITE_SYNC_CAPABILITY: ${{ secrets.SYNC_CAPABILITY }}
+          # This is a presentation flag, never a credential. Family data is
+          # connected once in the browser and the capability stays local.
+          VITE_FAMILY_BUILD: '1'
       # The responsive matrix runs against the bytes that are about to ship,
       # served the way Pages serves them (base path, real origin), and blocks
       # the deploy on a regression. Playwright is installed with pip rather

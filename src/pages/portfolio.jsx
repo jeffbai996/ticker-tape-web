@@ -29,6 +29,7 @@ import { StatusPill } from '../components/StatusPill.jsx'
 import { countAdvancers } from '../lib/pulse.js'
 import { MyPortfolios } from './portfolioMine.jsx'
 import { loadPortfolios, onPortfoliosChange } from '../lib/myPortfolios.js'
+import { IS_FAMILY_BUILD } from '../lib/nav.js'
 
 const SYMBOLS = DEMO_POSITIONS.map((p) => p.symbol)
 const BOTH_ACCOUNTS = 'all'
@@ -1659,7 +1660,7 @@ function PortfolioHeader({ accounts, account, onChange, book, wired }) {
   const live = !!book
   // the account ID + broker, not a nickname + margin readout (Jeff 2026-08-10)
   const label = book?.account || book?.accountLabel || (account === BOTH_ACCOUNTS ? tl('Both') : '')
-  const family = !!import.meta.env.VITE_SYNC_CAPABILITY
+  const family = IS_FAMILY_BUILD
   const detail = family ? tl('My Portfolios')
     : live ? `${label} · ${tl('Interactive Brokers')}`
     : book === false ? tt('portfolio.link_down')
@@ -1720,7 +1721,7 @@ export function Portfolio({ route }) {
   useEffect(() => onPortfoliosChange((items) => setHasMine(items.length > 0)), [])
   // the family build has no broker surface at all — every route lands on
   // the hand-built books
-  const family = !!import.meta.env.VITE_SYNC_CAPABILITY
+  const family = IS_FAMILY_BUILD
   const view = family ? 'mine' : route.sub || (!wired && hasMine ? 'mine' : 'positions')
 
   const View = {

@@ -5,8 +5,9 @@
 
 import { wireServiceUrl } from './wire.js'
 import {
-  clearWatchlistCapability, createWatchlistCapability, getWatchlistCapability,
+  clearWatchlistCapability, getWatchlistCapability,
   saveWatchlistCapability, validWatchlistCapability, watchlistSyncEndpoint,
+  watchlistSyncHeaders,
 } from './watchlistSync.js'
 
 export const SAVE_KEY = 'ttw-watchlists'
@@ -95,8 +96,9 @@ export function mergeDocs(local, remote) {
 async function api(path, init) {
   const target = saveEndpoint()
   if (!target) throw new Error('no watchlist sync endpoint')
+  const capabilityHeaders = wireServiceUrl() ? {} : watchlistSyncHeaders()
   const resp = await fetch(target, {
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...capabilityHeaders },
     signal: AbortSignal.timeout(10_000),
     ...init,
   })
@@ -258,14 +260,6 @@ function restartWatchlistSync() {
   syncOnce()
   // Pull periodically so another device appears without a reload.
   interval = setInterval(syncOnce, 60_000)
-}
-
-export function createPublicWatchlistSync() {
-  const capability = createWatchlistCapability()
-  if (!saveWatchlistCapability(capability)) return ''
-  saveMeta(seedLocalSyncMeta(getWatchlist(), loadWatchlists()))
-  restartWatchlistSync()
-  return capability
 }
 
 export function connectPublicWatchlistSync(value) {

@@ -7,6 +7,7 @@ import {
   handlePortfolios, portfolioStorageKey, validPortfolioCapability,
   validatePortfolioDocument,
 } from '../../worker/portfolios.js'
+import { capDocEnv } from './capdocHarness.js'
 
 const TOKEN = 'a'.repeat(32)
 const ORIGIN = 'https://jeffbai996.github.io'
@@ -19,19 +20,10 @@ const doc = {
   deleted: { p2: 5 },
 }
 
-function fakeKv() {
-  const rows = new Map()
-  return {
-    rows,
-    async get(key) { return rows.get(key) ?? null },
-    async put(key, value) { rows.set(key, value) },
-  }
-}
-
 function req(method = 'GET', body, token = TOKEN) {
-  return new Request(`https://worker.test/portfolios/${token}`, {
+  return new Request('https://worker.test/portfolios', {
     method,
-    headers: { Origin: ORIGIN, 'Content-Type': 'application/json' },
+    headers: { Origin: ORIGIN, 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: body === undefined ? undefined : JSON.stringify(body),
   })
 }
@@ -65,17 +57,17 @@ describe('document contract', () => {
 })
 
 describe('the route', () => {
-  it('404s a malformed capability and serves an empty first read', async () => {
-    const env = { SPEND: fakeKv() }
-    const bad = await handlePortfolios(req(), env, '/portfolios/nope')
+  it('404s a legacy path credential and serves an empty authenticated first read', async () => {
+    const env = capDocEnv(TOKEN)
+    const bad = await handlePortfolios(req(), env, `/portfolios/${TOKEN}`)
     expect(bad.status).toBe(404)
-    const first = await handlePortfolios(req(), env, `/portfolios/${TOKEN}`)
+    const first = await handlePortfolios(req(), env, '/portfolios')
     expect(await first.json()).toEqual({ ok: true, rev: 0, data: null })
   })
 
   it('round-trips a push, bumps the revision, and 409s a stale writer with the winner', async () => {
-    const env = { SPEND: fakeKv() }
-    const path = `/portfolios/${TOKEN}`
+    const env = capDocEnv(TOKEN)
+    const path = '/portfolios'
     const put = await handlePortfolios(req('POST', { rev: 0, data: doc }), env, path)
     expect(await put.json()).toEqual({ ok: true, rev: 1 })
     const read = await handlePortfolios(req(), env, path)
@@ -88,9 +80,9 @@ describe('the route', () => {
   })
 
   it('refuses an invalid document instead of storing it', async () => {
-    const env = { SPEND: fakeKv() }
+    const env = capDocEnv(TOKEN)
     const resp = await handlePortfolios(
-      req('POST', { rev: 0, data: { ...doc, portfolios: 'nope' } }), env, `/portfolios/${TOKEN}`)
+      req('POST', { rev: 0, data: { ...doc, portfolios: 'nope' } }), env, '/portfolios')
     expect(resp.status).toBe(400)
     expect(env.SPEND.rows.size).toBe(0)
   })

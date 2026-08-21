@@ -75,4 +75,20 @@ describe('test architecture', () => {
 
     expect(sourceContracts).toEqual([...SOURCE_CONTRACT_ALLOWLIST].sort())
   })
+
+  it('never compiles a family capability into public assets', () => {
+    const workflow = readFileSync(resolve(process.cwd(), '.github/workflows/deploy.yml'), 'utf8')
+    expect(workflow).toContain("VITE_FAMILY_BUILD: '1'")
+    expect(workflow).not.toContain('VITE_SYNC_CAPABILITY')
+    for (const path of [
+      'src/lib/watchlistSync.js', 'src/lib/nav.js', 'src/pages/index.jsx',
+      'src/pages/portfolio.jsx', 'src/pages/portfolioMine.jsx', 'src/pages/watchlists.jsx',
+    ]) expect(readFileSync(resolve(process.cwd(), path), 'utf8')).not.toContain('VITE_SYNC_CAPABILITY')
+  })
+
+  it('keeps paid AI routes out of the public Worker bundle', () => {
+    const source = readFileSync(resolve(process.cwd(), 'worker/worker.js'), 'utf8')
+    expect(source).not.toContain("from './chat.js'")
+    expect(source).toContain("return jsonResp({ error: 'Not found' }, 404)")
+  })
 })

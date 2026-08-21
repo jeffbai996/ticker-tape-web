@@ -73,7 +73,7 @@ export function validateWatchlistDocument(value) {
 }
 
 export const handleWatchlists = makeCapDocHandler({
-  route: '/watchlists/',
+  route: '/watchlists',
   keyPrefix: 'watchlist:',
   validate: validateWatchlistDocument,
   maxBody: MAX_BODY_BYTES,
