@@ -232,6 +232,7 @@ html, body {
   border: 1px solid rgba(231, 236, 243, 0.12);
   border-radius: 10px;
   background: rgba(231, 236, 243, 0.025);
+  padding-bottom: 8px;
 }
 /* Phone: same anchored dropdown as desktop, NOT a bottom sheet — the fixed
    sheet floated above the bottom nav, detached from the button that opened
