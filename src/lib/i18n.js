@@ -400,6 +400,7 @@ const LABELS = {
   Account: '账户', Quarter: '季度', dropped: '已剔除', spot: '现价',
   Financials: '财报', Events: '事件', Insiders: '内部人', Proxy: '股东会', Registrations: '注册发行',
   'filed in the last two weeks': '两周内新申报', 'Open →': '打开 →',
+  'stretched names on the board — the chip says what it means, the meter shows where RSI sits': '盘面上被拉伸的名字 — 标签说明含义，刻度显示RSI位置',
   // off-hours futures swap-ins on the status strip — 2-char abbreviations
   // (Jeff 2026-08-09: "just 标期 and 纳期")
   ES: '标期', NQ: '纳期', YM: '道期',
@@ -960,10 +961,15 @@ export function hasLabelTranslation(label) {
 }
 
 export function formatBriefTechnicalNote(note) {
-  if (locale !== 'zh') return note
-  let match = String(note).match(/^(\d+(?:\.\d+)?)x avg volume$/)
-  if (match) return `${match[1]}倍均量`
-  match = String(note).match(/^below 200d · RS (-?\d+)pp$/)
-  if (match) return `低于200日线 · 相对强弱 ${match[1]}个百分点`
-  return note
+  const text = typeof note === 'string' ? note : note?.text || ''
+  if (locale !== 'zh') return text
+  let match = text.match(/^overbought · RSI (\d+)$/)
+  if (match) return `超买 · RSI ${match[1]}`
+  match = text.match(/^oversold · RSI (\d+)$/)
+  if (match) return `超卖 · RSI ${match[1]}`
+  match = text.match(/^heavy tape · (\d+(?:\.\d+)?)x avg volume$/)
+  if (match) return `放量 · ${match[1]}倍均量`
+  match = text.match(/^downtrend · below 200d, lagging QQQ (\d+)pp$/)
+  if (match) return `下行趋势 · 低于200日线，落后QQQ ${match[1]}个百分点`
+  return text
 }

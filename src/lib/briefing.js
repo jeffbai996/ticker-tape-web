@@ -43,17 +43,25 @@ export function assembleBriefing({ watchlist = [], quotes = {}, indices = [], in
     if (!t) continue
     const notes = []
     let severity = 0
-    if (t.rsi != null && (t.rsi >= 70 || t.rsi <= 30)) notes.push(`RSI ${Math.round(t.rsi)}`)
-    if (t.rsi != null && (t.rsi >= 70 || t.rsi <= 30)) severity += Math.abs(t.rsi - 50)
+    if (t.rsi != null && t.rsi >= 70) {
+      notes.push({ kind: 'overbought', text: `overbought · RSI ${Math.round(t.rsi)}` })
+      severity += Math.abs(t.rsi - 50)
+    } else if (t.rsi != null && t.rsi <= 30) {
+      notes.push({ kind: 'oversold', text: `oversold · RSI ${Math.round(t.rsi)}` })
+      severity += Math.abs(t.rsi - 50)
+    }
     if (t.volRatio != null && t.volRatio >= 2) {
-      notes.push(`${t.volRatio.toFixed(1)}x avg volume`)
+      notes.push({ kind: 'volume', text: `heavy tape · ${t.volRatio.toFixed(1)}x avg volume` })
       severity += t.volRatio * 8
     }
     if (t.above200 === false && t.rs != null && t.rs <= -10) {
-      notes.push(`below 200d · RS ${Math.round(t.rs)}pp`)
+      notes.push({ kind: 'downtrend', text: `downtrend · below 200d, lagging QQQ ${Math.abs(Math.round(t.rs))}pp` })
       severity += Math.abs(t.rs)
     }
-    if (notes.length) techNotes.push({ symbol: s, notes, severity })
+    if (notes.length) {
+      techNotes.push({ symbol: s, notes, severity,
+        rsi: t.rsi ?? null, pct: quotes[s]?.quote?.pct ?? null })
+    }
   }
   techNotes.sort((a, b) => b.severity - a.severity)
 
@@ -62,7 +70,7 @@ export function assembleBriefing({ watchlist = [], quotes = {}, indices = [], in
     movers,
     pulse: pulseStats(valid),
     earnings,
-    techNotes: techNotes.slice(0, 8).map(({ symbol, notes }) => ({ symbol, notes })),
+    techNotes: techNotes.slice(0, 8).map(({ symbol, notes, rsi, pct }) => ({ symbol, notes, rsi, pct })),
     calendar: econEvents.slice(0, 5),
   }
 }
@@ -98,7 +106,7 @@ export function renderBriefing(s) {
 
   if (s.techNotes.length) {
     lines.push('TECHNICAL FLAGS')
-    for (const n of s.techNotes) lines.push(`  ${n.symbol}: ${n.notes.join(', ')}`)
+    for (const n of s.techNotes) lines.push(`  ${n.symbol}: ${n.notes.map((x) => x.text).join(', ')}`)
     lines.push('')
   }
 
