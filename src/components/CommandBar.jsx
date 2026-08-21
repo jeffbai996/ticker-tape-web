@@ -221,13 +221,6 @@ export function CommandBar() {
     }
   }
 
-  // The chip hugs the placeholder text (Jeff 2026-08-20: "what is the /
-  // button doing all the way out there") — a fixed 26rem box fit the EN
-  // placeholder but left the zh one half-empty. Width follows the actual
-  // placeholder (CJK ≈ 2ch in the mono stack) until the user types.
-  const ph = tl('type command or symbol…  (h = help)')
-  let phCh = 1
-  for (const c of ph) phCh += c.charCodeAt(0) > 0x2000 ? 2 : 1
   return (
     <div class="max-md:hidden relative shrink-0">
       {open && log.length > 0 && (
@@ -298,22 +291,9 @@ export function CommandBar() {
           onInput={(e) => setValue(e.currentTarget.value)}
           onKeyDown={onKey}
           onBlur={() => setHot(false)}
-          placeholder={ph}
-          class="flex-none bg-transparent outline-none text-ink placeholder:text-muted min-w-0"
-          style={{ width: value ? 'min(100%, 26rem)' : `min(100%, ${phCh}ch)` }}
+          placeholder={tl('type command or symbol…  (h = help)')}
+          class="flex-none w-[min(100%,26rem)] bg-transparent outline-none text-ink placeholder:text-muted min-w-0"
         />
-        {/* keycap hint sits right after the placeholder text (Jeff
-            2026-08-17: not all the way left, not bottom-right). Glyph is
-            dead-centered: flex + line-height 1 + a 1px optical nudge, since
-            the slash's ink sits high in the mono em box. */}
-        <button
-          type="button"
-          onClick={() => inputRef.current?.focus()}
-          title={tl('focus console')}
-          class="shrink-0 w-5 h-5 inline-flex items-center justify-center rounded border border-line-2 bg-surface-2 text-muted hover:text-ink text-[10px] font-semibold leading-none"
-        >
-          /
-        </button>
         <span class="flex-1" />
       </form>
     </div>
