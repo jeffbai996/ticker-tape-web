@@ -100,7 +100,7 @@ function RollingClock() {
           feed is healthy. */
       title={tl('cycle timezone')}
       data-status-clock
-      class="h-5 group ml-1 md:-ml-2.5 flex cursor-pointer items-center gap-1 whitespace-nowrap font-anth px-1.5 py-0 rounded border border-transparent transition-colors duration-200 hover:border-line-2 hover:bg-white/[0.045] focus-visible:border-line-2 focus-visible:bg-white/[0.045] focus-visible:outline-none"
+      class="h-5 group flex cursor-pointer items-center gap-1 whitespace-nowrap font-anth px-1 py-0 rounded border border-transparent transition-colors duration-200 hover:border-line-2 hover:bg-white/[0.045] focus-visible:border-line-2 focus-visible:bg-white/[0.045] focus-visible:outline-none"
     >
       {/* Anthropic Sans digits (Jeff 2026-08-06) — falls back to Jakarta on
           the public build, where the licensing-gated woff2 never ships */}
@@ -213,19 +213,21 @@ export function StatusBar() {
       {/* feed health sits with the other truth-about-the-connection chrome:
           clock, feed state, browser online dot — one line, never a new row */}
       <FeedIndicator />
-      <RollingClock />
-      <span
-        class={`inline-block w-1.5 h-1.5 rounded-full ${online ? 'bg-up' : 'bg-down'}`}
-        title={online ? tl('online') : tl('offline')}
-      />
-      <button
-        onClick={() => setLocale(getLocale() === 'en' ? 'zh' : 'en')}
-        title="EN / 中文"
-        data-status-locale
-        class="h-5 inline-flex items-center px-1.5 py-0 rounded border border-line text-muted hover:text-ink hover:border-line-2"
-      >
-        {getLocale() === 'en' ? '中' : 'EN'}
-      </button>
+      <span class="flex items-center gap-1.5 shrink-0 md:-ml-1">
+        <RollingClock />
+        <span
+          class={`inline-block w-1.5 h-1.5 rounded-full ${online ? 'bg-up' : 'bg-down'}`}
+          title={online ? tl('online') : tl('offline')}
+        />
+        <button
+          onClick={() => setLocale(getLocale() === 'en' ? 'zh' : 'en')}
+          title="EN / 中文"
+          data-status-locale
+          class="h-5 inline-flex items-center px-1 py-0 rounded border border-line text-muted hover:text-ink hover:border-line-2"
+        >
+          {getLocale() === 'en' ? '中' : 'EN'}
+        </button>
+      </span>
     </header>
   )
 }
