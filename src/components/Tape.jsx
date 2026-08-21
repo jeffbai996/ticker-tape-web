@@ -82,7 +82,7 @@ function usePointerHighlight(ref, moving) {
  * the reduced-motion setting. Both are listened to rather than read once —
  * the reader can bury the tab or flip the OS setting at any point.
  */
-function useTapeMotion() {
+export function useTapeMotion() {
   const [play, setPlay] = useState('running')
   useEffect(() => {
     const mq = globalThis.matchMedia?.(REDUCED_MOTION)
