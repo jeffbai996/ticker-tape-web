@@ -249,6 +249,13 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
     URL.revokeObjectURL(a.href)
   }
 
+  const [modelMenu, setModelMenu] = useState(false)
+  useEffect(() => {
+    if (!modelMenu) return undefined
+    const away = (e) => { if (!e.target.closest('[data-model-menu]')) setModelMenu(false) }
+    addEventListener('pointerdown', away)
+    return () => removeEventListener('pointerdown', away)
+  }, [modelMenu])
   const selectedWriter = models.find((model) => model.key === writer)
   const effortLevels = reportEfforts(selectedWriter)
 
@@ -272,27 +279,36 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
             </span>
           )}
           {models.length > 0 && (
-            <label class="h-6 flex items-center rounded border border-line bg-surface-3 pl-1" title={tl('Report model')}>
-              <select
-                value={writer}
-                onChange={(e) => {
-                  const nextWriter = e.currentTarget.value
-                  const info = models.find((m) => m.key === nextWriter)
-                  const nextEffort = clampEffort(info, effort)
-                  setWriter(nextWriter)
-                  setEffort(nextEffort)
-                  localStorage.setItem(WRITER_KEY, nextWriter)
-                  if (nextEffort) localStorage.setItem(EFFORT_KEY, nextEffort)
-                }}
-                aria-label={tl('Report model')}
-                class="appearance-none bg-transparent pr-0.5 font-anth text-[10px] font-semibold text-ink outline-none cursor-pointer max-w-[150px]"
-              >
-                {models.map((m) => (
-                  <option key={m.key} value={m.key}>{reportModelLabel(m.label)}</option>
-                ))}
-              </select>
-              <span aria-hidden="true" class="pr-1 text-[7px] text-muted">▼</span>
-            </label>
+            // A CUSTOM menu, not <select>: iOS restyles native selects at
+            // system size no matter what the CSS says — the picker rendered
+            // huge on the iPad three fixes in a row (Jeff 2026-08-21).
+            <span class="relative" data-model-menu>
+              <button type="button" onClick={() => setModelMenu((v) => !v)}
+                aria-label={tl('Report model')} title={tl('Report model')}
+                class="h-6 inline-flex items-center gap-1 rounded border border-line bg-surface-3 px-1.5 font-anth text-[10px] font-semibold text-ink cursor-pointer hover:border-accent/50">
+                <span class="max-w-[130px] truncate">{reportModelLabel(models.find((m) => m.key === writer)?.label || writer)}</span>
+                <span aria-hidden="true" class="text-[7px] text-muted">▼</span>
+              </button>
+              {modelMenu && (
+                <div class="absolute right-0 top-full z-40 mt-1 min-w-[9rem] overflow-hidden rounded-lg border border-line bg-surface-1/95 backdrop-blur shadow-[0_8px_24px_rgba(0,0,0,0.6)]">
+                  {models.map((m) => (
+                    <button key={m.key} type="button"
+                      onClick={() => {
+                        const nextEffort = clampEffort(m, effort)
+                        setWriter(m.key)
+                        setEffort(nextEffort)
+                        localStorage.setItem(WRITER_KEY, m.key)
+                        if (nextEffort) localStorage.setItem(EFFORT_KEY, nextEffort)
+                        setModelMenu(false)
+                      }}
+                      class={`block w-full px-2.5 py-1.5 text-left font-anth text-[10px] font-semibold border-t border-line/60 first:border-0 ${
+                        m.key === writer ? 'text-accent bg-accent-soft' : 'text-ink-2 hover:bg-accent-soft hover:text-ink'}`}>
+                      {reportModelLabel(m.label)}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </span>
           )}
           {effortLevels.length > 0 && (
             <span class="h-6 flex items-center gap-0.5 bg-surface-2 border border-line rounded-md px-0.5"
