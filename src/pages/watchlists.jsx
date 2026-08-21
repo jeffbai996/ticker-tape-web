@@ -10,11 +10,10 @@ import { fmtPct } from '../lib/format.js'
 import { pulseStats } from '../lib/pulse.js'
 import { t as tt, tl } from '../lib/i18n.js'
 import {
-  connectPublicWatchlistSync, createPublicWatchlistSync,
+  connectPublicWatchlistSync,
   disconnectPublicWatchlistSync, getWatchlistCapability, onSyncStatus,
 } from '../lib/cloudsave.js'
 import { pinDashboardLanding, pinnedDashboardLanding } from '../lib/dashboardLanding.js'
-import { fixedSyncCapability } from '../lib/watchlistSync.js'
 import { wireServiceUrl } from '../lib/wire.js'
 import { pushWatchlistToWire } from '../lib/watchlistExport.js'
 import { shouldOpenWatchlistCard } from '../lib/watchlistCard.js'
@@ -60,14 +59,8 @@ function PublicSyncControls() {
   const [entry, setEntry] = useState('')
   const [notice, setNotice] = useState('')
   const [copied, setCopied] = useState(false)
-  if (wireServiceUrl() || fixedSyncCapability()) return null
+  if (wireServiceUrl()) return null
 
-  const enable = () => {
-    const created = createPublicWatchlistSync()
-    if (!created) return
-    setCapability(created)
-    setNotice('')
-  }
   const connect = (event) => {
     event.preventDefault()
     if (!connectPublicWatchlistSync(entry)) {
@@ -118,11 +111,6 @@ function PublicSyncControls() {
           </div>
         ) : (
           <div class="flex shrink-0 flex-wrap items-center gap-1.5 sm:flex-nowrap">
-            <button type="button" onClick={enable}
-              class="min-h-8 whitespace-nowrap rounded border border-accent/60 bg-accent-soft px-2.5 text-[10px] font-semibold text-accent hover:bg-accent/15">
-              {tl('enable sync')}
-            </button>
-            <span class="text-[9px] text-muted">{tl('or')}</span>
             <form onSubmit={connect} class="flex min-w-0 items-center gap-1">
               <input value={entry} onInput={(event) => { setEntry(event.currentTarget.value); setNotice('') }}
                 aria-label={tl('sync code')} placeholder={tl('sync code')} spellcheck={false}
