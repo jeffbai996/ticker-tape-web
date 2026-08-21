@@ -164,6 +164,9 @@ describe('KRW-scale prices', () => {
   })
   it('fmtChange keeps its sign in K-notation at scale', () => {
     expect(fmtChange(-173000)).toBe('-173k')
+    // 4-digit-plus moves: decimals are noise, the grouped integer reads
+    expect(fmtChange(39000)).toBe('+39\u0020000')
+    expect(fmtChange(-1234.56)).toBe('-1\u0020235')
     expect(fmtChange(-465.83)).toBe('-465.83')
     expect(fmtChange(77.12)).toBe('+77.12')
   })

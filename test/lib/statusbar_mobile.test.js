@@ -8,7 +8,10 @@ describe('status bar responsive labels', () => {
   it('covers the major cross-asset macro gauges', () => {
     expect(INDICES).toEqual(expect.arrayContaining([
       { symbol: 'CL=F', label: 'WTI' },
-      { symbol: 'NG=F', label: 'HH GAS' },
+      { symbol: 'NG=F', label: 'GAS' },
+      { symbol: 'SI=F', label: 'SILVER' },
+      { symbol: '^HSI', label: 'HSI' },
+      { symbol: '^N225', label: 'N225' },
       { symbol: 'BZ=F', label: 'BRENT' },
       { symbol: 'DX-Y.NYB', label: 'DXY' },
       { symbol: 'HG=F', label: 'COPPER' },

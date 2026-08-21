@@ -64,6 +64,9 @@ export function fmtChange(v) {
   if (v == null || Number.isNaN(v)) return DASH
   const abs = Math.abs(v)
   if (abs >= BIG_PRICE) return `${v >= 0 ? '+' : '-'}${kNotation(abs)}`
+  // KRW/JPY-sized moves: cents on a 39 000-unit change are noise, and the
+  // grouped integer reads at a glance (render inside .price-grouped)
+  if (abs >= 1000) return `${v >= 0 ? '+' : '-'}${groupThin(abs)}`
   return `${v >= 0 ? '+' : '-'}${abs.toFixed(2)}`
 }
 

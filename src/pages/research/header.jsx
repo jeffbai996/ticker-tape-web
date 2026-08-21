@@ -114,7 +114,7 @@ export function ResearchHeader({ symbol, q, route }) {
           <span data-research-quote-cluster class="ml-auto flex items-baseline gap-x-3 max-sm:gap-x-2 shrink-0 whitespace-nowrap">
               <span class="font-mono font-bold text-lg max-sm:text-[15px] text-ink price-grouped whitespace-nowrap"><FlashPrice price={q.price} fmt={fmtPriceWide} /></span>
               <span class={`font-mono text-[15px] max-sm:text-[12px] ${up ? 'text-up' : 'text-down'}`}>
-                <span class="font-semibold max-sm:hidden"><FlashMetric value={q.change} fmt={fmtChange} /></span>{' '}
+                <span class="font-semibold max-sm:hidden price-grouped"><FlashMetric value={q.change} fmt={fmtChange} /></span>{' '}
                 <span class="font-normal">{fmtPct(q.pct)}</span>
               </span>
               {q.volume != null && (
