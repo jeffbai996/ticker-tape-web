@@ -230,7 +230,7 @@ html, body {
    because unicode thin spaces render full-width in iOS SF Mono. 0.15ch of
    visible gap, identical on every platform. */
 .price-grouped {
-  word-spacing: -0.85ch;
+  word-spacing: -0.75ch;
 }
 
 .board-menu-section {
