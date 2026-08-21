@@ -221,6 +221,13 @@ export function CommandBar() {
     }
   }
 
+  // The chip hugs the placeholder text (Jeff 2026-08-20: "what is the /
+  // button doing all the way out there") — a fixed 26rem box fit the EN
+  // placeholder but left the zh one half-empty. Width follows the actual
+  // placeholder (CJK ≈ 2ch in the mono stack) until the user types.
+  const ph = tl('type command or symbol…  (h = help)')
+  let phCh = 3
+  for (const c of ph) phCh += c.charCodeAt(0) > 0x2e7f ? 2 : 1
   return (
     <div class="max-md:hidden relative shrink-0">
       {open && log.length > 0 && (
@@ -291,8 +298,9 @@ export function CommandBar() {
           onInput={(e) => setValue(e.currentTarget.value)}
           onKeyDown={onKey}
           onBlur={() => setHot(false)}
-          placeholder={tl('type command or symbol…  (h = help)')}
-          class="flex-none w-[min(100%,26rem)] bg-transparent outline-none text-ink placeholder:text-muted min-w-0"
+          placeholder={ph}
+          class="flex-none bg-transparent outline-none text-ink placeholder:text-muted min-w-0"
+          style={{ width: value ? 'min(100%, 26rem)' : `min(100%, ${phCh}ch)` }}
         />
         {/* keycap hint sits right after the placeholder text (Jeff
             2026-08-17: not all the way left, not bottom-right). Glyph is

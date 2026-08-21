@@ -33,12 +33,18 @@ describe('console resize', () => {
     expect(isTap(500, 520)).toBe(false)
   })
 
-  it('the / hint sits right after the input placeholder, glyph centered; no "console ▴" reopener (Jeff 2026-08-17)', () => {
-    const inputIdx = commandBar.indexOf("placeholder={tl('type command or symbol")
+  it('the / hint hugs the MEASURED placeholder, glyph centered; no "console ▴" reopener (Jeff 2026-08-17 + 2026-08-20)', () => {
+    const inputIdx = commandBar.indexOf('placeholder={ph}')
     const hintIdx = commandBar.indexOf("title={tl('focus console')}")
+    expect(inputIdx).toBeGreaterThan(-1)
     expect(hintIdx).toBeGreaterThan(inputIdx)
-    // input no longer swallows the whole row, so the keycap hugs the text
-    expect(commandBar.slice(inputIdx, hintIdx)).toMatch(/flex-none w-\[min\(100%,26rem\)\]/)
+    // a fixed 26rem box fit the EN placeholder but left the zh one half-empty
+    // ("what is the / button doing all the way out there") — the width now
+    // follows the placeholder itself, CJK counted double in ch units
+    expect(commandBar).toMatch(/phCh \+= c\.charCodeAt\(0\) > 0x2e7f \? 2 : 1/)
+    expect(commandBar).toContain('${phCh}ch')
+    // typing still gets the full 26rem editing box
+    expect(commandBar).toContain("'min(100%, 26rem)'")
     // centered glyph: flex centering, not CSS grid place-items on a 10px em box
     expect(commandBar.slice(hintIdx, hintIdx + 300)).toMatch(/inline-flex items-center justify-center/)
     expect(commandBar).not.toMatch(/console ▴/)
