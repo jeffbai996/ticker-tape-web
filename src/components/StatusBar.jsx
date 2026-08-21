@@ -249,6 +249,22 @@ export function StatusBar() {
 
       {/* feed health sits with the other truth-about-the-connection chrome:
           clock, feed state, browser online dot — one line, never a new row */}
+      {(() => {
+        // A proxy_url override silently reroutes every quote request. When
+        // one browser crawls while the rest are fine, this chip is the tell
+        // (Jeff 2026-08-21) — visible, clickable, self-explanatory.
+        let saved = null
+        try { saved = localStorage.getItem('proxy_url') } catch { /* fine */ }
+        if (!saved) return null
+        return (
+          <button type="button"
+            onClick={() => { if (confirm(tl('Remove the custom data-proxy override and reload?'))) { try { localStorage.removeItem('proxy_url') } catch { /* fine */ } location.reload() } }}
+            title={`proxy_url = ${saved}`}
+            class="h-5 inline-flex items-center rounded border border-down/50 bg-down/10 px-1.5 font-anth text-[8.5px] font-bold uppercase tracking-wider text-down/90 hover:bg-down/20">
+            {tl('custom proxy')}
+          </button>
+        )
+      })()}
       <FeedIndicator />
       <span class="flex items-center gap-1.5 shrink-0 md:-ml-1">
         <RollingClock />
