@@ -12,8 +12,9 @@ describe('status bar responsive labels', () => {
       { symbol: 'SI=F', label: 'SILVER' },
       { symbol: '^HSI', label: 'HSI' },
       { symbol: '^N225', label: 'N225' },
+      { symbol: '^KS11', label: 'KOSPI' },
+      { symbol: '000001.SS', label: 'SSE' },
       { symbol: 'BZ=F', label: 'BRENT' },
-      { symbol: 'DX-Y.NYB', label: 'DXY' },
       { symbol: 'HG=F', label: 'COPPER' },
       { symbol: 'BTC-USD', label: 'BTC' },
     ]))

@@ -197,24 +197,6 @@ export const MARKET_GROUPS = [
       { symbol: 'URA', label: 'Uranium' },
     ],
   },
-  {
-    name: 'Crypto',
-    items: [
-      { symbol: 'BTC-USD', label: 'Bitcoin' },
-      { symbol: 'ETH-USD', label: 'Ethereum' },
-      { symbol: 'SOL-USD', label: 'Solana' },
-      { symbol: 'XRP-USD', label: 'XRP' },
-      { symbol: 'DOGE-USD', label: 'Dogecoin' },
-      { symbol: 'BNB-USD', label: 'BNB' },
-      { symbol: 'ADA-USD', label: 'Cardano' },
-      { symbol: 'AVAX-USD', label: 'Avalanche' },
-      { symbol: 'LINK-USD', label: 'Chainlink' },
-      { symbol: 'DOT-USD', label: 'Polkadot' },
-      { symbol: 'LTC-USD', label: 'Litecoin' },
-      { symbol: 'BCH-USD', label: 'Bitcoin Cash' },
-      { symbol: 'SUI20947-USD', label: 'Sui' },
-    ],
-  },
 ]
 
 export const SECTORS = [
@@ -309,6 +291,7 @@ export const COMMODITY_GROUPS = [
       { symbol: 'HG=F', label: 'Copper', unit: '$/lb' },
       { symbol: 'PL=F', label: 'Platinum', unit: '$/oz' },
       { symbol: 'PA=F', label: 'Palladium', unit: '$/oz' },
+      { symbol: 'ALI=F', label: 'Aluminum', unit: '$/ton' },
     ],
   },
   {
