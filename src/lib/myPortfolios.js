@@ -18,18 +18,12 @@ export const MAX_MY_HOLDINGS = 60
 const MAX_NAME = 40
 const listeners = new Set()
 
-// Generic famous names across four markets — THE RULE applies (see
-// CLAUDE.md): nothing here may reference a real book.
-const SAMPLE = {
-  name: 'Sample (multi-currency)',
-  ccy: 'USD',
-  holdings: [
-    { symbol: 'AAPL', shares: 10, cost: 180 },
-    { symbol: 'RY.TO', shares: 20, cost: 125 },
-    { symbol: '0700.HK', shares: 100, cost: 320 },
-    { symbol: '600519.SS', shares: 5, cost: 1500 },
-  ],
-}
+// The short-lived first-run sample (2026-08-20, same day): browsers that
+// loaded that build still hold it. An UNTOUCHED copy — exact name and
+// holdings — is dropped on load; one the user edited is theirs now.
+const OLD_SEED = '{"symbol":"AAPL","shares":10,"cost":180}|{"symbol":"RY.TO","shares":20,"cost":125}|{"symbol":"0700.HK","shares":100,"cost":320}|{"symbol":"600519.SS","shares":5,"cost":1500}'
+const isOldSeed = (p) => p.name === 'Sample (multi-currency)' && p.ccy === 'USD'
+  && p.holdings.map((h) => JSON.stringify(h)).join('|') === OLD_SEED
 
 const cleanName = (v) => String(v || '').trim().replace(/\s+/g, ' ').slice(0, MAX_NAME)
 
@@ -69,15 +63,11 @@ function sanitize(raw) {
 }
 
 export function loadPortfolios() {
-  let raw = null
-  try { raw = localStorage.getItem(KEY) } catch { return [] }
-  if (raw == null) {
-    // first visit: seed silently (no listener churn during a render)
-    const seeded = [{ id: 'p0', ...SAMPLE }]
-    try { localStorage.setItem(KEY, JSON.stringify(seeded)) } catch { /* best-effort */ }
-    return seeded
-  }
-  try { return sanitize(JSON.parse(raw)) } catch { return [] }
+  try {
+    const raw = localStorage.getItem(KEY)
+    if (raw == null) return []
+    return sanitize(JSON.parse(raw)).filter((p) => !isOldSeed(p))
+  } catch { return [] }
 }
 
 function persist(items) {

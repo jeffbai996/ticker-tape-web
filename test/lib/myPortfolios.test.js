@@ -71,14 +71,23 @@ describe('the store', () => {
     expect(loadPortfolios()[0].holdings.length).toBeLessThanOrEqual(MAX_MY_HOLDINGS)
   })
 
-  it('seeds a sample multi-currency book on first run, and stays deleted once deleted', () => {
-    const first = loadPortfolios()
-    expect(first.length).toBe(1)
-    expect(first[0].holdings.length).toBeGreaterThanOrEqual(3)
-    const ccys = new Set(first[0].holdings.map((h) => h.symbol.split('.')[1] || 'US'))
-    expect(ccys.size).toBeGreaterThan(1)          // genuinely multi-market
-    deletePortfolio(first[0].id)
-    expect(loadPortfolios()).toEqual([])          // no resurrection
+  it('starts empty — no sample book to explain away', () => {
+    expect(loadPortfolios()).toEqual([])
+  })
+
+  it('drops an UNTOUCHED copy of the retired first-run sample, keeps an edited one', () => {
+    const seed = { id: 'p0', name: 'Sample (multi-currency)', ccy: 'USD',
+      holdings: [
+        { symbol: 'AAPL', shares: 10, cost: 180 },
+        { symbol: 'RY.TO', shares: 20, cost: 125 },
+        { symbol: '0700.HK', shares: 100, cost: 320 },
+        { symbol: '600519.SS', shares: 5, cost: 1500 },
+      ] }
+    localStorage.setItem('my_portfolios_v1', JSON.stringify([seed]))
+    expect(loadPortfolios()).toEqual([])
+    const edited = { ...seed, holdings: [...seed.holdings, { symbol: 'MSFT', shares: 2 }] }
+    localStorage.setItem('my_portfolios_v1', JSON.stringify([edited]))
+    expect(loadPortfolios()).toHaveLength(1)      // the user made it theirs
   })
 
   it('survives corrupted storage', () => {
