@@ -23,8 +23,8 @@ describe('recent interface translations', () => {
     setLocale('zh')
     expect(t('chat.action_mover', { symbol: 'AMD', direction: tl('down'), pct: '7.0' }))
       .toBe('AMD 今日下跌 7.0%，原因是什么？')
-    expect(formatBriefTechnicalNote('2.8x avg volume')).toBe('2.8倍均量')
-    expect(formatBriefTechnicalNote('below 200d · RS -19pp')).toBe('低于200日线 · 相对强弱 -19个百分点')
+    expect(formatBriefTechnicalNote({ kind: 'volume', text: 'heavy tape · 2.8x avg volume' })).toBe('放量 · 2.8倍均量')
+    expect(formatBriefTechnicalNote({ kind: 'downtrend', text: 'downtrend · below 200d, lagging QQQ 19pp' })).toBe('下行趋势 · 低于200日线，落后QQQ 19个百分点')
   })
 
   it('translates the remaining research and wire chrome', () => {

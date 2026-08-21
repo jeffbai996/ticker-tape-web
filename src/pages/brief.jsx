@@ -82,16 +82,39 @@ function ArchivePanel() {
   )
 }
 
-function Card({ title, children, aside }) {
+function Card({ title, children, aside, sub }) {
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden min-w-0">
       <header class="flex items-baseline gap-2 px-3 py-[3px] border-b border-line-2 bg-surface-2">
         <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{title}</h2>
         {aside && <span class="ml-auto font-mono text-[10px] text-muted">{aside}</span>}
       </header>
+      {sub && <p class="px-3 pt-1.5 font-anth text-[9.5px] leading-snug text-muted">{sub}</p>}
       {children}
     </section>
   )
+}
+
+/** Tiny RSI scale: 0-100 track, the 30/70 bands shaded, a dot at the value.
+ *  The whole read is "where inside (or past) the bands the name sits". */
+function RsiMeter({ value }) {
+  if (value == null) return null
+  const pos = Math.max(0, Math.min(100, value))
+  return (
+    <span class="relative inline-block h-[5px] w-16 shrink-0 rounded-full bg-line/70" title={`RSI ${Math.round(value)}`}>
+      <span class="absolute inset-y-0 left-[30%] right-[30%] bg-surface-3 rounded-sm" />
+      <span class={`absolute top-1/2 -translate-y-1/2 h-[9px] w-[3px] rounded-sm ${
+        value >= 70 ? 'bg-down' : value <= 30 ? 'bg-up' : 'bg-accent-2'}`}
+        style={{ left: `calc(${pos}% - 1.5px)` }} />
+    </span>
+  )
+}
+
+const TECH_NOTE_TONE = {
+  overbought: 'border-down/40 text-down/90 bg-down/10',
+  oversold: 'border-up/40 text-up bg-up/10',
+  volume: 'border-accent/40 text-accent bg-accent/10',
+  downtrend: 'border-down/30 text-ink-2 bg-down/5',
 }
 
 const rowCls = 'flex items-baseline justify-between gap-2 px-3 py-[3px] font-mono text-[11.5px] border-b border-line/40 last:border-0'
@@ -140,13 +163,20 @@ function BriefData({ s }) {
         )) : <Empty label={tl('flat tape')} />}
       </Card>
 
-      <Card title={tl('Technical flags')}>
+      <Card title={tl('Technical flags')} sub={tl('stretched names on the board — the chip says what it means, the meter shows where RSI sits')}>
         {s.techNotes.length ? s.techNotes.map((n) => (
-          <div key={n.symbol} class="flex items-center gap-2 px-3 py-1.5 border-b border-line/40 last:border-0">
-            <a href={`#/research/${n.symbol.toLowerCase()}`} class="font-[650] font-tick text-ink hover:no-underline">{n.symbol}</a>
+          <div key={n.symbol} class="flex items-center gap-2.5 px-3 py-2 border-b border-line/40 last:border-0">
+            <a href={`#/research/${n.symbol.toLowerCase()}`} class="w-14 shrink-0 font-[650] font-tick text-ink hover:no-underline">{n.symbol}</a>
+            <RsiMeter value={n.rsi} />
+            {n.pct != null && (
+              <span class={`w-14 shrink-0 text-right font-mono text-[10px] ${upDown(n.pct)}`}>{fmtPct(n.pct)}</span>
+            )}
             <span class="ml-auto flex flex-wrap justify-end gap-1">
               {n.notes.map((note) => (
-                <span key={note} class="rounded border border-line px-1.5 py-px font-mono text-[9.5px] text-ink-2">{formatBriefTechnicalNote(note)}</span>
+                <span key={note.text || note} class={`rounded border px-1.5 py-px font-mono text-[9.5px] ${
+                  TECH_NOTE_TONE[note.kind] || 'border-line text-ink-2'}`}>
+                  {formatBriefTechnicalNote(note)}
+                </span>
               ))}
             </span>
           </div>
