@@ -137,7 +137,7 @@ export function Sidebar({ route }) {
   const listCap = activeNamed ? MAX_WATCHLIST_SYMBOLS : MAX_WATCHLIST
 
   return (
-    <nav class="w-52 shrink-0 bg-black border-r border-line flex flex-col max-md:hidden min-h-0">
+    <nav class="w-44 min-[1200px]:w-52 shrink-0 bg-black border-r border-line flex flex-col max-md:hidden min-h-0">
       <UpdatedLine />
       <div class="pb-2">
         {NAV.filter((s) => !s.phoneOnly).map((section) => (
