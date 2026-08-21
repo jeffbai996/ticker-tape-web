@@ -32,7 +32,7 @@ import { groupDashboardRows, quoteSpread, selectFlatRows, dropSlot, resolveDrop 
 import { searchSymbols } from '../lib/symbolSearch.js'
 import { venueFlag } from '../lib/venueFlag.js'
 import {
-  fmtPrice, fmtPriceBare, fmtPct, fmtPctPlain, fmtChange, fmtVol, fmtFracPct, rangePos,
+  fmtPrice, fmtPriceBare, fmtPriceWide, fmtPct, fmtPctPlain, fmtChange, fmtVol, fmtFracPct, rangePos,
 } from '../lib/format.js'
 import { Histo } from '../components/Histo.jsx'
 import { Spark } from '../components/Spark.jsx'
@@ -51,6 +51,16 @@ import { rememberDashboardLanding } from '../lib/dashboardLanding.js'
 const DAY = 86_400_000
 const ETF_SKIP = new Set(['SPY', 'QQQ', 'IWM', 'GLD', 'TLT'])
 const fmtAbsChange = (v) => fmtChange(Math.abs(v)).replace('+', '')
+// KRW/JPY-sized prices: K-notation where columns are tight, the full thin-
+// space-grouped figure once the row container has the room (Jeff 2026-08-20)
+const BigPrice = ({ v, fmt = fmtPrice }) => fmt(v)?.endsWith('k')
+  ? (
+    <>
+      <span class="@min-[1450px]:hidden"><FlashPrice price={v} fmt={fmt} /></span>
+      <span class="hidden @min-[1450px]:inline"><FlashPrice price={v} fmt={fmtPriceWide} /></span>
+    </>
+  )
+  : <FlashPrice price={v} fmt={fmt} />
 const fmtSpread = (v) => v == null ? '—' : v < 0.1 ? v.toFixed(3) : v.toFixed(2)
 
 /** Days until each symbol's next earnings — feeds the `27d` badge + panel.
@@ -374,7 +384,7 @@ export function TuiRow({ symbol, data, earnDays, onRemove = () => {}, selecting,
                   right where the company name wanted it (Jeff 2026-08-18). */}
               <span class="relative text-ink font-semibold min-w-(--col-price) text-right shrink-0"
                 title={`${symbol} — ${freshnessTitle(fresh)}`}>
-                <span data-col="price" class="inline-block whitespace-nowrap">{q ? <FlashPrice price={q.price} fmt={fmtPrice} /> : '—'}</span>
+                <span data-col="price" class="inline-block whitespace-nowrap">{q ? <BigPrice v={q.price} /> : '—'}</span>
               </span>
               {/* min-width, not width: a wide print (▼ 15.22 (-4.05%)) used to
                   overflow the fixed box and land flush against the ON label,
@@ -419,7 +429,7 @@ export function TuiRow({ symbol, data, earnDays, onRemove = () => {}, selecting,
                       collateral. Off-hours the ext print is the only live
                       number on the row; without its flash the board reads
                       dead (Jeff: "lost its price change red green animation"). */}
-                  <span class="text-ink-2 font-semibold text-[12px] max-sm:text-[11px]"><FlashPrice price={q.extPrice} fmt={fmtPriceBare} /></span>{' '}
+                  <span class="text-ink-2 font-semibold text-[12px] max-sm:text-[11px]"><BigPrice v={q.extPrice} fmt={fmtPriceBare} /></span>{' '}
                   <span class={`font-normal ${extUp ? 'text-up' : 'text-down'}`}>
                     {extUp ? '▲' : '▼'}{fmtPctPlain(Math.abs(q.extPct ?? 0))}
                   </span>
@@ -966,8 +976,16 @@ function AddSymbolRow({ onAdd, isPresent, isFull, cap }) {
   }
   return (
     <form ref={boxRef} onSubmit={submit} class="relative flex items-center gap-2 border-t border-line px-3 py-1.5">
-      {hits?.length > 0 && (
-        <div class="absolute bottom-full left-2 mb-1 w-[26rem] max-w-[88vw] z-40 bg-surface-1/95 backdrop-blur border border-line rounded-lg shadow-[0_-8px_24px_rgba(0,0,0,0.6)] overflow-hidden">
+      {hits?.length > 0 && (() => {
+        const r = boxRef.current?.getBoundingClientRect()
+        const up = r ? r.top > innerHeight * 0.55 : true
+        const pos = r
+          ? up ? { left: `${r.left + 8}px`, bottom: `${innerHeight - r.top + 4}px` }
+               : { left: `${r.left + 8}px`, top: `${r.bottom + 4}px` }
+          : null
+        return (
+        <div style={pos} class={`fixed w-[26rem] max-w-[88vw] z-40 bg-surface-1/95 backdrop-blur border border-line rounded-lg overflow-hidden ${
+          up ? 'shadow-[0_-8px_24px_rgba(0,0,0,0.6)]' : 'shadow-[0_8px_24px_rgba(0,0,0,0.6)]'}`}>
           {hits.map((h, i) => (
             <button key={h.symbol} type="button"
               onMouseEnter={() => setActive(i)}
@@ -984,7 +1002,8 @@ function AddSymbolRow({ onAdd, isPresent, isFull, cap }) {
             </button>
           ))}
         </div>
-      )}
+        )
+      })()}
       <input
         ref={input}
         value={sym}
