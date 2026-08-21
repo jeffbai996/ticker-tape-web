@@ -226,6 +226,13 @@ html, body {
   transform-origin: top left;
   animation: board-menu-pop 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
+/* Grouped big prices ("1 730 000"): the space is a REAL space shrunk here,
+   because unicode thin spaces render full-width in iOS SF Mono. 0.15ch of
+   visible gap, identical on every platform. */
+.price-grouped {
+  word-spacing: -0.85ch;
+}
+
 .board-menu-section {
   min-width: 0;
   overflow: hidden;

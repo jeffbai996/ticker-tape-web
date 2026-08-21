@@ -57,7 +57,7 @@ const BigPrice = ({ v, fmt = fmtPrice }) => fmt(v)?.endsWith('k')
   ? (
     <>
       <span class="@min-[730px]:hidden"><FlashPrice price={v} fmt={fmt} /></span>
-      <span class="hidden @min-[730px]:inline"><FlashPrice price={v} fmt={fmtPriceWide} /></span>
+      <span class="hidden @min-[730px]:inline price-grouped"><FlashPrice price={v} fmt={fmtPriceWide} /></span>
     </>
   )
   : <FlashPrice price={v} fmt={fmt} />

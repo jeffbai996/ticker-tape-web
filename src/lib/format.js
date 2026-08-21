@@ -16,9 +16,14 @@ export function fmtPrice(v) {
 }
 
 // Thousands read as a LITTLE GAP, not a comma — the tachometer-dial grammar
-// (Jeff 2026-08-20: "1 738 000 but w smaller spaces obv"). U+2009 THIN SPACE
-// keeps its designed narrow width even inside the mono stack.
-const THIN_SPACE = '\u200a'
+// (Jeff 2026-08-20). Unicode thin/hair spaces are a trap: iOS falls back to
+// SF Mono, a strict monospace that renders EVERY space glyph at the full
+// 1ch cell ("its still mega" — Jeff 2026-08-21, three browsers deep). So the
+// separator is a plain space, and the CELL shrinks it with
+// `word-spacing: -0.85ch` — ch-relative, so the visible gap is ~0.15ch on
+// every platform and font. Apply .price-grouped (main.css) to any container
+// that renders these.
+const THIN_SPACE = ' '
 
 export function groupThin(v) {
   if (v == null || Number.isNaN(v)) return DASH
