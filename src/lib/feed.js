@@ -31,11 +31,37 @@ let benchCloses = null
 
 // v7 batch quotes need crumb auth, so they always go through the Worker —
 // the dev server's dumb /yf pass-through can't do the cookie dance.
+const DEFAULT_PROXY = 'https://yf-proxy.2phakhvpgh.workers.dev'
+
+// A stale `proxy_url` override is how the private instance quietly diverges
+// from the demo: same bundle, but one browser drags months-old config to a
+// proxy that has since slowed or died, and the feed crawls while every other
+// device is fine (Jeff 2026-08-21). After three straight batch failures the
+// override is benched for the session and the default worker takes over —
+// loudly, in the console, so the config gets cleaned up instead of forgotten.
+let proxyFailStreak = 0
+let proxyBenched = false
+
+export function reportProxyBatch(ok) {
+  if (ok) { proxyFailStreak = 0; return }
+  if (proxyBenched || import.meta.env.VITE_DATA_PROXY) return
+  let saved = null
+  try { saved = localStorage.getItem('proxy_url') } catch { return }
+  if (!saved) return
+  proxyFailStreak += 1
+  if (proxyFailStreak >= 3) {
+    proxyBenched = true
+    console.warn(`[feed] custom proxy_url "${saved}" failed ${proxyFailStreak} batches — using the default worker for this session. Clear it with localStorage.removeItem('proxy_url').`)
+  }
+}
+
 function crumbBase() {
   if (import.meta.env.VITE_DATA_PROXY) return import.meta.env.VITE_DATA_PROXY
-  const saved = localStorage.getItem('proxy_url')
-  if (saved) return saved.replace(/\/$/, '')
-  return 'https://yf-proxy.2phakhvpgh.workers.dev'
+  if (!proxyBenched) {
+    const saved = localStorage.getItem('proxy_url')
+    if (saved) return saved.replace(/\/$/, '')
+  }
+  return DEFAULT_PROXY
 }
 
 const REQUEST_SPACING_MS = 350   // min gap between proxy requests
@@ -48,8 +74,9 @@ const QUOTE_SWEEP_MS = 30_000    // price-only v7 batch — extended hours ticks
  *  the sidecar fill runs behind each sweep, so 30s keeps that leg unchanged
  *  (it is the only leg that touches the private server). Closed with no
  *  overnight session (weekends, holidays): nothing prints → 120s. */
-export function sweepIntervalMs(state, overnight = false) {
-  if (state === 'pre' || state === 'post') return 15_000
+export function sweepIntervalMs(state, overnight = false, streamUp = true) {
+  if (state === 'open' && !streamUp) return 10_000
+  if (state === 'pre' || state === 'post') return streamUp ? 15_000 : 10_000
   if (state === 'open') return QUOTE_SWEEP_MS
   return overnight ? QUOTE_SWEEP_MS : 120_000
 }
@@ -120,6 +147,18 @@ let pumping = false
 let sweepTimer = null
 let fastTimer = null
 let liveStream = null
+// outage = a stream that HAS been up and lost its socket; a socket that
+// hasn't finished its first handshake is boot, not an outage
+let streamWasUp = false
+
+/** Sweep-cadence view of the stream. Hidden tabs never accelerate. */
+function streamHealthyForCadence() {
+  if (typeof document !== 'undefined' && document.hidden) return true
+  if (!liveStream) return true
+  const up = liveStream.isConnected()
+  if (up) streamWasUp = true
+  return up || !streamWasUp
+}
 
 export function getCached(symbol) {
   return cache.get(symbol) || null
@@ -325,6 +364,7 @@ async function drainBatch() {
       // no-store: an identical sweep URL must never be answered by the
       // browser's HTTP cache — that turned a 30s sweep into a 60s one
       const resp = await fetch(url, { signal: AbortSignal.timeout(10_000), cache: 'no-store' })
+      reportProxyBatch(resp.ok)
       if (!resp.ok) continue // pump fills the gap one by one
       const data = await resp.json()
       const rows = data?.quoteResponse?.result || []
@@ -350,7 +390,8 @@ async function drainBatch() {
         })
         emit(row.symbol)
       }
-    } catch { /* pump fills the gap */ }
+    } catch {
+      reportProxyBatch(false) /* pump fills the gap */ }
   }
 }
 
@@ -488,7 +529,7 @@ function activate(symbols, register) {
     // whatever the price cadence is.
     let sinceCharts = 0
     const beat = () => {
-      const every = sweepIntervalMs(marketState().state, isOvernight())
+      const every = sweepIntervalMs(marketState().state, isOvernight(), streamHealthyForCadence())
       sweepTimer = setTimeout(() => {
         fullSweep()
         setTimeout(overnightSweep, 5_000)
@@ -556,7 +597,7 @@ export function focus(symbols) {
   const stale = staleFocusSymbols(
     entering,
     (symbol) => cache.get(symbol),
-    sweepIntervalMs(marketState().state, isOvernight()),
+    sweepIntervalMs(marketState().state, isOvernight(), streamHealthyForCadence()),
   )
   if (stale.length) scheduleBatch(stale.slice(0, FOCUS_MAX))
   return () => {
