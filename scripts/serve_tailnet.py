@@ -11,6 +11,13 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 
 class Handler(SimpleHTTPRequestHandler):
+    # Keep-alive matters here: every connection crosses the Windows->WSL
+    # localhost forward behind tailscale serve, and that hop drops fresh
+    # connections under a browser's parallel open burst (the 502s Jeff read
+    # as "site is dead" / "unusually slow", 2026-08-21). HTTP/1.1 reuses a
+    # handful of sockets instead of opening ~25.
+    protocol_version = "HTTP/1.1"
+
     def end_headers(self) -> None:
         if self.path.endswith((".html", "/")) or "." not in self.path.rsplit("/", 1)[-1]:
             self.send_header("Cache-Control", "no-cache")
@@ -22,5 +29,11 @@ class Handler(SimpleHTTPRequestHandler):
 if __name__ == "__main__":
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8098
     directory = sys.argv[2] if len(sys.argv) > 2 else "dist-tailnet"
-    ThreadingHTTPServer(("127.0.0.1", port),
-                        partial(Handler, directory=directory)).serve_forever()
+    # default accept backlog is 5 — a browser's parallel asset burst through
+    # the tailscale proxy overflowed it and the excess connections 502'd.
+    # Must be a class attribute: the socket listens inside __init__.
+    class Server(ThreadingHTTPServer):
+        request_queue_size = 128
+
+    Server(("127.0.0.1", port),
+           partial(Handler, directory=directory)).serve_forever()
