@@ -401,7 +401,7 @@ const LABELS = {
   Account: '账户', Quarter: '季度', dropped: '已剔除', spot: '现价',
   Financials: '财报', Events: '事件', Insiders: '内部人', Proxy: '股东会', Registrations: '注册发行',
   'filed in the last two weeks': '两周内新申报', 'Open →': '打开 →',
-  'custom proxy': '自定义代理', 'Remove the custom data-proxy override and reload?': '移除自定义数据代理并刷新？',
+  'custom proxy': '自定义代理', FROZEN: '已冻结', 'live updates are frozen by ?freeze in the URL — tap to unfreeze': '实时更新被URL中的 ?freeze 冻结 — 点按解除', 'Remove the custom data-proxy override and reload?': '移除自定义数据代理并刷新？',
   'tap: drift the index strip': '点按：指数条开始滚动', 'tap: stop the index drift': '点按：停止指数条滚动',
   'stretched names on the board — the chip says what it means, the meter shows where RSI sits': '盘面上被拉伸的名字 — 标签说明含义，刻度显示RSI位置',
   // off-hours futures swap-ins on the status strip — 2-char abbreviations
