@@ -174,6 +174,10 @@ export function subscribe(fn) {
 // animation/OS-zoom, gone means data-driven repaints (Jeff 2026-08-11).
 const FROZEN = typeof location !== 'undefined' && /[?&]freeze/.test(location.search)
 
+export function feedFrozen() {
+  return FROZEN
+}
+
 function emit(symbol) {
   if (FROZEN) return
   for (const fn of listeners) fn(symbol, cache.get(symbol))

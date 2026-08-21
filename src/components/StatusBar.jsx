@@ -8,6 +8,7 @@ import { hrefFor } from '../lib/route.js'
 import { fmtPrice, fmtPct } from '../lib/format.js'
 import { FlashPrice } from './Fig.jsx'
 import { FeedIndicator } from './FeedIndicator.jsx'
+import { feedFrozen } from '../lib/feed.js'
 import { useTapeMotion } from './Tape.jsx'
 import { tl, getLocale, setLocale } from '../lib/i18n.js'
 
@@ -249,6 +250,19 @@ export function StatusBar() {
 
       {/* feed health sits with the other truth-about-the-connection chrome:
           clock, feed state, browser online dot — one line, never a new row */}
+      {feedFrozen() && (
+        // ?freeze is the shimmer-debugging kill switch: it silences every
+        // live update, which reads as "the app died" when it rides along in
+        // a bookmarked URL (Jeff 2026-08-21: sidebar not animating, prices
+        // crawling — on the private origin only, because the private
+        // BOOKMARK carried the flag). Loud chip, one tap out.
+        <button type="button"
+          onClick={() => { location.href = location.href.replace(/[?&]freeze[^&#]*/, '') }}
+          title={tl('live updates are frozen by ?freeze in the URL — tap to unfreeze')}
+          class="h-5 inline-flex items-center rounded border border-down bg-down/20 px-1.5 font-anth text-[8.5px] font-bold uppercase tracking-wider text-down animate-pulse">
+          {tl('FROZEN')}
+        </button>
+      )}
       {(() => {
         // A proxy_url override silently reroutes every quote request. When
         // one browser crawls while the rest are fine, this chip is the tell
