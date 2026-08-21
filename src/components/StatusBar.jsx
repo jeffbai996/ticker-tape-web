@@ -157,18 +157,45 @@ export function StatusBar() {
   // Tap the session chip and the index strip starts DRIFTING — rightward
   // and slower than the symbol tape below it, so the two belts read as
   // different instruments instead of a double conveyor (Jeff 2026-08-21).
+  // 'off' | 'on' | 'stopping' — stopping keeps the belt mounted while it
+  // glides to the cycle boundary (= the static layout position), so the
+  // handoff back to the scroll list is seamless instead of a hard cut
+  // (Jeff 2026-08-21: "smooth animate it back instead of cutting over").
   const [drift, setDrift] = useState(() => {
-    try { return localStorage.getItem('strip_drift_v1') === '1' } catch { return false }
+    try { return localStorage.getItem('strip_drift_v1') === '1' ? 'on' : 'off' } catch { return 'off' }
   })
-  const toggleDrift = () => setDrift((v) => {
-    try { localStorage.setItem('strip_drift_v1', v ? '0' : '1') } catch { /* best-effort */ }
-    return !v
-  })
+  const beltRef = useRef(null)
+  const toggleDrift = () => {
+    if (drift === 'on') {
+      try { localStorage.setItem('strip_drift_v1', '0') } catch { /* best-effort */ }
+      const belt = beltRef.current
+      if (belt) {
+        // freeze at the current offset, then glide the remaining distance to
+        // translateX(0) at the same speed, easing out at the end
+        const x = new DOMMatrix(getComputedStyle(belt).transform).m41
+        belt.style.animation = 'none'
+        belt.style.transform = `translateX(${x}px)`
+        // force the style to land before the transition arms
+        void belt.offsetWidth
+        const ms = Math.min(1200, Math.max(250, Math.abs(x) / 0.058))
+        belt.style.transition = `transform ${ms}ms cubic-bezier(0.22, 1, 0.36, 1)`
+        belt.style.transform = 'translateX(0)'
+        setDrift('stopping')
+        setTimeout(() => setDrift('off'), ms + 60)
+      } else {
+        setDrift('off')
+      }
+      return
+    }
+    if (drift === 'stopping') return   // let the glide finish
+    try { localStorage.setItem('strip_drift_v1', '1') } catch { /* best-effort */ }
+    setDrift('on')
+  }
   const driftPlay = useTapeMotion()
   const cycleRef = useRef(null)
   const [cycleW, setCycleW] = useState(0)
   useEffect(() => {
-    if (!drift) return
+    if (drift !== 'on') return
     setCycleW(cycleRef.current?.scrollWidth || 0)
   }, [drift])
 
@@ -216,7 +243,7 @@ export function StatusBar() {
         type="button"
         onClick={toggleDrift}
         class={`px-1.5 max-md:px-0 py-px max-md:w-5 max-md:h-5 max-md:grid max-md:place-items-center rounded border text-[10px] font-anth font-bold tracking-wider max-md:tracking-normal whitespace-nowrap cursor-pointer ${STATE_CHIP[holiday ? 'closed' : state]}`}
-        title={`${chipTitle} · ${tl(drift ? 'tap: stop the index drift' : 'tap: drift the index strip')}`}
+        title={`${chipTitle} · ${tl(drift === 'on' ? 'tap: stop the index drift' : 'tap: drift the index strip')}`}
       >
         <span class="max-md:hidden">{tl(chipLabel)}</span>
         <span class="md:hidden">{compactChipLabel}</span>
@@ -225,10 +252,11 @@ export function StatusBar() {
       {/* one scrollable line, centred in the bar so it lines up with the
           wordmark: swipe it, drag it, or hover an edge to creep along. */}
       <div class="flex-1 min-w-0 flex items-center overflow-hidden">
-        {drift ? (
-          <div class="strip-drift flex w-max items-baseline py-0.5"
-            style={cycleW ? { '--strip-cycle-width': `${cycleW}px`,
-              '--strip-cycle-duration': `${Math.max(10, cycleW / 45)}s`,
+        {drift !== 'off' ? (
+          <div ref={beltRef}
+            class={`${drift === 'on' ? 'strip-drift ' : ''}flex w-max items-baseline py-0.5`}
+            style={drift === 'on' && cycleW ? { '--strip-cycle-width': `${cycleW}px`,
+              '--strip-cycle-duration': `${Math.max(8, cycleW / 58)}s`,
               animationPlayState: driftPlay } : undefined}>
             {[0, 1].map((copy) => (
               <div key={copy} ref={copy === 0 ? cycleRef : undefined}
