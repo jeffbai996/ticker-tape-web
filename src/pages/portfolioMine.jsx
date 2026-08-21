@@ -5,8 +5,9 @@
  *  live FX pairs. Everything the user types lives in localStorage only —
  *  the site is static and nothing entered here leaves the browser.
  */
-import { useEffect, useMemo, useState } from 'preact/hooks'
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { useQuotes } from '../hooks.js'
+import { SymbolSuggest } from '../components/SymbolSuggest.jsx'
 import { FlashPrice } from '../components/Fig.jsx'
 import { fmtPrice, fmtPct, fmtPctPlain } from '../lib/format.js'
 import { tl } from '../lib/i18n.js'
@@ -55,28 +56,49 @@ function NewPortfolioForm({ onDone }) {
 
 function AddHoldingRow({ portfolio }) {
   const [sym, setSym] = useState('')
+  const [picked, setPicked] = useState(null)     // {symbol, name} from the dropdown
   const [shares, setShares] = useState('')
   const [cost, setCost] = useState('')
+  const sharesRef = useRef(null)
   const full = portfolio.holdings.length >= MAX_MY_HOLDINGS
   const submit = (e) => {
     e.preventDefault()
     const ok = setHolding(portfolio.id, sym, Number(shares), cost === '' ? undefined : Number(cost))
-    if (ok) { setSym(''); setShares(''); setCost('') }
+    if (ok) { setSym(''); setPicked(null); setShares(''); setCost('') }
   }
-  const box = 'rounded border border-line-2 bg-surface-2 px-2 py-1 font-mono text-[11px] text-ink placeholder:text-muted outline-none focus:border-accent/60'
+  const onPick = (h) => {
+    setSym(h.symbol)
+    setPicked(h)
+    sharesRef.current?.focus()
+  }
+  const box = 'rounded border border-line-2 bg-surface-2 px-2 py-1.5 font-mono text-[12px] text-ink placeholder:text-muted outline-none focus:border-accent/60'
   return (
-    <form onSubmit={submit} class="flex flex-wrap items-center gap-2 px-3 py-2 border-t border-line bg-surface-2/50">
-      <input value={sym} onInput={(e) => setSym(e.currentTarget.value)} placeholder={tl('Symbol')}
-        aria-label={tl('Symbol')} class={`${box} w-28 uppercase`} />
-      <input value={shares} onInput={(e) => setShares(e.currentTarget.value)} placeholder={tl('Shares')}
-        aria-label={tl('Shares')} inputMode="decimal" class={`${box} w-24`} />
-      <input value={cost} onInput={(e) => setCost(e.currentTarget.value)} placeholder={tl('Avg cost (opt.)')}
-        aria-label={tl('Avg cost (opt.)')} inputMode="decimal" class={`${box} w-28`} />
-      <button type="submit" disabled={full || !sym.trim() || !(Number(shares) > 0)}
-        class="rounded border border-accent/40 bg-accent/10 px-2.5 py-1 font-anth text-[11px] font-semibold text-accent transition-colors hover:bg-accent/20 disabled:opacity-40">
-        {tl('Add')}
-      </button>
-      {full && <span class="font-anth text-[10px] text-muted">{tl('List is full')}</span>}
+    <form onSubmit={submit} class="border-t border-line bg-surface-2/50 px-3 py-2">
+      <div class="flex flex-wrap items-center gap-2">
+        <SymbolSuggest value={sym} placeholder={tl('Symbol or company')}
+          ariaLabel={tl('Symbol or company')}
+          onInput={(e) => { setSym(e.currentTarget.value); setPicked(null) }}
+          onPick={onPick} dropUp={false} inputClass={`${box} w-40 uppercase`} />
+        <input ref={sharesRef} value={shares} onInput={(e) => setShares(e.currentTarget.value)}
+          placeholder={tl('Shares')} aria-label={tl('Shares')} inputMode="decimal"
+          class={`${box} w-24`} />
+        <input value={cost} onInput={(e) => setCost(e.currentTarget.value)}
+          placeholder={tl('Avg cost (opt.)')} aria-label={tl('Avg cost (opt.)')}
+          inputMode="decimal" class={`${box} w-32`} />
+        <button type="submit" disabled={full || !sym.trim() || !(Number(shares) > 0)}
+          class="rounded border border-accent/40 bg-accent/10 px-3 py-1.5 font-anth text-[12px] font-semibold text-accent transition-colors hover:bg-accent/20 disabled:opacity-40">
+          {tl('Add')}
+        </button>
+        {full && <span class="font-anth text-[10px] text-muted">{tl('List is full')}</span>}
+      </div>
+      {picked && (
+        <div class="mt-1 font-anth text-[10px] text-muted">
+          {picked.symbol} · {picked.name}
+        </div>
+      )}
+      <div class="mt-1 font-anth text-[9.5px] text-muted">
+        {tl('Type a ticker or a company name and pick from the list.')}
+      </div>
     </form>
   )
 }
@@ -96,6 +118,23 @@ function FxFootnote({ ccys, rates, displayCcy }) {
   )
 }
 
+function SharesCell({ portfolio, row }) {
+  // restating shares is the most common edit — it happens in place, no
+  // separate form round-trip (Jeff 2026-08-20: stepdad-proof the flow)
+  const commit = (e) => {
+    const v = Number(e.currentTarget.value)
+    if (Number.isFinite(v) && v > 0 && v !== row.shares) setHolding(portfolio.id, row.symbol, v, row.cost)
+    else e.currentTarget.value = String(row.shares)
+  }
+  return (
+    <input key={`${row.symbol}:${row.shares}`} defaultValue={String(row.shares)}
+      inputMode="decimal" aria-label={`${tl('Shares')} ${row.symbol}`}
+      onBlur={commit}
+      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() } }}
+      class="w-16 rounded border border-transparent bg-transparent px-1 py-0.5 text-right font-mono text-[11px] text-ink-2 outline-none transition-colors hover:border-line-2 focus:border-accent/60 focus:bg-surface-2" />
+  )
+}
+
 function Holdings({ portfolio, quotes, rates }) {
   const { rows, missing, total } = portfolioValues(portfolio.holdings, quotes, rates, portfolio.ccy)
   const ccy = portfolio.ccy
@@ -103,7 +142,8 @@ function Holdings({ portfolio, quotes, rates }) {
     <section class="bg-surface-1 border border-line rounded-xl overflow-x-auto">
       <table class="w-full border-collapse font-mono text-[11px]">
         <thead>
-          <tr class="bg-surface-2 text-[9px] text-muted uppercase tracking-wider">
+          {/* nowrap: 股数 stacked into two lines on a phone (Jeff 2026-08-20) */}
+          <tr class="bg-surface-2 text-[9px] text-muted uppercase tracking-wider whitespace-nowrap">
             <th class="px-3 py-2 text-left">{tl('Sym')}</th>
             <th class="px-2 py-2 text-left">{tl('Ccy')}</th>
             <th class="px-2 py-2 text-right">{tl('Shares')}</th>
@@ -118,11 +158,18 @@ function Holdings({ portfolio, quotes, rates }) {
         </thead>
         <tbody>
           {rows.map((r) => (
-            <tr key={r.symbol} class="border-t border-line hover:bg-surface-3">
-              <td class="px-3 py-[3px] font-bold text-accent cursor-pointer"
-                onClick={() => (location.hash = `#/research/${r.symbol.toLowerCase()}`)}>{r.symbol}</td>
+            <tr key={r.symbol} class="border-t border-line hover:bg-surface-3 whitespace-nowrap">
+              <td class="px-3 py-[3px] cursor-pointer"
+                onClick={() => (location.hash = `#/research/${r.symbol.toLowerCase()}`)}>
+                <span class="font-bold text-accent">{r.symbol}</span>
+                {quotes[r.symbol]?.name && (
+                  <span class="block max-w-[9rem] truncate font-anth text-[9px] leading-tight text-muted">
+                    {quotes[r.symbol].name}
+                  </span>
+                )}
+              </td>
               <td class="px-2 py-[3px] font-anth text-[10px] text-muted">{r.ccy}</td>
-              <td class="px-2 py-[3px] text-right text-muted text-[10.5px]">{r.shares}</td>
+              <td class="px-2 py-[3px] text-right"><SharesCell portfolio={portfolio} row={r} /></td>
               <td class="px-2 py-[3px] text-right text-muted text-[10.5px]">{r.cost != null ? fmtPrice(r.cost) : '—'}</td>
               <td class="px-2 py-[3px] text-right text-ink-2 font-medium">
                 {r.price != null ? <FlashPrice price={r.price} fmt={fmtPrice} /> : '—'}
@@ -142,7 +189,7 @@ function Holdings({ portfolio, quotes, rates }) {
               <td class="px-2 py-[3px] text-right">
                 <button type="button" title={tl('Remove')} aria-label={`${tl('Remove')} ${r.symbol}`}
                   onClick={() => removeHolding(portfolio.id, r.symbol)}
-                  class="rounded px-1.5 text-muted transition-colors hover:text-down">×</button>
+                  class="rounded px-1.5 py-1 text-muted transition-colors hover:text-down">×</button>
               </td>
             </tr>
           ))}
@@ -154,7 +201,7 @@ function Holdings({ portfolio, quotes, rates }) {
             </tr>
           )}
           {rows.length > 0 && (
-            <tr class="border-t border-line-2 bg-surface-2 font-bold">
+            <tr class="border-t border-line-2 bg-surface-2 font-bold whitespace-nowrap">
               <td class="px-3 py-[6px] text-ink" colSpan={6}>{tl('Total')}</td>
               <td class="px-2 py-[6px] text-right text-ink text-[12.5px]">{fmtCcy(total.value, ccy)}</td>
               <td class="px-2 py-[6px] text-right text-ink-2">{total.value != null ? '100%' : '—'}</td>
