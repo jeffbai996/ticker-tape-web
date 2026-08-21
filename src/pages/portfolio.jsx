@@ -27,6 +27,7 @@ import {
 } from '../lib/thesis.js'
 import { StatusPill } from '../components/StatusPill.jsx'
 import { countAdvancers } from '../lib/pulse.js'
+import { MyPortfolios } from './portfolioMine.jsx'
 
 const SYMBOLS = DEMO_POSITIONS.map((p) => p.symbol)
 const BOTH_ACCOUNTS = 'all'
@@ -1711,6 +1712,7 @@ export function Portfolio({ route }) {
 
   const View = {
     positions: Positions,
+    mine: MyPortfolios,
     account: Account,
     sizing: Sizing,
     carry: Carry,
@@ -1723,7 +1725,7 @@ export function Portfolio({ route }) {
     backtest: Backtest,
   }[view] || Positions
 
-  if (wired && !book) {
+  if (wired && !book && view !== 'mine') {
     return (
       <div class="flex-1 p-3 min-w-0">
         <PortfolioHeader accounts={accounts} account={account} onChange={onAccountChange} book={book} wired />
