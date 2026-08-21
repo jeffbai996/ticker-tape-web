@@ -142,7 +142,7 @@ export async function fetchEarningsImpact(symbol) {
   const peerBars = {}
   await Promise.all(
     peers.map((p) =>
-      fetchHistory(p, '2Y').then((h) => { peerBars[p] = h.bars }).catch(() => {}),
+      fetchHistory(p, '5Y').then((h) => { peerBars[p] = h.bars }).catch(() => {}),
     ),
   )
 
