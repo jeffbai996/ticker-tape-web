@@ -137,16 +137,16 @@ describe('the timezone clock stays aligned and quiet', () => {
     expect(cls.contains('whitespace-nowrap')).toBe(true)
   })
 
-  it('carries its own left gap instead of leaning on the feed chip', () => {
-    // FeedIndicator renders nothing while the feed is healthy, and the index
-    // strip to its left is a scroll container that can end flush at its edge
-    expect(cls.contains('ml-1')).toBe(true)
+  it('spacing belongs to the right-cluster GROUP now, not the clock (Jeff 2026-08-21: balance + symmetry)', () => {
+    // clock · dot · locale sit in one flex group at a uniform gap; the clock
+    // stopped carrying its own junction margin
+    expect(cls.contains('ml-1')).toBe(false)
+    expect(cls.contains('-ml-2.5')).toBe(false)
   })
 
-  it('pads evenly, so the online dot sits centred between chip and locale', () => {
-    // the phone-only pr-0 existed because a borderless clock made the eye
-    // measure from the "ET" glyph; with an edge to measure from it is wrong
+  it('pads tight and evenly — the saved slack goes to the tape strip', () => {
     expect(cls.contains('pr-0')).toBe(false)
-    expect(cls.contains('px-1.5')).toBe(true)
+    expect(cls.contains('px-1')).toBe(true)
+    expect(cls.contains('px-1.5')).toBe(false)
   })
 })
