@@ -30,7 +30,6 @@ import { groupHeat, rankAlerts, rangeExtremes } from '../lib/railstats.js'
 import { conditionText, loadAlerts, onAlertsChange } from '../lib/alerts.js'
 import { groupDashboardRows, quoteSpread, selectFlatRows, dropSlot, resolveDrop } from '../lib/dashboardRows.js'
 import { searchSymbols } from '../lib/symbolSearch.js'
-import { ccyMark } from '../lib/fx.js'
 import { venueFlag } from '../lib/venueFlag.js'
 import {
   fmtPrice, fmtPriceBare, fmtPriceWide, fmtPct, fmtPctPlain, fmtChange, fmtVol, fmtFracPct, rangePos,
@@ -385,7 +384,7 @@ export function TuiRow({ symbol, data, earnDays, onRemove = () => {}, selecting,
                   right where the company name wanted it (Jeff 2026-08-18). */}
               <span class="relative text-ink font-semibold min-w-(--col-price) text-right shrink-0"
                 title={`${symbol} — ${freshnessTitle(fresh)}`}>
-                <span data-col="price" class="inline-block whitespace-nowrap">{q ? <>{ccyMark(q.currency) && <span class="mr-px font-normal text-[10px] text-muted">{ccyMark(q.currency)}</span>}<BigPrice v={q.price} /></> : '—'}</span>
+                <span data-col="price" class="inline-block whitespace-nowrap">{q ? <BigPrice v={q.price} /> : '—'}</span>
               </span>
               {/* min-width, not width: a wide print (▼ 15.22 (-4.05%)) used to
                   overflow the fixed box and land flush against the ON label,
