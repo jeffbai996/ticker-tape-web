@@ -13,7 +13,7 @@ beforeEach(() => localStorage.clear())
 describe('market overview visual preference', () => {
   it('offers the session meter and the shared spark readings', () => {
     expect(MARKET_VISUALS.map((item) => item.id)).toEqual([
-      'session', 'area', 'line', 'vol', 'chg', 'range', 'off',
+      'session', 'area', 'line', 'base', 'vol', 'chg', 'range', 'off',
     ])
     expect(MARKET_VISUALS.find((item) => item.id === DEFAULT_MARKET_VISUAL)).toBeTruthy()
   })

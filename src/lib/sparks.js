@@ -10,6 +10,7 @@
 export const SPARK_TYPES = [
   { id: 'area', label: 'Price area' },
   { id: 'line', label: 'Price line' },
+  { id: 'base', label: 'Baseline' },
   { id: 'vol', label: 'Volume' },
   { id: 'chg', label: 'Daily change' },
   { id: 'range', label: 'Daily range' },
@@ -121,6 +122,39 @@ export function linePoints(bars, w = 130, h = 20, pad = 1) {
     // where the window opened — the line crossing it is the whole read
     baseline: y(cs[0]),
   }
+}
+
+/** Koyfin-style baseline coloring (Jeff 2026-08-20): one line, green while
+ *  it rides above where the window opened, red while below, split exactly at
+ *  the crossings. Returns [{points, up}] polyline segments in the same
+ *  coordinate space as linePoints. */
+export function baselineSegments(bars, w = 130, h = 20, pad = 1) {
+  const line = linePoints(bars, w, h, pad)
+  if (!line) return null
+  const pts = line.points.split(' ').map((p) => p.split(',').map(Number))
+  const base = line.baseline
+  const segs = []
+  let cur = []
+  // y grows downward: above the baseline means y < base
+  let curUp = pts[0][1] <= base
+  const push = () => { if (cur.length > 1) segs.push({ points: cur.map(([x, y]) => `${x},${y}`).join(' '), up: curUp }) }
+  for (let i = 0; i < pts.length; i++) {
+    const [x, y] = pts[i]
+    const up = y <= base
+    if (up !== curUp && cur.length) {
+      const [px, py] = cur[cur.length - 1]
+      // interpolate the crossing so neither color overshoots the baseline
+      const t = (base - py) / (y - py)
+      const cx = +(px + (x - px) * t).toFixed(2)
+      cur.push([cx, +base.toFixed(2)])
+      push()
+      cur = [[cx, +base.toFixed(2)]]
+      curUp = up
+    }
+    cur.push([x, y])
+  }
+  push()
+  return { segs, baseline: base }
 }
 
 /** Close-over-close returns as fractions of the window's biggest move, so the
