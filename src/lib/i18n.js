@@ -902,7 +902,12 @@ const LABELS = {
   'Rename portfolio': '重命名组合',
   'Delete portfolio': '删除组合',
   'No portfolios yet — create one above. Everything you enter stays in this browser.': '还没有组合 — 在上方创建一个。所有输入仅保存在本浏览器。',
-  'Stored locally in this browser only — nothing you enter is uploaded.': '仅保存在本浏览器 — 输入内容不会上传。',
+    // My Portfolios cloud sync (2026-08-20)
+  'cloud saved': '已云端保存', 'saving…': '保存中…', 'cloud sync': '云同步',
+  'Saved to the cloud — use the same code on another device to see the same portfolios.': '已保存到云端 — 在其他设备输入同一代码即可看到相同组合。',
+  'Portfolios live only in this browser right now — turn on cloud sync so they survive and follow you.': '组合目前仅存于本浏览器 — 开启云同步以长期保存并跨设备使用。',
+  'Turn off cloud sync on this device?': '在此设备上关闭云同步？',
+  'not a sync code': '同步代码无效',
   'Symbol or company': '代码或公司名',
   'Type a ticker or a company name and pick from the list.': '输入股票代码或公司名，从列表中选择。',
 }

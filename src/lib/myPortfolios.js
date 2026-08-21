@@ -75,6 +75,14 @@ function persist(items) {
   for (const fn of [...listeners]) fn(items)
 }
 
+/** Apply a cloud-merged set wholesale (sync engine only): sanitized through
+ *  the same gate as user input, then persisted and announced. */
+export function replacePortfolios(items) {
+  const clean = sanitize(items || [])
+  persist(clean)
+  return clean
+}
+
 export function onPortfoliosChange(fn) {
   listeners.add(fn)
   return () => listeners.delete(fn)
