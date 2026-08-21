@@ -207,13 +207,22 @@ export function EarningsDay({ symbols }) {
 
   const active = docket.find((e) => e.sym === pick) || docket[0] || null
 
+  // week buckets give the eye structure the bare list lacked (Jeff
+  // 2026-08-21: "too sparse, too much black space")
+  const bucketOf = (days) => days <= 0 ? 'today' : days <= 7 ? 'this week'
+    : days <= 14 ? 'next week' : 'later'
+  let lastBucket = null
+
   return (
-    <div class="grid gap-2 lg:grid-cols-[220px_1fr] min-w-0">
+    <div class="grid gap-2 lg:grid-cols-[240px_1fr] min-w-0">
       <section class="bg-surface-1 border border-line rounded-xl overflow-hidden self-start">
-        <header class="px-3 py-1.5 border-b border-line-2 bg-surface-2">
+        <header class="flex items-baseline px-3 py-1.5 border-b border-line-2 bg-surface-2">
           <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">
             {tl('Docket')}
           </h2>
+          {docket.length > 0 && (
+            <span class="ml-auto font-mono text-[9px] text-muted">{docket.length} · 90d</span>
+          )}
         </header>
         {docket.length === 0 && (
           <Loading label={tl('loading earnings dates…')} minH={120} />
@@ -223,18 +232,32 @@ export function EarningsDay({ symbols }) {
             const on = active?.sym === e.sym
             const urgent = e.days <= 0 ? 'text-imminent font-bold'
               : e.days <= 1 ? 'text-down' : e.days <= 7 ? 'text-accent' : 'text-muted'
+            const bucket = bucketOf(e.days)
+            const divider = bucket !== lastBucket
+            lastBucket = bucket
+            const d = new Date(e.date)
             return (
-              <button key={e.sym} onClick={() => setPick(e.sym)}
-                class={`w-full flex items-baseline gap-2 px-3 py-[3px] font-mono text-[11px] border-b border-line last:border-0 ${
-                  on ? 'bg-accent-2-soft text-ink' : 'hover:bg-surface-3'}`}>
-                <span class={`font-bold ${on ? 'text-accent-2' : 'text-ink'}`}>{e.sym}</span>
-                <span class="ml-auto text-ink-2">
-                  {new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toLowerCase()}
-                </span>
-                <span class={`w-8 text-right ${urgent}`}>
-                  {e.days <= 0 ? tl('today') : `${e.days}d`}
-                </span>
-              </button>
+              <>
+                {divider && (
+                  <div key={`b-${bucket}`} class="px-3 pt-1.5 pb-0.5 font-anth text-[8.5px] font-bold uppercase tracking-[0.16em] text-muted border-t border-line-2 first:border-0 bg-surface-2/40">
+                    {tl(bucket)}
+                  </div>
+                )}
+                <button key={e.sym} onClick={() => setPick(e.sym)}
+                  class={`w-full flex items-baseline gap-2 px-3 py-1 font-mono text-[11px] border-b border-line/50 last:border-0 ${
+                    on ? 'bg-accent-2-soft text-ink' : 'hover:bg-surface-3'}`}>
+                  <span class={`font-bold ${on ? 'text-accent-2' : 'text-ink'}`}>{e.sym}</span>
+                  {e.epsEstimate != null && (
+                    <span class="text-[9px] text-muted">est {e.epsEstimate.toFixed(2)}</span>
+                  )}
+                  <span class="ml-auto text-ink-2">
+                    {d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toLowerCase()}
+                  </span>
+                  <span class={`w-8 text-right ${urgent}`}>
+                    {e.days <= 0 ? tl('today') : `${e.days}d`}
+                  </span>
+                </button>
+              </>
             )
           })}
         </div>

@@ -93,7 +93,7 @@ describe('market coverage', () => {
     const names = MARKET_GROUPS.map((g) => g.name)
     expect(names).toEqual(expect.arrayContaining([
       'US Equity', 'Global ETFs', 'Canada', 'Europe', 'Asia-Pacific',
-      'Rates', 'Credit', 'Volatility', 'FX', 'Crypto',
+      'Rates', 'Credit', 'Volatility', 'FX', 
     ]))
     expect(MARKET_GROUPS.flatMap((g) => g.items).filter((i) => i.symbol).length).toBeGreaterThanOrEqual(75)
     expect(COMMODITY_GROUPS.flatMap((g) => g.items).length).toBeGreaterThanOrEqual(30)

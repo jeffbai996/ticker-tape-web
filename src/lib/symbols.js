@@ -70,7 +70,6 @@ export const INDICES = [
   { symbol: '^SOX', label: 'SOX' },
   { symbol: '^VIX', label: 'VIX' },
   { symbol: '^TNX', label: 'US10Y' },
-  { symbol: 'DX-Y.NYB', label: 'DXY' },
   { symbol: 'GC=F', label: 'GOLD' },
   { symbol: 'SI=F', label: 'SILVER' },
   { symbol: 'HG=F', label: 'COPPER' },
@@ -79,6 +78,8 @@ export const INDICES = [
   { symbol: 'NG=F', label: 'GAS' },
   { symbol: '^HSI', label: 'HSI' },
   { symbol: '^N225', label: 'N225' },
+  { symbol: '^KS11', label: 'KOSPI' },
+  { symbol: '000001.SS', label: 'SSE' },
   { symbol: 'BTC-USD', label: 'BTC' },
 ]
 

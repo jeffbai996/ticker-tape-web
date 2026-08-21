@@ -199,10 +199,10 @@ function GroupCard({ name, items, quotes, withUnits, visual = null, visualWindow
 }
 
 function MarketVisualPicker({ visual, window, onVisual, onWindow }) {
-  const field = 'appearance-none rounded-full border border-line bg-surface-1 py-1 max-sm:py-0.5 pl-2.5 max-sm:pl-2 pr-6 font-anth text-[10px] max-sm:text-[9px] text-ink-2 outline-none hover:border-accent/50 focus:border-accent/70'
+  const field = 'appearance-none rounded-full border border-line-2 bg-surface-2 py-1 max-sm:py-0.5 pl-2.5 max-sm:pl-2 pr-6 font-anth text-[10px] max-sm:text-[9px] text-ink-2 outline-none hover:border-accent/50 focus:border-accent/70'
   return (
     <div class="flex shrink-0 items-center gap-1">
-      <span class="font-anth text-[9px] uppercase tracking-wider text-muted">{tl('Visual')}</span>
+      <span class="font-anth text-[9px] uppercase tracking-wider text-ink-2">{tl('Visual')}</span>
       <span class="relative">
         <select value={visual} onChange={(e) => onVisual(e.currentTarget.value)}
           aria-label={tl('Row visual')} class={field}>
@@ -229,14 +229,14 @@ function MarketVisualPicker({ visual, window, onVisual, onWindow }) {
 
 function MarketJumpBar({ visual, window, onVisual, onWindow }) {
   return (
-    <nav class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-2" aria-label={tl('Market groups')}>
+    <nav class="mb-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar rounded-lg border border-line bg-surface-1/70 px-2 py-1.5" aria-label={tl('Market groups')}>
       <MarketVisualPicker visual={visual} window={window} onVisual={onVisual} onWindow={onWindow} />
       <span class="h-4 w-px bg-line shrink-0 mx-1" aria-hidden="true" />
-      <span class="font-anth text-[9px] uppercase tracking-wider text-muted shrink-0 mr-1">{tl('Jump to')}</span>
+      <span class="font-anth text-[9px] uppercase tracking-wider text-ink-2 shrink-0 mr-1">{tl('Jump to')}</span>
       {MARKET_GROUPS.map((group) => (
         <button key={group.name} type="button"
           onClick={() => document.getElementById(groupId(group.name))?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-          class="shrink-0 rounded-full border border-line px-2.5 py-1 max-sm:px-2 max-sm:py-0.5 font-anth text-[10px] max-sm:text-[9px] text-ink-2 hover:text-accent hover:border-accent/50 hover:no-underline">
+          class="shrink-0 rounded-full border border-line-2 bg-surface-2 px-2.5 py-1 max-sm:px-2 max-sm:py-0.5 font-anth text-[10px] max-sm:text-[9px] text-ink hover:text-accent hover:border-accent/50 hover:no-underline">
           {tl(group.name)}
         </button>
       ))}

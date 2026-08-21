@@ -29,7 +29,7 @@ export function SubTabs({ route }) {
   const section = NAV.find((s) => s.id === route.section)
   if (!section?.subs?.length) return null
   const tabs = [
-    { id: null, label: 'Overview' },
+    { id: null, label: section.landingLabel || 'Overview' },
     ...section.subs,
   ]
   return (

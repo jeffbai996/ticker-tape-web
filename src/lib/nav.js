@@ -22,11 +22,12 @@ export const NAV = [
   {
     id: 'markets',
     label: 'Markets',
+    landingLabel: 'Indices',
     subs: [
+      { id: 'commodities', label: 'Commodities' },
       { id: 'movers', label: 'Movers' },
       { id: 'sectors', label: 'Sectors' },
       { id: 'heatmap', label: 'Heatmap' },
-      { id: 'commodities', label: 'Commodities' },
       { id: 'earnings', label: 'Earnings' },
       { id: 'calendar', label: 'Calendar' },
     ],
