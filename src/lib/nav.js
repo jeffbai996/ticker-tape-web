@@ -5,6 +5,10 @@
 // in the information architecture so it does not present a cut-down product.
 // Its route renders an inert preview and never calls the model service.
 const PRIVATE_BUILD = import.meta.env.VITE_PRIVATE === '1'
+// The family instance (baked sync store) is a working tool for a person who
+// never asked for AI copy — the briefing section is dropped whole there
+// (Jeff 2026-08-20).
+const FAMILY_BUILD = !!import.meta.env.VITE_SYNC_CAPABILITY
 
 const CHAT_SECTION = {
   id: 'chat', label: 'AI Chat', subs: [],
@@ -73,6 +77,7 @@ export const NAV = [
 // gateway) and the wire is the operator's own — the showcase badges only
 // make sense on the public origin.
 if (PRIVATE_BUILD) for (const s of NAV) delete s.badge
+if (FAMILY_BUILD) NAV.splice(NAV.findIndex((s) => s.id === 'brief'), 1)
 
 export const IS_PRIVATE_BUILD = PRIVATE_BUILD
 
