@@ -1313,7 +1313,7 @@ function BoardMenu({ sort, setSort, setViewMode, spark, setSpark, sparkWin, setS
             <div class="flex min-w-0 flex-col gap-1.5">
               <section class="board-menu-section min-w-0">
                 {head(tl('Spark'))}
-                <div class="grid grid-cols-2">
+                <div class="grid grid-cols-2 max-sm:grid-cols-1">
                   {SPARK_TYPES.map((t) => item(tl(t.label), spark === t.id, () => setSpark(t.id)))}
                 </div>
                 {/* Shape and horizon are separate controls; keeping this open
