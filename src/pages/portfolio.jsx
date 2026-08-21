@@ -45,13 +45,11 @@ function priceMapOf(live) {
 
 const money = (v, digits = 0) =>
   v == null ? '—' : v.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits })
-    .replaceAll(',', '\u2009')
 
 const dollars = (v) => (v == null ? '—' : `$${money(v)}`)
 
 const signedMoney = (v) =>
-  v == null ? '—' : `${v >= 0 ? '+' : '-'}${Math.abs(v).toLocaleString('en-US', { maximumFractionDigits: 0 })
-    .replaceAll(',', '\u2009')}`
+  v == null ? '—' : `${v >= 0 ? '+' : '-'}${Math.abs(v).toLocaleString('en-US', { maximumFractionDigits: 0 })}`
 
 const pnlCls = (v) => (v == null ? 'text-muted' : v >= 0 ? 'text-up' : 'text-down')
 

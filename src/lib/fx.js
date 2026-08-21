@@ -67,5 +67,5 @@ export function fmtCcy(v, ccy, digits = 0) {
   const mark = CCY_MARK[ccy] || `${ccy} `
   return `${mark}${v.toLocaleString('en-US', {
     minimumFractionDigits: digits, maximumFractionDigits: digits,
-  }).replaceAll(',', '\u2009')}`
+  })}`
 }
