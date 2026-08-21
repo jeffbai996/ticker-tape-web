@@ -36,6 +36,7 @@ export const NAV = [
     label: 'Portfolio',
     badge: 'DEMO',
     subs: [
+      { id: 'mine', label: 'My Portfolios' },
       { id: 'account', label: 'Account' },
       { id: 'sizing', label: 'Sizing' },
       { id: 'carry', label: 'Carry' },
