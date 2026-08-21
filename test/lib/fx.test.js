@@ -5,7 +5,7 @@
  *  not six.
  */
 import { describe, expect, it } from 'vitest'
-import {
+import { ccyMark,
   PORTFOLIO_CCYS, convertCcy, fxPairSymbol, fxSymbolsFor, holdingCurrency,
   ratesFromQuotes, fmtCcy,
 } from '../../src/lib/fx.js'
@@ -91,5 +91,24 @@ describe('fmtCcy — money the reader can tell apart', () => {
 
   it('keeps cents when asked', () => {
     expect(fmtCcy(12.346, 'USD', 2)).toBe('$12.35')
+  })
+})
+
+describe('ccyMark — foreign listings wear their symbol', () => {
+  it('marks the non-home currencies, three chars max', () => {
+    expect(ccyMark('KRW')).toBe('₩')
+    expect(ccyMark('JPY')).toBe('¥')
+    expect(ccyMark('CNH')).toBe('¥')
+    expect(ccyMark('HKD')).toBe('HK$')
+    expect(ccyMark('TWD')).toBe('NT$')
+    for (const c of ['KRW','JPY','HKD','TWD','EUR','GBP','CHF','INR','SGD','AUD']) {
+      expect(ccyMark(c).length).toBeLessThanOrEqual(3)
+    }
+  })
+  it('home currencies and unknowns stay bare', () => {
+    expect(ccyMark('USD')).toBe('')
+    expect(ccyMark('CAD')).toBe('')
+    expect(ccyMark('XYZ')).toBe('')
+    expect(ccyMark(null)).toBe('')
   })
 })
