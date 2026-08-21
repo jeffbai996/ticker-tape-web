@@ -52,8 +52,10 @@ describe('assembleBriefing', () => {
   it('flags technical extremes as notes', () => {
     const note = sections.techNotes.find((n) => n.symbol === 'DDD')
     expect(note).toBeTruthy()
-    expect(note.notes.join(' ')).toMatch(/RSI 74/)
-    expect(note.notes.join(' ')).toMatch(/2.3x/)
+    const texts = note.notes.map((x) => x.text).join(' ')
+    expect(texts).toMatch(/overbought · RSI 74/)
+    expect(texts).toMatch(/heavy tape · 2.3x/)
+    expect(note.notes.map((x) => x.kind)).toEqual(['overbought', 'volume'])
   })
 
   it('keeps technical flags actionable instead of listing 52-week drawdowns', () => {
@@ -65,7 +67,7 @@ describe('assembleBriefing', () => {
       },
     })
     expect(sections.techNotes.map((n) => n.symbol)).toEqual(['ACTIVE'])
-    expect(sections.techNotes.flatMap((n) => n.notes).join(' ')).not.toMatch(/52w|off high/i)
+    expect(sections.techNotes.flatMap((n) => n.notes.map((x) => x.text)).join(' ')).not.toMatch(/52w|off high/i)
   })
 
   it('computes breadth pulse', () => {
