@@ -909,6 +909,10 @@ const LABELS = {
   'Turn off cloud sync on this device?': '在此设备上关闭云同步？',
   'not a sync code': '同步代码无效',
   'Everything here saves automatically and shows up on any device that opens this page.': '这里的内容会自动保存，任何设备打开此页面都能看到。',
+  holdings: '项持仓', 'Add holding': '添加持仓',
+  'Prices, totals and weights appear as soon as the first one lands.': '添加第一只后，价格、合计与权重会立即出现。',
+  Holdings: '持仓数', Currencies: '币种数',
+  'Day movers': '当日异动', 'Weights': '权重分布', 'Currency mix': '币种构成',
   'Symbol or company': '代码或公司名',
   'Type a ticker or a company name and pick from the list.': '输入股票代码或公司名，从列表中选择。',
 }

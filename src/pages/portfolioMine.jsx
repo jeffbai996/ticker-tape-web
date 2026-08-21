@@ -82,6 +82,7 @@ function AddHoldingRow({ portfolio }) {
   const box = 'rounded border border-line-2 bg-surface-2 px-2 py-1.5 font-mono text-[10.5px] text-ink placeholder:text-[10px] placeholder:text-muted outline-none focus:border-accent/60'
   return (
     <form onSubmit={submit} class="rounded-xl border border-line bg-surface-1 px-3 py-2">
+      <div class="pb-1.5 font-anth text-[9px] uppercase tracking-wider text-muted">{tl('Add holding')}</div>
       <div class="flex flex-wrap items-center gap-2">
         <SymbolSuggest value={sym} placeholder={tl('Symbol or company')}
           ariaLabel={tl('Symbol or company')}
@@ -108,21 +109,6 @@ function AddHoldingRow({ portfolio }) {
         {tl('Type a ticker or a company name and pick from the list.')}
       </div>
     </form>
-  )
-}
-
-function FxFootnote({ ccys, rates, displayCcy }) {
-  const used = ccys.filter((c) => c !== 'USD')
-  if (!used.length && displayCcy === 'USD') return null
-  return (
-    <div class="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 font-anth text-[10px] text-muted">
-      <span class="uppercase tracking-wider text-[9px]">{tl('FX (live)')}</span>
-      {[...new Set([...used, displayCcy])].filter((c) => c !== 'USD').map((c) => (
-        <span key={c}>
-          {fmtCcy(1, c)} = {rates[c] != null ? fmtCcy(rates[c], 'USD', 4) : '…'}
-        </span>
-      ))}
-    </div>
   )
 }
 
@@ -183,7 +169,9 @@ function Holdings({ portfolio, quotes, rates }) {
                 {r.price != null ? <FlashPrice price={r.price} fmt={fmtPrice} /> : '—'}
               </td>
               <td class={`px-2 py-[3px] text-right font-medium ${pnlCls(r.dayPct)}`}>
-                {r.dayPct != null ? fmtPct(r.dayPct) : '—'}
+                {r.dayPnlDisplay != null
+                  ? <>{signed(r.dayPnlDisplay, ccy)} <span class="text-[10px] font-normal">({fmtPct(r.dayPct)})</span></>
+                  : r.dayPct != null ? fmtPct(r.dayPct) : '—'}
               </td>
               <td class="px-2 py-[3px] text-right text-ink font-semibold text-[12px]">
                 {r.valueDisplay != null ? fmtCcy(r.valueDisplay, ccy) : '—'}
@@ -203,14 +191,18 @@ function Holdings({ portfolio, quotes, rates }) {
           ))}
           {!rows.length && (
             <tr class="border-t border-line">
-              <td colSpan={10} class="px-3 py-4 text-center font-anth text-[11px] text-muted">
+              <td colSpan={10} class="px-3 py-5 text-center font-anth text-[11px] text-muted">
                 {tl('No holdings yet — add a symbol below.')}
+                <span class="mt-0.5 block text-[9.5px] opacity-80">{tl('Prices, totals and weights appear as soon as the first one lands.')}</span>
               </td>
             </tr>
           )}
           {rows.length > 0 && (
             <tr class="border-t border-line-2 bg-surface-2 font-bold whitespace-nowrap">
-              <td class="px-3 py-[6px] text-ink" colSpan={6}>{tl('Total')}</td>
+              <td class="px-3 py-[6px] text-ink" colSpan={5}>{tl('Total')}</td>
+              <td class={`px-2 py-[6px] text-right ${pnlCls(total.dayPnl)}`}>
+                {total.dayPnl != null ? signed(total.dayPnl, ccy) : '—'}
+              </td>
               <td class="px-2 py-[6px] text-right text-ink text-[12.5px]">{fmtCcy(total.value, ccy)}</td>
               <td class="px-2 py-[6px] text-right text-ink-2">{total.value != null ? '100%' : '—'}</td>
               <td class={`px-2 py-[6px] text-right text-[12.5px] ${pnlCls(total.unrealPnl)}`}>
@@ -230,24 +222,112 @@ function Holdings({ portfolio, quotes, rates }) {
   )
 }
 
-function SummaryStrip({ portfolio, quotes, rates }) {
-  const { total } = portfolioValues(portfolio.holdings, quotes, rates, portfolio.ccy)
-  const chip = (label, body) => (
-    <div class="rounded-lg border border-line bg-surface-1 px-3 py-2">
-      <div class="font-anth text-[9px] uppercase tracking-wider text-muted">{label}</div>
-      <div class="font-mono text-[15px] font-semibold">{body}</div>
-    </div>
-  )
+function SummaryStrip({ portfolio, quotes, rates, ccys }) {
+  const { total, rows } = portfolioValues(portfolio.holdings, quotes, rates, portfolio.ccy)
+  const priced = rows.filter((r) => r.valueDisplay != null)
+  const chip = (v, pct) =>
+    v == null ? null : (
+      <span class={`font-anth text-[12px] font-semibold px-2 py-0.5 rounded-md border ${
+        v >= 0 ? 'text-up border-up/30 bg-up/10' : 'text-down border-down/30 bg-down/10'}`}>
+        {signed(v, portfolio.ccy)}{pct != null && <span class="text-[10px] font-normal"> ({fmtPct(pct)})</span>}
+      </span>
+    )
+  const fxUsed = [...new Set([...(ccys || []), portfolio.ccy])].filter((c) => c !== 'USD')
+  const fxNote = fxUsed.map((c) => (rates[c] != null ? `${c} ${rates[c].toFixed(3)}` : `${c} …`)).join(' · ')
   return (
-    <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:max-w-xl">
-      {chip(`${tl('Value')} (${portfolio.ccy})`, <span class="text-ink">{fmtCcy(total.value, portfolio.ccy)}</span>)}
-      {chip(tl('Day P&L'), (
-        <span class={pnlCls(total.dayPnl)}>
-          {signed(total.dayPnl, portfolio.ccy)}
-          {total.dayPct != null && <span class="text-[11px] font-normal"> ({fmtPct(total.dayPct)})</span>}
-        </span>
+    <section class="border border-line rounded-xl overflow-hidden bg-surface-1">
+      <div class="flex flex-wrap items-stretch">
+        <div class="px-4 py-3 flex-1 min-w-[240px]">
+          <div class="font-anth text-[9px] uppercase tracking-[.14em] text-muted">{tl('Value')} ({portfolio.ccy})</div>
+          <div class="font-anth text-[30px] leading-tight font-semibold tracking-tight text-ink">{fmtCcy(total.value, portfolio.ccy)}</div>
+          <div class="flex items-center gap-2 pt-1.5">
+            {chip(total.dayPnl, total.dayPct)}
+            {total.unrealPnl != null && (
+              <span class="font-anth text-[10.5px] text-muted">{tl('unreal')}{' '}
+                <span class={`font-semibold ${pnlCls(total.unrealPnl)}`}>{signed(total.unrealPnl, portfolio.ccy)}</span></span>
+            )}
+          </div>
+        </div>
+        <div class="px-4 py-3 flex-[1.2] min-w-[260px] border-l border-line max-sm:border-l-0 max-sm:border-t flex flex-col justify-center">
+          <div class="grid grid-cols-3 gap-3">
+            {[
+              [tl('Holdings'), String(priced.length)],
+              [tl('Currencies'), String(new Set(priced.map((r) => r.ccy)).size || '—')],
+              [tl('FX (live)'), fxNote || '—'],
+            ].map(([label, value]) => (
+              <div key={label} class="min-w-0">
+                <div class="font-anth text-[8.5px] uppercase tracking-wider text-muted pb-0.5">{label}</div>
+                <div class="truncate font-anth text-[13px] font-semibold text-ink" title={value}>{value}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/** At-a-glance analysis for a hand-built book (Jeff 2026-08-20: the landing
+ *  must still read like an overview, not a bare table). Everything derives
+ *  from the same valued rows the table shows — no extra fetch. */
+function BookAnalysis({ portfolio, quotes, rates }) {
+  const { rows } = portfolioValues(portfolio.holdings, quotes, rates, portfolio.ccy)
+  const priced = rows.filter((r) => r.valueDisplay != null)
+  if (priced.length < 2) return null
+  const card = (title, body) => (
+    <section class="rounded-xl border border-line bg-surface-1 px-3 py-2 min-w-0">
+      <div class="pb-1 font-anth text-[9px] uppercase tracking-wider text-muted">{title}</div>
+      {body}
+    </section>
+  )
+  const movers = priced.filter((r) => r.dayPnlDisplay != null)
+    .sort((a, b) => Math.abs(b.dayPnlDisplay) - Math.abs(a.dayPnlDisplay)).slice(0, 4)
+  const byWeight = [...priced].sort((a, b) => b.weightPct - a.weightPct).slice(0, 6)
+  const maxW = byWeight[0]?.weightPct || 1
+  const mix = new Map()
+  for (const r of priced) mix.set(r.ccy, (mix.get(r.ccy) || 0) + r.valueDisplay)
+  const mixTotal = [...mix.values()].reduce((a, b) => a + b, 0)
+  const MIX_CLS = { USD: 'bg-accent/70', CAD: 'bg-up/60', HKD: 'bg-down/60', CNY: 'bg-ink-2/60' }
+  return (
+    <div class="grid gap-2 sm:grid-cols-3">
+      {card(tl('Day movers'), (
+        <div class="flex flex-col gap-0.5 font-mono text-[11px]">
+          {movers.map((r) => (
+            <div key={r.symbol} class="flex items-baseline justify-between gap-2">
+              <span class="font-bold text-accent">{r.symbol}</span>
+              <span class={pnlCls(r.dayPnlDisplay)}>
+                {signed(r.dayPnlDisplay, portfolio.ccy)}
+                <span class="text-[10px] font-normal"> ({fmtPct(r.dayPct)})</span>
+              </span>
+            </div>
+          ))}
+        </div>
       ))}
-      {chip(tl('Unreal P&L'), <span class={pnlCls(total.unrealPnl)}>{total.unrealPnl != null ? signed(total.unrealPnl, portfolio.ccy) : '—'}</span>)}
+      {card(tl('Weights'), (
+        <div class="flex flex-col gap-1">
+          {byWeight.map((r) => (
+            <div key={r.symbol} class="flex items-center gap-2 font-mono text-[10px]">
+              <span class="w-16 shrink-0 font-bold text-ink-2">{r.symbol}</span>
+              <span class="h-2 rounded-sm bg-accent/50" style={{ width: `${(r.weightPct / maxW) * 100}%`, minWidth: '2px' }} />
+              <span class="ml-auto text-muted">{fmtPctPlain(r.weightPct)}</span>
+            </div>
+          ))}
+        </div>
+      ))}
+      {card(tl('Currency mix'), (
+        <div class="flex flex-col gap-1.5">
+          <div class="flex h-2.5 w-full overflow-hidden rounded-sm">
+            {[...mix.entries()].map(([ccy, v]) => (
+              <span key={ccy} class={MIX_CLS[ccy] || 'bg-ink-2/40'} style={{ width: `${(v / mixTotal) * 100}%` }} />
+            ))}
+          </div>
+          <div class="flex flex-wrap gap-x-3 gap-y-0.5 font-mono text-[10px] text-muted">
+            {[...mix.entries()].sort((a, b) => b[1] - a[1]).map(([ccy, v]) => (
+              <span key={ccy}><span class={`mr-1 inline-block h-2 w-2 rounded-sm align-middle ${MIX_CLS[ccy] || 'bg-ink-2/40'}`} />{ccy} {fmtPctPlain((v / mixTotal) * 100)}</span>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
@@ -415,10 +495,10 @@ export function MyPortfolios() {
 
       {selected ? (
         <>
-          <SummaryStrip portfolio={selected} quotes={quotes} rates={rates} />
+          <SummaryStrip portfolio={selected} quotes={quotes} rates={rates} ccys={ccys} />
+          <BookAnalysis portfolio={selected} quotes={quotes} rates={rates} />
           <Holdings portfolio={selected} quotes={quotes} rates={rates} />
           <AddHoldingRow portfolio={selected} />
-          <FxFootnote ccys={ccys} rates={rates} displayCcy={selected.ccy} />
         </>
       ) : (
         <div class="rounded-xl border border-line bg-surface-1 px-4 py-6 text-center font-anth text-[11px] text-muted">
