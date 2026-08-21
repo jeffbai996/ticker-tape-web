@@ -15,6 +15,7 @@ import {
 } from '../lib/cloudsave.js'
 import { pinDashboardLanding, pinnedDashboardLanding } from '../lib/dashboardLanding.js'
 import { wireServiceUrl } from '../lib/wire.js'
+import { fixedSyncCapability } from '../lib/watchlistSync.js'
 import { pushWatchlistToWire } from '../lib/watchlistExport.js'
 import { shouldOpenWatchlistCard } from '../lib/watchlistCard.js'
 import { Empty } from '../components/Loading.jsx'
@@ -59,7 +60,7 @@ function PublicSyncControls() {
   const [entry, setEntry] = useState('')
   const [notice, setNotice] = useState('')
   const [copied, setCopied] = useState(false)
-  if (wireServiceUrl()) return null
+  if (wireServiceUrl() || fixedSyncCapability()) return null
 
   const connect = (event) => {
     event.preventDefault()

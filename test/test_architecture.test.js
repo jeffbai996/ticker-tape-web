@@ -76,14 +76,17 @@ describe('test architecture', () => {
     expect(sourceContracts).toEqual([...SOURCE_CONTRACT_ALLOWLIST].sort())
   })
 
-  it('never compiles a family capability into public assets', () => {
+  it('family persistence is zero-setup BY OWNER DECISION — the bearer ships in the build (Jeff 2026-08-21), on the hardened transport', () => {
     const workflow = readFileSync(resolve(process.cwd(), '.github/workflows/deploy.yml'), 'utf8')
     expect(workflow).toContain("VITE_FAMILY_BUILD: '1'")
-    expect(workflow).not.toContain('VITE_SYNC_CAPABILITY')
-    for (const path of [
-      'src/lib/watchlistSync.js', 'src/lib/nav.js', 'src/pages/index.jsx',
-      'src/pages/portfolio.jsx', 'src/pages/portfolioMine.jsx', 'src/pages/watchlists.jsx',
-    ]) expect(readFileSync(resolve(process.cwd(), path), 'utf8')).not.toContain('VITE_SYNC_CAPABILITY')
+    // the value comes from repo secrets; only the plumbing may appear in source
+    expect(workflow).toContain('VITE_SYNC_CAPABILITY: ${{ secrets.SYNC_CAPABILITY }}')
+    const sync = readFileSync(resolve(process.cwd(), 'src/lib/watchlistSync.js'), 'utf8')
+    expect(sync).toContain('import.meta.env.VITE_SYNC_CAPABILITY')
+    expect(sync).not.toMatch(/[a-f0-9]{32}/)          // never a literal value
+    // and it must still ride the header transport — capability never in a URL
+    expect(sync).toContain('Bearer ')
+    expect(sync).not.toMatch(/watchlists\/\$\{/)
   })
 
   it('keeps paid AI routes out of the public Worker bundle', () => {

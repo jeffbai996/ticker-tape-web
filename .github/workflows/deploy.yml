@@ -29,9 +29,13 @@ jobs:
       - run: npm ci
       - run: npm run build
         env:
-          # This is a presentation flag, never a credential. Family data is
-          # connected once in the browser and the capability stays local.
           VITE_FAMILY_BUILD: '1'
+          # Owner decision (Jeff 2026-08-21): the family bearer ships in the
+          # public bundle so persistence needs zero setup on any device. The
+          # tradeoff (anyone with the bundle can reach the shared family
+          # book) was explicitly accepted — see CLAUDE.md. Value lives only
+          # in repo secrets and the household vault, never in source.
+          VITE_SYNC_CAPABILITY: ${{ secrets.SYNC_CAPABILITY }}
       # The responsive matrix runs against the bytes that are about to ship,
       # served the way Pages serves them (base path, real origin), and blocks
       # the deploy on a regression. Playwright is installed with pip rather

@@ -24,12 +24,23 @@ export function createWatchlistCapability(cryptoImpl = globalThis.crypto) {
   return [...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
+// The family build carries its own store (owner decision, Jeff 2026-08-21:
+// zero-setup persistence beats keeping the bearer out of a public bundle for
+// a family-grade book — tradeoff explicitly accepted, twice). The value
+// arrives from CI as a secret and rides codex's hardened transport: bearer
+// header only, never a URL, Durable-Object-coordinated writes.
+const FIXED_CAP = String(import.meta.env.VITE_SYNC_CAPABILITY || '').trim().toLowerCase()
+
+export function fixedSyncCapability() {
+  return validWatchlistCapability(FIXED_CAP) ? FIXED_CAP : ''
+}
+
 export function getWatchlistCapability() {
   try {
     const value = localStorage.getItem(CAPABILITY_KEY) || ''
     if (validWatchlistCapability(value)) return value.toLowerCase()
-  } catch { /* storage-disabled browsers stay local-only */ }
-  return ''
+  } catch { /* fall through to the build's own store */ }
+  return fixedSyncCapability()
 }
 
 export function saveWatchlistCapability(value) {

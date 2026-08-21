@@ -12,6 +12,7 @@ import {
 } from '../lib/cloudsave.js'
 import { onPortfolioSyncStatus } from '../lib/portfolioSync.js'
 import { wireServiceUrl } from '../lib/wire.js'
+import { fixedSyncCapability } from '../lib/watchlistSync.js'
 import { useQuotes } from '../hooks.js'
 import { SymbolSuggest } from '../components/SymbolSuggest.jsx'
 import { FlashPrice } from '../components/Fig.jsx'
@@ -368,7 +369,7 @@ function SyncControls() {
   const [bad, setBad] = useState(false)
   const [st, setSt] = useState({ state: 'off' })
   useEffect(() => onPortfolioSyncStatus(setSt), [])
-  if (wireServiceUrl()) return null
+  if (wireServiceUrl() || fixedSyncCapability()) return null
 
   const connect = (e) => {
     e.preventDefault()
