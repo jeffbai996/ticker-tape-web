@@ -82,10 +82,10 @@ describe('holdingCurrency — what a holding is denominated in', () => {
 
 describe('fmtCcy — money the reader can tell apart', () => {
   it('marks each currency distinctly', () => {
-    expect(fmtCcy(1234.5, 'USD')).toBe('$1\u2009235')
-    expect(fmtCcy(1234.5, 'CAD')).toBe('C$1\u2009235')
-    expect(fmtCcy(1234.5, 'HKD')).toBe('HK$1\u2009235')
-    expect(fmtCcy(1234.5, 'CNY')).toBe('¥1\u2009235')
+    expect(fmtCcy(1234.5, 'USD')).toBe('$1,235')
+    expect(fmtCcy(1234.5, 'CAD')).toBe('C$1,235')
+    expect(fmtCcy(1234.5, 'HKD')).toBe('HK$1,235')
+    expect(fmtCcy(1234.5, 'CNY')).toBe('¥1,235')
     expect(fmtCcy(null, 'USD')).toBe('—')
   })
 
