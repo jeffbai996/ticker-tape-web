@@ -1010,7 +1010,7 @@ function AddSymbolRow({ onAdd, isPresent, isFull, cap }) {
         onInput={(e) => { setSym(e.currentTarget.value); setErr('') }}
         onKeyDown={onKey}
         placeholder="SYM"
-        class="w-24 bg-transparent border border-line rounded px-1.5 py-0.5 font-mono text-[11px] text-ink uppercase outline-none focus:border-accent placeholder:text-muted"
+        class="w-24 max-sm:w-20 h-6 bg-transparent border border-line rounded px-1.5 py-0 font-mono text-[11px] text-ink uppercase outline-none focus:border-accent placeholder:text-muted"
       />
       <button type="submit" class="font-mono text-[11px] px-2 py-0.5 rounded border border-line text-ink-2 hover:border-accent hover:text-accent">
         {tl('add')}

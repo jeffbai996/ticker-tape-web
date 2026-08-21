@@ -326,10 +326,11 @@ function WatchlistCard({ item, quotes, earnDays, allLists, primary = false }) {
       <SymbolPreview symbols={item.symbols} quotes={quotes} managing={managing}
         onSend={send} onRemove={dropFrom} />
 
-      <div class="flex items-center gap-3 border-t border-line pt-2.5 font-anth text-[10px] font-semibold">
+      <div class="flex items-center gap-3 max-sm:gap-2 border-t border-line pt-2.5 font-anth text-[10px] max-sm:text-[9.5px] font-semibold overflow-x-auto no-scrollbar whitespace-nowrap">
         <a href={href} data-watchlist-open
-          class="inline-flex min-h-9 items-center rounded-md border border-accent/60 bg-accent-soft px-2.5 text-[11px] text-accent whitespace-nowrap hover:bg-accent hover:text-black hover:no-underline transition-colors">
-          {tl('Open dashboard →')}
+          class="inline-flex min-h-9 max-sm:min-h-7 items-center rounded-md border border-accent/60 bg-accent-soft px-2.5 max-sm:px-2 text-[11px] max-sm:text-[10px] text-accent whitespace-nowrap hover:bg-accent hover:text-black hover:no-underline transition-colors">
+          <span class="max-sm:hidden">{tl('Open dashboard →')}</span>
+          <span class="sm:hidden">{tl('Open →')}</span>
         </a>
         <button onClick={() => setManaging((v) => !v)}
           class={managing ? 'text-accent-2' : 'text-muted hover:text-ink'}>
@@ -338,7 +339,8 @@ function WatchlistCard({ item, quotes, earnDays, allLists, primary = false }) {
         <button onClick={() => { pinDashboardLanding(primary ? null : item.id); pinBump((n) => n + 1) }}
           title={tl('opens first on a fresh load')}
           class={isDefault ? 'text-accent-2' : 'text-muted hover:text-ink'}>
-          {isDefault ? `★ ${tl('default')}` : `☆ ${tl('set default')}`}
+          <span class="max-sm:hidden">{isDefault ? `★ ${tl('default')}` : `☆ ${tl('set default')}`}</span>
+          <span class="sm:hidden" aria-hidden="true">{isDefault ? '★' : '☆'}</span>
         </button>
         <button onClick={exportSymbols} disabled={exportState === 'syncing'} class="text-muted hover:text-ink disabled:opacity-50">
           {exportState === 'syncing' ? '…'
