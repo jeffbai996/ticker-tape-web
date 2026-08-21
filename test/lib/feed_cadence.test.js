@@ -19,7 +19,7 @@ describe('sweep cadence follows the tape', () => {
   })
   it('the sweep is self-rescheduling and refreshes charts on the 60s clock', () => {
     const feed = src('src/lib/feed.js')
-    expect(feed).toContain('sweepIntervalMs(marketState().state, isOvernight())')
+    expect(feed).toContain('sweepIntervalMs(marketState().state, isOvernight(), streamHealthyForCadence())')
     expect(feed).toContain('sinceCharts >= REFRESH_MS')
     expect(feed).not.toContain('setInterval(() => {\n      scheduleBatch([...tracked])')
   })
