@@ -88,6 +88,6 @@ export function stopRollingTime(element) {
 /** IANA zones handle DST; we never do offset math ourselves. */
 export const CLOCK_ZONES = [
   { id: 'America/New_York', label: 'ET' },
-  { id: 'Asia/Hong_Kong', label: 'HKT' },
+  { id: 'Asia/Hong_Kong', label: 'HK' },
   { id: 'America/Los_Angeles', label: 'PT' },
 ]
