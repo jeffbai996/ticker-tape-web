@@ -178,11 +178,14 @@ function News({ symbol }) {
 
 export function RailModules({ symbol }) {
   // fixed task order: synthesize → confirm technicals → confirm valuation →
-  // catch up on news. The per-card reorder arrows are gone (Jeff 2026-08-21:
+  // catch up on news. shrink-0 on the cards is load-bearing: the max-h flex
+  // column would otherwise squash them (overflow-hidden zeroes min-height,
+  // so flex shrinks cards instead of scrolling — the AI card collapsed to
+  // its border, Jeff 2026-08-21). The per-card reorder arrows are gone (Jeff 2026-08-21:
   // "remove the reordering thing") — nobody reordered them, everybody hit
   // them by accident reaching for the card.
   return (
-    <div data-research-rail-modules class="flex flex-col gap-3 min-w-0 lg:sticky lg:top-3 lg:max-h-[calc(100vh-1.5rem)] lg:overflow-y-auto">
+    <div data-research-rail-modules class="flex flex-col gap-3 min-w-0 [&>*]:shrink-0 lg:sticky lg:top-3 lg:max-h-[calc(100vh-1.5rem)] lg:overflow-y-auto">
       <AiReport
         label="AI report"
         filename={`${symbol.toLowerCase()}-report.md`}

@@ -95,3 +95,18 @@ describe('test architecture', () => {
     expect(source).toContain("return jsonResp({ error: 'Not found' }, 404)")
   })
 })
+
+describe('research rail scroll container', () => {
+  // A max-h flex column shrinks its children before it scrolls, because each
+  // card's overflow-hidden zeroes the automatic min-height. The AI report card
+  // collapsed to a 24px sliver this way (2026-08-21). shrink-0 must travel
+  // with the max-h/overflow pair.
+  it('rail cards are shrink-proof inside the sticky scroll column', () => {
+    const rail = readFileSync(resolve(process.cwd(), 'src/pages/research/rail.jsx'), 'utf8')
+    const wrapper = rail.split('\n').find((l) => l.includes('data-research-rail-modules'))
+    expect(wrapper).toBeTruthy()
+    if (wrapper.includes('max-h-') || wrapper.includes('overflow-y-auto')) {
+      expect(wrapper).toContain('shrink-0')
+    }
+  })
+})
