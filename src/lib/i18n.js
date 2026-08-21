@@ -400,6 +400,7 @@ const LABELS = {
   Account: '账户', Quarter: '季度', dropped: '已剔除', spot: '现价',
   Financials: '财报', Events: '事件', Insiders: '内部人', Proxy: '股东会', Registrations: '注册发行',
   'filed in the last two weeks': '两周内新申报', 'Open →': '打开 →',
+  'tap: drift the index strip': '点按：指数条开始滚动', 'tap: stop the index drift': '点按：停止指数条滚动',
   'stretched names on the board — the chip says what it means, the meter shows where RSI sits': '盘面上被拉伸的名字 — 标签说明含义，刻度显示RSI位置',
   // off-hours futures swap-ins on the status strip — 2-char abbreviations
   // (Jeff 2026-08-09: "just 标期 and 纳期")

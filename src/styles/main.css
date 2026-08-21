@@ -458,6 +458,18 @@ button:hover .burger path:nth-child(2) { transform: scaleX(.55); }
 
 /* Tape marquee: JS measures one cycle and renders enough copies to keep even
    a one-symbol mobile watchlist filled while this moves exactly one cycle. */
+/* Index-strip drift: opposite direction and ~55% of the tape's speed, so
+   the two moving belts never read as a synchronized double conveyor. Only
+   animates once JS has measured one cycle. */
+.strip-drift {
+  will-change: transform;
+  animation: strip-drift var(--strip-cycle-duration, 40s) linear infinite;
+}
+@keyframes strip-drift {
+  from { transform: translateX(calc(-1 * var(--strip-cycle-width, 0px))); }
+  to { transform: translateX(0); }
+}
+
 .tape-scroll {
   will-change: transform;
 }

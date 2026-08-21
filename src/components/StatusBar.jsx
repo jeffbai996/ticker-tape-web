@@ -8,6 +8,7 @@ import { hrefFor } from '../lib/route.js'
 import { fmtPrice, fmtPct } from '../lib/format.js'
 import { FlashPrice } from './Fig.jsx'
 import { FeedIndicator } from './FeedIndicator.jsx'
+import { useTapeMotion } from './Tape.jsx'
 import { tl, getLocale, setLocale } from '../lib/i18n.js'
 
 // Session-state chip styling mirrors the extended-quote grammar: blue PM and
@@ -152,6 +153,24 @@ export function StatusBar() {
     return startVisibleClock(30_000, () => setNow(new Date()))
   }, [])
 
+  // Tap the session chip and the index strip starts DRIFTING — rightward
+  // and slower than the symbol tape below it, so the two belts read as
+  // different instruments instead of a double conveyor (Jeff 2026-08-21).
+  const [drift, setDrift] = useState(() => {
+    try { return localStorage.getItem('strip_drift_v1') === '1' } catch { return false }
+  })
+  const toggleDrift = () => setDrift((v) => {
+    try { localStorage.setItem('strip_drift_v1', v ? '0' : '1') } catch { /* best-effort */ }
+    return !v
+  })
+  const driftPlay = useTapeMotion()
+  const cycleRef = useRef(null)
+  const [cycleW, setCycleW] = useState(0)
+  useEffect(() => {
+    if (!drift) return
+    setCycleW(cycleRef.current?.scrollWidth || 0)
+  }, [drift])
+
   const { state, holiday } = marketState(now)
   const strip = INDICES.map((i) =>
     state !== 'open' && FUTURES_SWAP[i.symbol] ? FUTURES_SWAP[i.symbol] : i)
@@ -192,22 +211,40 @@ export function StatusBar() {
         <span class="brand-word max-md:hidden font-bold text-accent tracking-tight text-[13px]">ticker-tape</span>
       </a>
 
-      <span
-        class={`px-1.5 max-md:px-0 py-px max-md:w-5 max-md:h-5 max-md:grid max-md:place-items-center rounded border text-[10px] font-anth font-bold tracking-wider max-md:tracking-normal whitespace-nowrap ${STATE_CHIP[holiday ? 'closed' : state]}`}
-        title={chipTitle}
+      <button
+        type="button"
+        onClick={toggleDrift}
+        class={`px-1.5 max-md:px-0 py-px max-md:w-5 max-md:h-5 max-md:grid max-md:place-items-center rounded border text-[10px] font-anth font-bold tracking-wider max-md:tracking-normal whitespace-nowrap cursor-pointer ${STATE_CHIP[holiday ? 'closed' : state]}`}
+        title={`${chipTitle} · ${tl(drift ? 'tap: stop the index drift' : 'tap: drift the index strip')}`}
       >
         <span class="max-md:hidden">{tl(chipLabel)}</span>
         <span class="md:hidden">{compactChipLabel}</span>
-      </span>
+      </button>
 
       {/* one scrollable line, centred in the bar so it lines up with the
           wordmark: swipe it, drag it, or hover an edge to creep along. */}
-      <div class="flex-1 min-w-0 flex items-center">
-        <div ref={stripRef} class="w-full flex items-baseline gap-[5px] overflow-x-auto no-scrollbar py-0.5">
-          {strip.map(({ symbol, label }) => (
-            <StripCell key={symbol} symbol={symbol} label={label} q={quotes[symbol]?.quote} />
-          ))}
-        </div>
+      <div class="flex-1 min-w-0 flex items-center overflow-hidden">
+        {drift ? (
+          <div class="strip-drift flex w-max items-baseline py-0.5"
+            style={cycleW ? { '--strip-cycle-width': `${cycleW}px`,
+              '--strip-cycle-duration': `${Math.max(10, cycleW / 45)}s`,
+              animationPlayState: driftPlay } : undefined}>
+            {[0, 1].map((copy) => (
+              <div key={copy} ref={copy === 0 ? cycleRef : undefined}
+                class="flex items-baseline gap-[5px] pr-[5px]">
+                {strip.map(({ symbol, label }) => (
+                  <StripCell key={`${copy}-${symbol}`} symbol={symbol} label={label} q={quotes[symbol]?.quote} />
+                ))}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div ref={stripRef} class="w-full flex items-baseline gap-[5px] overflow-x-auto no-scrollbar py-0.5">
+            {strip.map(({ symbol, label }) => (
+              <StripCell key={symbol} symbol={symbol} label={label} q={quotes[symbol]?.quote} />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* feed health sits with the other truth-about-the-connection chrome:
