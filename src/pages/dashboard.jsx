@@ -1861,7 +1861,7 @@ export function Dashboard({ listId = null }) {
       {/* lg (1024px) not xl: the rail used to vanish one browser-zoom notch in.
           1024 keeps it alive through two more notches (115%, 125%) on a 1376px
           CSS viewport before genuinely running out of room. */}
-      <div class="grid gap-2 min-[1024px]:grid-cols-[1fr_230px] min-[1700px]:grid-cols-[1fr_290px] min-[2100px]:grid-cols-[1fr_340px] min-w-0">
+      <div class="grid gap-2 min-[960px]:grid-cols-[1fr_190px] min-[1200px]:grid-cols-[1fr_230px] min-[1700px]:grid-cols-[1fr_290px] min-[2100px]:grid-cols-[1fr_340px] min-w-0">
         <section ref={boardRef} data-watchlist-board class="@container relative bg-surface-1 border border-line rounded-xl overflow-hidden min-w-0">
           {/* One element for the whole board, parked at the top and moved by
               transform — a per-row insertion marker would relayout the list
