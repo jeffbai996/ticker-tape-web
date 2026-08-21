@@ -13,6 +13,7 @@ import {
   connectPublicWatchlistSync, createPublicWatchlistSync,
   disconnectPublicWatchlistSync, getWatchlistCapability, onSyncStatus,
 } from '../lib/cloudsave.js'
+import { pinDashboardLanding, pinnedDashboardLanding } from '../lib/dashboardLanding.js'
 import { fixedSyncCapability } from '../lib/watchlistSync.js'
 import { wireServiceUrl } from '../lib/wire.js'
 import { pushWatchlistToWire } from '../lib/watchlistExport.js'
@@ -210,6 +211,9 @@ function SymbolPreview({ symbols, quotes, managing, onSend, onRemove }) {
 }
 
 function WatchlistCard({ item, quotes, earnDays, allLists, primary = false }) {
+  const [, pinBump] = useState(0)
+  const pinned = pinnedDashboardLanding()
+  const isDefault = primary ? pinned === 'main' : pinned === item.id
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(item.name)
   const [managing, setManaging] = useState(false)
@@ -341,6 +345,11 @@ function WatchlistCard({ item, quotes, earnDays, allLists, primary = false }) {
         <button onClick={() => setManaging((v) => !v)}
           class={managing ? 'text-accent-2' : 'text-muted hover:text-ink'}>
           {managing ? tl('done') : `⇄ ${tl('manage')}`}
+        </button>
+        <button onClick={() => { pinDashboardLanding(primary ? null : item.id); pinBump((n) => n + 1) }}
+          title={tl('opens first on a fresh load')}
+          class={isDefault ? 'text-accent-2' : 'text-muted hover:text-ink'}>
+          {isDefault ? `★ ${tl('default')}` : `☆ ${tl('set default')}`}
         </button>
         <button onClick={exportSymbols} disabled={exportState === 'syncing'} class="text-muted hover:text-ink disabled:opacity-50">
           {exportState === 'syncing' ? '…'
