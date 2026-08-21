@@ -12,6 +12,7 @@ import {
 } from '../lib/cloudsave.js'
 import { onPortfolioSyncStatus } from '../lib/portfolioSync.js'
 import { wireServiceUrl } from '../lib/wire.js'
+import { fixedSyncCapability } from '../lib/watchlistSync.js'
 import { useQuotes } from '../hooks.js'
 import { SymbolSuggest } from '../components/SymbolSuggest.jsx'
 import { FlashPrice } from '../components/Fig.jsx'
@@ -267,6 +268,21 @@ function SyncControls() {
   const [st, setSt] = useState({ state: 'off' })
   useEffect(() => onPortfolioSyncStatus(setSt), [])
   if (wireServiceUrl()) return null
+
+  // family build: the store is baked in, saving is just a fact — show the
+  // one reassuring chip and none of the code management
+  if (fixedSyncCapability()) {
+    return (
+      <div class="flex items-center gap-2 px-1 font-anth text-[10px] text-muted">
+        <span class={`rounded border px-1.5 py-px text-[8px] font-bold uppercase tracking-wider ${
+          st.state === 'synced' ? 'border-up/40 text-up'
+          : st.state === 'error' ? 'border-down/40 text-down' : 'border-line text-muted'}`}>
+          {st.state === 'synced' ? tl('cloud saved') : st.state === 'error' ? tl('cloud offline') : tl('saving…')}
+        </span>
+        {tl('Everything here saves automatically and shows up on any device that opens this page.')}
+      </div>
+    )
+  }
 
   const enable = () => setCapability(createPublicWatchlistSync())
   const connect = (e) => {

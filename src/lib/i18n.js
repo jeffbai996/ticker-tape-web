@@ -908,6 +908,7 @@ const LABELS = {
   'Portfolios live only in this browser right now — turn on cloud sync so they survive and follow you.': '组合目前仅存于本浏览器 — 开启云同步以长期保存并跨设备使用。',
   'Turn off cloud sync on this device?': '在此设备上关闭云同步？',
   'not a sync code': '同步代码无效',
+  'Everything here saves automatically and shows up on any device that opens this page.': '这里的内容会自动保存，任何设备打开此页面都能看到。',
   'Symbol or company': '代码或公司名',
   'Type a ticker or a company name and pick from the list.': '输入股票代码或公司名，从列表中选择。',
 }

@@ -24,13 +24,22 @@ export function createWatchlistCapability(cryptoImpl = globalThis.crypto) {
   return [...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
+// A build can carry its own store (family instance, Jeff 2026-08-20: "none
+// of this sync code crap"): the capability arrives from CI as a secret, so
+// persistence is just on — no enable step, no code to keep. The VALUE never
+// appears in source; only the env plumbing does.
+const FIXED_CAP = String(import.meta.env.VITE_SYNC_CAPABILITY || '').trim().toLowerCase()
+
+export function fixedSyncCapability() {
+  return validWatchlistCapability(FIXED_CAP) ? FIXED_CAP : ''
+}
+
 export function getWatchlistCapability() {
   try {
     const value = localStorage.getItem(CAPABILITY_KEY) || ''
-    return validWatchlistCapability(value) ? value.toLowerCase() : ''
-  } catch {
-    return ''
-  }
+    if (validWatchlistCapability(value)) return value.toLowerCase()
+  } catch { /* fall through to the build's own store */ }
+  return fixedSyncCapability()
 }
 
 export function saveWatchlistCapability(value) {
