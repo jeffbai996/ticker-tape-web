@@ -285,12 +285,13 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
                   if (nextEffort) localStorage.setItem(EFFORT_KEY, nextEffort)
                 }}
                 aria-label={tl('Report model')}
-                class="bg-transparent pr-1 font-anth text-[10px] font-semibold text-ink outline-none cursor-pointer max-w-[150px]"
+                class="appearance-none bg-transparent pr-0.5 font-anth text-[10px] font-semibold text-ink outline-none cursor-pointer max-w-[150px]"
               >
                 {models.map((m) => (
                   <option key={m.key} value={m.key}>{reportModelLabel(m.label)}</option>
                 ))}
               </select>
+              <span aria-hidden="true" class="pr-1 text-[7px] text-muted">▼</span>
             </label>
           )}
           {effortLevels.length > 0 && (
