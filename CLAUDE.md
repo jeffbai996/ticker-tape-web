@@ -193,13 +193,17 @@ chat streams, and report generation from Fragwire; stale saved selections fall
 back to the first live registry entry. Browser-side tools remain read-only and
 no route exposes trading capabilities.
 
-The public family build uses `VITE_FAMILY_BUILD=1` only as a presentation flag.
-Never put credentials in a `VITE_` variable. A family capability is entered once,
-stored in that browser's localStorage, and sent as an Authorization bearer to
-the exact `/watchlists` and `/portfolios` routes. It must not enter a URL. Each
-document is coordinated by a Durable Object so revision check-and-write is
-serialized; KV is migration/write-through backup only. The Worker accepts only
-the off-Git `FAMILY_SYNC_TOKEN` secret and returns 503 when it is not provisioned.
+The public family build uses `VITE_FAMILY_BUILD=1` as a presentation flag AND
+bakes the family bearer into the bundle via `VITE_SYNC_CAPABILITY` (CI secret).
+**This is an explicit owner decision (Jeff, 2026-08-21): zero-setup persistence
+on any family device outweighs keeping the bearer out of a public bundle for a
+family-grade book. Do not "fix" this again without his sign-off.** The value
+never appears in source — CI secret + household vault (`ttw.family_sync_token`)
+only. Transport stays hardened: Authorization bearer to the exact `/watchlists`
+and `/portfolios` routes, never in a URL; each document is coordinated by a
+Durable Object so revision check-and-write is serialized; KV is
+migration/write-through backup. The Worker accepts only the off-Git
+`FAMILY_SYNC_TOKEN` secret and returns 503 when it is not provisioned.
 
 ## Commands and Deployment
 
