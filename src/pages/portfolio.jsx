@@ -28,6 +28,7 @@ import {
 import { StatusPill } from '../components/StatusPill.jsx'
 import { countAdvancers } from '../lib/pulse.js'
 import { MyPortfolios } from './portfolioMine.jsx'
+import { loadPortfolios, onPortfoliosChange } from '../lib/myPortfolios.js'
 
 const SYMBOLS = DEMO_POSITIONS.map((p) => p.symbol)
 const BOTH_ACCOUNTS = 'all'
@@ -1708,7 +1709,13 @@ export function Portfolio({ route }) {
     const q = live[s]?.quote
     if (q) priceMap[s] = q
   }
-  const view = route.sub || 'positions'
+  // the demo book is a placeholder: once the user has built portfolios of
+  // their own, the portfolio landing shows THOSE (Jeff 2026-08-20) — an
+  // explicit #/portfolio/positions still reaches the synthetic book, and a
+  // wired build still lands on the real broker book
+  const [hasMine, setHasMine] = useState(() => loadPortfolios().length > 0)
+  useEffect(() => onPortfoliosChange((items) => setHasMine(items.length > 0)), [])
+  const view = route.sub || (!wired && hasMine ? 'mine' : 'positions')
 
   const View = {
     positions: Positions,
