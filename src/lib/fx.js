@@ -61,6 +61,20 @@ export function holdingCurrency(symbol, quote) {
 
 const CCY_MARK = { USD: '$', CAD: 'C$', HKD: 'HK$', CNY: '¥' }
 
+// Quote-price prefixes for foreign listings: home currencies (USD/CAD) stay
+// bare, everything else wears its symbol, three characters max (Jeff
+// 2026-08-21: "W with bar for won"). Unknown currencies stay unmarked — a
+// wrong symbol is worse than none.
+const QUOTE_MARK = {
+  KRW: '₩', JPY: '¥', CNY: '¥', HKD: 'HK$', TWD: 'NT$',
+  EUR: '€', GBP: '£', CHF: 'Fr', INR: '₹', SGD: 'S$', AUD: 'A$',
+}
+
+export function ccyMark(ccy) {
+  if (!ccy || ccy === 'USD' || ccy === 'CAD') return ''
+  return QUOTE_MARK[ccy === 'CNH' ? 'CNY' : ccy] || ''
+}
+
 /** Money the reader can tell apart at a glance across a mixed table. */
 export function fmtCcy(v, ccy, digits = 0) {
   if (v == null || !Number.isFinite(v)) return '—'
