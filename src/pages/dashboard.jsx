@@ -195,20 +195,20 @@ function RangeBar({ label, lo, hi, v, cls = '' }) {
     return (
       <span aria-hidden="true"
         class={`hidden @min-[660px]:flex items-center gap-[3px] font-mono text-[11px] font-normal whitespace-nowrap invisible ${cls}`}>
-        <span class="text-[9px] w-6">{label}</span>
+        <span class="text-[9px] w-5">{label}</span>
         <span class="w-[3.15rem] text-right">0000.00</span>
-        <span class="w-14 h-[3px] shrink-0 mx-1" />
+        <span class="w-11 h-[3px] shrink-0 mx-0.5" />
         <span class="w-[3.15rem]">0000.00</span>
       </span>
     )
   }
   return (
     <span class={`hidden @min-[660px]:flex items-center gap-[3px] font-mono text-[11px] font-normal whitespace-nowrap ${cls}`}>
-      <span class="text-accent/60 font-normal text-[9px] w-6">{label}</span>
+      <span class="text-accent/60 font-normal text-[9px] w-5">{label}</span>
       <span class="text-down/80 w-[3.15rem] text-right">
         <FlashMetric value={lo} fmt={fmtPriceBare} kind="low" />
       </span>
-      <span class="relative w-14 h-[3px] bg-line rounded-full shrink-0 mx-1">
+      <span class="relative w-11 h-[3px] bg-line rounded-full shrink-0 mx-0.5">
         <span
           class="absolute top-1/2 -translate-y-1/2 w-[3px] h-[7px] bg-accent-2 rounded-sm"
           style={{ left: `calc(${(pos * 100).toFixed(1)}% - 1.5px)` }}
@@ -341,7 +341,7 @@ export function TuiRow({ symbol, data, earnDays, onRemove = () => {}, selecting,
       </button>}
       {/* the meters column needs air off the quote cluster — at mid widths
           VOL was landing flush against the extended-hours percentage */}
-      <div class="flex gap-6 max-sm:gap-2 min-w-0">
+      <div class="flex gap-4 max-sm:gap-2 min-w-0">
         <div class="flex-1 min-w-0 overflow-hidden">
           <div class="flex items-baseline gap-1.5 max-sm:gap-1 font-mono text-[13px] max-sm:text-[12px] flex-nowrap min-w-0">
             <span ref={identityRef}
