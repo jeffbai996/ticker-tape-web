@@ -62,7 +62,7 @@ MIN_NODES = 150
 NETWORK_NOISE = re.compile(
     r"failed to load resource|net::err|err_(?:connection|name|timed|failed|aborted)"
     r"|websocket connection to|fetch api cannot load|status of [45]\d\d"
-    r"|load failed|networkerror", re.I)
+    r"|load failed|networkerror|blocked by cors", re.I)
 
 URL_IN_TEXT = re.compile(r"https?://[^\s'\"()]+", re.I)
 
