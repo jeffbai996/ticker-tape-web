@@ -1,5 +1,5 @@
 // Server persistence for the chat's brain (memories / journal / threads).
-// fragwire fronts one SQLite file under shared-memory, so every device shares
+// An optional server fronts one SQLite file, so every device shares
 // the same state; localStorage stays as the offline cache and the public
 // build's only store. Sync model: server wins on boot, mutations apply
 // locally first (snappy UI) and push fire-and-forget, add-acks reconcile
