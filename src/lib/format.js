@@ -18,7 +18,7 @@ export function fmtPrice(v) {
 // Thousands read as a LITTLE GAP, not a comma — the tachometer-dial grammar
 // (Jeff 2026-08-20: "1 738 000 but w smaller spaces obv"). U+2009 THIN SPACE
 // keeps its designed narrow width even inside the mono stack.
-const THIN_SPACE = '\u2006'
+const THIN_SPACE = '\u200a'
 
 export function groupThin(v) {
   if (v == null || Number.isNaN(v)) return DASH
