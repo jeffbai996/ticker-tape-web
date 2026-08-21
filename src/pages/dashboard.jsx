@@ -372,13 +372,13 @@ export function TuiRow({ symbol, data, earnDays, onRemove = () => {}, selecting,
                 give up width, so the fixed price/change/AH columns stay aligned
                 across rows AND never get pushed past the clip edge. Below
                 820px the text hides but the gutter stays, collapsing to 0. */}
-            <span class="tui-company-name-wide hidden @min-[820px]:block flex-1 min-w-0 max-w-[220px] @min-[1080px]:max-w-[300px]">
+            <span class="tui-company-name-wide hidden @min-[820px]:block flex-1 min-w-0 max-w-[260px] @min-[1080px]:max-w-[340px]">
               <Marquee text={q?.name || ''} title={q?.name ? `${symbol} — ${q.name}` : symbol}
                 class="inline-block w-full text-[10.5px] text-muted font-normal font-anth" />
             </span>
             {/* The quote cluster is indivisible. The identity slot gets the
                 row's spare width, but must yield before PRE/AH is clipped. */}
-            <span class="tui-quote-cluster flex items-baseline gap-1.5 max-sm:gap-1 shrink-0">
+            <span class="tui-quote-cluster flex items-baseline gap-1.5 max-sm:gap-1 shrink-0 @min-[820px]:ml-auto @min-[1450px]:ml-0">
               {/* Columns share the board's measured max (quoteColumns.js): a
                   fixed 4.4rem box left dead air beside every 3-digit price,
                   right where the company name wanted it (Jeff 2026-08-18). */}
