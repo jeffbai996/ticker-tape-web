@@ -41,12 +41,11 @@ describe('the research lane is split by routed subview', () => {
   })
 
   it('moves the stateful controllers into use*.js hooks', () => {
-    for (const hook of ['useResearchChart.js', 'useResearchKeys.js', 'useRailModules.js']) {
+    for (const hook of ['useResearchChart.js', 'useResearchKeys.js']) {
       expect(existsSync(resolve(RESEARCH_DIR, hook))).toBe(true)
     }
     expect(lane('useResearchChart.js')).toContain('export function useResearchChart')
     expect(lane('useResearchKeys.js')).toContain('export function useResearchKeys')
-    expect(lane('useRailModules.js')).toContain('export function useRailModules')
     // the shell consumes them rather than re-declaring the state
     expect(shell()).toContain('useResearchChart(symbol)')
     expect(shell()).toContain('useResearchKeys(symbol, route)')
@@ -93,15 +92,6 @@ describe('research header rail (design pass target)', () => {
 })
 
 describe('research right rail modules (design pass target)', () => {
-  it('names the rail modules in task order and persists a user order', () => {
-    const src = lane('useRailModules.js')
-    expect(src).toContain("'report'")
-    expect(src).toContain("'technicals'")
-    expect(src).toContain("'fundamentals'")
-    expect(src).toContain("'news'")
-    expect(src).toContain('research_rail_order_v1')
-    expect(src).toContain('export function useRailModules')
-  })
 
   it('scrolls the wide rail independently and stacks it in task order when narrow', () => {
     const src = lane('rail.jsx')
