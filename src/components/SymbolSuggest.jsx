@@ -80,7 +80,8 @@ export function SymbolSuggest({
       )}
       <input ref={input} value={value} placeholder={placeholder} aria-label={ariaLabel || placeholder}
         onInput={onInput} onKeyDown={onKey} autocomplete="off" autocapitalize="characters"
-        spellcheck={false} class={inputClass} />
+        spellcheck={false} data-1p-ignore data-lpignore="true" data-form-type="other"
+        class={inputClass} />
     </span>
   )
 }
