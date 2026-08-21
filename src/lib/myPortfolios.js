@@ -1,0 +1,191 @@
+/** Hand-built portfolios, Koyfin-style (Jeff 2026-08-20).
+ *
+ *  Several books, each with a display currency chosen at creation; holdings
+ *  in any of USD/CAD/HKD/CNY, valued off the live feed. The site is static,
+ *  so localStorage is the book of record — nothing a user types here ever
+ *  leaves the browser. First run seeds one obviously-generic multi-market
+ *  sample so the page demonstrates itself; delete it and it stays gone
+ *  (absent key = never visited, stored [] = deliberately empty).
+ */
+
+import { sessionDayPct, dayPnlFromValue } from './dayPnl.js'
+import { convertCcy, holdingCurrency, PORTFOLIO_CCYS } from './fx.js'
+import { SYMBOL_RE } from './symbols.js'
+
+const KEY = 'my_portfolios_v1'
+export const MAX_MY_PORTFOLIOS = 20
+export const MAX_MY_HOLDINGS = 60
+const MAX_NAME = 40
+const listeners = new Set()
+
+// Generic famous names across four markets — THE RULE applies (see
+// CLAUDE.md): nothing here may reference a real book.
+const SAMPLE = {
+  name: 'Sample (multi-currency)',
+  ccy: 'USD',
+  holdings: [
+    { symbol: 'AAPL', shares: 10, cost: 180 },
+    { symbol: 'RY.TO', shares: 20, cost: 125 },
+    { symbol: '0700.HK', shares: 100, cost: 320 },
+    { symbol: '600519.SS', shares: 5, cost: 1500 },
+  ],
+}
+
+const cleanName = (v) => String(v || '').trim().replace(/\s+/g, ' ').slice(0, MAX_NAME)
+
+function cleanHolding(h) {
+  const symbol = String(h?.symbol || '').trim().toUpperCase()
+  const shares = Number(h?.shares)
+  if (!SYMBOL_RE.test(symbol)) return null
+  if (!Number.isFinite(shares) || shares <= 0) return null
+  const cost = Number(h?.cost)
+  return Number.isFinite(cost) && cost > 0
+    ? { symbol, shares, cost }
+    : { symbol, shares }
+}
+
+let nextId = 1
+function freshId(taken) {
+  while (taken.has(`p${nextId}`)) nextId++
+  return `p${nextId++}`
+}
+
+function sanitize(raw) {
+  if (!Array.isArray(raw)) return []
+  const ids = new Set()
+  return raw.flatMap((item) => {
+    const name = cleanName(item?.name)
+    const id = String(item?.id || '')
+    if (!name || !/^p\d+$/.test(id) || ids.has(id)) return []
+    if (!PORTFOLIO_CCYS.includes(item?.ccy)) return []
+    ids.add(id)
+    const seen = new Set()
+    const holdings = (Array.isArray(item.holdings) ? item.holdings : [])
+      .map(cleanHolding)
+      .filter((h) => h && !seen.has(h.symbol) && seen.add(h.symbol))
+      .slice(0, MAX_MY_HOLDINGS)
+    return [{ id, name, ccy: item.ccy, holdings }]
+  }).slice(0, MAX_MY_PORTFOLIOS)
+}
+
+export function loadPortfolios() {
+  let raw = null
+  try { raw = localStorage.getItem(KEY) } catch { return [] }
+  if (raw == null) {
+    // first visit: seed silently (no listener churn during a render)
+    const seeded = [{ id: 'p0', ...SAMPLE }]
+    try { localStorage.setItem(KEY, JSON.stringify(seeded)) } catch { /* best-effort */ }
+    return seeded
+  }
+  try { return sanitize(JSON.parse(raw)) } catch { return [] }
+}
+
+function persist(items) {
+  try { localStorage.setItem(KEY, JSON.stringify(items)) } catch { /* best-effort */ }
+  for (const fn of [...listeners]) fn(items)
+}
+
+export function onPortfoliosChange(fn) {
+  listeners.add(fn)
+  return () => listeners.delete(fn)
+}
+
+export function createPortfolio(name, ccy) {
+  const clean = cleanName(name)
+  if (!clean || !PORTFOLIO_CCYS.includes(ccy)) return null
+  const items = loadPortfolios()
+  if (items.length >= MAX_MY_PORTFOLIOS) return null
+  const p = { id: freshId(new Set(items.map((x) => x.id))), name: clean, ccy, holdings: [] }
+  persist([...items, p])
+  return p
+}
+
+export function renamePortfolio(id, name) {
+  const clean = cleanName(name)
+  if (!clean) return null
+  const items = loadPortfolios()
+  const p = items.find((x) => x.id === id)
+  if (!p) return null
+  p.name = clean
+  persist(items)
+  return p
+}
+
+export function deletePortfolio(id) {
+  persist(loadPortfolios().filter((x) => x.id !== id))
+}
+
+/** Add or restate one holding. Returns the stored holding, or null if the
+ *  input would corrupt the book (bad symbol, non-positive shares, full). */
+export function setHolding(id, symbol, shares, cost) {
+  const clean = cleanHolding({ symbol, shares, cost })
+  if (!clean) return null
+  const items = loadPortfolios()
+  const p = items.find((x) => x.id === id)
+  if (!p) return null
+  const at = p.holdings.findIndex((h) => h.symbol === clean.symbol)
+  if (at >= 0) p.holdings[at] = clean
+  else if (p.holdings.length < MAX_MY_HOLDINGS) p.holdings.push(clean)
+  else return null
+  persist(items)
+  return clean
+}
+
+export function removeHolding(id, symbol) {
+  const items = loadPortfolios()
+  const p = items.find((x) => x.id === id)
+  if (!p) return
+  const sym = String(symbol || '').toUpperCase()
+  p.holdings = p.holdings.filter((h) => h.symbol !== sym)
+  persist(items)
+}
+
+/** The live math, pure: holdings + quotes + FX rates → display-currency rows
+ *  and totals. A holding missing a price OR a rate lands in `missing` and
+ *  stays out of every total — a dash beats a silently wrong sum. */
+export function portfolioValues(holdings, quotes, rates, displayCcy) {
+  const rows = []
+  const missing = []
+  for (const h of holdings || []) {
+    const q = quotes?.[h.symbol]
+    const ccy = holdingCurrency(h.symbol, q)
+    const px = q?.extPrice ?? q?.price
+    const native = typeof px === 'number' && px > 0 ? px * h.shares : null
+    const valueDisplay = convertCcy(native, ccy, displayCcy, rates)
+    if (valueDisplay == null) {
+      missing.push(h.symbol)
+      rows.push({ ...h, ccy, price: px ?? null, dayPct: null, valueDisplay: null,
+        dayPnlDisplay: null, unrealDisplay: null, weightPct: null })
+      continue
+    }
+    const dayPct = sessionDayPct(q)
+    const unrealNative = h.cost != null && native != null ? native - h.cost * h.shares : null
+    rows.push({
+      ...h,
+      ccy,
+      price: px,
+      dayPct,
+      valueDisplay,
+      dayPnlDisplay: dayPnlFromValue(valueDisplay, dayPct),
+      unrealDisplay: convertCcy(unrealNative, ccy, displayCcy, rates),
+      weightPct: null,
+    })
+  }
+  const priced = rows.filter((r) => r.valueDisplay != null)
+  const value = priced.reduce((s, r) => s + r.valueDisplay, 0)
+  for (const r of priced) r.weightPct = value > 0 ? (r.valueDisplay / value) * 100 : null
+  const dayRows = priced.filter((r) => r.dayPnlDisplay != null)
+  const dayPnl = dayRows.length ? dayRows.reduce((s, r) => s + r.dayPnlDisplay, 0) : null
+  const dayBase = dayPnl != null ? value - dayPnl : null
+  const unrealRows = priced.filter((r) => r.unrealDisplay != null)
+  return {
+    rows,
+    missing,
+    total: {
+      value: priced.length ? value : null,
+      dayPnl,
+      dayPct: dayBase ? (dayPnl / dayBase) * 100 : null,
+      unrealPnl: unrealRows.length ? unrealRows.reduce((s, r) => s + r.unrealDisplay, 0) : null,
+    },
+  }
+}
