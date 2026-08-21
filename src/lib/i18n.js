@@ -399,7 +399,7 @@ const LABELS = {
   HSI: '恒指', N225: '日经', BTC: '比特币',
   Account: '账户', Quarter: '季度', dropped: '已剔除', spot: '现价',
   Financials: '财报', Events: '事件', Insiders: '内部人', Proxy: '股东会', Registrations: '注册发行',
-  'filed in the last two weeks': '两周内新申报',
+  'filed in the last two weeks': '两周内新申报', 'Open →': '打开 →',
   // off-hours futures swap-ins on the status strip — 2-char abbreviations
   // (Jeff 2026-08-09: "just 标期 and 纳期")
   ES: '标期', NQ: '纳期', YM: '道期',

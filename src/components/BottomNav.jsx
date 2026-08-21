@@ -38,7 +38,7 @@ export function SubTabs({ route }) {
         <a
           key={tab.label}
           href={tab.id ? hrefFor(section.id, tab.id) : hrefFor(section.id)}
-          class={`px-2.5 py-1 rounded-md border font-mono text-[11px] whitespace-nowrap ${
+          class={`px-2.5 py-1 max-sm:px-2 max-sm:py-0.5 rounded-md border font-mono text-[11px] max-sm:text-[10px] whitespace-nowrap ${
             (route.sub || null) === tab.id
               ? 'border-accent text-accent bg-accent-soft'
               : 'border-line text-muted'
