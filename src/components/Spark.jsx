@@ -9,7 +9,7 @@
 import { useMemo } from 'preact/hooks'
 import { Histo } from './Histo.jsx'
 import {
-  linePoints, changeBars, rangeBars, sparkWindow, bucketBars,
+  linePoints, baselineSegments, changeBars, rangeBars, sparkWindow, bucketBars,
   DEFAULT_WINDOW, MAX_DRAWN_BARS,
 } from '../lib/sparks.js'
 
@@ -37,6 +37,21 @@ function PriceSpark({ bars, width, height, class: cls, fill }) {
       )}
       <polyline points={line.points} fill="none" stroke={color}
         stroke-width="1.2" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
+    </Frame>
+  )
+}
+
+function BaselineSpark({ bars, width, height, class: cls }) {
+  const out = baselineSegments(bars, width, height)
+  if (!out) return <div style={{ width, height }} />
+  return (
+    <Frame width={width} height={height} class={cls}>
+      <line x1="0" x2={width} y1={out.baseline} y2={out.baseline}
+        stroke="#79828d" stroke-width="0.4" opacity="0.45" stroke-dasharray="2 2" />
+      {out.segs.map((seg, i) => (
+        <polyline key={i} points={seg.points} fill="none" stroke={seg.up ? UP : DOWN}
+          stroke-width="1.2" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
+      ))}
     </Frame>
   )
 }
@@ -93,8 +108,9 @@ function renderSpark(type, window, bars, width, height, cls) {
   if (type === 'off') return null
   const win = sparkWindow(bars, window)
   // a line can carry 252 points; bars can't — over ~60 they bucket into weeks
-  const drawn = type === 'line' || type === 'area' ? win : bucketBars(win, MAX_DRAWN_BARS)
+  const drawn = type === 'line' || type === 'area' || type === 'base' ? win : bucketBars(win, MAX_DRAWN_BARS)
   if (type === 'line') return <PriceSpark bars={drawn} width={width} height={height} class={cls} />
+  if (type === 'base') return <BaselineSpark bars={drawn} width={width} height={height} class={cls} />
   if (type === 'area') return <PriceSpark bars={drawn} width={width} height={height} class={cls} fill />
   if (type === 'chg') return <ChangeSpark bars={drawn} width={width} height={height} class={cls} />
   if (type === 'range') return <RangeSpark bars={drawn} width={width} height={height} class={cls} />
