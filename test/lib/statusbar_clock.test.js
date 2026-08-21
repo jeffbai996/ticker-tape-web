@@ -103,11 +103,12 @@ describe('the timezone clock stays aligned and quiet', () => {
   let cls = null
   beforeEach(async () => { cls = (await clock()).classList })
 
-  it('carries a real but subdued border and the pointer cursor at rest', () => {
+  it('rests borderless and reveals the border on hover (Jeff 2026-08-20: the affordance animates in, it does not sit there)', () => {
     expect(cls.contains('board-control')).toBe(false)
     expect(cls.contains('border')).toBe(true)
-    expect(cls.contains('border-line/70')).toBe(true)
-    expect(cls.contains('bg-white/[0.018]')).toBe(true)
+    expect(cls.contains('border-transparent')).toBe(true)   // invisible at rest
+    expect(cls.contains('hover:border-line-2')).toBe(true)  // visible under the pointer
+    expect(cls.contains('transition-colors')).toBe(true)    // and it animates in
     expect(cls.contains('rounded')).toBe(true)
     expect(cls.contains('cursor-pointer')).toBe(true)
   })
