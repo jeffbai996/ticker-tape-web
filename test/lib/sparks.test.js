@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import {
+import { baselineSegments,
   SPARK_TYPES, DEFAULT_SPARK, isSparkType, linePoints, changeBars, rangeBars,
   SPARK_WINDOWS, DEFAULT_WINDOW, isSparkWindow, sparkWindow, bucketBars,
   historyBarsToSparkBars, normalizeSparkWindow,
@@ -158,5 +158,24 @@ describe('rangeBars', () => {
   it('is empty with no usable bars', () => {
     expect(rangeBars([])).toEqual([])
     expect(rangeBars(null)).toEqual([])
+  })
+})
+
+describe('baselineSegments — the Koyfin read (Jeff 2026-08-20)', () => {
+  const bars = [{ c: 10 }, { c: 12 }, { c: 8 }, { c: 11 }]
+  it('splits the line exactly at baseline crossings, colors by side', () => {
+    const out = baselineSegments(bars, 100, 20)
+    expect(out.segs.length).toBeGreaterThanOrEqual(3)
+    // first point opened AT the baseline — first segment rides above (up)
+    expect(out.segs[0].up).toBe(true)
+    expect(out.segs.some((s) => !s.up)).toBe(true)   // the dip below shows red
+    // every segment endpoint that is a crossing sits ON the baseline
+    for (let i = 1; i < out.segs.length; i++) {
+      const firstY = Number(out.segs[i].points.split(' ')[0].split(',')[1])
+      expect(firstY).toBeCloseTo(out.baseline, 1)
+    }
+  })
+  it('is null with nothing to draw', () => {
+    expect(baselineSegments([], 100, 20)).toBeNull()
   })
 })
