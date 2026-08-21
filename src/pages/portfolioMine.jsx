@@ -128,6 +128,28 @@ function SharesCell({ portfolio, row }) {
   )
 }
 
+function CostCell({ portfolio, row }) {
+  // avg cost edits in place too (Jeff 2026-08-20) — blank clears it, which
+  // simply turns the unrealized column back to a dash
+  const commit = (e) => {
+    const raw = e.currentTarget.value.trim()
+    if (raw === '') { if (row.cost != null) setHolding(portfolio.id, row.symbol, row.shares) }
+    else {
+      const v = Number(raw)
+      if (Number.isFinite(v) && v > 0 && v !== row.cost) setHolding(portfolio.id, row.symbol, row.shares, v)
+      else e.currentTarget.value = row.cost != null ? String(row.cost) : ''
+    }
+  }
+  return (
+    <input key={`${row.symbol}:${row.cost ?? ''}`} defaultValue={row.cost != null ? String(row.cost) : ''}
+      placeholder="—" inputMode="decimal" data-1p-ignore data-lpignore="true"
+      aria-label={`${tl('Avg cost')} ${row.symbol}`}
+      onBlur={commit}
+      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() } }}
+      class="w-16 rounded border border-transparent bg-transparent px-1 py-0.5 text-right font-mono text-[10.5px] text-muted outline-none transition-colors hover:border-line-2 focus:border-accent/60 focus:bg-surface-2 focus:text-ink" />
+  )
+}
+
 function Holdings({ portfolio, quotes, rates }) {
   const { rows, missing, total } = portfolioValues(portfolio.holdings, quotes, rates, portfolio.ccy)
   const ccy = portfolio.ccy
@@ -163,7 +185,7 @@ function Holdings({ portfolio, quotes, rates }) {
               </td>
               <td class="px-2 py-[3px] font-anth text-[10px] text-muted">{r.ccy}</td>
               <td class="px-2 py-[3px] text-right"><SharesCell portfolio={portfolio} row={r} /></td>
-              <td class="px-2 py-[3px] text-right text-muted text-[10.5px]">{r.cost != null ? fmtPrice(r.cost) : '—'}</td>
+              <td class="px-2 py-[3px] text-right"><CostCell portfolio={portfolio} row={r} /></td>
               <td class="px-2 py-[3px] text-right text-ink-2 font-medium">
                 {r.price != null ? <FlashPrice price={r.price} fmt={fmtPrice} /> : '—'}
               </td>
