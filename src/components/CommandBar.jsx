@@ -226,8 +226,8 @@ export function CommandBar() {
   // placeholder but left the zh one half-empty. Width follows the actual
   // placeholder (CJK ≈ 2ch in the mono stack) until the user types.
   const ph = tl('type command or symbol…  (h = help)')
-  let phCh = 3
-  for (const c of ph) phCh += c.charCodeAt(0) > 0x2e7f ? 2 : 1
+  let phCh = 1
+  for (const c of ph) phCh += c.charCodeAt(0) > 0x2000 ? 2 : 1
   return (
     <div class="max-md:hidden relative shrink-0">
       {open && log.length > 0 && (
@@ -310,7 +310,7 @@ export function CommandBar() {
           type="button"
           onClick={() => inputRef.current?.focus()}
           title={tl('focus console')}
-          class="shrink-0 w-5 h-5 inline-flex items-center justify-center rounded border border-line-2 bg-surface-2 text-muted hover:text-ink text-[10px] leading-none pt-px"
+          class="shrink-0 w-5 h-5 inline-flex items-center justify-center rounded border border-line-2 bg-surface-2 text-muted hover:text-ink text-[10px] font-semibold leading-none"
         >
           /
         </button>
