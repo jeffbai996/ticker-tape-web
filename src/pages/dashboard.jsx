@@ -362,7 +362,7 @@ export function TuiRow({ symbol, data, earnDays, onRemove = () => {}, selecting,
                 give up width, so the fixed price/change/AH columns stay aligned
                 across rows AND never get pushed past the clip edge. Below
                 820px the text hides but the gutter stays, collapsing to 0. */}
-            <span class="tui-company-name-wide hidden @min-[820px]:block flex-1 min-w-0 max-w-[220px] @min-[1080px]:max-w-[300px]">
+            <span class="tui-company-name-wide hidden @min-[820px]:block flex-1 min-w-0 max-w-[220px] @min-[1080px]:max-w-[300px] @min-[1450px]:max-w-none">
               <Marquee text={q?.name || ''} title={q?.name ? `${symbol} — ${q.name}` : symbol}
                 class="inline-block w-full text-[10.5px] text-muted font-normal font-anth" />
             </span>
@@ -446,7 +446,7 @@ export function TuiRow({ symbol, data, earnDays, onRemove = () => {}, selecting,
                 breakpoint used to turn this from postage stamp to runway. */}
             <Spark type={spark} window={sparkWin}
               bars={sparkWin === 'DAY' ? intradayBars : data?.histo} width={150} height={24}
-              class="w-[clamp(76px,18cqw,168px)] h-6 shrink-0" />
+              class="w-[clamp(76px,18cqw,168px)] @min-[1450px]:w-[clamp(168px,17cqw,340px)] h-6 shrink-0" />
             {/* badges yield first: they are chips you glance at, while a range
                 clipped mid-number (Jeff 2026-08-05: "RHS occluded") is worse
                 than a badge that isn't drawn */}
@@ -1809,7 +1809,7 @@ export function Dashboard({ listId = null }) {
       {/* lg (1024px) not xl: the rail used to vanish one browser-zoom notch in.
           1024 keeps it alive through two more notches (115%, 125%) on a 1376px
           CSS viewport before genuinely running out of room. */}
-      <div class="grid gap-2 lg:grid-cols-[1fr_230px] min-w-0">
+      <div class="grid gap-2 min-[1024px]:grid-cols-[1fr_230px] min-[1700px]:grid-cols-[1fr_290px] min-[2100px]:grid-cols-[1fr_340px] min-w-0">
         <section ref={boardRef} data-watchlist-board class="@container relative bg-surface-1 border border-line rounded-xl overflow-hidden min-w-0">
           {/* One element for the whole board, parked at the top and moved by
               transform — a per-row insertion marker would relayout the list
