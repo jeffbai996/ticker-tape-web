@@ -194,7 +194,7 @@ function RangeBar({ label, lo, hi, v, cls = '' }) {
   if (pos == null) {
     return (
       <span aria-hidden="true"
-        class={`hidden @min-[620px]:flex items-center gap-[3px] font-mono text-[11px] font-normal whitespace-nowrap invisible ${cls}`}>
+        class={`hidden @min-[660px]:flex items-center gap-[3px] font-mono text-[11px] font-normal whitespace-nowrap invisible ${cls}`}>
         <span class="text-[9px] w-6">{label}</span>
         <span class="w-[3.15rem] text-right">0000.00</span>
         <span class="w-14 h-[3px] shrink-0 mx-1" />
@@ -203,7 +203,7 @@ function RangeBar({ label, lo, hi, v, cls = '' }) {
     )
   }
   return (
-    <span class={`hidden @min-[620px]:flex items-center gap-[3px] font-mono text-[11px] font-normal whitespace-nowrap ${cls}`}>
+    <span class={`hidden @min-[660px]:flex items-center gap-[3px] font-mono text-[11px] font-normal whitespace-nowrap ${cls}`}>
       <span class="text-accent/60 font-normal text-[9px] w-6">{label}</span>
       <span class="text-down/80 w-[3.15rem] text-right">
         <FlashMetric value={lo} fmt={fmtPriceBare} kind="low" />
@@ -223,7 +223,7 @@ function RangeBar({ label, lo, hi, v, cls = '' }) {
 
 /** The compact breakpoint keeps the same low → position → high grammar as the
  *  full range instead of turning the chart into an unlabeled mystery noodle. */
-function CompactDayRange({ lo, hi, v, cls = '', label = 'DAY', band = 'hidden @min-[545px]:flex @min-[620px]:hidden' }) {
+function CompactDayRange({ lo, hi, v, cls = '', label = 'DAY', band = 'hidden @min-[545px]:flex @min-[660px]:hidden' }) {
   const pos = rangePos(lo, hi, v)
   if (pos == null) {
     return (
