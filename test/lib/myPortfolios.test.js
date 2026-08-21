@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import {
   MAX_MY_PORTFOLIOS, MAX_MY_HOLDINGS,
   createPortfolio, deletePortfolio, loadPortfolios, onPortfoliosChange,
-  portfolioValues, removeHolding, renamePortfolio, setHolding,
+  portfolioValues, removeHolding, renamePortfolio, setHolding, setPortfolioCcy,
 } from '../../src/lib/myPortfolios.js'
 
 beforeEach(() => localStorage.clear())
@@ -48,6 +48,10 @@ describe('the store', () => {
     expect(loadPortfolios().find((x) => x.id === p.id).holdings).toEqual([])
     renamePortfolio(p.id, 'New name')
     expect(loadPortfolios().find((x) => x.id === p.id).name).toBe('New name')
+    setPortfolioCcy(p.id, 'HKD')
+    expect(loadPortfolios().find((x) => x.id === p.id).ccy).toBe('HKD')
+    expect(setPortfolioCcy(p.id, 'GBP')).toBeNull()   // outside the set
+    expect(loadPortfolios().find((x) => x.id === p.id).ccy).toBe('HKD')
     deletePortfolio(p.id)
     expect(loadPortfolios().some((x) => x.id === p.id)).toBe(false)
   })
