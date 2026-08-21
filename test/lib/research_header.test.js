@@ -18,7 +18,7 @@ describe('research overview header', () => {
     expect(research).toContain('{q.name}')
     expect(research).toContain('data-research-quote-cluster')
     expect(research).toContain('shrink-0 whitespace-nowrap')
-    expect(research).toContain('max-sm:hidden"><FlashMetric value={q.change}')
+    expect(research).toContain('max-sm:hidden price-grouped"><FlashMetric value={q.change}')
     expect(research).not.toContain('hidden @min-[1180px]:block @min-[1180px]:flex-1')
   })
 

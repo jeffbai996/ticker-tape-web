@@ -72,10 +72,13 @@ export const INDICES = [
   { symbol: '^TNX', label: 'US10Y' },
   { symbol: 'DX-Y.NYB', label: 'DXY' },
   { symbol: 'GC=F', label: 'GOLD' },
+  { symbol: 'SI=F', label: 'SILVER' },
   { symbol: 'HG=F', label: 'COPPER' },
   { symbol: 'CL=F', label: 'WTI' },
   { symbol: 'BZ=F', label: 'BRENT' },
-  { symbol: 'NG=F', label: 'HH GAS' },
+  { symbol: 'NG=F', label: 'GAS' },
+  { symbol: '^HSI', label: 'HSI' },
+  { symbol: '^N225', label: 'N225' },
   { symbol: 'BTC-USD', label: 'BTC' },
 ]
 
