@@ -7,12 +7,11 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import {
-  createPublicWatchlistSync, connectPublicWatchlistSync, disconnectPublicWatchlistSync,
+  connectPublicWatchlistSync, disconnectPublicWatchlistSync,
   getWatchlistCapability,
 } from '../lib/cloudsave.js'
 import { onPortfolioSyncStatus } from '../lib/portfolioSync.js'
 import { wireServiceUrl } from '../lib/wire.js'
-import { fixedSyncCapability } from '../lib/watchlistSync.js'
 import { useQuotes } from '../hooks.js'
 import { SymbolSuggest } from '../components/SymbolSuggest.jsx'
 import { FlashPrice } from '../components/Fig.jsx'
@@ -349,12 +348,6 @@ function SyncControls() {
   useEffect(() => onPortfolioSyncStatus(setSt), [])
   if (wireServiceUrl()) return null
 
-  // family build: the store is baked in and saving is just a fact —
-  // announcing it is exactly the cruft rule (Jeff 2026-08-20: "its just
-  // saved, no need to even mention it")
-  if (fixedSyncCapability()) return null
-
-  const enable = () => setCapability(createPublicWatchlistSync())
   const connect = (e) => {
     e.preventDefault()
     if (!connectPublicWatchlistSync(entry)) { setBad(true); return }
@@ -397,11 +390,6 @@ function SyncControls() {
         <>
           <span class="text-muted">{tl('Portfolios live only in this browser right now — turn on cloud sync so they survive and follow you.')}</span>
           <span class="ml-auto flex flex-wrap items-center gap-1.5">
-            <button type="button" onClick={enable}
-              class="whitespace-nowrap rounded border border-accent/60 bg-accent-soft px-2.5 py-1 font-semibold text-accent hover:bg-accent/15">
-              {tl('enable sync')}
-            </button>
-            <span class="text-[9px] text-muted">{tl('or')}</span>
             <form onSubmit={connect} class="flex items-center gap-1">
               <input value={entry} onInput={(e) => { setEntry(e.currentTarget.value); setBad(false) }}
                 aria-label={tl('sync code')} placeholder={tl('sync code')} spellcheck={false}

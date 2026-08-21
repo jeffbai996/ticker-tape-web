@@ -6,10 +6,10 @@
  * Deploy: npx wrangler deploy
  */
 
-import { handleChat } from './chat.js'
 import { handleWatchlists } from './watchlists.js'
 import { handlePortfolios } from './portfolios.js'
 import { handleWire } from './wire.js'
+export { CapDocCoordinator } from './capdoc.js'
 
 const CORS_HEADERS = {
     'Access-Control-Allow-Origin': '*',
@@ -20,6 +20,21 @@ const CORS_HEADERS = {
 // The one POST endpoint we proxy: Yahoo's visualization API, which backs the
 // earnings calendar (historical report dates). Everything else stays GET-only.
 const POST_PATH = '/v1/finance/visualization';
+const MAX_PROXY_BODY = 64 * 1024;
+const MAX_PROXY_QUERY = 8 * 1024;
+const SYMBOL_PATH = '[^/]{1,80}';
+const YAHOO_GET_PATHS = [
+    /^\/v1\/finance\/search$/,
+    /^\/v7\/finance\/quote$/,
+    new RegExp(`^/v7/finance/options/${SYMBOL_PATH}$`),
+    new RegExp(`^/v8/finance/chart/${SYMBOL_PATH}$`),
+    new RegExp(`^/v10/finance/quoteSummary/${SYMBOL_PATH}$`),
+    new RegExp(`^/ws/fundamentals-timeseries/v1/finance/timeseries/${SYMBOL_PATH}$`),
+];
+
+export function allowedYahooGetPath(path) {
+    return YAHOO_GET_PATHS.some((pattern) => pattern.test(path));
+}
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
@@ -34,17 +49,18 @@ export default {
         const url = new URL(request.url);
         const path = url.pathname;
 
-        // AI chat proxy — own CORS (origin-restricted), own spend/rate gates.
+        // Paid AI lives only behind the private tailnet service. The public
+        // market-data Worker must never grow a second, unauthenticated route.
         if (path === '/chat' || path.startsWith('/chat/')) {
-            return handleChat(request, env, path);
+            return jsonResp({ error: 'Not found' }, 404);
         }
 
         // Public watchlist sync is capability-scoped and intentionally does
         // not proxy the private Fragwire API.
-        if (path.startsWith('/watchlists/')) {
+        if (path === '/watchlists' || path.startsWith('/watchlists/')) {
             return handleWatchlists(request, env, path);
         }
-        if (path.startsWith('/portfolios/')) {
+        if (path === '/portfolios' || path.startsWith('/portfolios/')) {
             return handlePortfolios(request, env, path);
         }
 
@@ -60,8 +76,14 @@ export default {
 
         if (request.method === 'POST') {
             if (path !== POST_PATH) return jsonResp({ error: 'Method not allowed' }, 405);
+            const declared = Number(request.headers.get('Content-Length'));
+            if (Number.isFinite(declared) && declared > MAX_PROXY_BODY) {
+                return jsonResp({ error: 'Request too large' }, 413);
+            }
             try {
-                return await proxyWithCrumb(path, url.search, await request.text());
+                const body = await request.text();
+                if (body.length > MAX_PROXY_BODY) return jsonResp({ error: 'Request too large' }, 413);
+                return await proxyWithCrumb(path, url.search, body);
             } catch (err) {
                 return jsonResp({ error: `Proxy error: ${err.message}` }, 502);
             }
@@ -85,8 +107,11 @@ export default {
             return proxySec(`https://data.sec.gov/submissions/${name}`, 600);
         }
 
-        if (!path.startsWith('/v1/') && !path.startsWith('/v7/') && !path.startsWith('/v8/') && !path.startsWith('/v10/') && !path.startsWith('/ws/')) {
-            return jsonResp({ error: 'Use /v1/, /v7/, /v8/, /v10/, /sec/ endpoints' }, 400);
+        if (!allowedYahooGetPath(path)) {
+            return jsonResp({ error: 'Unsupported market-data route' }, 404);
+        }
+        if (url.search.length > MAX_PROXY_QUERY) {
+            return jsonResp({ error: 'Query too large' }, 414);
         }
 
         try {

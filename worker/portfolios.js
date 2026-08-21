@@ -71,7 +71,7 @@ export function validatePortfolioDocument(value) {
 }
 
 export const handlePortfolios = makeCapDocHandler({
-  route: '/portfolios/',
+  route: '/portfolios',
   keyPrefix: 'myportfolios:',
   validate: validatePortfolioDocument,
   maxBody: MAX_BODY_BYTES,

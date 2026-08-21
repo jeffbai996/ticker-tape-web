@@ -49,17 +49,23 @@ Browser (GitHub Pages, static)
         │
         ▼
 Cloudflare Worker (worker/)
-  /v1 /v7 /v8 /v10 /ws  Yahoo Finance proxy; handles the cookie+crumb dance
+  selected Yahoo routes   Yahoo Finance proxy; handles the cookie+crumb dance
                         (single-flight refresh, survives 401 stampedes)
-  /chat                 Guarded AI streaming route retained in the Worker.
-                        The public browser bundle does not call it; keys stay
-                        server-side and the public AI surfaces remain inert.
+  /watchlists            Capability-authenticated family watchlist document
+  /portfolios            Capability-authenticated family portfolio document
+                        (bearer stays in browser storage; never a URL/build value;
+                        per-document Durable Object serializes revisions)
   /wire/*               Public wire mirror: a sanitized headline snapshot is
                         PUSHed in and served back read-only. Every event is
                         re-validated against a seven-field contract on write.
 ```
 
-No cron, no committed data, no API keys in the browser — everything is fetched live and computed on the client.
+The public Worker has no AI route. Paid/model-backed actions exist only through
+the private tailnet service. Family sync is an explicit one-time pairing: enter
+the provisioned 128-bit code in the browser, after which it remains in that
+origin's local storage. The Worker accepts only the matching
+`FAMILY_SYNC_TOKEN` secret and fails closed if it is absent. A public static
+build can carry a family presentation flag, never the code itself.
 
 ## Tech Stack
 
@@ -92,11 +98,16 @@ the only eager chunks. `scripts/probe_matrix.py` runs the responsive matrix
 against a served build (Playwright + chromium).
 
 Worker: `cd worker && npx wrangler deploy` (needs Cloudflare credentials).
+Provision or rotate family sync separately with
+`npx wrangler secret put FAMILY_SYNC_TOKEN`; enter the same value interactively
+in the intended browser. Never pass it on the command line or through a `VITE_`
+variable.
 
 ## Constraints
 
-- **No personal data.** This is a public showcase: no real positions, accounts, or portfolio-derived symbols anywhere in source, tests, or fixtures. The portfolio section is a labeled synthetic demo.
+- **No personal data in public assets.** Source, fixtures, and downloadable bundles contain no real positions, accounts, portfolio symbols, or family capability. A paired family browser can access its private Worker document.
 - API keys never touch the browser. Public AI controls are previews only; the private build calls its server-side router.
+- Family capabilities are bearer credentials: share them out of band, do not put them in links, and rotate them if disclosed. Clearing browser storage disconnects that device.
 - Yahoo data quirks are handled explicitly (crumb auth, ^TNX change fields, patchy earnings-calendar coverage) rather than papered over.
 
 ## Repo Layout
@@ -104,7 +115,7 @@ Worker: `cd worker && npx wrangler deploy` (needs Cloudflare credentials).
 ```
 ticker-tape-web/
 ├── .github/workflows/deploy.yml
-├── worker/              # Cloudflare Worker: Yahoo proxy, AI chat proxy, public wire mirror
+├── worker/              # Cloudflare Worker: bounded Yahoo proxy, family sync, public wire mirror
 ├── src/
 │   ├── app.jsx          # shell: status bar, tape, sidebar, command bar
 │   ├── pages/           # dashboard, watchlists, brief, markets, screen, portfolio, alerts, wire, chat, console

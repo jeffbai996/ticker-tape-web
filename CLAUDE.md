@@ -186,12 +186,20 @@ flow go through the Worker. Persistent stale-while-revalidate caches live in
 localStorage via `src/lib/pcache.js`. Persist epoch milliseconds, not `Date`
 objects. Derive day change from the live quote, not a multi-range chart.
 
-The Worker retains guarded `/chat`, `/chat/models`, and `/chat/spend` routes,
-but the public browser bundle does not reference or call them. Public AI
-controls are deliberately inert. The private build gets its live model registry,
+The public Worker has no `/chat` route; hiding a browser control or setting CORS
+is not authorization for a paid endpoint. Public AI controls are deliberately
+inert. The private build gets its live model registry,
 chat streams, and report generation from Fragwire; stale saved selections fall
 back to the first live registry entry. Browser-side tools remain read-only and
 no route exposes trading capabilities.
+
+The public family build uses `VITE_FAMILY_BUILD=1` only as a presentation flag.
+Never put credentials in a `VITE_` variable. A family capability is entered once,
+stored in that browser's localStorage, and sent as an Authorization bearer to
+the exact `/watchlists` and `/portfolios` routes. It must not enter a URL. Each
+document is coordinated by a Durable Object so revision check-and-write is
+serialized; KV is migration/write-through backup only. The Worker accepts only
+the off-Git `FAMILY_SYNC_TOKEN` secret and returns 503 when it is not provisioned.
 
 ## Commands and Deployment
 

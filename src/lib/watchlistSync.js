@@ -24,22 +24,12 @@ export function createWatchlistCapability(cryptoImpl = globalThis.crypto) {
   return [...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
-// A build can carry its own store (family instance, Jeff 2026-08-20: "none
-// of this sync code crap"): the capability arrives from CI as a secret, so
-// persistence is just on — no enable step, no code to keep. The VALUE never
-// appears in source; only the env plumbing does.
-const FIXED_CAP = String(import.meta.env.VITE_SYNC_CAPABILITY || '').trim().toLowerCase()
-
-export function fixedSyncCapability() {
-  return validWatchlistCapability(FIXED_CAP) ? FIXED_CAP : ''
-}
-
 export function getWatchlistCapability() {
   try {
     const value = localStorage.getItem(CAPABILITY_KEY) || ''
     if (validWatchlistCapability(value)) return value.toLowerCase()
-  } catch { /* fall through to the build's own store */ }
-  return fixedSyncCapability()
+  } catch { /* storage-disabled browsers stay local-only */ }
+  return ''
 }
 
 export function saveWatchlistCapability(value) {
@@ -65,5 +55,12 @@ export function watchlistSyncEndpoint(capability = getWatchlistCapability(), bas
       })()
       || DEFAULT_WORKER
   }
-  return `${String(root).replace(/\/$/, '')}/watchlists/${capability}`
+  return `${String(root).replace(/\/$/, '')}/watchlists`
+}
+
+/** Capabilities authorize the request but never enter the URL (and therefore
+ * access logs, browser history, or error telemetry). */
+export function watchlistSyncHeaders(capability = getWatchlistCapability()) {
+  if (!validWatchlistCapability(capability)) return {}
+  return { Authorization: `Bearer ${capability}` }
 }

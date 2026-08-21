@@ -5,3 +5,11 @@ compatibility_date = "2024-12-01"
 [[kv_namespaces]]
 binding = "SPEND"
 id = "bf70e74407934939bb511990611cb9e7"
+
+[[durable_objects.bindings]]
+name = "CAP_DOCS"
+class_name = "CapDocCoordinator"
+
+[[migrations]]
+tag = "v1-cap-doc-coordinator"
+new_sqlite_classes = ["CapDocCoordinator"]

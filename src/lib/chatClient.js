@@ -1,22 +1,25 @@
-// Client for the worker's /chat proxy. The browser never sees an API key —
-// it talks to the worker, which holds keys as secrets and enforces the
-// daily spend cap and rate limit.
+// Optional client for an explicitly configured private chat proxy. The public
+// market-data Worker has no /chat route; normal tailnet use goes through
+// Fragwire's wirechat client instead.
 
 function chatBase() {
-  if (import.meta.env.VITE_DATA_PROXY) return import.meta.env.VITE_DATA_PROXY
-  const saved = localStorage.getItem('proxy_url')
-  if (saved) return saved.replace(/\/$/, '')
-  return 'https://yf-proxy.2phakhvpgh.workers.dev'
+  return String(import.meta.env.VITE_CHAT_PROXY || '').replace(/\/$/, '')
+}
+
+function chatUrl(path) {
+  const base = chatBase()
+  if (!base) throw new Error('AI requires the private service')
+  return `${base}${path}`
 }
 
 export async function fetchChatModels() {
-  const resp = await fetch(`${chatBase()}/chat/models`, { signal: AbortSignal.timeout(10_000) })
+  const resp = await fetch(chatUrl('/chat/models'), { signal: AbortSignal.timeout(10_000) })
   if (!resp.ok) throw new Error(`models: HTTP ${resp.status}`)
   return resp.json()
 }
 
 export async function fetchSpend() {
-  const resp = await fetch(`${chatBase()}/chat/spend`, { signal: AbortSignal.timeout(10_000) })
+  const resp = await fetch(chatUrl('/chat/spend'), { signal: AbortSignal.timeout(10_000) })
   if (!resp.ok) throw new Error(`spend: HTTP ${resp.status}`)
   return resp.json()
 }
@@ -52,7 +55,7 @@ export function parseSSE(buf) {
  * failures.
  */
 export async function streamChat({ model, effort, messages, system, tools, onDelta }) {
-  const resp = await fetch(`${chatBase()}/chat`, {
+  const resp = await fetch(chatUrl('/chat'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ model, messages, system,
