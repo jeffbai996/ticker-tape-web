@@ -199,7 +199,7 @@ function GroupCard({ name, items, quotes, withUnits, visual = null, visualWindow
 }
 
 function MarketVisualPicker({ visual, window, onVisual, onWindow }) {
-  const field = 'appearance-none rounded-full border border-line bg-surface-1 py-1 pl-2.5 pr-6 font-anth text-[10px] text-ink-2 outline-none hover:border-accent/50 focus:border-accent/70'
+  const field = 'appearance-none rounded-full border border-line bg-surface-1 py-1 max-sm:py-0.5 pl-2.5 max-sm:pl-2 pr-6 font-anth text-[10px] max-sm:text-[9px] text-ink-2 outline-none hover:border-accent/50 focus:border-accent/70'
   return (
     <div class="flex shrink-0 items-center gap-1">
       <span class="font-anth text-[9px] uppercase tracking-wider text-muted">{tl('Visual')}</span>
@@ -236,7 +236,7 @@ function MarketJumpBar({ visual, window, onVisual, onWindow }) {
       {MARKET_GROUPS.map((group) => (
         <button key={group.name} type="button"
           onClick={() => document.getElementById(groupId(group.name))?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-          class="shrink-0 rounded-full border border-line px-2.5 py-1 font-anth text-[10px] text-ink-2 hover:text-accent hover:border-accent/50 hover:no-underline">
+          class="shrink-0 rounded-full border border-line px-2.5 py-1 max-sm:px-2 max-sm:py-0.5 font-anth text-[10px] max-sm:text-[9px] text-ink-2 hover:text-accent hover:border-accent/50 hover:no-underline">
           {tl(group.name)}
         </button>
       ))}
