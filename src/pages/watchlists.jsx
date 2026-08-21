@@ -13,6 +13,7 @@ import {
   connectPublicWatchlistSync, createPublicWatchlistSync,
   disconnectPublicWatchlistSync, getWatchlistCapability, onSyncStatus,
 } from '../lib/cloudsave.js'
+import { fixedSyncCapability } from '../lib/watchlistSync.js'
 import { wireServiceUrl } from '../lib/wire.js'
 import { pushWatchlistToWire } from '../lib/watchlistExport.js'
 import { shouldOpenWatchlistCard } from '../lib/watchlistCard.js'
@@ -58,7 +59,7 @@ function PublicSyncControls() {
   const [entry, setEntry] = useState('')
   const [notice, setNotice] = useState('')
   const [copied, setCopied] = useState(false)
-  if (wireServiceUrl()) return null
+  if (wireServiceUrl() || fixedSyncCapability()) return null
 
   const enable = () => {
     const created = createPublicWatchlistSync()
