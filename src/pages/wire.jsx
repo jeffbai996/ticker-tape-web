@@ -582,7 +582,10 @@ export function Wire({ route }) {
     setState('connecting')
     setError('')
     const pollRail = () => {
-      fetchToday(endpoint).then((out) => !cancelled && setToday(out)).catch(() => {})
+      fetchToday(endpoint).then((out) => !cancelled && setToday(out))
+        // the mirror has no calendar service — the written demo rail keeps
+        // the panel demonstrating itself instead of sitting empty
+        .catch(() => !cancelled && setToday(demoToday()))
     }
     const pollRevisions = () => {
       if (!revisionSince) return
@@ -646,7 +649,13 @@ export function Wire({ route }) {
           if (first && !rows.length) { startDemo(); return }
           if (!first) rows.filter((ev) => !seen.has(ev.id)).forEach((ev) => markHot(ev.id))
           seen = new Set(rows.map((ev) => ev.id))
-          setEvents(rows)
+          // Real mirrored headlines alone exercise one lane of the UI. The
+          // written demo session rides alongside (Jeff 2026-08-21: "allow the
+          // user to see the full functionality") — every synthetic row keeps
+          // its demo badge, so the stream stays honestly labeled per row.
+          const demoRows = demoBackfill(30, Date.now() / 1000)
+          setEvents([...rows, ...demoRows]
+            .sort((a, b) => (a.ts_event ?? 0) - (b.ts_event ?? 0)))
           setGeneratedAt(out.generated_at ?? null)
           revisionSince = out.server_ts || revisionSince || Date.now() / 1000
           setState('mirror')
