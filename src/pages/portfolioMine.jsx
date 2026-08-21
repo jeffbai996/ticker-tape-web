@@ -15,10 +15,12 @@ import { wireServiceUrl } from '../lib/wire.js'
 import { fixedSyncCapability } from '../lib/watchlistSync.js'
 import { useQuotes } from '../hooks.js'
 import { SymbolSuggest } from '../components/SymbolSuggest.jsx'
+import { sizeForWeight } from '../lib/demo.js'
+import { BUCKETS } from '../lib/symbols.js'
 import { FlashPrice } from '../components/Fig.jsx'
 import { fmtPrice, fmtPct, fmtPctPlain } from '../lib/format.js'
 import { tl } from '../lib/i18n.js'
-import { PORTFOLIO_CCYS, fmtCcy, fxSymbolsFor, holdingCurrency, ratesFromQuotes } from '../lib/fx.js'
+import { PORTFOLIO_CCYS, convertCcy, fmtCcy, fxSymbolsFor, holdingCurrency, ratesFromQuotes } from '../lib/fx.js'
 import {
   MAX_MY_HOLDINGS, createPortfolio, deletePortfolio, loadPortfolios,
   onPortfoliosChange, removeHolding, renamePortfolio, setHolding, setPortfolioCcy,
@@ -126,6 +128,54 @@ function SharesCell({ portfolio, row }) {
       onBlur={commit}
       onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() } }}
       class="w-16 rounded border border-transparent bg-transparent px-1 py-0.5 text-right font-mono text-[11px] text-ink-2 outline-none transition-colors hover:border-line-2 focus:border-accent/60 focus:bg-surface-2" />
+  )
+}
+
+/** Position sizing for a hand-built book (Jeff 2026-08-21: "a bunch of tools
+ *  from portfolio can still be used by him"). Same sizeForWeight math as the
+ *  broker book, but everything runs in the portfolio's display currency so a
+ *  mixed HKD/USD book sizes honestly. */
+function SizingCard({ portfolio, quotes, rates }) {
+  const { total } = portfolioValues(portfolio.holdings, quotes, rates, portfolio.ccy)
+  const [sym, setSym] = useState('')
+  const [targetPct, setTargetPct] = useState('10')
+  const chosen = String(sym || '').trim().toUpperCase()
+  const live = useQuotes(chosen ? [chosen] : [])
+  const q = live[chosen]?.quote
+  const ccy = holdingCurrency(chosen, q)
+  const px = q?.extPrice ?? q?.price
+  const pxDisplay = convertCcy(typeof px === 'number' && px > 0 ? px : null, ccy, portfolio.ccy, rates)
+  const held = portfolio.holdings.find((h) => h.symbol === chosen)?.shares || 0
+  const r = pxDisplay != null && total.value
+    ? sizeForWeight({ nlv: total.value, price: pxDisplay, targetPct: Number(targetPct) || 0, currentShares: held })
+    : null
+  const box = 'rounded border border-line-2 bg-surface-2 px-2 py-1.5 font-mono text-[10.5px] text-ink placeholder:text-[10px] placeholder:text-muted outline-none focus:border-accent/60'
+  return (
+    <section class="rounded-xl border border-line bg-surface-1 px-3 py-2">
+      <div class="pb-1.5 font-anth text-[9px] uppercase tracking-wider text-muted">{tl('Sizing')}</div>
+      <div class="flex flex-wrap items-center gap-2">
+        <SymbolSuggest value={sym} placeholder={tl('Symbol or company')} ariaLabel={`${tl('Sizing')} ${tl('Symbol')}`}
+          onInput={(e) => setSym(e.currentTarget.value)} onPick={(h) => setSym(h.symbol)}
+          dropUp={false} inputClass={`${box} w-36 uppercase`} />
+        <label class="flex items-center gap-1.5 font-anth text-[10px] text-muted">
+          {tl('Target weight')}
+          <input value={targetPct} onInput={(e) => setTargetPct(e.currentTarget.value)}
+            inputMode="decimal" data-1p-ignore data-lpignore="true" aria-label={tl('Target weight')}
+            class={`${box} w-16 text-right`} />%
+        </label>
+        {r && (
+          <span class="flex flex-wrap items-baseline gap-x-3 font-mono text-[11px]">
+            <span class="text-ink">{tl('Target')} <span class="font-semibold">{r.targetShares}</span> {tl('shares')}</span>
+            <span class={r.delta >= 0 ? 'text-up' : 'text-down'}>
+              {r.delta >= 0 ? tl('buy') : tl('sell')} <span class="font-semibold">{Math.abs(r.delta)}</span>
+              {' '}({fmtCcy(Math.abs(r.cost), portfolio.ccy)})
+            </span>
+            <span class="text-muted text-[10px]">{tl('now')} {held}</span>
+          </span>
+        )}
+        {chosen && !r && <span class="font-anth text-[10px] text-muted">…</span>}
+      </div>
+    </section>
   )
 }
 
@@ -311,7 +361,7 @@ function BookAnalysis({ portfolio, quotes, rates }) {
   const mixTotal = [...mix.values()].reduce((a, b) => a + b, 0)
   const MIX_CLS = { USD: 'bg-accent/70', CAD: 'bg-up/60', HKD: 'bg-down/60', CNY: 'bg-ink-2/60' }
   return (
-    <div class="grid gap-2 sm:grid-cols-3">
+    <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
       {card(tl('Day movers'), (
         <div class="flex flex-col gap-0.5 font-mono text-[11px]">
           {movers.map((r) => (
@@ -336,6 +386,28 @@ function BookAnalysis({ portfolio, quotes, rates }) {
           ))}
         </div>
       ))}
+      {card(tl('Sectors'), (() => {
+        const bySector = new Map()
+        for (const r of priced) {
+          const b = BUCKETS.find((x) => x.symbols.includes(r.symbol))
+          const name = b ? b.name : tl('Other')
+          bySector.set(name, (bySector.get(name) || 0) + r.valueDisplay)
+        }
+        const totalV = [...bySector.values()].reduce((a, b) => a + b, 0)
+        const top = [...bySector.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5)
+        const maxS = top[0]?.[1] || 1
+        return (
+          <div class="flex flex-col gap-1">
+            {top.map(([name, v]) => (
+              <div key={name} class="flex items-center gap-2 font-mono text-[10px]">
+                <span class="w-20 shrink-0 truncate font-anth text-ink-2">{tl(name)}</span>
+                <span class="h-2 rounded-sm bg-accent-2/50" style={{ width: `${(v / maxS) * 100}%`, minWidth: '2px' }} />
+                <span class="ml-auto text-muted">{fmtPctPlain((v / totalV) * 100)}</span>
+              </div>
+            ))}
+          </div>
+        )
+      })())}
       {card(tl('Currency mix'), (
         <div class="flex flex-col gap-1.5">
           <div class="flex h-2.5 w-full overflow-hidden rounded-sm">
@@ -509,6 +581,7 @@ export function MyPortfolios() {
           <SummaryStrip portfolio={selected} quotes={quotes} rates={rates} ccys={ccys} />
           <BookAnalysis portfolio={selected} quotes={quotes} rates={rates} />
           <Holdings portfolio={selected} quotes={quotes} rates={rates} />
+          <SizingCard portfolio={selected} quotes={quotes} rates={rates} />
           <AddHoldingRow portfolio={selected} />
         </>
       ) : (

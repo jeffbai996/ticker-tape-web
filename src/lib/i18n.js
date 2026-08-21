@@ -912,6 +912,8 @@ const LABELS = {
   holdings: '项持仓', 'Add holding': '添加持仓',
   'Prices, totals and weights appear as soon as the first one lands.': '添加第一只后，价格、合计与权重会立即出现。',
   Holdings: '持仓数', Currencies: '币种数',
+  Sizing: '仓位测算', Target: '目标', shares: '股', buy: '买入', sell: '卖出', now: '现持',
+  Sectors: '板块分布', Other: '其他',
   'Day movers': '当日异动', 'Weights': '权重分布', 'Currency mix': '币种构成',
   'Symbol or company': '代码或公司名',
   'Type a ticker or a company name and pick from the list.': '输入股票代码或公司名，从列表中选择。',
