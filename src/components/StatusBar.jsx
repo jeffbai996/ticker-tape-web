@@ -283,7 +283,7 @@ export function StatusBar() {
       <span class="flex items-center gap-1.5 shrink-0 md:-ml-1">
         <RollingClock />
         <span
-          class={`inline-block w-1.5 h-1.5 rounded-full ${online ? 'bg-up' : 'bg-down'}`}
+          class={`-ml-1 inline-block w-1.5 h-1.5 rounded-full ${online ? 'bg-up' : 'bg-down'}`}
           title={online ? tl('online') : tl('offline')}
         />
         <button
