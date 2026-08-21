@@ -47,7 +47,7 @@ function NewPortfolioForm({ onDone }) {
   return (
     <form onSubmit={submit} class="flex flex-wrap items-center gap-2">
       <input value={name} onInput={(e) => setName(e.currentTarget.value)}
-        placeholder={tl('Portfolio name')} aria-label={tl('Portfolio name')}
+        placeholder={tl('Portfolio name')} aria-label={tl('Portfolio name')} data-1p-ignore data-lpignore="true"
         class="w-40 rounded border border-line-2 bg-surface-2 px-2 py-1 font-anth text-[11px] text-ink placeholder:text-muted outline-none focus:border-accent/60" />
       <label class="flex items-center gap-1.5 font-anth text-[10px] text-muted">
         {tl('Display currency')}
@@ -80,18 +80,18 @@ function AddHoldingRow({ portfolio }) {
   }
   const box = 'rounded border border-line-2 bg-surface-2 px-2 py-1.5 font-mono text-[12px] text-ink placeholder:text-muted outline-none focus:border-accent/60'
   return (
-    <form onSubmit={submit} class="border-t border-line bg-surface-2/50 px-3 py-2">
+    <form onSubmit={submit} class="rounded-xl border border-line bg-surface-1 px-3 py-2">
       <div class="flex flex-wrap items-center gap-2">
         <SymbolSuggest value={sym} placeholder={tl('Symbol or company')}
           ariaLabel={tl('Symbol or company')}
           onInput={(e) => { setSym(e.currentTarget.value); setPicked(null) }}
           onPick={onPick} dropUp={false} inputClass={`${box} w-40 uppercase`} />
         <input ref={sharesRef} value={shares} onInput={(e) => setShares(e.currentTarget.value)}
-          placeholder={tl('Shares')} aria-label={tl('Shares')} inputMode="decimal"
+          placeholder={tl('Shares')} aria-label={tl('Shares')} inputMode="decimal" data-1p-ignore data-lpignore="true"
           class={`${box} w-24`} />
         <input value={cost} onInput={(e) => setCost(e.currentTarget.value)}
           placeholder={tl('Avg cost (opt.)')} aria-label={tl('Avg cost (opt.)')}
-          inputMode="decimal" class={`${box} w-32`} />
+          inputMode="decimal" data-1p-ignore data-lpignore="true" class={`${box} w-32`} />
         <button type="submit" disabled={full || !sym.trim() || !(Number(shares) > 0)}
           class="rounded border border-accent/40 bg-accent/10 px-3 py-1.5 font-anth text-[12px] font-semibold text-accent transition-colors hover:bg-accent/20 disabled:opacity-40">
           {tl('Add')}
@@ -135,7 +135,7 @@ function SharesCell({ portfolio, row }) {
   }
   return (
     <input key={`${row.symbol}:${row.shares}`} defaultValue={String(row.shares)}
-      inputMode="decimal" aria-label={`${tl('Shares')} ${row.symbol}`}
+      inputMode="decimal" data-1p-ignore data-lpignore="true" aria-label={`${tl('Shares')} ${row.symbol}`}
       onBlur={commit}
       onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() } }}
       class="w-16 rounded border border-transparent bg-transparent px-1 py-0.5 text-right font-mono text-[11px] text-ink-2 outline-none transition-colors hover:border-line-2 focus:border-accent/60 focus:bg-surface-2" />
@@ -225,7 +225,6 @@ function Holdings({ portfolio, quotes, rates }) {
           {tl('Awaiting prices or FX for')}: {missing.join(', ')} — {tl('excluded from totals')}
         </div>
       )}
-      <AddHoldingRow portfolio={portfolio} />
     </section>
   )
 }
@@ -269,20 +268,10 @@ function SyncControls() {
   useEffect(() => onPortfolioSyncStatus(setSt), [])
   if (wireServiceUrl()) return null
 
-  // family build: the store is baked in, saving is just a fact — show the
-  // one reassuring chip and none of the code management
-  if (fixedSyncCapability()) {
-    return (
-      <div class="flex items-center gap-2 px-1 font-anth text-[10px] text-muted">
-        <span class={`rounded border px-1.5 py-px text-[8px] font-bold uppercase tracking-wider ${
-          st.state === 'synced' ? 'border-up/40 text-up'
-          : st.state === 'error' ? 'border-down/40 text-down' : 'border-line text-muted'}`}>
-          {st.state === 'synced' ? tl('cloud saved') : st.state === 'error' ? tl('cloud offline') : tl('saving…')}
-        </span>
-        {tl('Everything here saves automatically and shows up on any device that opens this page.')}
-      </div>
-    )
-  }
+  // family build: the store is baked in and saving is just a fact —
+  // announcing it is exactly the cruft rule (Jeff 2026-08-20: "its just
+  // saved, no need to even mention it")
+  if (fixedSyncCapability()) return null
 
   const enable = () => setCapability(createPublicWatchlistSync())
   const connect = (e) => {
@@ -424,6 +413,7 @@ export function MyPortfolios() {
         <>
           <SummaryStrip portfolio={selected} quotes={quotes} rates={rates} />
           <Holdings portfolio={selected} quotes={quotes} rates={rates} />
+          <AddHoldingRow portfolio={selected} />
           <FxFootnote ccys={ccys} rates={rates} displayCcy={selected.ccy} />
         </>
       ) : (
