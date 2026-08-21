@@ -194,7 +194,7 @@ function RangeBar({ label, lo, hi, v, cls = '' }) {
   if (pos == null) {
     return (
       <span aria-hidden="true"
-        class={`hidden @min-[730px]:flex items-center gap-[3px] font-mono text-[11px] font-normal whitespace-nowrap invisible ${cls}`}>
+        class={`hidden @min-[620px]:flex items-center gap-[3px] font-mono text-[11px] font-normal whitespace-nowrap invisible ${cls}`}>
         <span class="text-[9px] w-6">{label}</span>
         <span class="w-[3.15rem] text-right">0000.00</span>
         <span class="w-14 h-[3px] shrink-0 mx-1" />
@@ -203,7 +203,7 @@ function RangeBar({ label, lo, hi, v, cls = '' }) {
     )
   }
   return (
-    <span class={`hidden @min-[730px]:flex items-center gap-[3px] font-mono text-[11px] font-normal whitespace-nowrap ${cls}`}>
+    <span class={`hidden @min-[620px]:flex items-center gap-[3px] font-mono text-[11px] font-normal whitespace-nowrap ${cls}`}>
       <span class="text-accent/60 font-normal text-[9px] w-6">{label}</span>
       <span class="text-down/80 w-[3.15rem] text-right">
         <FlashMetric value={lo} fmt={fmtPriceBare} kind="low" />
@@ -223,7 +223,7 @@ function RangeBar({ label, lo, hi, v, cls = '' }) {
 
 /** The compact breakpoint keeps the same low → position → high grammar as the
  *  full range instead of turning the chart into an unlabeled mystery noodle. */
-function CompactDayRange({ lo, hi, v, cls = '', label = 'DAY', band = 'hidden @min-[545px]:flex @min-[730px]:hidden' }) {
+function CompactDayRange({ lo, hi, v, cls = '', label = 'DAY', band = 'hidden @min-[545px]:flex @min-[620px]:hidden' }) {
   const pos = rangePos(lo, hi, v)
   if (pos == null) {
     return (
@@ -468,11 +468,7 @@ export function TuiRow({ symbol, data, earnDays, onRemove = () => {}, selecting,
                 column at this width, which used to mean no intraday range at
                 all overnight. The badge line has the room, so it takes it. */}
             <CompactDayRange lo={q?.dayLow} hi={q?.dayHigh} v={q?.price}
-              cls="ml-auto shrink-0" />
-            {/* the 52W range joins once the line can afford it — same read
-                as the ≥730px meters column, one line earlier */}
-            <CompactDayRange label="52W" lo={data?.tech?.low52} hi={data?.tech?.high52} v={q?.price}
-              band="hidden @min-[620px]:flex @min-[730px]:hidden" cls="shrink-0 pr-1" />
+              cls="ml-auto shrink-0 pr-1" />
           </div>
         </div>
         {/* Meters live in their own fixed column so DAY and 52W align by
