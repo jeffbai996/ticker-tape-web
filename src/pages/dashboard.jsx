@@ -681,12 +681,12 @@ function MarketDeckPanel() {
         </a>
         <a href="#/markets" aria-label={tl('Open markets')} class="ml-auto text-[12px] leading-none text-muted hover:text-accent hover:no-underline">→</a>
       </header>
-      <div class="grid grid-cols-2 py-1">
+      <div class="py-1">
         {MARKET_DECK.map((item) => {
           const q = quotes[item.symbol]?.quote
           return (
             <a key={item.symbol} href={`#/research/${item.symbol.toLowerCase()}`}
-              class="min-w-0 flex items-baseline gap-1.5 px-2.5 py-[3px] hover:bg-surface-3 hover:no-underline odd:border-r odd:border-line">
+              class="min-w-0 flex items-baseline gap-1.5 px-2.5 py-[2.5px] hover:bg-surface-3 hover:no-underline">
               {/* label ≠ value: micro-caps label in the quiet shade, tabular
                   number carrying the color — they used to blur into one line
                   (Jeff 2026-08-06: "something visually unsatisfying") */}
