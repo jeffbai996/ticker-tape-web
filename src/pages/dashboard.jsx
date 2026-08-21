@@ -362,7 +362,7 @@ export function TuiRow({ symbol, data, earnDays, onRemove = () => {}, selecting,
                 give up width, so the fixed price/change/AH columns stay aligned
                 across rows AND never get pushed past the clip edge. Below
                 820px the text hides but the gutter stays, collapsing to 0. */}
-            <span class="tui-company-name-wide hidden @min-[820px]:block flex-1 min-w-0 max-w-[220px] @min-[1080px]:max-w-[300px] @min-[1450px]:max-w-none">
+            <span class="tui-company-name-wide hidden @min-[820px]:block flex-1 min-w-0 max-w-[220px] @min-[1080px]:max-w-[300px]">
               <Marquee text={q?.name || ''} title={q?.name ? `${symbol} — ${q.name}` : symbol}
                 class="inline-block w-full text-[10.5px] text-muted font-normal font-anth" />
             </span>
@@ -439,6 +439,7 @@ export function TuiRow({ symbol, data, earnDays, onRemove = () => {}, selecting,
                 </span>
               )}
             </span>
+            <GlanceZone q={q} tech={data?.tech} histo={data?.histo} sparkWin={sparkWin} />
           </div>
           {/* Phone width: badges scroll sideways instead of clipping mid-badge. */}
           <div class="flex items-center gap-2.5 pt-[2px] pl-0 min-w-0 @min-[430px]:overflow-hidden max-sm:overflow-x-auto no-scrollbar">
@@ -450,7 +451,7 @@ export function TuiRow({ symbol, data, earnDays, onRemove = () => {}, selecting,
             {/* badges yield first: they are chips you glance at, while a range
                 clipped mid-number (Jeff 2026-08-05: "RHS occluded") is worse
                 than a badge that isn't drawn */}
-            <div class="min-w-0 overflow-hidden max-sm:overflow-visible @min-[730px]:ml-auto">
+            <div class="min-w-0 overflow-hidden max-sm:overflow-visible @min-[730px]:ml-auto @min-[1450px]:ml-0">
               <Badges tech={data?.tech} earnDays={earnDays} />
             </div>
             {/* An extended-hours print evicts the day range from the meters
@@ -506,6 +507,38 @@ export function TuiRow({ symbol, data, earnDays, onRemove = () => {}, selecting,
         </div>
       </div>
     </a>
+  )
+}
+
+
+/** Ultra-wide rows only: the black band between the quote block and the
+ *  meters (Jeff 2026-08-20: "add more useful at a glance information").
+ *  Three fixed-width figures so every row's numbers land in a column:
+ *  the loaded spark window's return, position inside the 52-week range,
+ *  and relative strength vs the benchmark. All derived from data the row
+ *  already holds — no extra fetch rides on this. */
+function GlanceZone({ q, tech, histo, sparkWin }) {
+  const closes = (histo || []).map((b) => b?.c ?? b?.close ?? b?.value).filter((v) => typeof v === 'number')
+  const winRet = sparkWin !== 'DAY' && closes.length >= 2 && closes[0] > 0
+    ? ((closes[closes.length - 1] / closes[0]) - 1) * 100 : null
+  const span = tech?.high52 != null && tech?.low52 != null ? tech.high52 - tech.low52 : 0
+  const pos52 = span > 0 && q?.price != null
+    ? Math.max(0, Math.min(100, ((q.price - tech.low52) / span) * 100)) : null
+  const rs = tech?.rs ?? null
+  const fig = (label, value, cls) => (
+    <span class="flex items-baseline gap-1">
+      <span class="text-accent/60 text-[9px] w-7 text-right">{value != null ? label : ''}</span>
+      <span class={`w-[3.4rem] text-right font-medium ${value != null ? cls : ''}`}>
+        {value != null ? value : ''}
+      </span>
+    </span>
+  )
+  return (
+    <span class="hidden @min-[1450px]:flex items-baseline gap-3 ml-auto mr-6 font-mono text-[11px] shrink-0">
+      {fig(sparkWin, winRet != null ? fmtPct(winRet) : null, winRet >= 0 ? 'text-up' : 'text-down')}
+      {fig('52W', pos52 != null ? `${Math.round(pos52)}%` : null, 'text-ink-2')}
+      {fig('RS', rs != null ? fmtPct(rs) : null, rs >= 0 ? 'text-up' : 'text-down')}
+    </span>
   )
 }
 
