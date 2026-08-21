@@ -41,7 +41,7 @@ describe('console resize', () => {
     // a fixed 26rem box fit the EN placeholder but left the zh one half-empty
     // ("what is the / button doing all the way out there") — the width now
     // follows the placeholder itself, CJK counted double in ch units
-    expect(commandBar).toMatch(/phCh \+= c\.charCodeAt\(0\) > 0x2e7f \? 2 : 1/)
+    expect(commandBar).toMatch(/phCh \+= c\.charCodeAt\(0\) > 0x2000 \? 2 : 1/)
     expect(commandBar).toContain('${phCh}ch')
     // typing still gets the full 26rem editing box
     expect(commandBar).toContain("'min(100%, 26rem)'")
