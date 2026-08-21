@@ -100,7 +100,7 @@ function RollingClock() {
           feed is healthy. */
       title={tl('cycle timezone')}
       data-status-clock
-      class="h-5 group -ml-2.5 flex cursor-pointer items-center gap-1 whitespace-nowrap font-anth px-1.5 py-0 rounded border border-transparent transition-colors duration-200 hover:border-line-2 hover:bg-white/[0.045] focus-visible:border-line-2 focus-visible:bg-white/[0.045] focus-visible:outline-none"
+      class="h-5 group ml-1 md:-ml-2.5 flex cursor-pointer items-center gap-1 whitespace-nowrap font-anth px-1.5 py-0 rounded border border-transparent transition-colors duration-200 hover:border-line-2 hover:bg-white/[0.045] focus-visible:border-line-2 focus-visible:bg-white/[0.045] focus-visible:outline-none"
     >
       {/* Anthropic Sans digits (Jeff 2026-08-06) — falls back to Jakarta on
           the public build, where the licensing-gated woff2 never ships */}
