@@ -48,7 +48,7 @@ describe('event workspace content', () => {
     expect(markets).toContain("{tl('Actual')}")
     // an absent number is an em dash, never a filled-in guess
     expect(markets).toContain("value == null ? '—'")
-    expect(markets).toContain("{tl('no consensus published for this event')}")
+    expect(markets).toContain("{tl('prior and consensus fill in when a print feed is wired — this build has none, so the meaning and playbook below are the read')}")
   })
 
   it('shows the surprise and the linked-symbol reaction after release', () => {
