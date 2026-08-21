@@ -44,11 +44,13 @@ function priceMapOf(live) {
 
 const money = (v, digits = 0) =>
   v == null ? '—' : v.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits })
+    .replaceAll(',', '\u2009')
 
 const dollars = (v) => (v == null ? '—' : `$${money(v)}`)
 
 const signedMoney = (v) =>
-  v == null ? '—' : `${v >= 0 ? '+' : '-'}${Math.abs(v).toLocaleString('en-US', { maximumFractionDigits: 0 })}`
+  v == null ? '—' : `${v >= 0 ? '+' : '-'}${Math.abs(v).toLocaleString('en-US', { maximumFractionDigits: 0 })
+    .replaceAll(',', '\u2009')}`
 
 const pnlCls = (v) => (v == null ? 'text-muted' : v >= 0 ? 'text-up' : 'text-down')
 
@@ -1657,8 +1659,9 @@ function PortfolioHeader({ accounts, account, onChange, book, wired }) {
   const live = !!book
   // the account ID + broker, not a nickname + margin readout (Jeff 2026-08-10)
   const label = book?.account || book?.accountLabel || (account === BOTH_ACCOUNTS ? tl('Both') : '')
-  const detail = live
-    ? `${label} · ${tl('Interactive Brokers')}`
+  const family = !!import.meta.env.VITE_SYNC_CAPABILITY
+  const detail = family ? tl('My Portfolios')
+    : live ? `${label} · ${tl('Interactive Brokers')}`
     : book === false ? tt('portfolio.link_down')
       : wired ? tt('portfolio.connecting') : tt('demo.banner')
   return (
@@ -1675,7 +1678,7 @@ function PortfolioHeader({ accounts, account, onChange, book, wired }) {
           <div class="truncate font-anth text-[9.5px] text-muted">{detail}</div>
         </div>
       </div>
-      <AccountSwitcher accounts={accounts} account={account} onChange={onChange} />
+      {!family && <AccountSwitcher accounts={accounts} account={account} onChange={onChange} />}
     </header>
   )
 }
@@ -1715,7 +1718,10 @@ export function Portfolio({ route }) {
   // wired build still lands on the real broker book
   const [hasMine, setHasMine] = useState(() => loadPortfolios().length > 0)
   useEffect(() => onPortfoliosChange((items) => setHasMine(items.length > 0)), [])
-  const view = route.sub || (!wired && hasMine ? 'mine' : 'positions')
+  // the family build has no broker surface at all — every route lands on
+  // the hand-built books
+  const family = !!import.meta.env.VITE_SYNC_CAPABILITY
+  const view = family ? 'mine' : route.sub || (!wired && hasMine ? 'mine' : 'positions')
 
   const View = {
     positions: Positions,

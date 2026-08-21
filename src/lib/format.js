@@ -7,11 +7,30 @@ const DASH = '—'
 // like that"). 100k clears every US index/future while catching KRW names.
 const BIG_PRICE = 100_000
 const kNotation = (abs) =>
-  `${abs >= 100_000 ? Math.round(abs / 1000) : (abs / 1000).toFixed(1)}K`
+  `${abs >= 100_000 ? Math.round(abs / 1000) : (abs / 1000).toFixed(1)}k`
 
 export function fmtPrice(v) {
   if (v == null || Number.isNaN(v)) return DASH
   if (Math.abs(v) >= BIG_PRICE) return kNotation(Math.abs(v))
+  return v.toFixed(2)
+}
+
+// Thousands read as a LITTLE GAP, not a comma — the tachometer-dial grammar
+// (Jeff 2026-08-20: "1 738 000 but w smaller spaces obv"). U+2009 THIN SPACE
+// keeps its designed narrow width even inside the mono stack.
+const THIN_SPACE = '\u2009'
+
+export function groupThin(v) {
+  if (v == null || Number.isNaN(v)) return DASH
+  return Math.round(v).toLocaleString('en-US').replaceAll(',', THIN_SPACE)
+}
+
+/** The wide-screen form of a big price: the whole figure, thin-space grouped.
+ *  Narrow columns keep kNotation via fmtPrice; a call site that has the room
+ *  (container-queried) swaps to this. */
+export function fmtPriceWide(v) {
+  if (v == null || Number.isNaN(v)) return DASH
+  if (Math.abs(v) >= BIG_PRICE) return groupThin(v)
   return v.toFixed(2)
 }
 
