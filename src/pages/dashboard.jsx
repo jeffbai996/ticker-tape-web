@@ -43,7 +43,6 @@ import { Marquee } from '../components/Marquee.jsx'
 import { FlashMetric, FlashPrice } from '../components/Fig.jsx'
 import { Empty, Loading } from '../components/Loading.jsx'
 import { ChartMount } from '../components/LazyChart.jsx'
-import { WorkspacesControl } from '../components/WorkspacesControl.jsx'
 import { t as tt, tl } from '../lib/i18n.js'
 import { extendedLabelClass } from '../lib/extendedHours.js'
 import { freshnessTitle, symbolFreshness } from '../lib/feedHealth.js'
@@ -1775,9 +1774,6 @@ export function Dashboard({ listId = null }) {
             </svg>
             {tl('Select')}
           </button>
-          <WorkspacesControl listId={activeList?.id || null} lists={namedWatchlists}
-            viewMode={viewMode} setViewMode={setViewMode} sort={sort} setSort={setSort}
-            spark={spark} setSpark={setSpark} sparkWin={sparkWin} setSparkWin={setSparkWin} />
         </div>
 
         <div class="flex items-center gap-2 min-w-0 flex-1 ml-auto">

@@ -54,7 +54,6 @@ const SOURCE_CONTRACT_ALLOWLIST = new Set([
   'lib/wire_layout.test.js',
   'lib/wire_mirror.test.js',
   'lib/wire_recovery.test.js',
-  'lib/workspaces.test.js',
 ])
 
 function testFiles(dir = ROOT) {
