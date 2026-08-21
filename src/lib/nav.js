@@ -78,6 +78,14 @@ export const NAV = [
 // make sense on the public origin.
 if (PRIVATE_BUILD) for (const s of NAV) delete s.badge
 if (FAMILY_BUILD) NAV.splice(NAV.findIndex((s) => s.id === 'brief'), 1)
+if (FAMILY_BUILD) {
+  // no brokerage will ever be wired here — the broker-book tabs (account,
+  // sizing, carry, cockpit…) would all render a synthetic book that only
+  // confuses (Jeff 2026-08-20)
+  const portfolio = NAV.find((s) => s.id === 'portfolio')
+  portfolio.subs = []
+  delete portfolio.badge
+}
 
 export const IS_PRIVATE_BUILD = PRIVATE_BUILD
 
