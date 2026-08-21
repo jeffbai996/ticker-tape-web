@@ -322,7 +322,7 @@ const LABELS = {
   // 2026-08-17 zh pass — rendered-audit gaps (research descriptor/technicals,
   // sidebar sort, unwatch title). Keep abbreviations where the EN is a
   // standard metric code readers already know (RSI/MACD/PEG/FCF/ROE).
-  'sort by': '排序：', sym: '代码', 'unwatch %s': '从看盘移除 %s',
+  'sort by': '排序：', 'set default': '设为默认', default: '默认', 'opens first on a fresh load': '新开页面时默认打开', sym: '代码', 'unwatch %s': '从看盘移除 %s',
   'RSI 14': 'RSI 14', 'MACD hist': 'MACD 柱', 'Bollinger up': '布林上轨',
   'Bollinger mid': '布林中轨', 'Bollinger low': '布林下轨',
   'Beta 1Y (QQQ)': 'Beta 1年 (QQQ)', 'Corr QQQ': '与 QQQ 相关性',
@@ -577,7 +577,7 @@ const LABELS = {
   'PPI Release': 'PPI公布', 'Retail Sales': '零售销售', 'Quad Witching': '四巫日',
   'Jackson Hole Symposium': '杰克逊霍尔年会',
   'reasoned privately': '推理未公开', 'no reasoning returned for this step': '本步骤未返回推理',
-  Spark: '走势图', Window: '周期', Volume: '成交量', 'Price line': '价格线', 'Price area': '价格面积',
+  Spark: '走势图', Window: '周期', Volume: '成交量', 'Price line': '价格线', Baseline: '基准线', 'Price area': '价格面积',
   'Daily change': '日涨跌', 'Daily range': '日振幅', Off: '关闭', Visual: '图形',
   'Row visual': '行尾图形', 'Session range': '日内区间',
   'ISM Manufacturing': 'ISM制造业', 'ISM Services': 'ISM服务业',
