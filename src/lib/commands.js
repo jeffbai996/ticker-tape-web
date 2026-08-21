@@ -3,7 +3,6 @@
 
 import { hrefFor } from './route.js'
 import { CATALYST_TYPES } from './catalysts.js'
-import { cleanWorkspaceName } from './workspaces.js'
 
 const SYM = /^[A-Za-z0-9.^=-]{1,12}$/
 const DATE = /^\d{4}-\d{2}-\d{2}$/
@@ -291,28 +290,6 @@ export function parseCommand(input) {
     return { type: 'msg', text: `[bold ${INF}]usage[/] [${DIM}]cat · cat rm N · cat add 2026-09-09 NVDA product GTC keynote[/]` }
   }
 
-  // ws · ws list · ws NAME · ws save NAME · ws rm NAME · ws rename OLD / NEW
-  // Names may contain spaces ("event day"), so the rest of the line is the
-  // name, and rename splits on a slash rather than guessing where one ends.
-  if (cmd === 'ws' || cmd === 'workspace' || cmd === 'workspaces') {
-    const usage = `[bold ${INF}]usage[/] [${DIM}]ws · ws NAME · ws save NAME · ws rm NAME · ws rename OLD / NEW[/]`
-    const sub = low(args[0] || '')
-    if (!args.length || (sub === 'list' && args.length === 1)) return { type: 'ws_list' }
-    const rest = cleanWorkspaceName(args.slice(1).join(' '))
-    if (sub === 'save' || sub === 'add') {
-      return rest ? { type: 'ws_save', name: rest } : { type: 'msg', text: usage }
-    }
-    if (['rm', 'delete', 'del'].includes(sub)) {
-      return rest ? { type: 'ws_rm', name: rest } : { type: 'msg', text: usage }
-    }
-    if (sub === 'rename' || sub === 'mv') {
-      const [from, to] = args.slice(1).join(' ').split('/').map(cleanWorkspaceName)
-      return from && to ? { type: 'ws_rename', from, to } : { type: 'msg', text: usage }
-    }
-    const name = cleanWorkspaceName(args.join(' '))
-    return name ? { type: 'ws_apply', name } : { type: 'msg', text: usage }
-  }
-
   if (cmd === 'chat' || cmd === 'ai') {
     return args.length ? { type: 'chat', q: args.join(' ') } : { type: 'nav', hash: '#/chat' }
   }
@@ -348,11 +325,6 @@ export function describePlan(plan) {
     case 'screen': return `${plan.view}: ${plan.symbols.join(' ')}`
     case 'chat': return `ask the AI chat`
     case 'div': return `${plan.symbol} dividends`
-    case 'ws_apply': return `open workspace ${plan.name}`
-    case 'ws_save': return `save workspace ${plan.name}`
-    case 'ws_rm': return `delete workspace ${plan.name}`
-    case 'ws_rename': return `rename workspace ${plan.from} → ${plan.to}`
-    case 'ws_list': return 'saved workspaces'
     case 'msg': return 'usage'
     default: return plan.type.replace(/_/g, ' ')
   }

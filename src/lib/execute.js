@@ -17,11 +17,6 @@ import { fetchFundamentals } from './fundamentals.js'
 import { fmtPrice, fmtPct } from './format.js'
 import { parseRich } from './rich.js'
 import { getLocale, setLocale } from './i18n.js'
-import {
-  capturedAgo, deleteWorkspace, findWorkspace, listWorkspaces, renameWorkspace,
-  saveWorkspace, summarizeLayout,
-} from './workspaces.js'
-import { applyToBoard, captureBoard } from './workspaceState.js'
 
 /** One-line quote echo from the feed cache, if the symbol is priced. */
 function quoteEcho(symbol) {
@@ -220,33 +215,6 @@ export function executePlan(plan, cmd, ctx = {}) {
       }
       print(cmd, lines.length ? lines.join('\n') : `[#808080]${sym} pays no dividend[/]`)
     })
-  } else if (plan.type === 'ws_list') {
-    const items = listWorkspaces()
-    print(cmd, items.length
-      ? items.map((ws) => `[bold #00c8ff]${ws.name.padEnd(16)}[/]${summarizeLayout(ws.layout).padEnd(46)}[#808080]${capturedAgo(ws.capturedAt)}[/]`).join('\n')
-      : 'no workspaces — ws save opening')
-  } else if (plan.type === 'ws_save') {
-    const ws = saveWorkspace(plan.name, captureBoard(plan.name).layout)
-    print(cmd, ws
-      ? `[green]✓[/] workspace [bold]${ws.name}[/] [#808080]${summarizeLayout(ws.layout)}[/]`
-      : '[red]bad workspace name[/]')
-  } else if (plan.type === 'ws_apply') {
-    const ws = findWorkspace(plan.name)
-    if (!ws) {
-      print(cmd, `[red]no workspace "${plan.name}"[/] [#808080]— ws list[/]`)
-    } else {
-      // no reload, no refetch: this moves the same switches the toolbar moves
-      applyToBoard(ws)
-      print(cmd, `[green]✓[/] [bold]${ws.name}[/] [#808080]${summarizeLayout(ws.layout)}[/]`)
-    }
-  } else if (plan.type === 'ws_rm') {
-    print(cmd, deleteWorkspace(plan.name)
-      ? `[green]✓[/] deleted workspace [bold]${plan.name}[/]`
-      : `[red]no workspace "${plan.name}"[/]`)
-  } else if (plan.type === 'ws_rename') {
-    print(cmd, renameWorkspace(plan.from, plan.to)
-      ? `[green]✓[/] [bold]${plan.from}[/] → [bold]${plan.to}[/]`
-      : `[red]can't rename "${plan.from}" — missing, or "${plan.to}" is taken[/]`)
   } else if (plan.type === 'msg') {
     print(cmd, plan.text)
   }
