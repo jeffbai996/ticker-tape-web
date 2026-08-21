@@ -150,12 +150,12 @@ describe('evidenceRows', () => {
 describe('catalystRows', () => {
   it('keeps future dates only, soonest first, with days-until', () => {
     const rows = catalystRows([
-      { date: '2026-08-20', label: 'AVGO earnings' },
+      { date: '2026-08-20', label: 'MSFT earnings' },
       { date: '2026-08-01', label: 'gone' },
       { date: '2026-08-10', label: 'today' },
       { date: 'junk', label: 'bad' },
     ], '2026-08-10')
-    expect(rows.map((r) => [r.label, r.days])).toEqual([['today', 0], ['AVGO earnings', 10]])
+    expect(rows.map((r) => [r.label, r.days])).toEqual([['today', 0], ['MSFT earnings', 10]])
   })
 })
 

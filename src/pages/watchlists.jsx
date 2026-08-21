@@ -373,7 +373,7 @@ export function WatchlistsPage() {
   const allLists = [{ id: 'main', name: tl('Dashboard') }, ...lists]
   const submit = (event) => {
     event.preventDefault()
-    // import path: paste "NVDA MU AVGO" (or CSV) and the list is born full
+    // import path: paste "NVDA MSFT GOOGL" (or CSV) and the list is born full
     const seedSymbols = seed.split(/[\s,]+/).map((x) => x.trim().toUpperCase()).filter(Boolean)
     const created = createWatchlist(name, seedSymbols)
     if (!created) return setError(tt('watchlists.unique_name'))

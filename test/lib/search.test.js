@@ -4,7 +4,7 @@ import { filterNav, searchLocal } from '../../src/lib/search.js'
 describe('searchLocal', () => {
   beforeEach(() => {
     localStorage.clear()
-    localStorage.setItem('tape-recent-syms', JSON.stringify(['MU', 'AVGO']))
+    localStorage.setItem('tape-recent-syms', JSON.stringify(['MU', 'MSFT']))
     localStorage.setItem('named_watchlists_v1', JSON.stringify([
       { id: 'memory', name: 'Memory', symbols: ['MU', 'WDC'] },
     ]))

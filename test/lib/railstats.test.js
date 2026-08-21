@@ -5,10 +5,10 @@ const q = (pct) => ({ quote: { pct } })
 
 describe('groupHeat', () => {
   const groups = [
-    { name: 'Semis', symbols: ['NVDA', 'AVGO'] },
+    { name: 'Semis', symbols: ['NVDA', 'MSFT'] },
     { name: 'Ballast', symbols: ['SGOV', 'GLD'] },
   ]
-  const quotes = { NVDA: q(4), AVGO: q(2), SGOV: q(0.01), GLD: q(-1.01) }
+  const quotes = { NVDA: q(4), MSFT: q(2), SGOV: q(0.01), GLD: q(-1.01) }
 
   it('averages each group and ranks hottest first', () => {
     const rows = groupHeat(groups, quotes)
@@ -51,10 +51,10 @@ describe('alertDistance', () => {
 describe('rankAlerts', () => {
   const alerts = [
     { id: 1, symbol: 'NVDA', type: 'price', operator: '>', value: 250 },
-    { id: 2, symbol: 'AVGO', type: 'price', operator: '>', value: 400 },
+    { id: 2, symbol: 'MSFT', type: 'price', operator: '>', value: 400 },
     { id: 3, symbol: 'MU', type: 'price', operator: '>', value: 100, triggered: 1 },
   ]
-  const prices = { NVDA: 200, AVGO: 396, MU: 101 }
+  const prices = { NVDA: 200, MSFT: 396, MU: 101 }
 
   it('puts the nearest armed alert first', () => {
     expect(rankAlerts(alerts, prices).map((r) => r.alert.id)).toEqual([2, 1, 3])
@@ -73,7 +73,7 @@ describe('rankAlerts', () => {
 describe('rangeExtremes', () => {
   const rows = [
     { symbol: 'NVDA', quote: { low: 100, high: 110, price: 109.8, pct: 3 } },
-    { symbol: 'AVGO', quote: { low: 100, high: 110, price: 100.5, pct: -2 } },
+    { symbol: 'MSFT', quote: { low: 100, high: 110, price: 100.5, pct: -2 } },
     { symbol: 'MU', quote: { low: 100, high: 110, price: 105, pct: 0.2 } },
     { symbol: 'BAD', quote: { low: 100, high: 100, price: 100, pct: 0 } },
   ]
@@ -86,7 +86,7 @@ describe('rangeExtremes', () => {
   it('separates top-of-range from bottom-of-range names', () => {
     const { highs, lows } = rangeExtremes(rows)
     expect(highs.map((h) => h.symbol)).toEqual(['NVDA'])
-    expect(lows.map((l) => l.symbol)).toEqual(['AVGO'])
+    expect(lows.map((l) => l.symbol)).toEqual(['MSFT'])
   })
 
   it('ignores mid-range names and degenerate ranges', () => {

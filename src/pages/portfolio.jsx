@@ -1438,13 +1438,13 @@ function Thesis() {
 
       <AiReport
         label="AI thesis read"
-        filename="thesis-watcher.md"
-        hint={tl('grounded in watcher conditions and wire evidence')}
+        filename="research-briefing.md"
+        hint={tl('grounded in supplied conditions and market evidence')}
         buildPrompt={async () => ({
           system: 'You are an evidence-first investment research assistant. Distinguish reported facts from inference and stay within the supplied record.',
           prompt: thesisAnalysisPrompt(breakers, signals),
         })}
-        archive={{ kind: 'briefing', title: 'Thesis Watcher' }}
+        archive={{ kind: 'briefing', title: 'Research Briefing' }}
       />
     </div>
   )

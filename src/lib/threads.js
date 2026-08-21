@@ -1,5 +1,5 @@
 // Named chat threads. On a wire build the thread bodies live server-side
-// (fragwire chatstore → squad-store's SQLite); localStorage keeps only the
+// (the optional chatstore → its SQLite database); localStorage keeps only the
 // active thread as a cache plus the pointer to it. The keyless public build
 // stays exactly what it was: one thread in localStorage.
 

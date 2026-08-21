@@ -68,9 +68,9 @@ describe('chartDrawings per-symbol isolation', () => {
 
   it('keeps symbols independent', () => {
     saveDrawings('NVDA', [hline(100)], store)
-    saveDrawings('AVGO', [hline(200), trend()], store)
+    saveDrawings('MSFT', [hline(200), trend()], store)
     expect(loadDrawings('NVDA', store)).toHaveLength(1)
-    expect(loadDrawings('AVGO', store)).toHaveLength(2)
+    expect(loadDrawings('MSFT', store)).toHaveLength(2)
     expect(loadDrawings('NVDA', store)[0].points[0].price).toBe(100)
   })
 
@@ -81,10 +81,10 @@ describe('chartDrawings per-symbol isolation', () => {
 
   it('clearing one symbol leaves the others alone', () => {
     saveDrawings('NVDA', [hline()], store)
-    saveDrawings('AVGO', [hline()], store)
+    saveDrawings('MSFT', [hline()], store)
     expect(clearDrawings('NVDA', store)).toEqual([])
     expect(loadDrawings('NVDA', store)).toEqual([])
-    expect(loadDrawings('AVGO', store)).toHaveLength(1)
+    expect(loadDrawings('MSFT', store)).toHaveLength(1)
   })
 
   it('drops the symbol key entirely when cleared', () => {
