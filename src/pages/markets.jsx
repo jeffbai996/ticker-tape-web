@@ -780,7 +780,7 @@ function EventNumbers({ event }) {
       </dl>
       {empty && (
         <p class="mt-1.5 text-center font-mono text-[10px] text-muted">
-          {tl('no consensus published for this event')}
+          {tl('prior and consensus fill in when a print feed is wired — this build has none, so the meaning and playbook below are the read')}
         </p>
       )}
     </div>
@@ -791,7 +791,7 @@ function EventNumbers({ event }) {
 // nothing bespoke. Market direction is the only thing on this row allowed
 // red/green; the "why" stays muted amber-adjacent text.
 function EventLinkRow({ row, quotes }) {
-  const q = quotes[row.symbol]
+  const q = quotes[row.symbol]?.quote
   const up = (q?.pct ?? 0) >= 0
   return (
     <a href={hrefFor('research', row.symbol.toLowerCase())}
@@ -862,7 +862,7 @@ function EventAlertArm({ event, links, quotes }) {
     return () => { dead = true }
   }, [])
   const symbol = event.symbol || links[0]?.symbol || ''
-  const q = quotes[symbol]
+  const q = quotes[symbol]?.quote
   const delivery = getAlertDeliveryPrefs()
   const plan = eventAlertPlan({ symbol, price: q?.price ?? null, delivery, destinations })
 
@@ -984,6 +984,9 @@ function EventWorkspace({ event, details }) {
           <div class="border border-line rounded-lg px-3 py-2">
             <h4 class="font-mono text-[10px] uppercase tracking-wider text-accent mb-1">{tl('What it is')}</h4>
             <p class="text-[12px] text-ink-2 leading-relaxed">{tl(narrative.plain)}</p>
+            {narrative.detail && (
+              <p class="mt-1.5 text-[11.5px] text-muted leading-relaxed">{tl(narrative.detail)}</p>
+            )}
             <h4 class="font-mono text-[10px] uppercase tracking-wider text-accent mt-2 mb-1">{tl('Why it matters')}</h4>
             <p class="text-[12px] text-ink-2 leading-relaxed">{tl(narrative.matters)}</p>
             <h4 class="font-mono text-[10px] uppercase tracking-wider text-accent mt-2 mb-1">{tl('Affected sectors')}</h4>
@@ -1054,6 +1057,20 @@ function EventWorkspace({ event, details }) {
   )
 }
 
+// The bare code column read as noise ("bland" — Jeff 2026-08-21). Types wear
+// family chips: Fed amber, inflation red, labor blue, activity green,
+// market-structure muted; user catalysts keep their cyan.
+const ECON_CHIP = (type) => {
+  if (/^(FED|FOMC|MINS)$/.test(type)) return 'border-accent/50 text-accent bg-accent/10'
+  if (/^(CPI|PPI|PCE)$/.test(type)) return 'border-down/40 text-down/90 bg-down/10'
+  if (/^(NFP|CLMS|JOLT)$/.test(type)) return 'border-accent-2/50 text-accent-2 bg-accent-2/10'
+  if (/^(ISM|ISMS|UMCH|RET|GDP)$/.test(type)) return 'border-up/40 text-up bg-up/10'
+  return 'border-line-2 text-ink-2 bg-surface-2'
+}
+
+const MONTH_LABEL = (iso) => new Date(`${iso}T12:00:00Z`)
+  .toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toLowerCase()
+
 function Calendar() {
   const today = new Date().toISOString().slice(0, 10)
   const [cats, setCats] = useState(loadCatalysts)
@@ -1108,7 +1125,15 @@ function Calendar() {
             const key = eventKey(e)
             const isOpen = key === openKey
             const toggle = () => setOpenKey(isOpen ? '' : key)
+            const month = String(e.date).slice(0, 7)
+            const monthBreak = i > 0 && String(events[i - 1].date).slice(0, 7) !== month
             return (
+              <>
+              {monthBreak && (
+                <tr key={`m-${month}`} class="border-b border-line-2">
+                  <td colSpan={4} class="px-3 pt-2 pb-0.5 font-anth text-[8.5px] font-bold uppercase tracking-[0.18em] text-muted bg-surface-2/40">{MONTH_LABEL(e.date)}</td>
+                </tr>
+              )}
               <tr key={key}
                   role="button" tabIndex={0} aria-expanded={isOpen}
                   onClick={toggle}
@@ -1118,11 +1143,11 @@ function Calendar() {
                       toggle()
                     }
                   }}
-                  class={`border-b border-line last:border-0 hover:bg-surface-3 group cursor-pointer${
+                  class={`border-b border-line last:border-0 hover:bg-surface-3 group cursor-pointer${e.days >= 0 && e.days <= 7 ? ' bg-accent/[0.03]' : ''}${
                     isOpen ? ' bg-surface-3' : ''}${e.days < 0 ? ' is-past' : ''}${
                     i === firstFuture && firstFuture > 0 ? ' is-now' : ''}`}>
-                <td class="px-3 py-[3px] font-mono text-[12px] text-ink">{e.date}</td>
-                <td class={`px-2 py-[3px] font-mono font-bold text-[11px] ${e.user ? 'text-[#00c8ff]' : cls}`}>{e.type}</td>
+                <td class="px-3 py-[3px] font-mono text-[11.5px] text-ink whitespace-nowrap">{new Date(`${e.date}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toLowerCase()}</td>
+                <td class="px-2 py-[3px]"><span class={`inline-block rounded border px-1.5 py-px font-anth text-[9px] font-bold ${e.user ? 'border-[#00c8ff]/50 text-[#00c8ff] bg-[#00c8ff]/10' : ECON_CHIP(e.type)}`}>{e.type}</span></td>
                 <td class="px-2 py-[3px] text-[12px] text-ink-2">
                   {e.user ? e.label : tl(e.label)}
                   {e.user && (
@@ -1144,6 +1169,7 @@ function Calendar() {
                   <span class="ml-1.5 text-muted" aria-hidden="true">{isOpen ? '▾' : '▸'}</span>
                 </td>
               </tr>
+              </>
             )
           })}
         </tbody>

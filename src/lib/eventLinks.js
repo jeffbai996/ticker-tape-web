@@ -53,6 +53,7 @@ const RATES = [
 export const EVENT_LINKS = {
   FOMC: {
     plain: 'The Federal Reserve sets the policy rate and explains its thinking.',
+    detail: "Eight scheduled meetings a year; the decision lands at 2:00pm ET with the statement, and the chair's press conference at 2:30 usually moves markets more than the print itself. Watch the dot plot at quarterly meetings and the statement's language on the balance sheet and inflation progress — single-word edits are the signal. Positioning into the meeting matters as much as the outcome: a hawkish cut or a dovish hold routinely reverses the first move within the hour.",
     matters: 'The rate path reprices every other asset, so the statement moves more than the decision.',
     sectors: ['Rates', 'Financials', 'Gold'],
     symbols: [
@@ -65,24 +66,28 @@ export const EVENT_LINKS = {
   },
   MINS: {
     plain: 'The written record of the last Fed meeting, three weeks after it.',
+    detail: 'Released three weeks after each meeting at 2:00pm ET. The market already knows the decision — what it is pricing here is the DISTRIBUTION of views: how many members leaned the other way, what would change their minds, and any staff talk about the balance sheet or financial conditions. A market that read the meeting as dovish can reprice hard on minutes that show the hold was contested.',
     matters: 'It shows how split the committee was, which is what the next decision hangs on.',
     sectors: ['Rates', 'Financials'],
     symbols: RATES.slice(0, 3).concat([{ symbol: 'SPY', why: 'the broad tape' }]),
   },
   CPI: {
     plain: 'How fast consumer prices rose last month, headline and core.',
+    detail: "8:30am ET, roughly mid-month, covering the prior month. Core (ex food and energy) sets the tone; the month-over-month figure to two decimals is what the tape trades — an 0.2 vs 0.3 miss is a real move in rates. Shelter is a third of core and lags real-time rents by about a year, so watch supercore (services ex-shelter) for where the Fed's attention actually is. Bonds react in the first second; equities sort out the growth-vs-rates read over the morning.",
     matters: 'Inflation sets the rate path, so a surprise here moves bonds before it moves stocks.',
     sectors: ['Rates', 'Financials', 'Real Estate', 'Homebuilders'],
     symbols: RATES.concat([{ symbol: 'GLD', why: 'gold trades real rates and the dollar' }]),
   },
   PCE: {
     plain: 'The inflation gauge the Fed actually targets, with income and spending.',
+    detail: "8:30am ET near month-end. This is the index the Fed's 2% target refers to — CPI gets the headlines, PCE settles the argument. Weights differ from CPI (less shelter, more healthcare) so the two can diverge for months at a time; most of the surprise is usually forecastable from CPI and PPI components already in hand, which is why the market reaction is often smaller unless the composition shifts.",
     matters: 'Same signal as CPI but on the Fed own measure, so it settles arguments CPI started.',
     sectors: ['Rates', 'Financials', 'Real Estate'],
     symbols: RATES.slice(0, 4),
   },
   PPI: {
     plain: 'Prices producers received last month — inflation one step upstream.',
+    detail: '8:30am ET, usually the day after or before CPI. Producer prices sit one step upstream of consumer prices, and several PPI components (healthcare, airfares, portfolio management fees) feed DIRECTLY into the PCE calculation — desks re-mark their PCE forecasts within minutes of this print. A hot PPI after a cool CPI takes back some of the rally more often than not.',
     matters: 'Producer prices lead consumer prices and feed several components of the Fed gauge.',
     sectors: ['Rates', 'Industrials', 'Materials'],
     symbols: [
@@ -94,6 +99,7 @@ export const EVENT_LINKS = {
   },
   NFP: {
     plain: 'The monthly jobs report: payrolls, unemployment, wages, and revisions.',
+    detail: "First Friday of the month, 8:30am ET. Three numbers matter, in order: the payroll count vs consensus, the two prior months' revisions (which have been running large), and average hourly earnings for the inflation read. The unemployment rate comes from a different survey and can disagree with payrolls outright. This is the highest-volatility scheduled print outside CPI — spreads widen into it and the first move frequently retraces.",
     matters: 'It is the cleanest read on growth, and wages feed straight back into the inflation debate.',
     sectors: ['Broad market', 'Small caps', 'Rates'],
     symbols: [
@@ -105,6 +111,7 @@ export const EVENT_LINKS = {
   },
   GDP: {
     plain: 'The first official estimate of last quarter economic growth.',
+    detail: '8:30am ET; each quarter gets three passes — advance, second, final — and the advance estimate moves markets most despite being built on incomplete data. Look under the hood: final sales to private domestic purchasers strips inventories and trade noise and is the better read on underlying demand. A headline beat built on inventory build is routinely faded.',
     matters: 'Backward looking, but it settles whether the slowdown argument has any data behind it.',
     sectors: ['Broad market', 'Cyclicals', 'Rates'],
     symbols: [
@@ -116,6 +123,7 @@ export const EVENT_LINKS = {
   },
   RET: {
     plain: 'What consumers spent at retailers last month, including the control group.',
+    detail: '8:30am ET, mid-month. The control group (ex autos, gas, building materials, food service) feeds straight into the consumption line of GDP models — that is the number the desks care about, not the headline. Retail sales are nominal: in a disinflating tape a flat print can still mean rising real volumes.',
     matters: 'Consumption is most of the economy, so the control group feeds the GDP tracking estimates.',
     sectors: ['Consumer', 'Retail', 'Broad market'],
     symbols: [
@@ -127,6 +135,7 @@ export const EVENT_LINKS = {
   },
   ISM: {
     plain: 'A survey of US manufacturing: orders, employment, prices, production.',
+    detail: '10:00am ET, first business day of the month. A diffusion index — 50 is the growth line, direction of travel beats the level. New orders is the forward-looking component; the prices-paid subindex doubles as an inflation early warning and can move bonds on its own. Manufacturing is a small slice of GDP but an outsized share of earnings revisions, which is why the tape cares.',
     matters: 'Survey data turns before hard data, so it is an early read on the cycle.',
     sectors: ['Industrials', 'Materials', 'Transport'],
     symbols: [
@@ -138,6 +147,7 @@ export const EVENT_LINKS = {
   },
   ISMS: {
     plain: 'The same survey for services — the far larger half of the economy.',
+    detail: '10:00am ET a couple of days after the manufacturing print. Services is most of the economy, so this one matters more for the growth picture even though it gets less attention. The employment subindex previews payrolls, and prices-paid here is the service-inflation read the Fed actually worries about.',
     matters: 'Services inflation is the sticky part, so its prices component gets read as a rates signal.',
     sectors: ['Services', 'Consumer', 'Rates'],
     symbols: [
@@ -149,6 +159,7 @@ export const EVENT_LINKS = {
   },
   UMCH: {
     plain: 'A consumer survey: current conditions, expectations, inflation expectations.',
+    detail: 'Preliminary mid-month, final at month-end, 10:00am ET. The headline sentiment level is mostly noise for markets — the reason this print moves anything is the INFLATION EXPECTATIONS series, which the Fed cites by name. A jump in 5-10 year expectations is a hawkish print regardless of what sentiment did.',
     matters: 'The Fed watches whether households still believe inflation comes back down.',
     sectors: ['Consumer', 'Rates'],
     symbols: [
@@ -159,6 +170,7 @@ export const EVENT_LINKS = {
   },
   OPEX: {
     plain: 'Quarterly expiry of index futures, index options, and single-stock options.',
+    detail: 'Third Friday of the month; quarterly (quad witching) expirations in March, June, September and December are the big ones. Index options, single-stock options and futures all roll at once — volumes spike, dealer hedging flows dominate the tape into the close, and pinning around big strikes is common. Direction signals from an expiration day are unreliable by construction.',
     matters: 'Dealer hedges unwind into the close, so volume and pinning matter more than news that day.',
     sectors: ['Broad market', 'Volatility'],
     symbols: [
@@ -170,6 +182,7 @@ export const EVENT_LINKS = {
   },
   FED: {
     plain: 'A central-bank symposium watched for policy signals from the speakers.',
+    detail: 'Scheduled Fed-speak between meetings: speeches, testimony, panels. Weight the speaker — the chair, vice chair and NY Fed president move markets; regional presidents mostly matter when they are voters saying something off-script. During the pre-meeting blackout window this quiets entirely, which itself is information.',
     matters: 'No release, but the framing of the speeches has moved the rate path before.',
     sectors: ['Rates', 'Gold', 'Broad market'],
     symbols: [
@@ -181,6 +194,7 @@ export const EVENT_LINKS = {
   },
   ERN: {
     plain: 'A company reports the quarter and guides the next one.',
+    detail: "Earnings land before the open or after the close; the stock's first move prints in the extended session where depth is thin, so the gap can overstate the day. Guidance beats the quarter: a beat with a cut guide sells off, a miss with a raised guide often rallies. The call is where the real information leaks — margins, inventory, and next quarter's tone.",
     matters: 'Guidance sets the multiple; the peer group reprices with it whether it reported or not.',
     sectors: ['Single name', 'Sector peers'],
     symbols: [
@@ -190,18 +204,21 @@ export const EVENT_LINKS = {
   },
   PRODUCT: {
     plain: 'A product or launch date you put on the calendar yourself.',
+    detail: 'Product launches trade on preorders, pricing, and supply-chain follow-through rather than the event itself. The first-day move is sentiment; the durable move shows up when channel checks and component orders confirm or deny the demand story.',
     matters: 'Dated company events move the name first and the peer group second.',
     sectors: ['Single name', 'Sector peers'],
     symbols: [{ symbol: 'SPY', why: 'the broad tape' }],
   },
   CONF: {
     plain: 'A conference or investor day you put on the calendar yourself.',
+    detail: 'Conference presentations and investor days move a single name on product, roadmap, or margin detail — and occasionally a whole sector when a bellwether talks supply or demand. The reaction window is minutes around the speaking slot, not the day.',
     matters: 'Dated company events move the name first and the peer group second.',
     sectors: ['Single name', 'Sector peers'],
     symbols: [{ symbol: 'SPY', why: 'the broad tape' }],
   },
   CAPEX: {
     plain: 'A spending or capacity date you put on the calendar yourself.',
+    detail: 'Capex announcements reprice the SUPPLIERS faster than the company spending the money. Watch who the named beneficiaries are and whether the spend is incremental or a reallocation of an existing budget.',
     matters: 'Capex dates move the suppliers as much as the buyer.',
     sectors: ['Single name', 'Suppliers'],
     symbols: [
@@ -211,6 +228,7 @@ export const EVENT_LINKS = {
   },
   POLICY: {
     plain: 'A policy, ruling, or regulatory date you put on the calendar yourself.',
+    detail: 'Policy and regulatory events reprice discount rates and addressable markets rather than earnings. First reactions routinely overshoot because the legal text lags the headline — the durable move waits for the details.',
     matters: 'Policy dates reprice a whole sector at once rather than one name.',
     sectors: ['Policy-sensitive sectors', 'Rates'],
     symbols: [
@@ -261,6 +279,7 @@ export function eventNarrative(event) {
   const entry = entryFor(event)
   return {
     plain: event?.description || entry.plain,
+    detail: entry.detail || '',
     matters: entry.matters,
     sectors: entry.sectors,
   }

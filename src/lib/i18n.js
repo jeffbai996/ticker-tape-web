@@ -812,6 +812,7 @@ const LABELS = {
   'in release window': '发布窗口中', 'Release': '发布时间',
   'counting to the cash open — this event has no fixed print time': '倒计时至开盘 — 该事件没有固定发布时间',
   'no consensus published for this event': '该事件没有公布的市场预期',
+  'prior and consensus fill in when a print feed is wired — this build has none, so the meaning and playbook below are the read': '接入数据源后将显示前值与预期 — 当前版本未接入，请参考下方的含义与解读',
   'first market reaction': '市场首轮反应', 'no reaction data yet': '暂无反应数据',
   'move since the release': '自发布以来的变动', 'session move': '当日变动',
   'Related stories': '相关快讯', 'no wire endpoint configured': '未配置快讯服务',
