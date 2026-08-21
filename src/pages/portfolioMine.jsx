@@ -21,7 +21,8 @@ import { tl } from '../lib/i18n.js'
 import { PORTFOLIO_CCYS, fmtCcy, fxSymbolsFor, holdingCurrency, ratesFromQuotes } from '../lib/fx.js'
 import {
   MAX_MY_HOLDINGS, createPortfolio, deletePortfolio, loadPortfolios,
-  onPortfoliosChange, removeHolding, renamePortfolio, setHolding, portfolioValues,
+  onPortfoliosChange, removeHolding, renamePortfolio, setHolding, setPortfolioCcy,
+  portfolioValues,
 } from '../lib/myPortfolios.js'
 
 const pnlCls = (v) => (v == null ? 'text-muted' : v >= 0 ? 'text-up' : 'text-down')
@@ -78,7 +79,7 @@ function AddHoldingRow({ portfolio }) {
     setPicked(h)
     sharesRef.current?.focus()
   }
-  const box = 'rounded border border-line-2 bg-surface-2 px-2 py-1.5 font-mono text-[12px] text-ink placeholder:text-muted outline-none focus:border-accent/60'
+  const box = 'rounded border border-line-2 bg-surface-2 px-2 py-1.5 font-mono text-[10.5px] text-ink placeholder:text-[10px] placeholder:text-muted outline-none focus:border-accent/60'
   return (
     <form onSubmit={submit} class="rounded-xl border border-line bg-surface-1 px-3 py-2">
       <div class="flex flex-wrap items-center gap-2">
@@ -399,6 +400,9 @@ export function MyPortfolios() {
         </button>
         {selected && (
           <span class="ml-auto flex items-center gap-1">
+            <label class="flex items-center gap-1 font-anth text-[10px] text-muted" title={tl('Display currency')}>
+              <CcySelect value={selected.ccy} onChange={(c) => setPortfolioCcy(selected.id, c)} />
+            </label>
             <button type="button" onClick={rename} title={tl('Rename portfolio')}
               class="rounded border border-line-2 px-2 py-0.5 font-anth text-[10px] text-muted transition-colors hover:text-ink">{tl('Rename')}</button>
             <button type="button" onClick={remove} title={tl('Delete portfolio')}

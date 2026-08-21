@@ -109,6 +109,18 @@ export function renamePortfolio(id, name) {
   return p
 }
 
+/** Display currency is a view choice, not an identity — changeable any time
+ *  (Jeff 2026-08-20). Holdings stay untouched; totals re-convert live. */
+export function setPortfolioCcy(id, ccy) {
+  if (!PORTFOLIO_CCYS.includes(ccy)) return null
+  const items = loadPortfolios()
+  const p = items.find((x) => x.id === id)
+  if (!p) return null
+  p.ccy = ccy
+  persist(items)
+  return p
+}
+
 export function deletePortfolio(id) {
   persist(loadPortfolios().filter((x) => x.id !== id))
 }
