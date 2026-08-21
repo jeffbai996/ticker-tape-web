@@ -400,7 +400,7 @@ export function TuiRow({ symbol, data, earnDays, onRemove = () => {}, selecting,
                   content-sized. */}
               {q && (
                 <span class={`${up ? 'text-up' : 'text-down'} whitespace-nowrap @min-[545px]:min-w-(--col-change) shrink-0`}>
-                  <span data-col="change" class="inline-block whitespace-nowrap">
+                  <span data-col="change" class="inline-block whitespace-nowrap price-grouped">
                     {up ? '▲' : '▼'} <FlashMetric value={q.change} fmt={fmtAbsChange} kind="change" />{' '}
                     <span class="font-normal text-[11px] max-sm:text-[10px]">
                       ({fmtPct(q.pct)})

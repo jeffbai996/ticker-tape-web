@@ -395,6 +395,9 @@ const LABELS = {
   'USD/CAD': '美元/加元', 'AUD/USD': '澳元/美元', 'USD/CHF': '美元/瑞郎', 'USD/KRW': '美元/韩元',
   'USD/INR': '美元/卢比', 'USD/MXN': '美元/墨西哥比索', 'NZD/USD': '新西兰元/美元',
   NASDAQ: '纳指', DOW: '道指', RUT: '罗素', SOX: '费半', US10Y: '美债10Y', GOLD: '黄金',
+  SILVER: '白银', COPPER: '铜', WTI: '原油', BRENT: '布油', GAS: '天然气',
+  HSI: '恒指', N225: '日经', BTC: '比特币',
+  Account: '账户', Quarter: '季度', dropped: '已剔除', spot: '现价',
   // off-hours futures swap-ins on the status strip — 2-char abbreviations
   // (Jeff 2026-08-09: "just 标期 and 纳期")
   ES: '标期', NQ: '纳期', YM: '道期',
