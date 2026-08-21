@@ -12,7 +12,6 @@ import { getCached } from '../../lib/feed.js'
 import { memoPrompt, BRIEFING_SYSTEM } from '../../lib/briefing.js'
 import { AiReport } from '../../components/AiReport.jsx'
 import { Stat, ratingTone } from './shared.jsx'
-import { useRailModules } from './useRailModules.js'
 
 /** Snapshot whatever the page already knows about a symbol into a memo
  *  prompt. Fetches are cache-first, so this is cheap at click time. */
@@ -177,38 +176,22 @@ function News({ symbol }) {
   )
 }
 
-const REORDER_BTN = 'font-mono text-[9px] leading-none px-1 py-0.5 rounded border border-line-2 bg-surface-1/90 text-muted hover:text-ink disabled:opacity-30 disabled:pointer-events-none'
-
-/** Right rail: AI report, technicals, fundamentals, and the news feed, in
- *  task order by default — synthesize first, confirm what it leaned on,
- *  catch up on headlines last. Reorderable with plain buttons, no DnD
- *  dependency; the chosen order persists via useRailModules. */
 export function RailModules({ symbol }) {
-  const { order, move: onMove } = useRailModules()
-  const MODULES = {
-    report: (
+  // fixed task order: synthesize → confirm technicals → confirm valuation →
+  // catch up on news. The per-card reorder arrows are gone (Jeff 2026-08-21:
+  // "remove the reordering thing") — nobody reordered them, everybody hit
+  // them by accident reaching for the card.
+  return (
+    <div data-research-rail-modules class="flex flex-col gap-3 min-w-0 lg:sticky lg:top-3 lg:max-h-[calc(100vh-1.5rem)] lg:overflow-y-auto">
       <AiReport
         label="AI report"
         filename={`${symbol.toLowerCase()}-report.md`}
         buildPrompt={() => buildMemoPrompt(symbol)}
         archive={{ kind: 'memo', symbol, title: `${symbol} memo` }}
       />
-    ),
-    technicals: <Technicals symbol={symbol} />,
-    fundamentals: <Fundamentals symbol={symbol} />,
-    news: <News symbol={symbol} />,
-  }
-  return (
-    <div data-research-rail-modules class="flex flex-col gap-3 min-w-0 lg:sticky lg:top-3 lg:max-h-[calc(100vh-1.5rem)] lg:overflow-y-auto">
-      {order.map((id, i) => (
-        <div key={id} class="relative">
-          <div class="absolute right-1.5 top-1.5 z-10 flex flex-col gap-0.5">
-            <button onClick={() => onMove(id, -1)} disabled={i === 0} title={tl('move up')} class={REORDER_BTN}>▲</button>
-            <button onClick={() => onMove(id, 1)} disabled={i === order.length - 1} title={tl('move down')} class={REORDER_BTN}>▼</button>
-          </div>
-          {MODULES[id]}
-        </div>
-      ))}
+      <Technicals symbol={symbol} />
+      <Fundamentals symbol={symbol} />
+      <News symbol={symbol} />
     </div>
   )
 }
