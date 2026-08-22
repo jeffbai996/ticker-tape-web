@@ -532,6 +532,7 @@ const LABELS = {
   'No thesis-tagged wire signals in this window.': '当前窗口没有标记为论点相关的快讯。',
   'grounded in watcher conditions and wire evidence': '基于监测条件与快讯证据',
   'grounded in supplied conditions and market evidence': '基于所给条件与市场证据',
+  'Add holdings to see their news here.': '添加持仓后，这里会显示相关新闻。', loading: '加载中', 'news unavailable': '新闻暂不可用',
   'AI thesis read': 'AI 论点研判', GOOD: '良好', BREACHED: '已破坏',
   'NEEDS REVIEW': '待复核',
   // Watcher verdicts/severities/categories live in THESIS_TERMS, not here:
@@ -914,7 +915,7 @@ const LABELS = {
   'Everything here saves automatically and shows up on any device that opens this page.': '这里的内容会自动保存，任何设备打开此页面都能看到。',
   holdings: '项持仓', 'Add holding': '添加持仓',
   'Prices, totals and weights appear as soon as the first one lands.': '添加第一只后，价格、合计与权重会立即出现。',
-  Holdings: '持仓数', Currencies: '币种数',
+  Holdings: '持仓', Names: '持仓数', Currencies: '币种数',
   Sizing: '仓位测算', Target: '目标', shares: '股', buy: '买入', sell: '卖出', now: '现持',
   Sectors: '板块分布', Other: '其他',
   'Day movers': '当日异动', 'Weights': '权重分布', 'Currency mix': '币种构成',
