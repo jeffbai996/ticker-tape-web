@@ -296,15 +296,26 @@ describe('a flashing cell end to end', () => {
     expect(host.textContent).toBe('100.00')
     expect(pendingFlashCount()).toBe(0)
 
-    render(h(FlashMetric, { value: 100.05, fmt }), host)
-    expect(await waitFor(() => host.querySelector('.px-flash-up'))).toBe(true)
-    expect(host.querySelector('.px-flash-up').textContent).toBe('5')
-    expect(host.textContent).toBe('100.05')
-    expect(pendingFlashCount()).toBe(1)
+    // From here the clock is fake: the board sweep reads setTimeout and
+    // Date.now at call time, so the 1350ms expiry is driven, not awaited.
+    // Wall-clock waits flaked under the full parallel suite even at a 4s
+    // budget (2026-08-22) — a loaded jsdom can starve a 1.35s timer.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+    try {
+      render(h(FlashMetric, { value: 100.05, fmt }), host)
+      await vi.advanceTimersByTimeAsync(50)            // rAF polyfill → paint
+      expect(host.querySelector('.px-flash-up')).toBeTruthy()
+      expect(host.querySelector('.px-flash-up').textContent).toBe('5')
+      expect(host.textContent).toBe('100.05')
+      expect(pendingFlashCount()).toBe(1)
 
-    expect(await waitFor(() => !host.querySelector('.px-flash-up'))).toBe(true)
-    expect(host.textContent).toBe('100.05')
-    expect(pendingFlashCount()).toBe(0)
+      await vi.advanceTimersByTimeAsync(TICK_FLASH_MS + 20)
+      expect(host.querySelector('.px-flash-up')).toBeNull()
+      expect(host.textContent).toBe('100.05')
+      expect(pendingFlashCount()).toBe(0)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('leaves nothing pending in the sweep when a cell unmounts mid-flash', async () => {

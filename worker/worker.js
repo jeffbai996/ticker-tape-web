@@ -107,6 +107,14 @@ export default {
             return proxySec(`https://data.sec.gov/submissions/${name}`, 600);
         }
 
+        // Chinese-language market data for HK / mainland listings — Yahoo
+        // carries none (its search ignores CJK, its profiles are English).
+        // Three bounded GET routes against East Money, edge-cached; the
+        // upstream never sees a client header (Gordon, 2026-08-22).
+        if (path.startsWith('/cn/')) {
+            return handleCn(path, url);
+        }
+
         if (!allowedYahooGetPath(path)) {
             return jsonResp({ error: 'Unsupported market-data route' }, 404);
         }
@@ -285,4 +293,72 @@ function jsonResp(data, status = 200) {
         status,
         headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
     });
+}
+
+
+// ── /cn/* — East Money pass-through for Chinese names, news, profiles ──
+
+const CN_UA = 'Mozilla/5.0';
+const CN_TTL = { news: 600, profile: 86400, industry: 86400 };
+
+/** "0700.HK" → {market:'hk', code:'00700'}; "600036.SS" → {market:'sh', code}; "000630.SZ" → sz. */
+export function cnSecurity(symbol) {
+    const m = /^(\d{1,6})\.(HK|SS|SZ)$/i.exec(String(symbol || '').trim().toUpperCase());
+    if (!m) return null;
+    const [, digits, venue] = m;
+    if (venue === 'HK') return digits.length <= 5 ? { market: 'hk', code: digits.padStart(5, '0') } : null;
+    if (digits.length !== 6) return null;
+    return { market: venue === 'SS' ? 'sh' : 'sz', code: digits };
+}
+
+async function handleCn(path, url) {
+    const kind = path.slice('/cn/'.length);
+    if (!(kind in CN_TTL)) return jsonResp({ error: 'Unsupported cn route' }, 404);
+    if (url.search.length > 512) return jsonResp({ error: 'Query too large' }, 414);
+
+    let upstream;
+    if (kind === 'news') {
+        // search by the listing's Chinese name, the way the client knows it
+        const q = (url.searchParams.get('q') || '').trim();
+        const n = Math.min(20, Math.max(1, Number(url.searchParams.get('n')) || 8));
+        if (!q || q.length > 40) return jsonResp({ error: 'bad q' }, 400);
+        const param = JSON.stringify({
+            uid: '', keyword: q, type: ['cmsArticleWebOld'], client: 'web', clientType: 'web',
+            clientVersion: 'curr',
+            param: { cmsArticleWebOld: { searchScope: 'default', sort: 'default', pageIndex: 1, pageSize: n, preTag: '', postTag: '' } },
+        });
+        upstream = `https://search-api-web.eastmoney.com/search/jsonp?cb=&param=${encodeURIComponent(param)}`;
+    } else {
+        const sec = cnSecurity(url.searchParams.get('symbol'));
+        if (!sec) return jsonResp({ error: 'bad symbol' }, 400);
+        if (kind === 'industry') {
+            const secid = `${sec.market === 'hk' ? 116 : sec.market === 'sh' ? 1 : 0}.${sec.code}`;
+            upstream = `https://push2.eastmoney.com/api/qt/stock/get?secid=${secid}&fields=f57,f58,f127`;
+        } else if (sec.market === 'hk') {
+            upstream = `https://emweb.securities.eastmoney.com/PC_HKF10/CompanyProfile/PageAjax?code=${sec.code}`;
+        } else {
+            upstream = `https://emweb.securities.eastmoney.com/PC_HSF10/CompanySurvey/PageAjax?code=${sec.market.toUpperCase()}${sec.code}`;
+        }
+    }
+
+    const cache = caches.default;
+    const cacheKey = new Request(`https://cn-cache.invalid${path}${url.search}`);
+    const hit = await cache.match(cacheKey);
+    if (hit) return hit;
+
+    let resp;
+    try {
+        // the search endpoint is jsonp-shaped and 406s on an Accept: json
+        resp = await fetch(upstream, { headers: { 'User-Agent': CN_UA, 'Accept': '*/*', 'Referer': kind === 'news' ? 'https://so.eastmoney.com/' : 'https://www.eastmoney.com/' } });
+    } catch (err) {
+        return jsonResp({ error: `cn upstream: ${err.message}` }, 502);
+    }
+    if (!resp.ok) return jsonResp({ error: `cn upstream HTTP ${resp.status}` }, 502);
+    const text = await resp.text();
+    const out = new Response(text, {
+        status: 200,
+        headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': `public, max-age=${CN_TTL[kind]}`, ...CORS_HEADERS },
+    });
+    await cache.put(cacheKey, out.clone());
+    return out;
 }

@@ -23,7 +23,9 @@ import { FlashPrice } from '../components/Fig.jsx'
 import { fmtPrice, fmtPct, fmtPctPlain } from '../lib/format.js'
 import { tl, getLocale } from '../lib/i18n.js'
 import { loadZhTable, onZhTable, zhName } from '../lib/zhNames.js'
-import { PORTFOLIO_CCYS, cashAccountName, convertCcy, fmtCcy, fxSymbolsFor, holdingCurrency, ratesFromQuotes } from '../lib/fx.js'
+import { fetchCnIndustry, isCnListing } from '../lib/cnData.js'
+import { BookNews } from './portfolioNews.jsx'
+import { PORTFOLIO_CCYS, cashAccountName, convertCcy, fmtCcy, fmtCcyZh, fxSymbolsFor, holdingCurrency, ratesFromQuotes } from '../lib/fx.js'
 import {
   MAX_MY_HOLDINGS, createPortfolio, deletePortfolio, loadPortfolios,
   onPortfoliosChange, removeCash, removeHolding, renamePortfolio, setCash,
@@ -31,7 +33,10 @@ import {
 } from '../lib/myPortfolios.js'
 
 const pnlCls = (v) => (v == null ? 'text-muted' : v >= 0 ? 'text-up' : 'text-down')
-const signed = (v, ccy) => (v == null ? '—' : `${v >= 0 ? '+' : '-'}${fmtCcy(Math.abs(v), ccy)}`)
+// Summaries and cards read 万/亿 to a Chinese reader; the holdings table
+// keeps exact digits in either locale (Jeff 2026-08-22)
+const money = (v, ccy) => (getLocale() === 'zh' ? fmtCcyZh(v, ccy) : fmtCcy(v, ccy))
+const signed = (v, ccy) => (v == null ? '—' : `${v >= 0 ? '+' : '-'}${money(Math.abs(v), ccy)}`)
 
 // The provider names everything in English; a zh reader gets the Chinese
 // name where the table knows it, the English one where it doesn't.
@@ -475,7 +480,7 @@ function SummaryStrip({ portfolio, quotes, rates, ccys }) {
       <div class="flex flex-wrap items-stretch">
         <div class="px-4 py-3 flex-1 min-w-[240px]">
           <div class="font-anth text-[9px] uppercase tracking-[.14em] text-muted">{tl('Value')} ({portfolio.ccy})</div>
-          <div class="font-anth text-[30px] leading-tight font-semibold tracking-tight text-ink">{fmtCcy(total.value, portfolio.ccy)}</div>
+          <div class="font-anth text-[30px] leading-tight font-semibold tracking-tight text-ink">{money(total.value, portfolio.ccy)}</div>
           <div class="flex items-center gap-2 pt-1.5">
             {chip(total.dayPnl, total.dayPct)}
             {total.unrealPnl != null && (
@@ -487,10 +492,10 @@ function SummaryStrip({ portfolio, quotes, rates, ccys }) {
         <div class="px-4 py-3 flex-[1.6] min-w-[300px] border-l border-line max-sm:border-l-0 max-sm:border-t flex flex-col justify-center">
           <div class="grid grid-cols-[repeat(auto-fit,minmax(88px,1fr))] gap-x-4 gap-y-3">
             {[
-              [tl('Holdings'), String(priced.filter((r) => r.kind !== 'cash').length), null],
+              [tl('Names'), String(priced.filter((r) => r.kind !== 'cash').length), null],
               [tl('Breadth'), br.up + br.down + br.flat
                 ? `${br.up} ↑ / ${br.down} ↓` : '—', br.up === br.down ? null : br.up > br.down],
-              [tl('Cost basis'), un.costBasis != null ? fmtCcy(un.costBasis, portfolio.ccy) : '—', null],
+              [tl('Cost basis'), un.costBasis != null ? money(un.costBasis, portfolio.ccy) : '—', null],
               [tl('Open P&L'), un.pct != null ? fmtPct(un.pct) : '—', un.pnl == null ? null : un.pnl >= 0],
               // whole-book basis, matching the table's weight column exactly —
               // the concentration card renormalises across positions and would
@@ -532,6 +537,30 @@ function SummaryStrip({ portfolio, quotes, rates, ccys }) {
  *  hideable and the hidden set persists. All of it derives from the same
  *  valued rows the table shows — no extra fetch, and no card that can
  *  disagree with the total above it. */
+/** East Money industry labels for the book's HK / mainland names, fetched
+ *  once each (cached in cnData) with provider spacing, so the Sectors card
+ *  has buckets for a book the US large-cap table knows nothing about. */
+function useCnIndustries(symbols) {
+  const [map, setMap] = useState({})
+  const key = symbols.filter(isCnListing).sort().join(',')
+  useEffect(() => {
+    let live = true
+    const syms = key ? key.split(',') : []
+    ;(async () => {
+      for (const sym of syms) {
+        try {
+          const label = await fetchCnIndustry(sym)
+          if (!live) return
+          if (label) setMap((m) => (m[sym] === label ? m : { ...m, [sym]: label }))
+        } catch { /* a missing label is an Other row, not an error */ }
+        await new Promise((r) => setTimeout(r, 350))
+      }
+    })()
+    return () => { live = false }
+  }, [key])
+  return map
+}
+
 function BookAnalysis({ portfolio, quotes, rates }) {
   const [hidden, setHidden] = useState(hiddenCards)
   const [editing, setEditing] = useState(false)
@@ -539,6 +568,7 @@ function BookAnalysis({ portfolio, quotes, rates }) {
   const { rows } = portfolioValues(portfolio.holdings, quotes, rates, portfolio.ccy, portfolio.cash)
   const priced = rows.filter((r) => r.valueDisplay != null)
   const ccy = portfolio.ccy
+  const industries = useCnIndustries(priced.map((r) => r.symbol))
   if (priced.length < 2) return null
 
   const card = (id, title, body) => {
@@ -636,7 +666,7 @@ function BookAnalysis({ portfolio, quotes, rates }) {
     )),
     card('unrealized', tl('Open P&L'), un.covered ? (
       <div class="flex flex-col gap-1">
-        {stat(tl('Cost basis'), fmtCcy(un.costBasis, ccy))}
+        {stat(tl('Cost basis'), money(un.costBasis, ccy))}
         {stat(tl('Open'), `${signed(un.pnl, ccy)}${un.pct != null ? ` (${fmtPct(un.pct)})` : ''}`, pnlCls(un.pnl))}
         {un.best && stat(tl('Best'), `${un.best.symbol} ${fmtPct(un.best.unrealPct)}`, 'text-up')}
         {un.worst && stat(tl('Worst'), `${un.worst.symbol} ${fmtPct(un.worst.unrealPct)}`, 'text-down')}
@@ -648,7 +678,12 @@ function BookAnalysis({ portfolio, quotes, rates }) {
       </div>
     ) : <span class="font-anth text-[10px] text-muted">{tl('Add an average cost to see open P&L.')}</span>),
     card('sectors', tl('Sectors'), (() => {
-      const { entries, total: totalV, unmappedShare } = sectorSplit(priced, BUCKETS)
+      const cnBuckets = Object.entries(industries).reduce((acc, [sym, label]) => {
+        const b = acc.find((x) => x.name === label)
+        if (b) b.symbols.push(sym); else acc.push({ name: label, symbols: [sym] })
+        return acc
+      }, [])
+      const { entries, total: totalV, unmappedShare } = sectorSplit(priced, [...BUCKETS, ...cnBuckets])
       // the buckets only know US large-caps: a book that mostly files under
       // Other learns nothing from this card, so it steps aside for Markets
       if (unmappedShare > 0.7) return null
@@ -703,8 +738,8 @@ function BookAnalysis({ portfolio, quotes, rates }) {
         <div class="flex h-2.5 w-full overflow-hidden rounded-sm bg-surface-3">
           <span class="bg-accent/60" style={{ width: `${cs.total > 0 ? (cs.invested / cs.total) * 100 : 0}%` }} />
         </div>
-        {stat(tl('Invested'), fmtCcy(cs.invested, ccy))}
-        {stat(tl('Cash'), fmtCcy(cs.cash, ccy), cs.cash < 0 ? 'text-down' : 'text-ink')}
+        {stat(tl('Invested'), money(cs.invested, ccy))}
+        {stat(tl('Cash'), money(cs.cash, ccy), cs.cash < 0 ? 'text-down' : 'text-ink')}
         {stat(tl('Cash weight'), cs.cashPct != null ? fmtPctPlain(cs.cashPct) : '—')}
       </div>
     )),
@@ -863,7 +898,10 @@ function SyncControls() {
   )
 }
 
-export function MyPortfolios() {
+export const MyHoldings = (props) => <MyPortfolios {...props} view="holdings" />
+export const MyNews = (props) => <MyPortfolios {...props} view="news" />
+
+export function MyPortfolios({ view = 'overview' } = {}) {
   const [items, setItems] = useState(loadPortfolios)
   useEffect(() => onPortfoliosChange((next) => setItems([...next])), [])
   const [selId, setSelId] = useState(() => {
@@ -949,10 +987,11 @@ export function MyPortfolios() {
 
       {selected ? (
         <>
-          <SummaryStrip portfolio={selected} quotes={quotes} rates={rates} ccys={ccys} />
-          <BookAnalysis portfolio={selected} quotes={quotes} rates={rates} />
-          <Holdings portfolio={selected} quotes={quotes} rates={rates} />
-          <BookTools portfolio={selected} quotes={quotes} rates={rates} />
+          {view !== 'news' && <SummaryStrip portfolio={selected} quotes={quotes} rates={rates} ccys={ccys} />}
+          {view === 'overview' && <BookAnalysis portfolio={selected} quotes={quotes} rates={rates} />}
+          {view === 'holdings' && <Holdings portfolio={selected} quotes={quotes} rates={rates} />}
+          {view === 'holdings' && <BookTools portfolio={selected} quotes={quotes} rates={rates} />}
+          {view === 'news' && <BookNews portfolio={selected} quotes={quotes} />}
         </>
       ) : (
         <div class="rounded-xl border border-line bg-surface-1 px-4 py-6 text-center font-anth text-[11px] text-muted">

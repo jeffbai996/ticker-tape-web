@@ -5,7 +5,7 @@
  *  not six.
  */
 import { describe, expect, it } from 'vitest'
-import { cashAccountName, ccyMark,
+import { cashAccountName, ccyMark, fmtCcyZh,
   PORTFOLIO_CCYS, convertCcy, fxPairSymbol, fxSymbolsFor, holdingCurrency,
   ratesFromQuotes, fmtCcy,
 } from '../../src/lib/fx.js'
@@ -152,5 +152,19 @@ describe('cashAccountName — a cash row says which money it is', () => {
   it('falls back rather than render undefined', () => {
     expect(cashAccountName('GBP')).toBe('Cash')
     expect(cashAccountName()).toBe('Cash')
+  })
+})
+
+describe('fmtCcyZh — 万/亿 grouping for a Chinese reader', () => {
+  it('groups by 万 and 亿 with two decimals, plain below 1万', () => {
+    expect(fmtCcyZh(54128742, 'CNY')).toBe('¥5,412.87万')
+    expect(fmtCcyZh(123456789, 'CNY')).toBe('¥1.23亿')
+    expect(fmtCcyZh(9876, 'HKD')).toBe('HK$9,876')
+    expect(fmtCcyZh(1788003, 'CNY')).toBe('¥178.80万')
+  })
+
+  it('keeps the sign in front of the mark and survives nothing', () => {
+    expect(fmtCcyZh(-2500000, 'CNY')).toBe('-¥250.00万')
+    expect(fmtCcyZh(null, 'CNY')).toBe('—')
   })
 })

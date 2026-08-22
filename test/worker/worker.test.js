@@ -1,3 +1,4 @@
+import { cnSecurity } from '../../worker/worker.js'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import worker, { allowedYahooGetPath } from '../../worker/worker.js'
 
@@ -51,5 +52,20 @@ describe('public Worker route boundaries', () => {
     }), {})
     expect(response.status).toBe(413)
     expect(upstream).not.toHaveBeenCalled()
+  })
+})
+
+describe('cnSecurity — the East Money id for a Yahoo-shaped HK / mainland symbol', () => {
+  it('maps each venue and zero-pads Hong Kong to five digits', () => {
+    expect(cnSecurity('0700.HK')).toEqual({ market: 'hk', code: '00700' })
+    expect(cnSecurity('600036.SS')).toEqual({ market: 'sh', code: '600036' })
+    expect(cnSecurity('000630.sz')).toEqual({ market: 'sz', code: '000630' })
+  })
+
+  it('refuses anything that is not one of the three venues', () => {
+    expect(cnSecurity('AAPL')).toBeNull()
+    expect(cnSecurity('RY.TO')).toBeNull()
+    expect(cnSecurity('12345678.SS')).toBeNull()
+    expect(cnSecurity('')).toBeNull()
   })
 })

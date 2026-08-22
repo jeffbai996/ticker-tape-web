@@ -112,3 +112,19 @@ export function fmtCcy(v, ccy, digits = 0) {
     minimumFractionDigits: digits, maximumFractionDigits: digits,
   })}`
 }
+
+/** The Chinese reading of a big amount: 同花顺 / 东方财富 / 富途 all print
+ *  summaries as 5,412.87万 and 1.23亿 rather than eight-digit yuan. Exact
+ *  ledgers (a holdings table) keep full digits; summaries and cards use
+ *  this. Below 1万 it is the plain figure. */
+export function fmtCcyZh(v, ccy) {
+  if (v == null || !Number.isFinite(v)) return '—'
+  const mark = CCY_MARK[ccy] || `${ccy} `
+  const abs = Math.abs(v)
+  const sign = v < 0 ? '-' : ''
+  const grouped = (n, unit) => `${sign}${mark}${n.toLocaleString('en-US', {
+    minimumFractionDigits: 2, maximumFractionDigits: 2 })}${unit}`
+  if (abs >= 1e8) return grouped(abs / 1e8, '亿')
+  if (abs >= 1e4) return grouped(abs / 1e4, '万')
+  return `${sign}${mark}${abs.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
+}
