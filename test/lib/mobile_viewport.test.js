@@ -20,12 +20,12 @@ describe('mobile viewport zoom guard', () => {
     expect(css).toMatch(/#app\s*\{[\s\S]*width:\s*100%;[\s\S]*max-width:\s*100%;[\s\S]*min-width:\s*0;[\s\S]*overflow:\s*hidden;/)
   })
 
-  it('keeps form controls above the iOS focus-zoom threshold — at focus, not always', () => {
-    // iOS decides the zoom when a control TAKES focus, so the floor only
-    // needs to hold then. The always-on form of this rule blew every input
-    // and select up to 16px on the phone (2026-08-22); the guard now pins the
-    // focus-scoped rule and refuses the always-on one.
-    expect(css).toMatch(/@media \(max-width: 640px\)[\s\S]*#app :is\(input, textarea, select\):focus\s*\{[\s\S]*font-size:\s*16px !important;/)
-    expect(css).not.toMatch(/#app :is\(input, textarea, select\)\s*\{/)
+  it('never inflates a control on focus — maximum-scale=1 already stops the iOS zoom', () => {
+    // The focus-time 16px floor made the tapped control visibly grow (the
+    // SYM field, 2026-08-22). The viewport meta pins maximum-scale=1, which
+    // is what actually stops iOS magnifying on focus, so no font floor —
+    // focused or always-on — is allowed back in.
+    expect(html).toContain('maximum-scale=1')
+    expect(css).not.toMatch(/#app :is\(input, textarea, select\)(:focus)?\s*\{/)
   })
 })

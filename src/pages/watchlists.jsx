@@ -9,6 +9,7 @@ import { useEarningsDays } from './dashboard.jsx'
 import { fmtPct } from '../lib/format.js'
 import { pulseStats } from '../lib/pulse.js'
 import { t as tt, tl } from '../lib/i18n.js'
+import { isTapeList, toggleTapeList } from '../lib/tapeLists.js'
 import { onSyncStatus } from '../lib/cloudsave.js'
 import { pinDashboardLanding, pinnedDashboardLanding } from '../lib/dashboardLanding.js'
 import { wireServiceUrl } from '../lib/wire.js'
@@ -127,6 +128,11 @@ function WatchlistCard({ item, quotes, earnDays, allLists, primary = false }) {
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(item.name)
   const [managing, setManaging] = useState(false)
+  const [, tapeBump] = useState(0)
+  const onTape = isTapeList(item.id)
+  const ctl = 'inline-flex h-8 items-center rounded-md border px-3 text-[11px] whitespace-nowrap transition-colors'
+  const ctlOff = `${ctl} border-line-2 bg-surface-2 text-ink-2 hover:border-line hover:text-ink`
+  const ctlOn = `${ctl} border-accent/50 bg-accent/10 text-accent`
   const [exportState, setExportState] = useState('idle')
   const [notice, setNotice] = useState('')
   const others = allLists.filter((l) => l.id !== item.id)
@@ -247,23 +253,29 @@ function WatchlistCard({ item, quotes, earnDays, allLists, primary = false }) {
       <SymbolPreview symbols={item.symbols} quotes={quotes} managing={managing}
         onSend={send} onRemove={dropFrom} />
 
-      <div class="flex items-center gap-3 max-sm:gap-2 border-t border-line pt-2.5 font-anth text-[10px] max-sm:text-[9.5px] font-semibold overflow-x-auto no-scrollbar whitespace-nowrap">
+      {/* every control is a bordered button of one height — the bare text
+          row read as labels, not things to tap (Jeff 2026-08-22) */}
+      <div class="flex items-center gap-2 border-t border-line pt-2.5 font-anth text-[11px] font-semibold overflow-x-auto no-scrollbar whitespace-nowrap">
         <a href={href} data-watchlist-open
-          class="inline-flex min-h-9 max-sm:min-h-7 items-center rounded-md border border-accent/60 bg-accent-soft px-2.5 max-sm:px-2 text-[11px] max-sm:text-[10px] text-accent whitespace-nowrap hover:bg-accent hover:text-black hover:no-underline transition-colors">
+          class={`${ctl} border-accent/60 bg-accent-soft text-accent hover:bg-accent hover:text-black hover:no-underline`}>
           <span class="max-sm:hidden">{tl('Open dashboard →')}</span>
           <span class="sm:hidden">{tl('Open →')}</span>
         </a>
-        <button onClick={() => setManaging((v) => !v)}
-          class={managing ? 'text-accent-2' : 'text-muted hover:text-ink'}>
+        <button onClick={() => setManaging((v) => !v)} class={managing ? ctlOn : ctlOff}>
           {managing ? tl('done') : `⇄ ${tl('manage')}`}
         </button>
         <button onClick={() => { pinDashboardLanding(primary ? null : item.id); pinBump((n) => n + 1) }}
-          title={tl('opens first on a fresh load')}
-          class={isDefault ? 'text-accent-2' : 'text-muted hover:text-ink'}>
+          title={tl('opens first on a fresh load')} class={isDefault ? ctlOn : ctlOff}>
           <span class="max-sm:hidden">{isDefault ? `★ ${tl('default')}` : `☆ ${tl('set default')}`}</span>
           <span class="sm:hidden" aria-hidden="true">{isDefault ? '★' : '☆'}</span>
         </button>
-        <button onClick={exportSymbols} disabled={exportState === 'syncing'} class="text-muted hover:text-ink disabled:opacity-50">
+        {!primary && (
+          <button onClick={() => { toggleTapeList(item.id); tapeBump((n) => n + 1) }}
+            role="switch" aria-checked={onTape} class={onTape ? ctlOn : ctlOff}>
+            {onTape ? '▶ ' : '▷ '}{tl('tape')}
+          </button>
+        )}
+        <button onClick={exportSymbols} disabled={exportState === 'syncing'} class={`${ctlOff} disabled:opacity-50`}>
           {exportState === 'syncing' ? '…'
             : exportState === 'done' ? tl('exported ✓')
             : exportState === 'error' ? tl('export failed')
@@ -271,10 +283,10 @@ function WatchlistCard({ item, quotes, earnDays, allLists, primary = false }) {
         </button>
         {!primary && (
           <>
-            <button onClick={() => { setName(item.name); setEditing((value) => !value) }} class="ml-auto text-muted hover:text-ink">{tl('rename')}</button>
+            <button onClick={() => { setName(item.name); setEditing((value) => !value) }} class={`ml-auto ${ctlOff}`}>{tl('rename')}</button>
             <button onClick={() => {
               if (confirm(tt('watchlists.delete_confirm', { name: item.name }))) removeWatchlist(item.id)
-            }} class="text-muted hover:text-down">{tl('delete')}</button>
+            }} class={`${ctlOff} hover:border-down/50 hover:text-down`}>{tl('delete')}</button>
           </>
         )}
       </div>
