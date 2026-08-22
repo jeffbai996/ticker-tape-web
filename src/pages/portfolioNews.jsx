@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'preact/hooks'
 import { fetchNews } from '../lib/history.js'
-import { fetchCnNews, isCnListing } from '../lib/cnData.js'
+import { fetchCnNews } from '../lib/cnData.js'
 import { loadZhTable, zhName } from '../lib/zhNames.js'
 import { getLocale, tl } from '../lib/i18n.js'
 
@@ -15,7 +15,7 @@ const TTL_MS = 10 * 60 * 1000
 const cache = new Map()                 // key -> { ts, items }
 
 async function newsFor(symbol) {
-  const zh = getLocale() === 'zh' && isCnListing(symbol)
+  const zh = getLocale() === 'zh'
   let name = null
   if (zh) { await loadZhTable(); name = zhName(symbol) }
   const key = zh && name ? `cn:${name}` : `yf:${symbol}`
