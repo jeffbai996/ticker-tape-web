@@ -281,3 +281,49 @@ describe('daily value marks (snapshots)', () => {
     expect(previousSnapshot(p, 'HKD', '2026-08-22')).toBeNull()
   })
 })
+
+import { addTxn, importTxns, removeTxn } from '../../src/lib/myPortfolios.js'
+
+describe('trades (the ledger) drive holdings', () => {
+  it('adding a trade derives the holding; selling to zero removes it', () => {
+    const p = mkBook('Gordon', 'CNY')
+    expect(addTxn(p.id, { d: '2026-08-20', sym: 'HK.00700'.replace('HK.', ''), side: 'buy', qty: 100, px: 450, fee: 10, ccy: 'HKD' })).toMatchObject({ sym: '0700.HK', side: 'buy', qty: 100 })
+    let book = loadBooks()[0]
+    expect(book.holdings).toEqual([{ symbol: '0700.HK', shares: 100, cost: 450.1 }])
+    addTxn(p.id, { d: '2026-08-21', sym: '0700.HK', side: 'sell', qty: 100, px: 460 })
+    book = loadBooks()[0]
+    expect(book.holdings).toEqual([])
+    expect(book.txns).toHaveLength(2)
+  })
+
+  it('leaves hand-entered symbols alone and removing a trade re-derives', () => {
+    const p = mkBook('x', 'USD')
+    replaceBooks([{ ...loadBooks()[0], holdings: [{ symbol: 'AAPL', shares: 5, cost: 100 }] }])
+    const t1 = addTxn(p.id, { d: '2026-08-20', sym: 'MSFT', side: 'buy', qty: 10, px: 400 })
+    expect(loadBooks()[0].holdings.map((h) => h.symbol)).toEqual(['AAPL', 'MSFT'])
+    removeTxn(p.id, t1.id)
+    expect(loadBooks()[0].holdings.map((h) => h.symbol)).toEqual(['AAPL'])
+  })
+
+  it('imports a parsed export, counting what it refused', () => {
+    const p = mkBook('y', 'HKD')
+    const out = importTxns(p.id, [
+      { d: '2026-08-20', sym: '0700.HK', side: 'buy', qty: 100, px: 450, fee: 0 },
+      { d: '2026-08-20', sym: '0700.HK', side: 'buy', qty: -1, px: 450, fee: 0 },
+      { d: 'bad', sym: '2628.HK', side: 'buy', qty: 1, px: 1 },
+    ])
+    expect(out).toEqual({ added: 1, rejected: 2 })
+    expect(loadBooks()[0].holdings).toEqual([{ symbol: '0700.HK', shares: 100, cost: 450 }])
+  })
+
+  it('sanitizes trades on load — bad rows and duplicate ids dropped', () => {
+    replaceBooks([{ id: 'p1', name: 'b', ccy: 'CNY', holdings: [], cash: [], txns: [
+      { id: 'a', d: '2026-08-20', sym: '0700.HK', side: 'buy', qty: 1, px: 1 },
+      { id: 'a', d: '2026-08-21', sym: '0700.HK', side: 'buy', qty: 1, px: 1 },
+      { id: 'b', d: '2026-08-21', sym: '0700.HK', side: 'hold', qty: 1, px: 1 },
+      { id: 'c', d: '2026-08-21', sym: '0700.HK', side: 'buy', qty: 1, px: 1, fee: -3, ccy: 'XXX' }] }])
+    expect(loadBooks()[0].txns).toEqual([
+      { id: 'a', d: '2026-08-20', sym: '0700.HK', side: 'buy', qty: 1, px: 1 },
+      { id: 'c', d: '2026-08-21', sym: '0700.HK', side: 'buy', qty: 1, px: 1 }])
+  })
+})
