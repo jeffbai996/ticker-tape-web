@@ -562,14 +562,20 @@ function useCnIndustries(symbols) {
   return map
 }
 
-function BookAnalysis({ portfolio, quotes, rates }) {
+// The three cards a reader looks at first sit above the table; the rest
+// follow it (Jeff 2026-08-22: "put the 3 most important cards up top, then
+// the table, then the rest")
+const TOP_CARDS = ['movers', 'contribution', 'weights']
+
+function BookAnalysis({ portfolio, quotes, rates, slot = null }) {
   const [hidden, setHidden] = useState(hiddenCards)
   const [editing, setEditing] = useState(false)
   useEffect(() => onCardsChange((next) => setHidden([...next])), [])
   const { rows } = portfolioValues(portfolio.holdings, quotes, rates, portfolio.ccy, portfolio.cash)
   const priced = rows.filter((r) => r.valueDisplay != null)
   const ccy = portfolio.ccy
-  const industries = useCnIndustries(priced.map((r) => r.symbol))
+  // only the slot that renders the Sectors card pays for industry lookups
+  const industries = useCnIndustries(slot === 'top' ? [] : priced.map((r) => r.symbol))
   if (priced.length < 2) return null
 
   const card = (id, title, body) => {
@@ -745,6 +751,13 @@ function BookAnalysis({ portfolio, quotes, rates }) {
       </div>
     )),
   ].filter(Boolean)
+  const shown = slot === 'top' ? cards.filter((c) => TOP_CARDS.includes(c.key))
+    : slot === 'rest' ? cards.filter((c) => !TOP_CARDS.includes(c.key)) : cards
+  if (slot === 'top') {
+    return shown.length > 0
+      ? <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{shown}</div>
+      : null
+  }
 
   return (
     <div class="flex flex-col gap-2">
@@ -781,8 +794,8 @@ function BookAnalysis({ portfolio, quotes, rates }) {
           </button>
         </div>
       )}
-      {cards.length > 0 && (
-        <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{cards}</div>
+      {shown.length > 0 && (
+        <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{shown}</div>
       )}
     </div>
   )
@@ -988,10 +1001,13 @@ export function MyPortfolios({ view = 'overview' } = {}) {
 
       {selected ? (
         <>
-          {view !== 'news' && <SummaryStrip portfolio={selected} quotes={quotes} rates={rates} ccys={ccys} />}
-          {view === 'overview' && <BookAnalysis portfolio={selected} quotes={quotes} rates={rates} />}
-          {view === 'holdings' && <Holdings portfolio={selected} quotes={quotes} rates={rates} />}
-          {view === 'holdings' && <BookTools portfolio={selected} quotes={quotes} rates={rates} />}
+          {/* overview = everything, as before; holdings = the table alone at
+              full width; news = the per-ticker feed (Jeff 2026-08-22) */}
+          {view === 'overview' && <SummaryStrip portfolio={selected} quotes={quotes} rates={rates} ccys={ccys} />}
+          {view === 'overview' && <BookAnalysis portfolio={selected} quotes={quotes} rates={rates} slot="top" />}
+          {view !== 'news' && <Holdings portfolio={selected} quotes={quotes} rates={rates} />}
+          {view !== 'news' && <BookTools portfolio={selected} quotes={quotes} rates={rates} />}
+          {view === 'overview' && <BookAnalysis portfolio={selected} quotes={quotes} rates={rates} slot="rest" />}
           {view === 'news' && <BookNews portfolio={selected} quotes={quotes} />}
         </>
       ) : (
