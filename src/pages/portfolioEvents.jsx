@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'preact/hooks'
-import { fetchSymbolEvents } from '../lib/cnEvents.js'
+import { fetchSymbolEventsCached as fetchSymbolEvents } from '../lib/cnEvents.js'
 import { fmtCcy } from '../lib/fx.js'
 import { getLocale, tl } from '../lib/i18n.js'
 import { loadZhTable, onZhTable, zhName } from '../lib/zhNames.js'

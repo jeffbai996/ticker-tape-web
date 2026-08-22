@@ -765,18 +765,10 @@ button:hover .burger path:nth-child(2) { transform: scaleX(.55); }
 }
 
 /* ── hand-built book surfaces: quiet flair, one accent (2026-08-22 polish) ── */
-.book-hero {
-  position: relative;
-  background:
-    radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--color-accent) 9%, transparent), transparent 55%),
-    var(--color-surface-1);
-}
-.book-hero::after {
-  /* a hairline of amber along the top edge, the way the board's live row is marked */
-  content: ''; position: absolute; inset: 0 auto auto 0; height: 1px; width: 100%;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--color-accent) 55%, transparent), transparent 70%);
-  pointer-events: none;
-}
+/* .book-hero: no gradient, no glow — a repainting hero with a gradient
+   flickered on the phone (Jeff 2026-08-22), the same class of shimmer the
+   board fought before. Keep it dark and flat. */
+.book-hero { background: var(--color-surface-1); }
 .book-card { transition: border-color .18s ease, transform .18s ease; }
 .book-card:hover { border-color: color-mix(in srgb, var(--color-accent) 28%, var(--color-line)); }
 .book-eyebrow { display: flex; align-items: center; gap: 6px; }

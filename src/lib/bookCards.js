@@ -15,6 +15,9 @@ const KEY = 'my_portfolio_cards_v1'
 
 export const BOOK_CARDS = [
   { id: 'movers', label: 'Day movers' },
+  { id: 'indices', label: 'vs indices' },
+  { id: 'fx', label: 'FX impact' },
+  { id: 'upcoming', label: 'Upcoming' },
   { id: 'contribution', label: 'Day contribution' },
   { id: 'breadth', label: 'Breadth' },
   { id: 'weights', label: 'Weights' },
