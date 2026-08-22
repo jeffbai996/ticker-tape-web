@@ -1,8 +1,11 @@
 /** Chinese company-name search: Yahoo's search returns nothing for a
  *  Chinese query (verified 2026-08-22), so a zh reader adding a holding by
- *  name needs a local table consulted before the provider. */
-import { describe, expect, it } from 'vitest'
-import { hasCjk, zhAliasHits, zhKnownSymbols, zhName } from '../../src/lib/zhNames.js'
+ *  name needs a local table consulted before the provider. The table is
+ *  generated from the exchanges (scripts/gen_zh_names.py) and lazy-loaded. */
+import { beforeAll, describe, expect, it } from 'vitest'
+import { hasCjk, loadZhTable, zhAliasHits, zhKnownSymbols, zhName } from '../../src/lib/zhNames.js'
+
+beforeAll(async () => { await loadZhTable() })
 
 describe('zhAliasHits', () => {
   it('finds a listing by its simplified name, prefix first', () => {
@@ -24,6 +27,15 @@ describe('zhAliasHits', () => {
   it('still hits when the query merely contains the name', () => {
     expect(zhAliasHits('买点比亚迪').map((h) => h.symbol)).toContain('002594.SZ')
     expect(zhAliasHits('比亚迪').map((h) => h.symbol)).toEqual(expect.arrayContaining(['1211.HK', '002594.SZ']))
+  })
+
+  it('answers nothing before the chunk lands, never a wrong name', async () => {
+    // a fresh module instance: nothing loaded yet
+    const fresh = await import('../../src/lib/zhNames.js?fresh=' + Math.random())
+    expect(fresh.zhName('0700.HK')).toBeNull()
+    expect(fresh.zhAliasHits('腾讯')).toEqual([])
+    await fresh.loadZhTable()
+    expect(fresh.zhName('0700.HK')).toBe('腾讯控股')
   })
 
   it('stays out of the way for Latin queries and single characters', () => {
@@ -51,6 +63,6 @@ describe('zhName', () => {
     // exactly this reader, so losing one of these is a regression
     const book = ['0700.HK', '9988.HK', '0005.HK', '0941.HK', '1299.HK', '2318.HK', '0939.HK', '1398.HK', '3988.HK', '0883.HK', '600519.SS', '601318.SS', '600036.SS', '601398.SS', '601288.SS', '600900.SS', '000001.SZ', '000858.SZ', '002594.SZ', '300750.SZ']
     for (const s of book) expect(zhName(s), s).not.toBeNull()
-    expect(zhKnownSymbols().length).toBeGreaterThan(140)
+    expect(zhKnownSymbols().length).toBeGreaterThan(8000)   // every listing, generated
   })
 })

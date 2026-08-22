@@ -22,7 +22,7 @@ import { BUCKETS } from '../lib/symbols.js'
 import { FlashPrice } from '../components/Fig.jsx'
 import { fmtPrice, fmtPct, fmtPctPlain } from '../lib/format.js'
 import { tl, getLocale } from '../lib/i18n.js'
-import { zhName } from '../lib/zhNames.js'
+import { loadZhTable, onZhTable, zhName } from '../lib/zhNames.js'
 import { PORTFOLIO_CCYS, cashAccountName, convertCcy, fmtCcy, fxSymbolsFor, holdingCurrency, ratesFromQuotes } from '../lib/fx.js'
 import {
   MAX_MY_HOLDINGS, createPortfolio, deletePortfolio, loadPortfolios,
@@ -37,6 +37,16 @@ const signed = (v, ccy) => (v == null ? '—' : `${v >= 0 ? '+' : '-'}${fmtCcy(M
 // name where the table knows it, the English one where it doesn't.
 function holdingName(symbol, quotes) {
   return (getLocale() === 'zh' && zhName(symbol)) || quotes[symbol]?.name || ''
+}
+
+/** zh locale: pull the name chunk and re-render once it lands. */
+function useZhNames() {
+  const [, tick] = useState(0)
+  useEffect(() => {
+    if (getLocale() !== 'zh') return undefined
+    loadZhTable()
+    return onZhTable(() => tick((t) => t + 1))
+  }, [])
 }
 
 function CcySelect({ value, onChange, id, options = PORTFOLIO_CCYS }) {
@@ -322,6 +332,7 @@ function AddCashForm({ portfolio }) {
 }
 
 function Holdings({ portfolio, quotes, rates }) {
+  useZhNames()
   const all = portfolioValues(portfolio.holdings, quotes, rates, portfolio.ccy, portfolio.cash)
   const { missing, total } = all
   const rows = all.rows.filter((r) => r.kind !== 'cash')
