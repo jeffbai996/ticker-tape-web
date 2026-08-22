@@ -18,6 +18,7 @@ import { tl, getLocale } from '../lib/i18n.js'
 import { loadZhTable, onZhTable, zhName } from '../lib/zhNames.js'
 import { fetchCnIndustry, isCnListing } from '../lib/cnData.js'
 import { daysUntil } from '../lib/markets.js'
+import { venueFlag } from '../lib/venueFlag.js'
 import { VENUE_LABEL, fxDayPct, fxImpact, limitFlag, marketSession, venueDayBreakdown } from '../lib/cnMarkets.js'
 import { fetchSymbolEventsCached } from '../lib/cnEvents.js'
 import { BookNews } from './portfolioNews.jsx'
@@ -478,7 +479,9 @@ function Donut({ slices, centre, centreSub }) {
   )
 }
 const RING = ['#f59e0b', '#60a5fa', '#f472b6', '#a3e635', '#c084fc', '#34d399', '#6b7280']
-const CCY_RING = { USD: '#f59e0b', CAD: '#34d399', HKD: '#f85149', CNY: '#60a5fa' }
+// CNY is the red one; HKD gets the amber so the two never read as a pair
+const CCY_RING = { CNY: '#f85149', HKD: '#f59e0b', USD: '#34d399', CAD: '#60a5fa' }
+const ccyFlag = (c) => venueFlag({ symbol: { HKD: 'X.HK', CNY: 'X.SS', USD: 'X', CAD: 'X.TO', GBP: 'X.L', JPY: 'X.T', SGD: 'X.SI', AUD: 'X.AX', EUR: 'X.DE' }[c] || '' }) || null
 
 /** The book's marks as a dated line with the first/last values labelled —
  *  the 净值 page's chart at card size, book only. */
@@ -583,7 +586,7 @@ function SummaryStrip({ portfolio, quotes, rates, ccys, fxLive, bench }) {
           {/* the book's own money facts live beside the headline; market facts
               live on the right (Jeff 2026-08-22: the space beside the number
               and the strip under it were empty) */}
-          <div class="grid grid-cols-3 gap-x-3">
+          <div class="flex flex-wrap gap-x-6 gap-y-2">
             {vfact(tl('Cost basis'), un.costBasis != null ? money(un.costBasis, portfolio.ccy) : '—', null)}
             {vfact(tl('Open P&L'), total.unrealPnl != null ? signed(total.unrealPnl, portfolio.ccy) : '—', total.unrealPnl == null ? null : total.unrealPnl >= 0,
               un.pct != null ? fmtPct(un.pct) : null)}
@@ -982,6 +985,8 @@ function BookAnalysis({ portfolio, quotes, rates, slot = null, fxLive = {}, benc
         </div>
       )
     })()),
+    // each currency quoted in itself (a CNY line in HK$ is a conversion, not a
+    // holding), with the book's own currency summing it up underneath
     card('currency', tl('Currency mix'), (() => {
       const entries = [...mix.entries()].sort((a, b) => b[1] - a[1])
       const color = (c, i) => CCY_RING[c] || RING[(i + 4) % RING.length]
@@ -989,12 +994,23 @@ function BookAnalysis({ portfolio, quotes, rates, slot = null, fxLive = {}, benc
         <div class="flex items-center gap-3">
           <Donut slices={entries.map(([c, v], i) => ({ label: c, value: v, color: color(c, i) }))} centre={String(entries.length)} centreSub={tl('ccy')} />
           <div class="flex min-w-0 flex-1 flex-col gap-0.5">
-            {entries.map(([c, v], i) => (
-              <div key={c} class="flex items-baseline justify-between gap-2 font-mono text-[10.5px]">
-                <span class="font-anth text-ink-2"><span class="mr-1.5 inline-block h-2 w-2 rounded-sm align-middle" style={{ background: color(c, i) }} />{c}</span>
-                <span class="text-ink">{fmtPctPlain((v / mixTotal) * 100)}<span class="text-muted text-[9.5px]"> · {glance(v, ccy)}</span></span>
-              </div>
-            ))}
+            {entries.map(([c, v], i) => {
+              const native = convertCcy(v, ccy, c, rates)
+              return (
+                <div key={c} class="flex items-baseline justify-between gap-2 font-mono text-[10.5px]">
+                  <span class="flex items-center gap-1.5 font-anth text-ink-2">
+                    <span class="inline-block h-2 w-2 rounded-sm" style={{ background: color(c, i) }} />
+                    {ccyFlag(c) && <img src={ccyFlag(c)} alt="" class="h-[9px] w-3 rounded-[1px] object-cover" />}
+                    {c}
+                  </span>
+                  <span class="text-ink whitespace-nowrap">{native != null ? fmtCcy(native, c, 0) : glance(v, ccy)}<span class="text-muted text-[9.5px]"> · {fmtPctPlain((v / mixTotal) * 100)}</span></span>
+                </div>
+              )
+            })}
+            <div class="mt-0.5 flex items-baseline justify-between gap-2 border-t border-line-2 pt-1 font-mono text-[10.5px]">
+              <span class="font-anth text-muted">{tl('Total')} ({ccy})</span>
+              <span class="font-semibold text-ink whitespace-nowrap">{fmtCcy(mixTotal, ccy, 0)}</span>
+            </div>
           </div>
         </div>
       )
@@ -1012,7 +1028,15 @@ function BookAnalysis({ portfolio, quotes, rates, slot = null, fxLive = {}, benc
     // the book's own value line, one mark per day the page saw it priced
     card('trend', tl('Trend'), (() => {
       const marks = (portfolio.snapshots || []).filter((m) => m.c === ccy)
-      if (marks.length < 2) return null
+      if (!marks.length) return null
+      if (marks.length < 2) {
+        return (
+          <div class="flex flex-col gap-1">
+            {stat(tl('first mark'), `${marks[0].d.slice(5).replace('-', '/')} ${glance(marks[0].v, ccy)}`)}
+            {stat(tl('marks'), '1', 'text-muted')}
+          </div>
+        )
+      }
       const first = marks[0]; const last = marks[marks.length - 1]
       const lo = marks.reduce((m, x) => (x.v < m.v ? x : m), first)
       const hi = marks.reduce((m, x) => (x.v > m.v ? x : m), first)

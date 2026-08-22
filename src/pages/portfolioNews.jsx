@@ -155,10 +155,13 @@ export function BookNews({ portfolio, quotes }) {
   const railItem = (sym, active, count, name) => (
     <button key={sym || 'all'} type="button" onClick={() => (sym ? choose(sym) : (setPick(null), setLimit(PAGE)))}
       data-active={active ? '1' : '0'}
-      class={`rail-item flex shrink-0 items-center gap-2 whitespace-nowrap rounded-md border px-2 py-1 text-left font-mono text-[10.5px] transition-colors lg:w-full lg:whitespace-normal ${
-        active ? 'border-accent/50 bg-accent/10 text-accent' : 'border-transparent text-ink-2 hover:bg-surface-3 hover:text-ink max-lg:border-line-2 max-lg:bg-surface-2'}`}>
-      <span class={`min-w-0 ${active ? 'font-semibold' : 'font-medium'}`}>{sym || tl('All')}</span>
-      {name && <span class="min-w-0 truncate font-anth text-[9.5px] text-muted">{name}</span>}
+      class={`rail-item flex shrink-0 items-center gap-2 whitespace-nowrap rounded-md border px-2 py-1 text-left font-mono text-[10.5px] transition-colors md:w-full md:whitespace-normal md:rounded-none md:border-0 md:border-b md:border-line-2 md:px-2.5 md:py-1.5 ${
+        active ? 'border-accent/50 bg-accent/10 text-accent' : 'border-transparent text-ink-2 hover:bg-surface-3 hover:text-ink max-md:border-line-2 max-md:bg-surface-2'}`}>
+      <span class="flex min-w-0 flex-col md:gap-px">
+        <span class={`min-w-0 ${active ? 'font-semibold' : 'font-medium'}`}>{sym || tl('All')}</span>
+        {name && <span class="min-w-0 truncate font-anth text-[9.5px] text-muted max-md:hidden">{name}</span>}
+      </span>
+      {name && <span class="min-w-0 truncate font-anth text-[9.5px] text-muted md:hidden">{name}</span>}
       <span class="ml-auto font-mono text-[9.5px] text-muted">{count}</span>
     </button>
   )
@@ -172,9 +175,9 @@ export function BookNews({ portfolio, quotes }) {
   }
 
   return (
-    <div class="grid gap-2 lg:grid-cols-[180px_minmax(0,1fr)] xl:grid-cols-[180px_minmax(0,1fr)_minmax(360px,0.9fr)] lg:items-start">
-      {/* rail */}
-      <nav aria-label={tl('News')} class="flex gap-1.5 overflow-x-auto no-scrollbar lg:sticky lg:top-2 lg:flex-col lg:gap-0.5 lg:overflow-visible lg:rounded-xl lg:border lg:border-line lg:bg-surface-1 lg:p-1.5">
+    <div class="grid gap-2 md:grid-cols-[172px_minmax(0,1fr)] xl:grid-cols-[172px_minmax(0,1fr)_minmax(360px,0.9fr)] md:items-start">
+      {/* rail: a column of tickers from tablet width up, chips on a phone */}
+      <nav aria-label={tl('News')} class="flex gap-1.5 overflow-x-auto no-scrollbar md:sticky md:top-2 md:flex-col md:gap-0 md:overflow-hidden md:rounded-xl md:border md:border-line md:bg-surface-1 md:[&>*:last-child]:border-b-0">
         {railItem(null, !pick, merged.length, '')}
         {symbols.map((s) => railItem(s, pick === s, news[s] === undefined ? '…' : news[s] === 'error' ? '!' : news[s].length, label(s)))}
       </nav>
