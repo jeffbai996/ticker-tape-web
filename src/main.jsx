@@ -4,6 +4,7 @@ import { startWatchlistSync } from './lib/cloudsave.js'
 import { startMyPortfolioSync } from './lib/portfolioSync.js'
 import { startWireWatchlistSync } from './lib/watchlistExport.js'
 import { startFreshnessWatch } from './lib/freshness.js'
+import { registerServiceWorker } from './lib/pwa.js'
 import './styles/main.css'
 
 render(<App />, document.getElementById('app'))
@@ -14,3 +15,5 @@ startMyPortfolioSync()
 startWireWatchlistSync()
 // stale open tabs reload themselves on tab-return after a deploy
 startFreshnessWatch()
+// the shell launches from disk on the next open (add-to-home-screen works)
+registerServiceWorker()
