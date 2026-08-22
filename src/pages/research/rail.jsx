@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'preact/hooks'
 import { getLocale, tl, t as tt } from '../../lib/i18n.js'
+import { fetchCnNews, isCnListing } from '../../lib/cnData.js'
+import { loadZhTable, zhName } from '../../lib/zhNames.js'
 import { fetchHistory, fetchNews, peekHistory } from '../../lib/history.js'
 import { alignedReturns, regressStats } from '../../lib/regress.js'
 import { fetchFundamentals, peekFundamentals } from '../../lib/fundamentals.js'
@@ -147,7 +149,17 @@ function News({ symbol }) {
 
   useEffect(() => {
     setItems(null)
-    fetchNews(symbol).then(setItems).catch(() => setItems([]))
+    // a zh reader's HK / mainland name gets Chinese coverage by company
+    // name (the provider's English feed for "2628.HK" is generic junk)
+    const cn = getLocale() === 'zh' && isCnListing(symbol)
+    const load = cn
+      ? loadZhTable().then(() => {
+        const name = zhName(symbol)
+        return name ? fetchCnNews(name, { n: 8 }).then((rows) => rows.map((r) => (
+          { title: r.title, publisher: r.source, link: r.url, time: r.ts }))) : fetchNews(symbol)
+      })
+      : fetchNews(symbol)
+    load.then(setItems).catch(() => setItems([]))
   }, [symbol])
 
   return (

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'preact/hooks'
-import { tl, t as tt } from '../../lib/i18n.js'
+import { getLocale, tl, t as tt } from '../../lib/i18n.js'
+import { fetchCnProfile, isCnListing } from '../../lib/cnData.js'
 import { fetchHistory } from '../../lib/history.js'
 import { fetchProfile, fetchFundamentals } from '../../lib/fundamentals.js'
 import { fmtPriceBare, fmtBig } from '../../lib/format.js'
@@ -42,6 +43,19 @@ export function ProfileView({ symbol }) {
     setF(null)
     fetchFundamentals(symbol).then(setF).catch(() => {})
   }, [symbol])
+  // A zh reader's Hong Kong / mainland name gets the exchange-filed Chinese
+  // profile (East Money via /cn/profile) in place of Yahoo's English prose;
+  // the provider facts rail stays as the fallback for everything else
+  const [cn, setCn] = useState(null)
+  useEffect(() => {
+    setCn(null)
+    if (getLocale() !== 'zh' || !isCnListing(symbol)) return undefined
+    let live = true
+    fetchCnProfile(symbol).then((v) => { if (live) setCn(v) }).catch(() => {})
+    return () => { live = false }
+  }, [symbol])
+  const summary = cn?.profile || p?.summary
+  const business = cn?.business || ''
   if (failed || (p === null && failed)) {
     return <div class="px-1 font-mono text-[11px] text-muted">no profile for {symbol}</div>
   }
@@ -55,8 +69,14 @@ export function ProfileView({ symbol }) {
       <SectionCard title={tl('Description')}>
         <div class="p-4 pt-3 flex gap-6 max-md:flex-col">
           <div class="flex-1 min-w-0 flex flex-col gap-4 pl-1.5">
-            {p.summary && (
-              <p class="font-anth text-[12.5px] leading-[1.85] text-ink-2">{p.summary}</p>
+            {summary && (
+              <p class="font-anth text-[12.5px] leading-[1.85] text-ink-2">{summary}</p>
+            )}
+            {business && (
+              <div>
+                <h3 class="font-anth font-bold text-[10px] tracking-wider text-muted uppercase pb-1">{tl('Business scope')}</h3>
+                <p class="font-anth text-[11.5px] leading-[1.8] text-ink-2">{business}</p>
+              </div>
             )}
             {/* management rides under the prose — a two-line description used
                 to leave the whole column hollow (Jeff 2026-08-05) */}
@@ -82,7 +102,7 @@ export function ProfileView({ symbol }) {
             <dl class="font-mono text-[11.5px] flex flex-col gap-2">
               {[
                 [tl('Sector'), p.sector, 'text-ink'],
-                [tl('Industry'), p.industry, 'text-ink-2'],
+                [tl('Industry'), cn?.industry || p.industry, 'text-ink-2'],
                 [tl('Mkt cap'), f?.marketCap != null ? fmtBig(f.marketCap) : null, 'text-ink'],
                 [tl('Employees'), p.employees ? p.employees.toLocaleString() : null, 'text-ink-2'],
               ].map(([label, value, toneCls]) => (

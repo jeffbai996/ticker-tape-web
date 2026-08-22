@@ -2,6 +2,7 @@ import { useEffect, useState } from 'preact/hooks'
 import { Overlay } from '../../components/Overlay.jsx'
 import { hrefFor } from '../../lib/route.js'
 import { getLocale, tl, t as tt } from '../../lib/i18n.js'
+import { fetchCnIndustry, isCnListing } from '../../lib/cnData.js'
 import { fetchHistory, peekHistory, rangeReturn } from '../../lib/history.js'
 import { fetchFundamentals, peekFundamentals, fetchProfile, peekProfile } from '../../lib/fundamentals.js'
 import { fetchEarningsDate, peekEarningsDate } from '../../lib/fundamentals.js'
@@ -153,6 +154,15 @@ function DesCell({ n, label, value, tone, big }) {
 }
 
 function DesBand({ symbol, bars, rangeKey }) {
+  // a zh reader's HK / mainland name carries the exchange's industry label
+  const [cnIndustry, setCnIndustry] = useState('')
+  useEffect(() => {
+    setCnIndustry('')
+    if (getLocale() !== 'zh' || !isCnListing(symbol)) return undefined
+    let live = true
+    fetchCnIndustry(symbol).then((v) => { if (live) setCnIndustry(v) }).catch(() => {})
+    return () => { live = false }
+  }, [symbol])
   const [f, setF] = useState(() => peekFundamentals(symbol) ?? null)
   const [yr, setYr] = useState(() => peekHistory(symbol, '1Y') ?? null)
   const [cal, setCal] = useState(() => peekEarningsDate(symbol) ?? null)
@@ -245,7 +255,7 @@ function DesBand({ symbol, bars, rangeKey }) {
         tone={tone(ret1y)} />
       <DesCell n={20} label={tl('Next ern')}
         value={cal?.date ? `${new Date(cal.date).toLocaleDateString(getLocale() === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric' }).toLowerCase()} · ${Math.max(0, Math.round((cal.date - Date.now()) / 86400000))}${getLocale() === 'zh' ? '天' : 'd'}` : null} />
-      <DesCell n={21} label={tl('Sector')} value={prof?.sector || null} />
+      <DesCell n={21} label={tl('Sector')} value={cnIndustry || prof?.sector || null} />
       <DesCell n={22} label={tl('Industry')} value={prof?.industry || null} />
       <DesCell n={23} label={tl('Employees')}
         value={prof?.employees != null ? prof.employees.toLocaleString('en-US') : null} />
