@@ -553,7 +553,8 @@ function useCnIndustries(symbols) {
           if (!live) return
           if (label) setMap((m) => (m[sym] === label ? m : { ...m, [sym]: label }))
         } catch { /* a missing label is an Other row, not an error */ }
-        await new Promise((r) => setTimeout(r, 350))
+        // push2 302s a burst; a book of 20 fills in over ~30s, then sits in cache
+        await new Promise((r) => setTimeout(r, 1500))
       }
     })()
     return () => { live = false }
