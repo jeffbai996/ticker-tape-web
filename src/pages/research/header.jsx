@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'preact/hooks'
 import { getLocale, tl } from '../../lib/i18n.js'
 import { loadPortfolios, onPortfoliosChange } from '../../lib/myPortfolios.js'
-import { loadZhTable, onZhTable, zhName } from '../../lib/zhNames.js'
+import { hasCjk, loadZhTable, onZhTable, zhName } from '../../lib/zhNames.js'
 import { Marquee } from '../../components/Marquee.jsx'
 import { FlashMetric, FlashPrice } from '../../components/Fig.jsx'
 import { fmtPrice, fmtPriceWide, fmtPct, fmtChange, fmtVol } from '../../lib/format.js'
@@ -135,7 +135,7 @@ export function ResearchHeader({ symbol, q, route }) {
                long legal name; the identity lane no longer relies on the
                user discovering it's finger-scrollable (Jeff 2026-08-17) */
             <Marquee data-research-company-name text={displayName} title={`${symbol} — ${displayName}`}
-              class="block min-w-0 max-w-[46vw] sm:max-w-[28rem] text-[12px] text-muted font-anth" />
+              class={`block min-w-0 max-w-[46vw] sm:max-w-[28rem] font-anth ${hasCjk(displayName) ? 'text-[15px] text-ink-2' : 'text-[12px] text-muted'}`} />
           )}
         </div>
         {q && (
