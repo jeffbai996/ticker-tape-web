@@ -144,11 +144,11 @@ function AddHoldingForm({ portfolio }) {
           {confirmed.exch && <span class="text-[9px] uppercase tracking-wider"> · {confirmed.exch}</span>}
         </div>
       )}
-      <div class={`mt-1.5 font-anth text-[9.5px] ${typed && !confirmed ? 'text-accent' : 'text-muted'}`}>
-        {typed && !confirmed
-          ? tl('Pick the listing from the list — a plain board code like 02628 is not a symbol anywhere.')
-          : tl('Type a ticker or a company name and pick from the list.')}
-      </div>
+      {typed && !confirmed && (
+        <div class="mt-1.5 font-anth text-[9.5px] text-accent">
+          {tl('Pick the listing from the list — a plain board code like 02628 is not a symbol anywhere.')}
+        </div>
+      )}
     </form>
   )
 }
@@ -452,6 +452,22 @@ function Holdings({ portfolio, quotes, rates }) {
   )
 }
 
+/** The book's own marks (one per day the page saw it fully priced) as a
+ *  bare line — needs two marks before it draws anything. */
+function Sparkline({ marks }) {
+  const pts = marks.slice(-60).map((m) => m.v).filter((v) => Number.isFinite(v))
+  if (pts.length < 2) return null
+  const W = 120; const H = 44
+  const lo = Math.min(...pts); const hi = Math.max(...pts); const span = hi - lo || 1
+  const d = pts.map((v, i) => `${i ? 'L' : 'M'}${((i / (pts.length - 1)) * W).toFixed(1)},${(H - 2 - ((v - lo) / span) * (H - 4)).toFixed(1)}`).join(' ')
+  const up = pts[pts.length - 1] >= pts[0]
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" class="shrink-0 w-[120px] h-[44px] max-sm:hidden" role="img">
+      <path d={d} fill="none" stroke={up ? 'var(--color-up)' : 'var(--color-down)'} stroke-width="1.6" vector-effect="non-scaling-stroke" />
+    </svg>
+  )
+}
+
 function SummaryStrip({ portfolio, quotes, rates, ccys, fxLive, bench }) {
   const { total, rows } = portfolioValues(portfolio.holdings, quotes, rates, portfolio.ccy, portfolio.cash)
   const priced = rows.filter((r) => r.valueDisplay != null)
@@ -481,24 +497,42 @@ function SummaryStrip({ portfolio, quotes, rates, ccys, fxLive, bench }) {
     recordSnapshot(portfolio.id, total.value, portfolio.ccy)
   }, [fullyPriced, Math.round(total.value || 0), portfolio.id, portfolio.ccy])
   const prevMark = previousSnapshot(portfolio, portfolio.ccy)
+  const marks = (portfolio.snapshots || []).filter((s) => s.c === portfolio.ccy)
+  const vfact = (label, value, good, sub) => (
+    <div key={label} class="min-w-0">
+      <div class="font-anth text-[8.5px] uppercase tracking-wider text-muted pb-0.5">{label}</div>
+      <div class={`font-anth text-[13px] font-semibold tabular-nums whitespace-nowrap ${good == null ? 'text-ink' : good ? 'text-up' : 'text-down'}`}>{value}</div>
+      {sub && <div class="font-mono text-[9.5px] text-muted">{sub}</div>}
+    </div>
+  )
   const sinceLast = prevMark && Number.isFinite(total.value) ? total.value - prevMark.v : null
   return (
     <section class="book-hero border border-line rounded-xl overflow-hidden bg-surface-1">
       <div class="flex flex-wrap items-stretch">
-        <div class="px-4 py-3 flex-1 min-w-[240px]">
-          <div class="font-anth text-[9px] uppercase tracking-[.14em] text-muted">{tl('Value')} ({portfolio.ccy})</div>
-          <div class="font-anth text-[30px] leading-tight font-semibold tracking-tight text-ink tabular-nums">{money(total.value, portfolio.ccy)}</div>
-          <div class="flex items-center gap-2 pt-1.5">
-            {chip(total.dayPnl, total.dayPct)}
-            {total.unrealPnl != null && (
-              <span class="font-anth text-[10.5px] text-muted">{tl('unreal')}{' '}
-                <span class={`font-semibold ${pnlCls(total.unrealPnl)}`}>{signed(total.unrealPnl, portfolio.ccy)}</span></span>
-            )}
-            {sinceLast != null && (
-              <span class="font-anth text-[10.5px] text-muted" title={prevMark.d}>{tl('since last')}{' '}
-                <span class={`font-semibold ${pnlCls(sinceLast)}`}>{signed(sinceLast, portfolio.ccy)}
-                  {prevMark.v > 0 && <span class="font-normal"> ({fmtPct((sinceLast / prevMark.v) * 100)})</span>}</span></span>
-            )}
+        <div class="px-4 py-3 flex-1 min-w-[240px] flex flex-col justify-between gap-3">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <div class="font-anth text-[9px] uppercase tracking-[.14em] text-muted">{tl('Value')} ({portfolio.ccy})</div>
+              <div class="font-anth text-[30px] leading-tight font-semibold tracking-tight text-ink tabular-nums">{money(total.value, portfolio.ccy)}</div>
+              <div class="flex items-center gap-2 pt-1.5">
+                {chip(total.dayPnl, total.dayPct)}
+                {sinceLast != null && (
+                  <span class="font-anth text-[10.5px] text-muted" title={prevMark.d}>{tl('since last')}{' '}
+                    <span class={`font-semibold ${pnlCls(sinceLast)}`}>{signed(sinceLast, portfolio.ccy)}
+                      {prevMark.v > 0 && <span class="font-normal"> ({fmtPct((sinceLast / prevMark.v) * 100)})</span>}</span></span>
+                )}
+              </div>
+            </div>
+            <Sparkline marks={marks} />
+          </div>
+          {/* the book's own money facts live beside the headline; market facts
+              live on the right (Jeff 2026-08-22: the space beside the number
+              and the strip under it were empty) */}
+          <div class="grid grid-cols-3 gap-x-3">
+            {vfact(tl('Cost basis'), un.costBasis != null ? money(un.costBasis, portfolio.ccy) : '—', null)}
+            {vfact(tl('Open P&L'), total.unrealPnl != null ? signed(total.unrealPnl, portfolio.ccy) : '—', total.unrealPnl == null ? null : total.unrealPnl >= 0,
+              un.pct != null ? fmtPct(un.pct) : null)}
+            {vfact(tl('Cash'), cs.cash ? money(cs.cash, portfolio.ccy) : '—', null, cs.cashPct != null ? fmtPctPlain(cs.cashPct) : null)}
           </div>
         </div>
         <div class="px-4 py-3 flex-[1.6] min-w-[300px] border-l border-line max-sm:border-l-0 max-sm:border-t flex flex-col justify-center">
@@ -513,8 +547,8 @@ function SummaryStrip({ portfolio, quotes, rates, ccys, fxLive, bench }) {
             const fact = (label, value, good, sub) => (
               <div key={label} class="min-w-0">
                 <div class="font-anth text-[8.5px] uppercase tracking-wider text-muted pb-0.5">{label}</div>
-                <div class={`truncate font-anth text-[13px] font-semibold tabular-nums ${good == null ? 'text-ink' : good ? 'text-up' : 'text-down'}`} title={value}>{value}</div>
-                {sub && <div class="truncate font-mono text-[9.5px] text-muted">{sub}</div>}
+                <div class={`font-anth text-[13px] font-semibold tabular-nums whitespace-nowrap ${good == null ? 'text-ink' : good ? 'text-up' : 'text-down'}`}>{value}</div>
+                {sub && <div class="font-mono text-[9.5px] text-muted leading-snug">{Array.isArray(sub) ? sub.map((t, i) => <span key={i} class="inline-block whitespace-nowrap mr-2">{t}</span>) : sub}</div>}
               </div>
             )
             return (
@@ -541,15 +575,21 @@ function SummaryStrip({ portfolio, quotes, rates, ccys, fxLive, bench }) {
                     )
                   })}
                 </div>
-                <div class="grid grid-cols-[repeat(auto-fit,minmax(96px,1fr))] gap-x-4 gap-y-3">
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
                   {venues.slice(0, 3).map((b) => fact(tl(VENUE_SHORT[b.venue] || b.venue),
                     b.dayPct == null ? fmtPctPlain(b.weightPct) : `${fmtPct(b.dayPct)}`, b.dayPct == null ? null : b.dayPct >= 0,
-                    `${fmtPctPlain(b.weightPct)} ${tl('of book')} · ${b.hasDay ? signed(b.dayPnl, portfolio.ccy) : '—'}`))}
+                    [`${fmtPctPlain(b.weightPct)} ${tl('of book')}`, b.hasDay ? signed(b.dayPnl, portfolio.ccy) : '—']))}
                   {fact(tl('FX impact'), Object.keys(fxImp.byCcy).length ? signed(fxImp.total, portfolio.ccy) : '—', Object.keys(fxImp.byCcy).length ? fxImp.total >= 0 : null,
-                    Object.entries(fxPct).filter(([c]) => c !== 'USD' || ccys.includes('USD')).slice(0, 2).map(([c, p]) => `${c}→${portfolio.ccy} ${rateTo(c) != null ? rateTo(c).toFixed(4) : '…'} ${p >= 0 ? '+' : ''}${p.toFixed(2)}%`).join(' · ') || null)}
-                  {fact(tl('Open P&L'), un.pct != null ? fmtPct(un.pct) : '—', un.pnl == null ? null : un.pnl >= 0, un.costBasis != null ? `${tl('Cost basis')} ${money(un.costBasis, portfolio.ccy)}` : null)}
-                  {fact(tl('Top weight'), topWeight != null ? fmtPctPlain(topWeight) : '—', null, `${priced.filter((r) => r.kind !== 'cash').length} ${tl('Names').toLowerCase()} · ${br.up} ↑ / ${br.down} ↓`)}
-                  {fact(tl('Cash'), cs.cashPct != null ? fmtPctPlain(cs.cashPct) : '—', null, cs.cash ? money(cs.cash, portfolio.ccy) : null)}
+                    Object.entries(fxPct).filter(([c]) => c !== 'USD' || ccys.includes('USD')).slice(0, 2).map(([c, p]) => `${c}→${portfolio.ccy} ${rateTo(c) != null ? rateTo(c).toFixed(4) : '…'} ${p >= 0 ? '+' : ''}${p.toFixed(2)}%`))}
+                  {fact(tl('Top weight'), topWeight != null ? fmtPctPlain(topWeight) : '—', null,
+                    (() => { const t = priced.find((r) => r.weightPct === topWeight); return t ? holdingName(t.symbol, quotes) : null })())}
+                  {fact(tl('Day range'), (() => {
+                    const best = priced.filter((r) => r.kind !== 'cash' && r.dayPct != null)
+                    if (!best.length) return '—'
+                    const hi = Math.max(...best.map((r) => r.dayPct)); const lo = Math.min(...best.map((r) => r.dayPct))
+                    return `${fmtPct(lo)} / ${fmtPct(hi)}`
+                  })(), null, null)}
+                  {fact(tl('Names'), String(priced.filter((r) => r.kind !== 'cash').length), null, `${br.up} ↑ · ${br.flat || 0} → · ${br.down} ↓`)}
                 </div>
               </>
             )
