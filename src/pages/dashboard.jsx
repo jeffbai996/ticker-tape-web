@@ -6,7 +6,8 @@ import {
 import { etParts, marketState, rollCashSession } from '../lib/marketState.js'
 import { BUCKETS } from '../lib/symbols.js'
 import { pulseStats } from '../lib/pulse.js'
-import { fetchEarningsDate } from '../lib/fundamentals.js'
+import { fetchEarningsDate, peekEarningsDate } from '../lib/fundamentals.js'
+import { whenFirstBatch } from '../lib/feed.js'
 import { EARNINGS_UNIVERSE, EARNINGS_NAMES, ECON_EVENTS, MARKET_DECK, upcomingEvents, eventDayLabel } from '../lib/markets.js'
 import { loadCatalysts, onCatalystsChange, mergedEvents } from '../lib/catalysts.js'
 import { fetchHistory, prefetchSymbol } from '../lib/history.js'
@@ -42,7 +43,7 @@ import { SPARK_TYPES, DEFAULT_SPARK, isSparkType,
 import { Marquee } from '../components/Marquee.jsx'
 import { FlashMetric, FlashPrice } from '../components/Fig.jsx'
 import { Empty, Loading } from '../components/Loading.jsx'
-import { ChartMount } from '../components/LazyChart.jsx'
+import { ChartMount } from '../components/LazyChartMount.jsx'
 import { t as tt, tl } from '../lib/i18n.js'
 import { extendedLabelClass } from '../lib/extendedHours.js'
 import { freshnessTitle, symbolFreshness } from '../lib/feedHealth.js'
@@ -70,16 +71,23 @@ export function useEarningsDays(symbols) {
   useEffect(() => {
     let alive = true
     const timers = []
-    // Staggered: 30 simultaneous v10 calls on a cold cache stampede the
-    // worker's crumb auth. Cached symbols resolve instantly regardless.
-    symbols.filter((s) => !ETF_SKIP.has(s)).forEach((sym, i) => {
-      timers.push(setTimeout(() => {
-        if (!alive) return
-        fetchEarningsDate(sym)
-          .then((v) => alive && setRows((r) => ({ ...r, [sym]: v })))
-          .catch(() => {})
-      }, i * 120))
-    })
+    // Staggered, and behind the first prices: these lookups used to start
+    // the moment the bundle landed and sat on the browser's per-host
+    // connections ahead of the price batches (waterfall, 2026-08-22). A cold
+    // board waits for the first batch to land; cached symbols need no wait.
+    const start = () => {
+      if (!alive) return
+      symbols.filter((s) => !ETF_SKIP.has(s)).forEach((sym, i) => {
+        timers.push(setTimeout(() => {
+          if (!alive) return
+          fetchEarningsDate(sym)
+            .then((v) => alive && setRows((r) => ({ ...r, [sym]: v })))
+            .catch(() => {})
+        }, i * 200))
+      })
+    }
+    if (symbols.every((s) => peekEarningsDate(s) !== undefined)) start()
+    else whenFirstBatch().then(start)
     return () => { alive = false; timers.forEach(clearTimeout) }
   }, [symbols.join(',')])
 

@@ -34,7 +34,7 @@ describe('the chart library is off the first paint', () => {
 
   it.each(EAGER)('%s draws its chart through the lazy boundary', (path) => {
     const src = source(path)
-    expect(src).toContain("import { ChartMount } from '../components/LazyChart.jsx'")
+    expect(src).toContain("import { ChartMount } from '../components/LazyChartMount.jsx'")
     expect(src).toContain('<ChartMount')
   })
 
