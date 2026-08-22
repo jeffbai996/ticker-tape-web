@@ -494,9 +494,9 @@ const LABELS = {
   'rev growth': '营收增速', 'net margin': '净利率', pass: '通过',
   'fails a band': '未通过条件', 'missing data': '数据缺失',
   'earnings 14d': '14天内财报', 'earnings 7d': '7天内财报', Create: '创建',
-  cloud: '云端', 'cloud offline': '云端离线', 'send symbols to': '发送至', manage: '管理',
-  'sync watchlists': '同步自选股', 'enable sync': '启用同步', 'sync code': '同步代码',
-  connect: '连接', disconnect: '断开同步', or: '或', 'copy code': '复制代码', 'copied code ✓': '代码已复制 ✓',
+  cloud: '云端',  'send symbols to': '发送至', manage: '管理',
+   'enable sync': '启用同步', 
+  connect: '连接', or: '或', 'copy code': '复制代码', 'copied code ✓': '代码已复制 ✓',
   '→ moves · ✕ removes': '→ 移动 · ✕ 移除', 'copied ✓': '已复制 ✓', Export: '导出',
   'send to destination': '移动到目标列表', 'symbols (optional)': '股票代码（可选）',
   'describe a change — add, rewrite, forget…': '描述改动 — 新增、改写、忘记…',
@@ -534,7 +534,7 @@ const LABELS = {
   'grounded in supplied conditions and market evidence': '基于所给条件与市场证据',
   'Add holdings to see their news here.': '添加持仓后，这里会显示相关新闻。', 'Business scope': '经营范围', 'term premium': '期限溢价',
   HKG: '港交所', SHH: '上交所', SHZ: '深交所', Shanghai: '上海', Shenzhen: '深圳',
-  Performance: '净值', 'since last': '较上次', Ledger: '账本', line: '行', Events: '分红财报', 'Search news': '搜索新闻', 'Show more': '显示更多', 'No matching headlines.': '没有匹配的新闻。', Held: '持有', 'Next results': '下次财报', 'Ex-dividend': '除息日', 'Last dividend': '最近分红', 'Est. income': '预计收入', 'Upcoming 14 days': '未来14天', 'No dates yet': '暂无日期', 'per share': '每股', Yield: '股息率', 'Nothing scheduled in the next two weeks.': '未来两周没有安排。', 'paid': '已派', 'record': '登记日',
+  Performance: '净值', 'since last': '较上次', Ledger: '账本', line: '行', Events: '分红财报', 'cloud offline': '云端离线', 'Search news': '搜索新闻', 'Show more': '显示更多', 'No matching headlines.': '没有匹配的新闻。', Held: '持有', 'Next results': '下次财报', 'Ex-dividend': '除息日', 'Last dividend': '最近分红', 'Est. income': '预计收入', 'Upcoming 14 days': '未来14天', 'No dates yet': '暂无日期', 'per share': '每股', Yield: '股息率', 'Nothing scheduled in the next two weeks.': '未来两周没有安排。', 'paid': '已派', 'record': '登记日',
   'Add trade': '添加交易', 'Import trades': '导入交易', Side: '方向', Fee: '手续费', Realized: '已实现盈亏', 'Paste a broker export (CSV) — 富途, 华泰, IBKR Flex, or any file with symbol / side / quantity / price / date columns.': '粘贴券商导出的 CSV（富途、华泰、IBKR Flex，或任何含 代码/方向/数量/价格/日期 列的文件）。', Preview: '预览', 'Import {n} trades': '导入 {n} 笔交易', '{n} rows could not be read': '{n} 行无法识别', 'No trades yet. Add one, or import a broker export — holdings for traded symbols are derived from the ledger.': '还没有交易记录。添加一笔，或导入券商导出 — 有交易记录的持仓将由账本推导。', 'derived from ledger': '由账本推导', 'Remove trade': '删除交易', Clear: '清空', 'Choose file': '选择文件', 'vs': '对比', 'Open this page once a day — the value line grows from those marks.': '每天打开一次，净值曲线就会从这些记录中生长出来。', 'marks': '个记录', 'first mark': '首次记录', 'Benchmarks': '基准', loading: '加载中', 'news unavailable': '新闻暂不可用',
   'AI thesis read': 'AI 论点研判', GOOD: '良好', BREACHED: '已破坏',
   'NEEDS REVIEW': '待复核',
@@ -910,11 +910,11 @@ const LABELS = {
   'Delete portfolio': '删除组合',
   'No portfolios yet — create one above. Everything you enter stays in this browser.': '还没有组合 — 在上方创建一个。所有输入仅保存在本浏览器。',
     // My Portfolios cloud sync (2026-08-20)
-  'cloud saved': '已云端保存', 'saving…': '保存中…', 'cloud sync': '云同步',
-  'Saved to the cloud — use the same code on another device to see the same portfolios.': '已保存到云端 — 在其他设备输入同一代码即可看到相同组合。',
-  'Portfolios live only in this browser right now — turn on cloud sync so they survive and follow you.': '组合目前仅存于本浏览器 — 开启云同步以长期保存并跨设备使用。',
-  'Turn off cloud sync on this device?': '在此设备上关闭云同步？',
-  'not a sync code': '同步代码无效',
+   'saving…': '保存中…', 
+  
+  
+  
+  
   'Everything here saves automatically and shows up on any device that opens this page.': '这里的内容会自动保存，任何设备打开此页面都能看到。',
   holdings: '项持仓', 'Add holding': '添加持仓',
   'Prices, totals and weights appear as soon as the first one lands.': '添加第一只后，价格、合计与权重会立即出现。',
