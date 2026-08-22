@@ -23,18 +23,18 @@ import { tl } from '../lib/i18n.js'
 import { PORTFOLIO_CCYS, convertCcy, fmtCcy, fxSymbolsFor, holdingCurrency, ratesFromQuotes } from '../lib/fx.js'
 import {
   MAX_MY_HOLDINGS, createPortfolio, deletePortfolio, loadPortfolios,
-  onPortfoliosChange, removeHolding, renamePortfolio, setHolding, setPortfolioCcy,
-  portfolioValues,
+  onPortfoliosChange, removeCash, removeHolding, renamePortfolio, setCash,
+  setHolding, setPortfolioCcy, portfolioValues,
 } from '../lib/myPortfolios.js'
 
 const pnlCls = (v) => (v == null ? 'text-muted' : v >= 0 ? 'text-up' : 'text-down')
 const signed = (v, ccy) => (v == null ? '—' : `${v >= 0 ? '+' : '-'}${fmtCcy(Math.abs(v), ccy)}`)
 
-function CcySelect({ value, onChange, id }) {
+function CcySelect({ value, onChange, id, options = PORTFOLIO_CCYS }) {
   return (
     <select id={id} value={value} onChange={(e) => onChange(e.currentTarget.value)}
       class="rounded border border-line-2 bg-surface-2 px-2 py-1 font-anth text-[11px] text-ink outline-none focus:border-accent/60">
-      {PORTFOLIO_CCYS.map((c) => <option key={c} value={c}>{c}</option>)}
+      {options.map((c) => <option key={c} value={c}>{c}</option>)}
     </select>
   )
 }
@@ -64,6 +64,13 @@ function NewPortfolioForm({ onDone }) {
   )
 }
 
+/** Only a listing the data provider confirms may enter a book (Jeff
+ *  2026-08-21). A broker board code — "02628" — is not a symbol on any venue,
+ *  and a book full of them prices nothing and files itself as USD, which is
+ *  exactly how this page got a Hong Kong portfolio valued in dollars. So the
+ *  Add button stays shut until the typed text IS a listing: picked from the
+ *  dropdown, or typed in full and matched against the provider's own hits.
+ *  Currency then follows the listing and is never an input. */
 function AddHoldingRow({ portfolio }) {
   const [sym, setSym] = useState('')
   const [picked, setPicked] = useState(null)     // {symbol, name} from the dropdown
@@ -71,15 +78,23 @@ function AddHoldingRow({ portfolio }) {
   const [cost, setCost] = useState('')
   const sharesRef = useRef(null)
   const full = portfolio.holdings.length >= MAX_MY_HOLDINGS
+  const typed = sym.trim().toUpperCase()
+  const confirmed = picked && String(picked.symbol).toUpperCase() === typed ? picked : null
   const submit = (e) => {
     e.preventDefault()
-    const ok = setHolding(portfolio.id, sym, Number(shares), cost === '' ? undefined : Number(cost))
+    if (!confirmed) return
+    const ok = setHolding(portfolio.id, confirmed.symbol, Number(shares),
+      cost === '' ? undefined : Number(cost))
     if (ok) { setSym(''); setPicked(null); setShares(''); setCost('') }
   }
   const onPick = (h) => {
     setSym(h.symbol)
     setPicked(h)
     sharesRef.current?.focus()
+  }
+  const onHits = (hits) => {
+    const exact = hits.find((h) => String(h.symbol).toUpperCase() === typed)
+    if (exact) setPicked(exact)
   }
   const box = 'rounded border border-line-2 bg-surface-2 px-2 py-1.5 font-mono text-[10.5px] text-ink placeholder:text-[10px] placeholder:text-muted outline-none focus:border-accent/60'
   return (
@@ -89,26 +104,29 @@ function AddHoldingRow({ portfolio }) {
         <SymbolSuggest value={sym} placeholder={tl('Symbol or company')}
           ariaLabel={tl('Symbol or company')}
           onInput={(e) => { setSym(e.currentTarget.value); setPicked(null) }}
-          onPick={onPick} dropUp={false} inputClass={`${box} w-40 uppercase`} />
+          onPick={onPick} onHits={onHits} dropUp={false} inputClass={`${box} w-40 uppercase`} />
         <input ref={sharesRef} value={shares} onInput={(e) => setShares(e.currentTarget.value)}
           placeholder={tl('Shares')} aria-label={tl('Shares')} inputMode="decimal" data-1p-ignore data-lpignore="true"
           class={`${box} w-24`} />
         <input value={cost} onInput={(e) => setCost(e.currentTarget.value)}
           placeholder={tl('Avg cost (opt.)')} aria-label={tl('Avg cost (opt.)')}
           inputMode="decimal" data-1p-ignore data-lpignore="true" class={`${box} w-32`} />
-        <button type="submit" disabled={full || !sym.trim() || !(Number(shares) > 0)}
+        <button type="submit" disabled={full || !confirmed || !(Number(shares) > 0)}
           class="rounded border border-accent/40 bg-accent/10 px-3 py-1.5 font-anth text-[12px] font-semibold text-accent transition-colors hover:bg-accent/20 disabled:opacity-40">
           {tl('Add')}
         </button>
         {full && <span class="font-anth text-[10px] text-muted">{tl('List is full')}</span>}
       </div>
-      {picked && (
+      {confirmed && (
         <div class="mt-1 font-anth text-[10px] text-muted">
-          {picked.symbol} · {picked.name}
+          {confirmed.symbol} · {confirmed.name}
+          {confirmed.exch && <span class="text-[9px] uppercase tracking-wider"> · {confirmed.exch}</span>}
         </div>
       )}
-      <div class="mt-1 font-anth text-[9.5px] text-muted">
-        {tl('Type a ticker or a company name and pick from the list.')}
+      <div class={`mt-1 font-anth text-[9.5px] ${typed && !confirmed ? 'text-accent' : 'text-muted'}`}>
+        {typed && !confirmed
+          ? tl('Pick the listing from the list — a plain board code like 02628 is not a symbol anywhere.')
+          : tl('Type a ticker or a company name and pick from the list.')}
       </div>
     </form>
   )
@@ -136,7 +154,7 @@ function SharesCell({ portfolio, row }) {
  *  broker book, but everything runs in the portfolio's display currency so a
  *  mixed HKD/USD book sizes honestly. */
 function SizingCard({ portfolio, quotes, rates }) {
-  const { total } = portfolioValues(portfolio.holdings, quotes, rates, portfolio.ccy)
+  const { total } = portfolioValues(portfolio.holdings, quotes, rates, portfolio.ccy, portfolio.cash)
   const [sym, setSym] = useState('')
   const [targetPct, setTargetPct] = useState('10')
   const chosen = String(sym || '').trim().toUpperCase()
@@ -201,8 +219,73 @@ function CostCell({ portfolio, row }) {
   )
 }
 
+/** A cash balance edits in place the way shares do. Negative is legal — that
+ *  is a margin balance, not a typo. */
+function CashCell({ portfolio, row }) {
+  const commit = (e) => {
+    const raw = e.currentTarget.value.replace(/,/g, '').trim()
+    const v = Number(raw)
+    // a cleared field is a slip, not a request to zero the account
+    if (raw !== '' && Number.isFinite(v) && v !== row.amount) setCash(portfolio.id, row.ccy, v)
+    else e.currentTarget.value = String(row.amount)
+  }
+  return (
+    <input key={`${row.ccy}:${row.amount}`} defaultValue={String(row.amount)}
+      inputMode="decimal" data-1p-ignore data-lpignore="true"
+      aria-label={`${tl('Cash')} ${row.ccy}`}
+      onBlur={commit}
+      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() } }}
+      class="w-20 rounded border border-transparent bg-transparent px-1 py-0.5 text-right font-mono text-[11px] text-ink-2 outline-none transition-colors hover:border-line-2 focus:border-accent/60 focus:bg-surface-2" />
+  )
+}
+
+/** One cash account per supported currency, no more (Jeff 2026-08-21) — so
+ *  the picker only ever offers the currencies this book has not used yet, and
+ *  says so plainly once all four are open. */
+function AddCashRow({ portfolio }) {
+  const open = (portfolio.cash || []).map((c) => c.ccy)
+  const free = PORTFOLIO_CCYS.filter((c) => !open.includes(c))
+  const [ccy, setCcy] = useState(free[0] || PORTFOLIO_CCYS[0])
+  const [amount, setAmount] = useState('')
+  const pick = free.includes(ccy) ? ccy : free[0]
+  const submit = (e) => {
+    e.preventDefault()
+    if (!pick) return
+    if (setCash(portfolio.id, pick, Number(amount.replace(/,/g, '')))) {
+      setAmount('')
+      setCcy(free.filter((c) => c !== pick)[0] || PORTFOLIO_CCYS[0])
+    }
+  }
+  const box = 'rounded border border-line-2 bg-surface-2 px-2 py-1.5 font-mono text-[10.5px] text-ink placeholder:text-[10px] placeholder:text-muted outline-none focus:border-accent/60'
+  return (
+    <form onSubmit={submit} class="rounded-xl border border-line bg-surface-1 px-3 py-2">
+      <div class="pb-1.5 font-anth text-[9px] uppercase tracking-wider text-muted">{tl('Add cash account')}</div>
+      {free.length ? (
+        <div class="flex flex-wrap items-center gap-2">
+          <CcySelect value={pick} onChange={setCcy} options={free} />
+          <input value={amount} onInput={(e) => setAmount(e.currentTarget.value)}
+            placeholder={tl('Cash amount')} aria-label={tl('Cash amount')} inputMode="decimal"
+            data-1p-ignore data-lpignore="true" class={`${box} w-32`} />
+          <button type="submit" disabled={!Number.isFinite(Number(amount.replace(/,/g, ''))) || amount.trim() === ''}
+            class="rounded border border-accent/40 bg-accent/10 px-3 py-1.5 font-anth text-[12px] font-semibold text-accent transition-colors hover:bg-accent/20 disabled:opacity-40">
+            {tl('Add')}
+          </button>
+        </div>
+      ) : (
+        <div class="font-anth text-[10px] text-muted">{tl('Every supported currency already has an account.')}</div>
+      )}
+      <div class="mt-1 font-anth text-[9.5px] text-muted">
+        {tl('One account per currency. Cash counts toward value and weights, never toward day P&L.')}
+      </div>
+    </form>
+  )
+}
+
 function Holdings({ portfolio, quotes, rates }) {
-  const { rows, missing, total } = portfolioValues(portfolio.holdings, quotes, rates, portfolio.ccy)
+  const all = portfolioValues(portfolio.holdings, quotes, rates, portfolio.ccy, portfolio.cash)
+  const { missing, total } = all
+  const rows = all.rows.filter((r) => r.kind !== 'cash')
+  const cashRows = all.rows.filter((r) => r.kind === 'cash')
   const ccy = portfolio.ccy
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-x-auto">
@@ -261,7 +344,7 @@ function Holdings({ portfolio, quotes, rates }) {
               </td>
             </tr>
           ))}
-          {!rows.length && (
+          {!rows.length && !cashRows.length && (
             <tr class="border-t border-line">
               <td colSpan={10} class="px-3 py-5 text-center font-anth text-[11px] text-muted">
                 {tl('No holdings yet — add a symbol below.')}
@@ -269,7 +352,31 @@ function Holdings({ portfolio, quotes, rates }) {
               </td>
             </tr>
           )}
-          {rows.length > 0 && (
+          {cashRows.map((r) => (
+            <tr key={r.symbol} class="border-t border-line hover:bg-surface-3 whitespace-nowrap">
+              <td class="px-3 py-[3px]">
+                <span class="font-bold text-ink-2">{tl('Cash')}</span>
+              </td>
+              <td class="px-2 py-[3px] font-anth text-[10px] text-muted">{r.ccy}</td>
+              <td class="px-2 py-[3px] text-right"><CashCell portfolio={portfolio} row={r} /></td>
+              <td class="px-2 py-[3px] text-right text-muted">—</td>
+              <td class="px-2 py-[3px] text-right text-muted">—</td>
+              <td class="px-2 py-[3px] text-right text-muted">—</td>
+              <td class="px-2 py-[3px] text-right text-ink font-semibold text-[12px]">
+                {r.valueDisplay != null ? fmtCcy(r.valueDisplay, ccy) : '—'}
+              </td>
+              <td class="px-2 py-[3px] text-right text-ink-2 font-medium">
+                {r.weightPct != null ? fmtPctPlain(r.weightPct) : '—'}
+              </td>
+              <td class="px-2 py-[3px] text-right text-muted">—</td>
+              <td class="px-2 py-[3px] text-right">
+                <button type="button" title={tl('Remove')} aria-label={`${tl('Remove')} ${tl('Cash')} ${r.ccy}`}
+                  onClick={() => removeCash(portfolio.id, r.ccy)}
+                  class="rounded px-1.5 py-1 text-muted transition-colors hover:text-down">×</button>
+              </td>
+            </tr>
+          ))}
+          {(rows.length > 0 || cashRows.length > 0) && (
             <tr class="border-t border-line-2 bg-surface-2 font-bold whitespace-nowrap">
               <td class="px-3 py-[6px] text-ink" colSpan={5}>{tl('Total')}</td>
               <td class={`px-2 py-[6px] text-right ${pnlCls(total.dayPnl)}`}>
@@ -295,7 +402,7 @@ function Holdings({ portfolio, quotes, rates }) {
 }
 
 function SummaryStrip({ portfolio, quotes, rates, ccys }) {
-  const { total, rows } = portfolioValues(portfolio.holdings, quotes, rates, portfolio.ccy)
+  const { total, rows } = portfolioValues(portfolio.holdings, quotes, rates, portfolio.ccy, portfolio.cash)
   const priced = rows.filter((r) => r.valueDisplay != null)
   const chip = (v, pct) =>
     v == null ? null : (
@@ -323,7 +430,7 @@ function SummaryStrip({ portfolio, quotes, rates, ccys }) {
         <div class="px-4 py-3 flex-[1.2] min-w-[260px] border-l border-line max-sm:border-l-0 max-sm:border-t flex flex-col justify-center">
           <div class="grid grid-cols-3 gap-3">
             {[
-              [tl('Holdings'), String(priced.length)],
+              [tl('Holdings'), String(priced.filter((r) => r.kind !== 'cash').length)],
               [tl('Currencies'), String(new Set(priced.map((r) => r.ccy)).size || '—')],
               [tl('FX (live)'), fxNote || '—'],
             ].map(([label, value]) => (
@@ -343,7 +450,7 @@ function SummaryStrip({ portfolio, quotes, rates, ccys }) {
  *  must still read like an overview, not a bare table). Everything derives
  *  from the same valued rows the table shows — no extra fetch. */
 function BookAnalysis({ portfolio, quotes, rates }) {
-  const { rows } = portfolioValues(portfolio.holdings, quotes, rates, portfolio.ccy)
+  const { rows } = portfolioValues(portfolio.holdings, quotes, rates, portfolio.ccy, portfolio.cash)
   const priced = rows.filter((r) => r.valueDisplay != null)
   if (priced.length < 2) return null
   const card = (title, body) => (
@@ -389,8 +496,8 @@ function BookAnalysis({ portfolio, quotes, rates }) {
       {card(tl('Sectors'), (() => {
         const bySector = new Map()
         for (const r of priced) {
-          const b = BUCKETS.find((x) => x.symbols.includes(r.symbol))
-          const name = b ? b.name : tl('Other')
+          const b = r.kind === 'cash' ? null : BUCKETS.find((x) => x.symbols.includes(r.symbol))
+          const name = r.kind === 'cash' ? tl('Cash') : b ? b.name : tl('Other')
           bySector.set(name, (bySector.get(name) || 0) + r.valueDisplay)
         }
         const totalV = [...bySector.values()].reduce((a, b) => a + b, 0)
@@ -527,6 +634,7 @@ export function MyPortfolios() {
   const ccys = useMemo(() => {
     const set = new Set(selected ? [selected.ccy] : [])
     for (const h of selected?.holdings || []) set.add(holdingCurrency(h.symbol, quotes[h.symbol]))
+    for (const c of selected?.cash || []) set.add(c.ccy)
     return [...set]
   }, [selected, preQuotes])
   const fxLive = useQuotes(fxSymbolsFor(ccys))
@@ -582,7 +690,10 @@ export function MyPortfolios() {
           <BookAnalysis portfolio={selected} quotes={quotes} rates={rates} />
           <Holdings portfolio={selected} quotes={quotes} rates={rates} />
           <SizingCard portfolio={selected} quotes={quotes} rates={rates} />
-          <AddHoldingRow portfolio={selected} />
+          <div class="grid gap-2.5 lg:grid-cols-2">
+            <AddHoldingRow portfolio={selected} />
+            <AddCashRow portfolio={selected} />
+          </div>
         </>
       ) : (
         <div class="rounded-xl border border-line bg-surface-1 px-4 py-6 text-center font-anth text-[11px] text-muted">

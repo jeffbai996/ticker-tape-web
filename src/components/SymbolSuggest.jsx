@@ -8,11 +8,12 @@
  */
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { searchSymbols } from '../lib/symbolSearch.js'
+import { codeSearchQueries } from '../lib/venueCodes.js'
 import { venueFlag } from '../lib/venueFlag.js'
 import { Marquee } from './Marquee.jsx'
 
 export function SymbolSuggest({
-  value, onInput, onPick, placeholder, inputClass = '', dropUp = true,
+  value, onInput, onPick, onHits, placeholder, inputClass = '', dropUp = true,
   inputRef = null, ariaLabel = null,
 }) {
   const [hits, setHits] = useState(null)
@@ -33,10 +34,23 @@ export function SymbolSuggest({
     // a just-picked value must not immediately re-open the dropdown over
     // whatever field the user moved on to
     if (q.length < 2 || q === pickedRef.current) { setHits(null); setActive(-1); return }
+    // `onHits` lets a caller that requires a real listing accept a symbol the
+    // user typed in full — the provider still had to confirm it exists.
     const ctl = new AbortController()
     const t = setTimeout(() => {
-      searchSymbols(q, { signal: ctl.signal })
-        .then((rows) => { setHits(rows.slice(0, 5)); setActive(-1) })
+      // A bare board code ("02628") is asked for twice — as typed, and as the
+      // venue symbol it means — because the provider knows only the second
+      // one and a dropdown that returns nothing is a dead end.
+      Promise.all(codeSearchQueries(q).map((query) => (
+        searchSymbols(query, { signal: ctl.signal }).catch(() => [])
+      )))
+        .then((lists) => {
+          const seen = new Set()
+          const rows = lists.flat().filter((h) => !seen.has(h.symbol) && seen.add(h.symbol))
+          setHits(rows.slice(0, 5))
+          setActive(-1)
+          onHits?.(rows)
+        })
         .catch(() => {})
     }, 280)
     return () => { clearTimeout(t); ctl.abort() }
