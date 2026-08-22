@@ -1,6 +1,6 @@
 /** Chinese market data through the worker: the parsers are the contract. */
 import { describe, expect, it } from 'vitest'
-import { isCnListing, parseCnIndustry, parseCnNews, parseCnProfile } from '../../src/lib/cnData.js'
+import { isCnListing, parseCnIndustry, parseCnNews, parseCnProfile, readableCnUrl } from '../../src/lib/cnData.js'
 
 describe('isCnListing', () => {
   it('covers the three venues and nothing else', () => {
@@ -58,5 +58,14 @@ describe('parseCnIndustry', () => {
     expect(parseCnIndustry({ jbzl: [{ EM2016: '有色金属' }] })).toBe('有色金属')
     expect(parseCnIndustry({ data: {} })).toBe('')
     expect(parseCnIndustry(undefined)).toBe('')
+  })
+})
+
+describe('readableCnUrl', () => {
+  it('accepts East Money story pages and nothing else', () => {
+    expect(readableCnUrl('https://finance.eastmoney.com/a/202608193846389234.html')).toBe(true)
+    expect(readableCnUrl('http://finance.eastmoney.com/a/202608193846389234.html')).toBe(true)
+    expect(readableCnUrl('https://finance.yahoo.com/news/x.html')).toBe(false)
+    expect(readableCnUrl('https://evil.com/a/202608193846389234.html')).toBe(false)
   })
 })
