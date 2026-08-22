@@ -27,6 +27,8 @@ export const BOOK_CARDS = [
   { id: 'venues', label: 'Markets' },
   { id: 'currency', label: 'Currency mix' },
   { id: 'cash', label: 'Cash & deployment' },
+  { id: 'trend', label: 'Trend' },
+  { id: 'pnlmap', label: 'P&L map' },
 ]
 
 const KNOWN = new Set(BOOK_CARDS.map((c) => c.id))
