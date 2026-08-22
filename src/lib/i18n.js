@@ -534,7 +534,8 @@ const LABELS = {
   'grounded in supplied conditions and market evidence': '基于所给条件与市场证据',
   'Add holdings to see their news here.': '添加持仓后，这里会显示相关新闻。', 'Business scope': '经营范围', 'term premium': '期限溢价',
   HKG: '港交所', SHH: '上交所', SHZ: '深交所', Shanghai: '上海', Shenzhen: '深圳',
-  Performance: '净值', 'since last': '较上次', 'vs': '对比', 'Open this page once a day — the value line grows from those marks.': '每天打开一次，净值曲线就会从这些记录中生长出来。', 'marks': '个记录', 'first mark': '首次记录', 'Benchmarks': '基准', loading: '加载中', 'news unavailable': '新闻暂不可用',
+  Performance: '净值', 'since last': '较上次', Ledger: '账本', line: '行',
+  'Add trade': '添加交易', 'Import trades': '导入交易', Side: '方向', Fee: '手续费', Realized: '已实现盈亏', 'Paste a broker export (CSV) — 富途, 华泰, IBKR Flex, or any file with symbol / side / quantity / price / date columns.': '粘贴券商导出的 CSV（富途、华泰、IBKR Flex，或任何含 代码/方向/数量/价格/日期 列的文件）。', Preview: '预览', 'Import {n} trades': '导入 {n} 笔交易', '{n} rows could not be read': '{n} 行无法识别', 'No trades yet. Add one, or import a broker export — holdings for traded symbols are derived from the ledger.': '还没有交易记录。添加一笔，或导入券商导出 — 有交易记录的持仓将由账本推导。', 'derived from ledger': '由账本推导', 'Remove trade': '删除交易', Clear: '清空', 'Choose file': '选择文件', 'vs': '对比', 'Open this page once a day — the value line grows from those marks.': '每天打开一次，净值曲线就会从这些记录中生长出来。', 'marks': '个记录', 'first mark': '首次记录', 'Benchmarks': '基准', loading: '加载中', 'news unavailable': '新闻暂不可用',
   'AI thesis read': 'AI 论点研判', GOOD: '良好', BREACHED: '已破坏',
   'NEEDS REVIEW': '待复核',
   // Watcher verdicts/severities/categories live in THESIS_TERMS, not here:

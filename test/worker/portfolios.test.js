@@ -87,3 +87,29 @@ describe('the route', () => {
     expect(env.SPEND.rows.size).toBe(0)
   })
 })
+
+describe('optional per-book fields — cash, daily marks, trades', () => {
+  const base = () => ({ portfolios: [{ id: 'p1', name: 'g', ccy: 'CNY', holdings: [{ symbol: '0700.HK', shares: 100 }] }], touched: {}, deleted: {} })
+  const withBook = (extra) => { const d = base(); Object.assign(d.portfolios[0], extra); return d }
+
+  it('accepts a book that carries cash, snapshots and txns', () => {
+    expect(validatePortfolioDocument(withBook({
+      cash: [{ ccy: 'HKD', amount: -1200.5 }],
+      snapshots: [{ d: '2026-08-22', v: 54128742.11, c: 'CNY' }],
+      txns: [{ id: 't1', d: '2026-08-20', sym: '0700.HK', side: 'buy', qty: 100, px: 457, fee: 12.5, ccy: 'HKD' }],
+    })).ok).toBe(true)
+  })
+
+  it('still accepts the older shape without them', () => {
+    expect(validatePortfolioDocument(base()).ok).toBe(true)
+  })
+
+  it('rejects malformed extras rather than storing them', () => {
+    expect(validatePortfolioDocument(withBook({ snapshots: [{ d: 'yesterday', v: 1, c: 'CNY' }] })).ok).toBe(false)
+    expect(validatePortfolioDocument(withBook({ cash: [{ ccy: 'EUR', amount: 1 }] })).ok).toBe(false)
+    expect(validatePortfolioDocument(withBook({ cash: [{ ccy: 'HKD', amount: 1 }, { ccy: 'HKD', amount: 2 }] })).ok).toBe(false)
+    expect(validatePortfolioDocument(withBook({ txns: [{ id: 't1', d: '2026-08-20', sym: '0700.HK', side: 'short', qty: 1, px: 1 }] })).ok).toBe(false)
+    expect(validatePortfolioDocument(withBook({ txns: [{ id: 't1', d: '2026-08-20', sym: '0700.HK', side: 'buy', qty: 0, px: 1 }] })).ok).toBe(false)
+    expect(validatePortfolioDocument(withBook({ bogus: 1 })).ok).toBe(false)
+  })
+})

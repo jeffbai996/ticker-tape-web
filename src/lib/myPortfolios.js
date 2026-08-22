@@ -12,6 +12,7 @@ import { sessionDayPct, dayPnlFromValue } from './dayPnl.js'
 import { convertCcy, holdingCurrency, PORTFOLIO_CCYS } from './fx.js'
 import { SYMBOL_RE } from './symbols.js'
 import { normalizeVenueCode } from './venueCodes.js'
+import { applyLedger } from './lots.js'
 
 const KEY = 'my_portfolios_v1'
 export const MAX_MY_PORTFOLIOS = 20
@@ -75,6 +76,35 @@ function cleanSnapshots(raw) {
   return [...byDate.values()].sort((a, b) => (a.d < b.d ? -1 : 1)).slice(-MAX_SNAPSHOTS)
 }
 
+/** Trades — the ledger a book's holdings can be derived from (Jeff
+ *  2026-08-22: lots instead of holdings). {id, d, sym, side, qty, px, fee?, ccy?}.
+ *  Newest 400 kept. A symbol with trades gets its holding row DERIVED
+ *  (see applyLedger); symbols the ledger never mentions stay hand-entered. */
+const MAX_TXNS = 400
+const TXN_ID_RE = /^[A-Za-z0-9_-]{1,24}$/
+function cleanTxn(raw) {
+  const id = String(raw?.id || '')
+  const d = String(raw?.d || '')
+  const sym = normalizeVenueCode(raw?.sym)
+  const side = raw?.side === 'sell' ? 'sell' : raw?.side === 'buy' ? 'buy' : null
+  const qty = Number(raw?.qty)
+  const px = Number(raw?.px)
+  const fee = Number(raw?.fee)
+  const ccy = String(raw?.ccy || '').toUpperCase()
+  if (!TXN_ID_RE.test(id) || !DATE_RE.test(d) || !SYMBOL_RE.test(sym) || !side) return null
+  if (!Number.isFinite(qty) || qty <= 0 || !Number.isFinite(px) || px < 0) return null
+  const t = { id, d, sym, side, qty, px }
+  if (Number.isFinite(fee) && fee > 0) t.fee = fee
+  if (PORTFOLIO_CCYS.includes(ccy)) t.ccy = ccy
+  return t
+}
+function cleanTxns(raw) {
+  const seen = new Set()
+  return (Array.isArray(raw) ? raw : []).map(cleanTxn)
+    .filter((t) => t && !seen.has(t.id) && seen.add(t.id))
+    .slice(-MAX_TXNS)
+}
+
 /** Today's date in the reader's own clock, the key a snapshot is filed under. */
 export function localDate(now = new Date()) {
   const pad = (n) => String(n).padStart(2, '0')
@@ -101,7 +131,7 @@ function sanitize(raw) {
       .map(cleanHolding)
       .filter((h) => h && !seen.has(h.symbol) && seen.add(h.symbol))
       .slice(0, MAX_MY_HOLDINGS)
-    return [{ id, name, ccy: item.ccy, holdings, cash: cleanCash(item.cash), snapshots: cleanSnapshots(item.snapshots) }]
+    return [{ id, name, ccy: item.ccy, holdings, cash: cleanCash(item.cash), snapshots: cleanSnapshots(item.snapshots), txns: cleanTxns(item.txns) }]
   }).slice(0, MAX_MY_PORTFOLIOS)
 }
 
@@ -136,7 +166,7 @@ export function createPortfolio(name, ccy) {
   if (!clean || !PORTFOLIO_CCYS.includes(ccy)) return null
   const items = loadPortfolios()
   if (items.length >= MAX_MY_PORTFOLIOS) return null
-  const p = { id: freshId(new Set(items.map((x) => x.id))), name: clean, ccy, holdings: [], cash: [], snapshots: [] }
+  const p = { id: freshId(new Set(items.map((x) => x.id))), name: clean, ccy, holdings: [], cash: [], snapshots: [], txns: [] }
   persist([...items, p])
   return p
 }
@@ -309,4 +339,67 @@ export function recordSnapshot(id, value, ccy, date = localDate()) {
 export function previousSnapshot(p, ccy, date = localDate()) {
   const snaps = (p?.snapshots || []).filter((x) => x.c === ccy && x.d < date)
   return snaps[snaps.length - 1] || null
+}
+
+let nextTxn = 1
+function freshTxnId(taken) {
+  let id
+  do { id = `t${Date.now().toString(36)}${(nextTxn++).toString(36)}` } while (taken.has(id))
+  return id
+}
+
+/** The ledger restates the holdings of every symbol it mentions — and a
+ *  symbol the PREVIOUS ledger owned is dropped first, so removing a trade
+ *  cannot leave its derived row behind as if someone had typed it. */
+function rederive(p, prevTxns) {
+  const owned = new Set((prevTxns || []).map((t) => t.sym))
+  const hand = (p.holdings || []).filter((h) => !owned.has(h.symbol))
+  p.holdings = applyLedger(hand, p.txns).slice(0, MAX_MY_HOLDINGS)
+}
+
+/** Record one trade; holdings for that symbol are re-derived from the
+ *  ledger. Returns the stored trade, or null. */
+export function addTxn(id, txn) {
+  const items = loadPortfolios()
+  const p = items.find((x) => x.id === id)
+  if (!p) return null
+  const taken = new Set((p.txns || []).map((t) => t.id))
+  const clean = cleanTxn({ ...txn, id: txn?.id && !taken.has(txn.id) ? txn.id : freshTxnId(taken) })
+  if (!clean) return null
+  const prev = p.txns || []
+  p.txns = [...prev, clean].slice(-MAX_TXNS)
+  rederive(p, prev)
+  persist(items)
+  return clean
+}
+
+/** Import many trades at once (a broker export). Rows that fail validation
+ *  are counted, not stored. Returns {added, rejected}. */
+export function importTxns(id, rows) {
+  const items = loadPortfolios()
+  const p = items.find((x) => x.id === id)
+  if (!p) return { added: 0, rejected: (rows || []).length }
+  const taken = new Set((p.txns || []).map((t) => t.id))
+  const prev = p.txns || []
+  let added = 0
+  let rejected = 0
+  for (const r of rows || []) {
+    const clean = cleanTxn({ ...r, id: freshTxnId(taken) })
+    if (!clean || (p.txns || []).length + added >= MAX_TXNS) { rejected++; continue }
+    taken.add(clean.id)
+    p.txns = [...(p.txns || []), clean]
+    added++
+  }
+  if (added) { rederive(p, prev); persist(items) }
+  return { added, rejected }
+}
+
+export function removeTxn(id, txnId) {
+  const items = loadPortfolios()
+  const p = items.find((x) => x.id === id)
+  if (!p) return
+  const prev = p.txns || []
+  p.txns = prev.filter((t) => t.id !== txnId)
+  rederive(p, prev)
+  persist(items)
 }
