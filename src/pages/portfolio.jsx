@@ -28,6 +28,8 @@ import {
 import { StatusPill } from '../components/StatusPill.jsx'
 import { countAdvancers } from '../lib/pulse.js'
 import { MyPortfolios, MyHoldings, MyNews, MyPerformance, MyTrades, MyEvents } from './portfolioMine.jsx'
+import { BookNews } from './portfolioNews.jsx'
+import { BookEvents } from './portfolioEvents.jsx'
 import { loadPortfolios, onPortfoliosChange } from '../lib/myPortfolios.js'
 import { IS_FAMILY_BUILD } from '../lib/nav.js'
 
@@ -1722,14 +1724,23 @@ export function Portfolio({ route }) {
   const family = IS_FAMILY_BUILD
   const view = family ? (route.sub || 'mine') : route.sub || (!wired && hasMine ? 'mine' : 'positions')
 
+  // On a wired build with no hand-built book, the broker positions feed the
+  // pages that are about "my names" rather than about the manual book
+  const brokerBook = {
+    id: 'broker', name: book?.accountLabel || book?.account || 'IBKR', ccy: 'USD', cash: [], snapshots: [], txns: [],
+    holdings: positions.filter((p) => p?.symbol && p.shares > 0).map((p) => ({ symbol: String(p.symbol).toUpperCase(), shares: p.shares })),
+  }
+  const brokerFed = wired && !hasMine
+  const BrokerNews = () => <div class="flex-1 min-w-0 p-3"><BookNews portfolio={brokerBook} quotes={priceMap} /></div>
+  const BrokerEvents = () => <div class="flex-1 min-w-0 p-3"><BookEvents portfolio={brokerBook} quotes={priceMap} /></div>
   const View = {
     positions: Positions,
     mine: MyPortfolios,
     holdings: MyHoldings,
     ledger: MyTrades,
-    events: MyEvents,
+    events: brokerFed ? BrokerEvents : MyEvents,
     performance: MyPerformance,
-    news: MyNews,
+    news: brokerFed ? BrokerNews : MyNews,
     account: Account,
     sizing: Sizing,
     carry: Carry,
