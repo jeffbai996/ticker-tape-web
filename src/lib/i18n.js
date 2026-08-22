@@ -494,7 +494,7 @@ const LABELS = {
   'rev growth': '营收增速', 'net margin': '净利率', pass: '通过',
   'fails a band': '未通过条件', 'missing data': '数据缺失',
   'earnings 14d': '14天内财报', 'earnings 7d': '7天内财报', Create: '创建',
-  cloud: '云端',  'send symbols to': '发送至', manage: '管理',
+  cloud: '云端',  'send symbols to': '发送至', manage: '管理', 'ticker tape': '走马灯',
    'enable sync': '启用同步', 
   connect: '连接', or: '或', 'copy code': '复制代码', 'copied code ✓': '代码已复制 ✓',
   '→ moves · ✕ removes': '→ 移动 · ✕ 移除', 'copied ✓': '已复制 ✓', Export: '导出',
