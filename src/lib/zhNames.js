@@ -12,6 +12,7 @@
  *  first zh-locale render, never on an English session's critical path.
  */
 
+import { getLocale } from './i18n.js'
 const CJK = /[㐀-鿿]/
 
 let TABLE = null          // symbol -> [简体, 繁體?]
@@ -52,6 +53,14 @@ export function hasCjk(q) {
 
 /** The Chinese name for a symbol, or null — including while the chunk is
  *  still loading, which is why callers keep the provider name as fallback. */
+/** The provider's name, or the table's Chinese one when the reader is in
+ *  zh — the single rule every name on the board follows (Jeff 2026-08-22:
+ *  "only Chinese names in the portfolio function and nowhere else"). */
+export function localName(symbol, fallback = '') {
+  if (getLocale() !== 'zh') return fallback
+  return zhName(symbol) || fallback
+}
+
 export function zhName(symbol, { traditional = false } = {}) {
   const row = TABLE?.[String(symbol || '').toUpperCase()]
   if (!row) return null
