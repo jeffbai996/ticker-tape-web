@@ -131,8 +131,7 @@ function AddHoldingForm({ portfolio }) {
           class={`${box} w-24`} />
         <input value={cost} onInput={(e) => setCost(e.currentTarget.value)}
           placeholder={tl('Avg cost (opt.)')} aria-label={tl('Avg cost (opt.)')}
-          title={tl('Leave blank if unknown — the current price is not your cost.')}
-          inputMode="decimal" data-1p-ignore data-lpignore="true" class={`${box} w-36`} />
+          inputMode="decimal" data-1p-ignore data-lpignore="true" class={`${box} w-32`} />
         <button type="submit" disabled={full || !confirmed || !(Number(shares) > 0)}
           class="rounded border border-accent/40 bg-accent/10 px-3 py-1.5 font-anth text-[12px] font-semibold text-accent transition-colors hover:bg-accent/20 disabled:opacity-40">
           {tl('Add')}
