@@ -301,11 +301,20 @@ async function fetchSymbol(symbol) {
   emit(symbol)
 }
 
+let pumpArmed = false
 function pump() {
-  while (lanes < PUMP_LANES && queue.length) {
-    lanes += 1
-    lane()
-  }
+  // start lanes a tick later, not synchronously: follow() and focus() land
+  // in the same turn, and a lane that dequeues before focus() has registered
+  // the viewport would spend its first fetch on an off-screen row
+  if (pumpArmed) return
+  pumpArmed = true
+  setTimeout(() => {
+    pumpArmed = false
+    while (lanes < PUMP_LANES && queue.length) {
+      lanes += 1
+      lane()
+    }
+  }, 0)
 }
 
 async function lane() {
