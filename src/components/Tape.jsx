@@ -221,7 +221,7 @@ export function Tape() {
                       re-roll on .board-control (fixed via layer promotion) —
                       and a tape that never blinks reads dead. */}
                   <span class="text-ink font-bold font-tick text-[10px]">{symbol}</span>
-                  <span class="text-ink-2 font-semibold">{q ? <FlashPrice price={q.price} fmt={fmtPrice} /> : '—'}</span>
+                  <span class="text-[11px] text-ink-2 font-semibold">{q ? <FlashPrice price={q.price} fmt={fmtPrice} /> : '—'}</span>
                   <span class={`text-[10px] ${q ? (up ? 'text-up' : 'text-down') : 'text-muted'}`}>
                     {q ? fmtPct(q.pct) : '—'}
                   </span>
