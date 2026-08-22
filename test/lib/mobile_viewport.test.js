@@ -20,7 +20,12 @@ describe('mobile viewport zoom guard', () => {
     expect(css).toMatch(/#app\s*\{[\s\S]*width:\s*100%;[\s\S]*max-width:\s*100%;[\s\S]*min-width:\s*0;[\s\S]*overflow:\s*hidden;/)
   })
 
-  it('keeps form controls above the iOS focus-zoom threshold', () => {
-    expect(css).toMatch(/@media \(max-width: 640px\)[\s\S]*#app :is\(input, textarea, select\)\s*\{[\s\S]*font-size:\s*16px !important;/)
+  it('keeps form controls above the iOS focus-zoom threshold — at focus, not always', () => {
+    // iOS decides the zoom when a control TAKES focus, so the floor only
+    // needs to hold then. The always-on form of this rule blew every input
+    // and select up to 16px on the phone (2026-08-22); the guard now pins the
+    // focus-scoped rule and refuses the always-on one.
+    expect(css).toMatch(/@media \(max-width: 640px\)[\s\S]*#app :is\(input, textarea, select\):focus\s*\{[\s\S]*font-size:\s*16px !important;/)
+    expect(css).not.toMatch(/#app :is\(input, textarea, select\)\s*\{/)
   })
 })
