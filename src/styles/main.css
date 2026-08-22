@@ -36,7 +36,16 @@
   --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   /* IBM Plex Mono: terminal-heritage data face, closest open match to the
      Bloomberg look (Jeff 2026-07-03). */
-  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* "Yuan Mark" sits behind Plex so U+00A5 only reaches it when the webfont
+     has no glyph or never loaded — iPad Safari under lang=zh otherwise falls
+     through to PingFang and prints the heavy full-width ¥ (Jeff 2026-08-22) */
+  --font-mono: "IBM Plex Mono", "Yuan Mark", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+@font-face {
+  font-family: "Yuan Mark";
+  src: local("Helvetica Neue"), local("HelveticaNeue"), local("Arial"), local("Roboto");
+  unicode-range: U+00A5, U+FFE5;
 }
 
 /* App chrome is not selectable; content areas opt back in per component. */
