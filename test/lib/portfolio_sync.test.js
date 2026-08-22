@@ -74,3 +74,24 @@ describe('sync meta', () => {
     expect(meta.deleted.p1).toBe(9)
   })
 })
+
+import { mergePortfolioDocs as mergeDocs, unionSnapshots } from '../../src/lib/portfolioSync.js'
+
+describe('daily marks survive a merge', () => {
+  const book = (snapshots, extra = {}) => ({ id: 'p1', name: 'g', ccy: 'CNY', holdings: [], cash: [], snapshots, ...extra })
+
+  it('unions marks by date; the winning side keeps the same-date reading', () => {
+    const a = [{ d: '2026-08-20', v: 1, c: 'CNY' }, { d: '2026-08-21', v: 2, c: 'CNY' }]
+    const b = [{ d: '2026-08-21', v: 5, c: 'CNY' }, { d: '2026-08-22', v: 6, c: 'CNY' }]
+    expect(unionSnapshots(a, b, false).map((x) => [x.d, x.v])).toEqual([['2026-08-20', 1], ['2026-08-21', 2], ['2026-08-22', 6]])
+    expect(unionSnapshots(a, b, true).map((x) => [x.d, x.v])).toEqual([['2026-08-20', 1], ['2026-08-21', 5], ['2026-08-22', 6]])
+  })
+
+  it('a newer holdings edit elsewhere wins the book, but this device\'s marks are kept', () => {
+    const local = { portfolios: [book([{ d: '2026-08-22', v: 100, c: 'CNY' }])], touched: { p1: 10 }, deleted: {} }
+    const remote = { portfolios: [book([{ d: '2026-08-21', v: 90, c: 'CNY' }], { name: 'renamed' })], touched: { p1: 20 }, deleted: {} }
+    const { doc } = mergeDocs(local, remote)
+    expect(doc.portfolios[0].name).toBe('renamed')
+    expect(doc.portfolios[0].snapshots.map((x) => x.d)).toEqual(['2026-08-21', '2026-08-22'])
+  })
+})

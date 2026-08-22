@@ -533,7 +533,8 @@ const LABELS = {
   'grounded in watcher conditions and wire evidence': '基于监测条件与快讯证据',
   'grounded in supplied conditions and market evidence': '基于所给条件与市场证据',
   'Add holdings to see their news here.': '添加持仓后，这里会显示相关新闻。', 'Business scope': '经营范围', 'term premium': '期限溢价',
-  HKG: '港交所', SHH: '上交所', SHZ: '深交所', Shanghai: '上海', Shenzhen: '深圳', loading: '加载中', 'news unavailable': '新闻暂不可用',
+  HKG: '港交所', SHH: '上交所', SHZ: '深交所', Shanghai: '上海', Shenzhen: '深圳',
+  Performance: '净值', 'since last': '较上次', 'vs': '对比', 'Open this page once a day — the value line grows from those marks.': '每天打开一次，净值曲线就会从这些记录中生长出来。', 'marks': '个记录', 'first mark': '首次记录', 'Benchmarks': '基准', loading: '加载中', 'news unavailable': '新闻暂不可用',
   'AI thesis read': 'AI 论点研判', GOOD: '良好', BREACHED: '已破坏',
   'NEEDS REVIEW': '待复核',
   // Watcher verdicts/severities/categories live in THESIS_TERMS, not here:

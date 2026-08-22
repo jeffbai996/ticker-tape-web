@@ -72,10 +72,16 @@ export function mergePortfolioDocs(local, remote) {
       if (localBy.has(id)) changedLocal = true
       continue
     }
-    const winner = (rt[id] || 0) > (lt[id] || 0)
+    const remoteWins = (rt[id] || 0) > (lt[id] || 0)
+    const picked = remoteWins
       ? remoteBy.get(id) || localBy.get(id)
       : localBy.get(id) || remoteBy.get(id)
-    if (!winner) continue
+    if (!picked) continue
+    // daily value marks are a union, whichever side won the edit: every
+    // device files its own day, nobody's day is lost to a newer touch
+    const ls = localBy.get(id)?.snapshots
+    const rs = remoteBy.get(id)?.snapshots
+    const winner = (ls || rs) ? { ...picked, snapshots: unionSnapshots(ls, rs, remoteWins) } : picked
     portfolios.push(winner)
     touched[id] = editTs
     const localCopy = localBy.get(id)
@@ -147,6 +153,21 @@ function snapshot(meta) {
   return { portfolios: loadPortfolios(), touched: meta.touched, deleted: meta.deleted }
 }
 
+/** Merge two devices' daily marks by date; on the same date the winning
+ *  side's reading stands. Pure, exported for tests. */
+export function unionSnapshots(a, b, preferB = false) {
+  const byDate = new Map()
+  const [first, second] = preferB ? [a, b] : [b, a]
+  for (const x of first || []) if (x?.d) byDate.set(x.d, x)
+  for (const x of second || []) if (x?.d) byDate.set(x.d, x)
+  return [...byDate.values()].sort((x, y) => (x.d < y.d ? -1 : 1))
+}
+
+// a snapshot is a reading, not an edit: writing one must not make this
+// device the newest author of the whole book (a stale phone filing its
+// day would otherwise overwrite a fresh holdings edit from elsewhere)
+const editable = ({ snapshots, ...rest }) => rest
+
 function stampLocalEdits(prev, meta) {
   const now = Date.now()
   let next = meta
@@ -154,7 +175,7 @@ function stampLocalEdits(prev, meta) {
   const prevById = new Map(prev.map((p) => [p.id, p]))
   for (const p of items) {
     const before = prevById.get(p.id)
-    if (!before || JSON.stringify(before) !== JSON.stringify(p)) next = touchPortfolio(next, p.id, now)
+    if (!before || JSON.stringify(editable(before)) !== JSON.stringify(editable(p))) next = touchPortfolio(next, p.id, now)
     prevById.delete(p.id)
   }
   for (const id of prevById.keys()) next = markPortfolioDeleted(next, id, now)

@@ -398,7 +398,7 @@ export function TuiRow({ symbol, data, earnDays, onRemove = () => {}, selecting,
                   NAURA sat 15px left of its neighbours) or wasted the width a
                   crash-day print needs on every calm day. Phones stay
                   content-sized. */}
-              {q && (
+              {q ? (
                 <span class={`${up ? 'text-up' : 'text-down'} whitespace-nowrap @min-[545px]:min-w-(--col-change) shrink-0`}>
                   <span data-col="change" class="inline-block whitespace-nowrap price-grouped">
                     {up ? '▲' : '▼'} <FlashMetric value={q.change} fmt={fmtAbsChange} kind="change" />{' '}
@@ -407,6 +407,13 @@ export function TuiRow({ symbol, data, earnDays, onRemove = () => {}, selecting,
                     </span>
                   </span>
                 </span>
+              ) : (
+                /* Ghost slot, same as the ext column's: a row still waiting on
+                   its quote keeps the change column's width, so the price does
+                   not slide right by one column while the feed catches up —
+                   the probe gate caught exactly that on a slow-feed night
+                   (2026-08-22) */
+                <span aria-hidden="true" class="@min-[545px]:min-w-(--col-change) shrink-0" />
               )}
               {/* extended hours reads a tier below the regular quote — on a
                   phone it was the same size as the print and clipped off the
