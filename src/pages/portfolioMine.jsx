@@ -20,7 +20,7 @@ import { BUCKETS } from '../lib/symbols.js'
 import { FlashPrice } from '../components/Fig.jsx'
 import { fmtPrice, fmtPct, fmtPctPlain } from '../lib/format.js'
 import { tl } from '../lib/i18n.js'
-import { PORTFOLIO_CCYS, convertCcy, fmtCcy, fxSymbolsFor, holdingCurrency, ratesFromQuotes } from '../lib/fx.js'
+import { PORTFOLIO_CCYS, cashAccountName, convertCcy, fmtCcy, fxSymbolsFor, holdingCurrency, ratesFromQuotes } from '../lib/fx.js'
 import {
   MAX_MY_HOLDINGS, createPortfolio, deletePortfolio, loadPortfolios,
   onPortfoliosChange, removeCash, removeHolding, renamePortfolio, setCash,
@@ -71,7 +71,7 @@ function NewPortfolioForm({ onDone }) {
  *  Add button stays shut until the typed text IS a listing: picked from the
  *  dropdown, or typed in full and matched against the provider's own hits.
  *  Currency then follows the listing and is never an input. */
-function AddHoldingRow({ portfolio }) {
+function AddHoldingForm({ portfolio }) {
   const [sym, setSym] = useState('')
   const [picked, setPicked] = useState(null)     // {symbol, name} from the dropdown
   const [shares, setShares] = useState('')
@@ -98,8 +98,7 @@ function AddHoldingRow({ portfolio }) {
   }
   const box = 'rounded border border-line-2 bg-surface-2 px-2 py-1.5 font-mono text-[10.5px] text-ink placeholder:text-[10px] placeholder:text-muted outline-none focus:border-accent/60'
   return (
-    <form onSubmit={submit} class="rounded-xl border border-line bg-surface-1 px-3 py-2">
-      <div class="pb-1.5 font-anth text-[9px] uppercase tracking-wider text-muted">{tl('Add holding')}</div>
+    <form onSubmit={submit}>
       <div class="flex flex-wrap items-center gap-2">
         <SymbolSuggest value={sym} placeholder={tl('Symbol or company')}
           ariaLabel={tl('Symbol or company')}
@@ -123,12 +122,39 @@ function AddHoldingRow({ portfolio }) {
           {confirmed.exch && <span class="text-[9px] uppercase tracking-wider"> · {confirmed.exch}</span>}
         </div>
       )}
-      <div class={`mt-1 font-anth text-[9.5px] ${typed && !confirmed ? 'text-accent' : 'text-muted'}`}>
+      <div class={`mt-1.5 font-anth text-[9.5px] ${typed && !confirmed ? 'text-accent' : 'text-muted'}`}>
         {typed && !confirmed
           ? tl('Pick the listing from the list — a plain board code like 02628 is not a symbol anywhere.')
           : tl('Type a ticker or a company name and pick from the list.')}
       </div>
     </form>
+  )
+}
+
+/** Removing a row takes two taps (Jeff 2026-08-21). The first arms the
+ *  button and says so; the second removes. It disarms on blur, and on its own
+ *  after a few seconds, so an armed × can never sit waiting for a stray click.
+ *  The button keeps its width in both states or the whole column reflows
+ *  under the pointer. */
+function ConfirmRemove({ label, onConfirm }) {
+  const [armed, setArmed] = useState(false)
+  useEffect(() => {
+    if (!armed) return undefined
+    const t = setTimeout(() => setArmed(false), 3500)
+    return () => clearTimeout(t)
+  }, [armed])
+  return (
+    <button type="button"
+      title={armed ? tl('Tap again to remove') : tl('Remove')}
+      aria-label={`${armed ? tl('Tap again to remove') : tl('Remove')} ${label}`}
+      onClick={() => (armed ? onConfirm() : setArmed(true))}
+      onBlur={() => setArmed(false)}
+      class={`inline-flex min-w-[3.25rem] items-center justify-center rounded px-1.5 py-1 transition-colors ${
+        armed
+          ? 'border border-down/50 bg-down/10 font-anth text-[9px] font-semibold uppercase tracking-wider text-down'
+          : 'text-muted hover:text-down'}`}>
+      {armed ? tl('Sure?') : '×'}
+    </button>
   )
 }
 
@@ -153,7 +179,7 @@ function SharesCell({ portfolio, row }) {
  *  from portfolio can still be used by him"). Same sizeForWeight math as the
  *  broker book, but everything runs in the portfolio's display currency so a
  *  mixed HKD/USD book sizes honestly. */
-function SizingCard({ portfolio, quotes, rates }) {
+function SizingForm({ portfolio, quotes, rates }) {
   const { total } = portfolioValues(portfolio.holdings, quotes, rates, portfolio.ccy, portfolio.cash)
   const [sym, setSym] = useState('')
   const [targetPct, setTargetPct] = useState('10')
@@ -167,10 +193,9 @@ function SizingCard({ portfolio, quotes, rates }) {
   const r = pxDisplay != null && total.value
     ? sizeForWeight({ nlv: total.value, price: pxDisplay, targetPct: Number(targetPct) || 0, currentShares: held })
     : null
-  const box = 'rounded border border-line-2 bg-surface-2 px-2 py-1.5 font-mono text-[10.5px] text-ink placeholder:text-[10px] placeholder:text-muted outline-none focus:border-accent/60'
+  const box = 'rounded-md border border-line-2 bg-surface-2 px-2.5 py-1.5 font-mono text-[11px] text-ink placeholder:text-[10px] placeholder:text-muted outline-none focus:border-accent/60'
   return (
-    <section class="rounded-xl border border-line bg-surface-1 px-3 py-2">
-      <div class="pb-1.5 font-anth text-[9px] uppercase tracking-wider text-muted">{tl('Sizing')}</div>
+    <div>
       <div class="flex flex-wrap items-center gap-2">
         <SymbolSuggest value={sym} placeholder={tl('Symbol or company')} ariaLabel={`${tl('Sizing')} ${tl('Symbol')}`}
           onInput={(e) => setSym(e.currentTarget.value)} onPick={(h) => setSym(h.symbol)}
@@ -193,7 +218,10 @@ function SizingCard({ portfolio, quotes, rates }) {
         )}
         {chosen && !r && <span class="font-anth text-[10px] text-muted">…</span>}
       </div>
-    </section>
+      <div class="mt-1.5 font-anth text-[9.5px] text-muted">
+        {tl('What a target weight works out to in shares, at the live price.')}
+      </div>
+    </div>
   )
 }
 
@@ -241,40 +269,43 @@ function CashCell({ portfolio, row }) {
 
 /** One cash account per supported currency, no more (Jeff 2026-08-21) — so
  *  the picker only ever offers the currencies this book has not used yet, and
- *  says so plainly once all four are open. */
-function AddCashRow({ portfolio }) {
+ *  says so plainly once all four are open. It opens on the book's own display
+ *  currency, which is the account most books want first; the rest stay one
+ *  click away. */
+function AddCashForm({ portfolio }) {
   const open = (portfolio.cash || []).map((c) => c.ccy)
   const free = PORTFOLIO_CCYS.filter((c) => !open.includes(c))
-  const [ccy, setCcy] = useState(free[0] || PORTFOLIO_CCYS[0])
+  const preferred = free.includes(portfolio.ccy) ? portfolio.ccy : free[0]
+  const [ccy, setCcy] = useState(null)            // null = follow the book
   const [amount, setAmount] = useState('')
-  const pick = free.includes(ccy) ? ccy : free[0]
+  const pick = ccy && free.includes(ccy) ? ccy : preferred
   const submit = (e) => {
     e.preventDefault()
     if (!pick) return
     if (setCash(portfolio.id, pick, Number(amount.replace(/,/g, '')))) {
       setAmount('')
-      setCcy(free.filter((c) => c !== pick)[0] || PORTFOLIO_CCYS[0])
+      setCcy(null)                                // back to the book's currency
     }
   }
-  const box = 'rounded border border-line-2 bg-surface-2 px-2 py-1.5 font-mono text-[10.5px] text-ink placeholder:text-[10px] placeholder:text-muted outline-none focus:border-accent/60'
+  const box = 'rounded-md border border-line-2 bg-surface-2 px-2.5 py-1.5 font-mono text-[11px] text-ink placeholder:text-[10px] placeholder:text-muted outline-none focus:border-accent/60'
   return (
-    <form onSubmit={submit} class="rounded-xl border border-line bg-surface-1 px-3 py-2">
-      <div class="pb-1.5 font-anth text-[9px] uppercase tracking-wider text-muted">{tl('Add cash account')}</div>
+    <form onSubmit={submit}>
       {free.length ? (
         <div class="flex flex-wrap items-center gap-2">
           <CcySelect value={pick} onChange={setCcy} options={free} />
           <input value={amount} onInput={(e) => setAmount(e.currentTarget.value)}
             placeholder={tl('Cash amount')} aria-label={tl('Cash amount')} inputMode="decimal"
-            data-1p-ignore data-lpignore="true" class={`${box} w-32`} />
+            data-1p-ignore data-lpignore="true" class={`${box} w-36 text-right`} />
+          <span class="font-anth text-[10.5px] text-muted">{tl(cashAccountName(pick))}</span>
           <button type="submit" disabled={!Number.isFinite(Number(amount.replace(/,/g, ''))) || amount.trim() === ''}
-            class="rounded border border-accent/40 bg-accent/10 px-3 py-1.5 font-anth text-[12px] font-semibold text-accent transition-colors hover:bg-accent/20 disabled:opacity-40">
+            class="ml-auto rounded-md border border-accent/40 bg-accent/10 px-3.5 py-1.5 font-anth text-[12px] font-semibold text-accent transition-colors hover:bg-accent/20 disabled:opacity-40">
             {tl('Add')}
           </button>
         </div>
       ) : (
-        <div class="font-anth text-[10px] text-muted">{tl('Every supported currency already has an account.')}</div>
+        <div class="font-anth text-[10.5px] text-muted">{tl('Every supported currency already has an account.')}</div>
       )}
-      <div class="mt-1 font-anth text-[9.5px] text-muted">
+      <div class="mt-1.5 font-anth text-[9.5px] text-muted">
         {tl('One account per currency. Cash counts toward value and weights, never toward day P&L.')}
       </div>
     </form>
@@ -339,9 +370,7 @@ function Holdings({ portfolio, quotes, rates }) {
                 {r.unrealDisplay != null ? signed(r.unrealDisplay, ccy) : '—'}
               </td>
               <td class="px-1.5 py-[2px] text-right">
-                <button type="button" title={tl('Remove')} aria-label={`${tl('Remove')} ${r.symbol}`}
-                  onClick={() => removeHolding(portfolio.id, r.symbol)}
-                  class="rounded px-1.5 py-1 text-muted transition-colors hover:text-down">×</button>
+                <ConfirmRemove label={r.symbol} onConfirm={() => removeHolding(portfolio.id, r.symbol)} />
               </td>
             </tr>
           ))}
@@ -356,7 +385,7 @@ function Holdings({ portfolio, quotes, rates }) {
           {cashRows.map((r) => (
             <tr key={r.symbol} class="border-t border-line hover:bg-surface-3 whitespace-nowrap">
               <td class="px-2.5 py-[2px]">
-                <span class="font-bold text-ink-2">{tl('Cash')}</span>
+                <span class="font-bold text-ink-2">{tl(cashAccountName(r.ccy))}</span>
               </td>
               <td class="px-1.5 py-[2px] font-anth text-[10px] text-muted">{r.ccy}</td>
               <td class="px-1.5 py-[2px] text-right"><CashCell portfolio={portfolio} row={r} /></td>
@@ -371,9 +400,7 @@ function Holdings({ portfolio, quotes, rates }) {
               </td>
               <td class="px-1.5 py-[2px] text-right text-muted">—</td>
               <td class="px-1.5 py-[2px] text-right">
-                <button type="button" title={tl('Remove')} aria-label={`${tl('Remove')} ${tl('Cash')} ${r.ccy}`}
-                  onClick={() => removeCash(portfolio.id, r.ccy)}
-                  class="rounded px-1.5 py-1 text-muted transition-colors hover:text-down">×</button>
+                <ConfirmRemove label={tl(cashAccountName(r.ccy))} onConfirm={() => removeCash(portfolio.id, r.ccy)} />
               </td>
             </tr>
           ))}
@@ -548,6 +575,42 @@ function BookAnalysis({ portfolio, quotes, rates }) {
   )
 }
 
+/** One control surface instead of three stacked cards (Jeff 2026-08-21).
+ *  Adding a position, adding cash and sizing a trade are the same kind of
+ *  act — they belong behind one set of tabs, not three headers competing for
+ *  the same strip of screen. The tab strip carries the tactile treatment the
+ *  design system reserves for controls; the form bodies stay flat. */
+function BookTools({ portfolio, quotes, rates }) {
+  const [tab, setTab] = useState('holding')
+  const tabs = [
+    ['holding', tl('Add holding')],
+    ['cash', tl('Add cash account')],
+    ['sizing', tl('Sizing')],
+  ]
+  return (
+    <section class="overflow-hidden rounded-xl border border-line bg-surface-1">
+      <div role="tablist" aria-label={tl('Portfolio tools')}
+        class="flex flex-wrap gap-1 border-b border-line bg-surface-2/60 px-2 py-1.5">
+        {tabs.map(([id, label]) => (
+          <button key={id} type="button" role="tab" aria-selected={tab === id}
+            onClick={() => setTab(id)}
+            class={`board-control rounded-md px-3 py-1.5 font-anth text-[11px] transition-colors ${
+              tab === id
+                ? 'border border-accent/45 bg-accent/12 font-semibold text-accent'
+                : 'border border-transparent text-ink-2 hover:border-line-2 hover:text-ink'}`}>
+            {label}
+          </button>
+        ))}
+      </div>
+      <div class="px-3 py-2.5">
+        {tab === 'holding' && <AddHoldingForm portfolio={portfolio} />}
+        {tab === 'cash' && <AddCashForm portfolio={portfolio} />}
+        {tab === 'sizing' && <SizingForm portfolio={portfolio} quotes={quotes} rates={rates} />}
+      </div>
+    </section>
+  )
+}
+
 function copyText(value) {
   if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(value)
   return Promise.reject(new Error('no clipboard'))
@@ -704,11 +767,7 @@ export function MyPortfolios() {
           <SummaryStrip portfolio={selected} quotes={quotes} rates={rates} ccys={ccys} />
           <BookAnalysis portfolio={selected} quotes={quotes} rates={rates} />
           <Holdings portfolio={selected} quotes={quotes} rates={rates} />
-          <SizingCard portfolio={selected} quotes={quotes} rates={rates} />
-          <div class="grid gap-2.5 lg:grid-cols-2">
-            <AddHoldingRow portfolio={selected} />
-            <AddCashRow portfolio={selected} />
-          </div>
+          <BookTools portfolio={selected} quotes={quotes} rates={rates} />
         </>
       ) : (
         <div class="rounded-xl border border-line bg-surface-1 px-4 py-6 text-center font-anth text-[11px] text-muted">
