@@ -51,11 +51,22 @@ const CAL_TTL = 6 * 60 * 60_000
 export function peekFundamentals(symbol) { return cache.peek(symbol)?.value }
 export function peekEarningsDate(symbol) { return calCache.peek(symbol)?.value }
 
-/** Next earnings date (epoch ms) + EPS estimate via v10 calendarEvents. */
-export async function fetchEarningsDate(symbol) {
-  const hit = calCache.get(symbol)
-  if (hit && Date.now() - hit.ts < CAL_TTL) return hit.value
+// Two surfaces ask for the same calendar at boot (the board's day badges and
+// the earnings docket); without this every symbol went to the provider twice,
+// in lockstep, ahead of the price batches (waterfall, 2026-08-22).
+const calInFlight = new Map()
 
+/** Next earnings date (epoch ms) + EPS estimate via v10 calendarEvents. */
+export function fetchEarningsDate(symbol) {
+  const hit = calCache.get(symbol)
+  if (hit && Date.now() - hit.ts < CAL_TTL) return Promise.resolve(hit.value)
+  if (calInFlight.has(symbol)) return calInFlight.get(symbol)
+  const p = fetchEarningsDateUncached(symbol).finally(() => calInFlight.delete(symbol))
+  calInFlight.set(symbol, p)
+  return p
+}
+
+async function fetchEarningsDateUncached(symbol) {
   const url = `${crumbBase()}/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=calendarEvents`
   const resp = await fetch(url, { signal: AbortSignal.timeout(12_000) })
   if (!resp.ok) throw new Error(`calendar ${symbol}: HTTP ${resp.status}`)

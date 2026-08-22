@@ -2,7 +2,7 @@ import { useEffect, useState } from 'preact/hooks'
 import { fetchEarningsDate } from '../lib/fundamentals.js'
 import { fetchEarningsImpact } from '../lib/earnings.js'
 import { fetchOptions } from '../lib/options.js'
-import { getCached } from '../lib/feed.js'
+import { getCached, whenFirstBatch } from '../lib/feed.js'
 import { wireServiceUrl } from '../lib/wire.js'
 import { fmtPct, fmtPctPlain, fmtPrice } from '../lib/format.js'
 import { expiryForEvent, moveEdge, typicalMovePct } from '../lib/expmove.js'
@@ -189,15 +189,25 @@ export function EarningsDay({ symbols }) {
 
   useEffect(() => {
     let dead = false
-    for (const s of symbols) {
-      fetchEarningsDate(s)
-        .then((d) => {
-          if (dead || !d?.date) return
-          setDates((cur) => ({ ...cur, [s]: d }))
-        })
-        .catch(() => {})
-    }
-    return () => { dead = true }
+    const timers = []
+    // paced and deferred behind the first price paint; the in-flight map in
+    // fetchEarningsDate means the board's badge lookups and these share one
+    // request per symbol (2026-08-22)
+    whenFirstBatch().then(() => {
+      if (dead) return
+      symbols.forEach((s, i) => {
+        timers.push(setTimeout(() => {
+          if (dead) return
+          fetchEarningsDate(s)
+            .then((d) => {
+              if (dead || !d?.date) return
+              setDates((cur) => ({ ...cur, [s]: d }))
+            })
+            .catch(() => {})
+        }, 600 + i * 200))
+      })
+    })
+    return () => { dead = true; timers.forEach(clearTimeout) }
   }, [symbols.join(',')])
 
   const docket = Object.entries(dates)
