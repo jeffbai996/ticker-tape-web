@@ -293,51 +293,52 @@ function Holdings({ portfolio, quotes, rates }) {
         <thead>
           {/* nowrap: 股数 stacked into two lines on a phone (Jeff 2026-08-20) */}
           <tr class="bg-surface-2 text-[9px] text-muted uppercase tracking-wider whitespace-nowrap">
-            <th class="px-3 py-2 text-left">{tl('Sym')}</th>
-            <th class="px-2 py-2 text-left">{tl('Ccy')}</th>
-            <th class="px-2 py-2 text-right">{tl('Shares')}</th>
-            <th class="px-2 py-2 text-right">{tl('Avg cost')}</th>
-            <th class="px-2 py-2 text-right">{tl('Price')}</th>
-            <th class="px-2 py-2 text-right">{tl('Day')}</th>
-            <th class="px-2 py-2 text-right">{tl('Value')} ({ccy})</th>
-            <th class="px-2 py-2 text-right">{tl('Weight')}</th>
-            <th class="px-2 py-2 text-right">{tl('Unreal P&L')}</th>
-            <th class="px-2 py-2" aria-hidden="true" />
+            <th class="px-2.5 py-1.5 text-left">{tl('Sym')}</th>
+            <th class="px-1.5 py-1.5 text-left">{tl('Ccy')}</th>
+            {/* pr-2.5 = the cell's px-1.5 plus the editable input's own px-1 */}
+            <th class="pl-1.5 pr-2.5 py-1.5 text-right">{tl('Shares')}</th>
+            <th class="pl-1.5 pr-2.5 py-1.5 text-right">{tl('Avg cost')}</th>
+            <th class="px-1.5 py-1.5 text-right">{tl('Price')}</th>
+            <th class="px-1.5 py-1.5 text-right">{tl('Day')}</th>
+            <th class="px-1.5 py-1.5 text-right">{tl('Value')} ({ccy})</th>
+            <th class="px-1.5 py-1.5 text-right">{tl('Weight')}</th>
+            <th class="px-1.5 py-1.5 text-right">{tl('Unreal P&L')}</th>
+            <th class="px-1.5 py-1.5" aria-hidden="true" />
           </tr>
         </thead>
         <tbody>
           {rows.map((r) => (
             <tr key={r.symbol} class="border-t border-line hover:bg-surface-3 whitespace-nowrap">
-              <td class="px-3 py-[3px] cursor-pointer"
+              <td class="px-2.5 py-[2px] cursor-pointer"
                 onClick={() => (location.hash = `#/research/${r.symbol.toLowerCase()}`)}>
                 <span class="font-bold text-accent">{r.symbol}</span>
                 {quotes[r.symbol]?.name && (
-                  <span class="block max-w-[9rem] truncate font-anth text-[9px] leading-tight text-muted">
+                  <span class="block max-w-[9rem] truncate font-anth text-[8.5px] leading-[1.1] text-muted">
                     {quotes[r.symbol].name}
                   </span>
                 )}
               </td>
-              <td class="px-2 py-[3px] font-anth text-[10px] text-muted">{r.ccy}</td>
-              <td class="px-2 py-[3px] text-right"><SharesCell portfolio={portfolio} row={r} /></td>
-              <td class="px-2 py-[3px] text-right"><CostCell portfolio={portfolio} row={r} /></td>
-              <td class="px-2 py-[3px] text-right text-ink-2 font-medium">
+              <td class="px-1.5 py-[2px] font-anth text-[10px] text-muted">{r.ccy}</td>
+              <td class="px-1.5 py-[2px] text-right"><SharesCell portfolio={portfolio} row={r} /></td>
+              <td class="px-1.5 py-[2px] text-right"><CostCell portfolio={portfolio} row={r} /></td>
+              <td class="px-1.5 py-[2px] text-right text-ink-2 font-medium">
                 {r.price != null ? <FlashPrice price={r.price} fmt={fmtPrice} /> : '—'}
               </td>
-              <td class={`px-2 py-[3px] text-right font-medium ${pnlCls(r.dayPct)}`}>
+              <td class={`px-1.5 py-[2px] text-right font-medium ${pnlCls(r.dayPct)}`}>
                 {r.dayPnlDisplay != null
                   ? <>{signed(r.dayPnlDisplay, ccy)} <span class="text-[10px] font-normal">({fmtPct(r.dayPct)})</span></>
                   : r.dayPct != null ? fmtPct(r.dayPct) : '—'}
               </td>
-              <td class="px-2 py-[3px] text-right text-ink font-semibold text-[12px]">
+              <td class="px-1.5 py-[2px] text-right text-ink font-semibold text-[12px]">
                 {r.valueDisplay != null ? fmtCcy(r.valueDisplay, ccy) : '—'}
               </td>
-              <td class="px-2 py-[3px] text-right text-ink-2 font-medium">
+              <td class="px-1.5 py-[2px] text-right text-ink-2 font-medium">
                 {r.weightPct != null ? fmtPctPlain(r.weightPct) : '—'}
               </td>
-              <td class={`px-2 py-[3px] text-right font-semibold ${pnlCls(r.unrealDisplay)}`}>
+              <td class={`px-1.5 py-[2px] text-right font-semibold ${pnlCls(r.unrealDisplay)}`}>
                 {r.unrealDisplay != null ? signed(r.unrealDisplay, ccy) : '—'}
               </td>
-              <td class="px-2 py-[3px] text-right">
+              <td class="px-1.5 py-[2px] text-right">
                 <button type="button" title={tl('Remove')} aria-label={`${tl('Remove')} ${r.symbol}`}
                   onClick={() => removeHolding(portfolio.id, r.symbol)}
                   class="rounded px-1.5 py-1 text-muted transition-colors hover:text-down">×</button>
@@ -354,22 +355,22 @@ function Holdings({ portfolio, quotes, rates }) {
           )}
           {cashRows.map((r) => (
             <tr key={r.symbol} class="border-t border-line hover:bg-surface-3 whitespace-nowrap">
-              <td class="px-3 py-[3px]">
+              <td class="px-2.5 py-[2px]">
                 <span class="font-bold text-ink-2">{tl('Cash')}</span>
               </td>
-              <td class="px-2 py-[3px] font-anth text-[10px] text-muted">{r.ccy}</td>
-              <td class="px-2 py-[3px] text-right"><CashCell portfolio={portfolio} row={r} /></td>
-              <td class="px-2 py-[3px] text-right text-muted">—</td>
-              <td class="px-2 py-[3px] text-right text-muted">—</td>
-              <td class="px-2 py-[3px] text-right text-muted">—</td>
-              <td class="px-2 py-[3px] text-right text-ink font-semibold text-[12px]">
+              <td class="px-1.5 py-[2px] font-anth text-[10px] text-muted">{r.ccy}</td>
+              <td class="px-1.5 py-[2px] text-right"><CashCell portfolio={portfolio} row={r} /></td>
+              <td class="px-1.5 py-[2px] text-right text-muted">—</td>
+              <td class="px-1.5 py-[2px] text-right text-muted">—</td>
+              <td class="px-1.5 py-[2px] text-right text-muted">—</td>
+              <td class="px-1.5 py-[2px] text-right text-ink font-semibold text-[12px]">
                 {r.valueDisplay != null ? fmtCcy(r.valueDisplay, ccy) : '—'}
               </td>
-              <td class="px-2 py-[3px] text-right text-ink-2 font-medium">
+              <td class="px-1.5 py-[2px] text-right text-ink-2 font-medium">
                 {r.weightPct != null ? fmtPctPlain(r.weightPct) : '—'}
               </td>
-              <td class="px-2 py-[3px] text-right text-muted">—</td>
-              <td class="px-2 py-[3px] text-right">
+              <td class="px-1.5 py-[2px] text-right text-muted">—</td>
+              <td class="px-1.5 py-[2px] text-right">
                 <button type="button" title={tl('Remove')} aria-label={`${tl('Remove')} ${tl('Cash')} ${r.ccy}`}
                   onClick={() => removeCash(portfolio.id, r.ccy)}
                   class="rounded px-1.5 py-1 text-muted transition-colors hover:text-down">×</button>
@@ -378,13 +379,13 @@ function Holdings({ portfolio, quotes, rates }) {
           ))}
           {(rows.length > 0 || cashRows.length > 0) && (
             <tr class="border-t border-line-2 bg-surface-2 font-bold whitespace-nowrap">
-              <td class="px-3 py-[6px] text-ink" colSpan={5}>{tl('Total')}</td>
-              <td class={`px-2 py-[6px] text-right ${pnlCls(total.dayPnl)}`}>
+              <td class="px-2.5 py-[5px] text-ink" colSpan={5}>{tl('Total')}</td>
+              <td class={`px-1.5 py-[5px] text-right ${pnlCls(total.dayPnl)}`}>
                 {total.dayPnl != null ? signed(total.dayPnl, ccy) : '—'}
               </td>
-              <td class="px-2 py-[6px] text-right text-ink text-[12.5px]">{fmtCcy(total.value, ccy)}</td>
-              <td class="px-2 py-[6px] text-right text-ink-2">{total.value != null ? '100%' : '—'}</td>
-              <td class={`px-2 py-[6px] text-right text-[12.5px] ${pnlCls(total.unrealPnl)}`}>
+              <td class="px-1.5 py-[5px] text-right text-ink text-[12.5px]">{fmtCcy(total.value, ccy)}</td>
+              <td class="px-1.5 py-[5px] text-right text-ink-2">{total.value != null ? '100%' : '—'}</td>
+              <td class={`px-1.5 py-[5px] text-right text-[12.5px] ${pnlCls(total.unrealPnl)}`}>
                 {total.unrealPnl != null ? signed(total.unrealPnl, ccy) : '—'}
               </td>
               <td />
@@ -412,7 +413,10 @@ function SummaryStrip({ portfolio, quotes, rates, ccys }) {
       </span>
     )
   const fxUsed = [...new Set([...(ccys || []), portfolio.ccy])].filter((c) => c !== 'USD')
-  const fxNote = fxUsed.map((c) => (rates[c] != null ? `${c} ${rates[c].toFixed(3)}` : `${c} …`)).join(' · ')
+  // One rate per line rather than one truncated line (Jeff 2026-08-21: the
+  // second pair was cut off mid-word). Two currencies is the common case and
+  // both have to be readable; the column is the narrowest of the three.
+  const fxRates = fxUsed.map((c) => [c, rates[c] != null ? rates[c].toFixed(3) : '…'])
   return (
     <section class="border border-line rounded-xl overflow-hidden bg-surface-1">
       <div class="flex flex-wrap items-stretch">
@@ -428,17 +432,28 @@ function SummaryStrip({ portfolio, quotes, rates, ccys }) {
           </div>
         </div>
         <div class="px-4 py-3 flex-[1.2] min-w-[260px] border-l border-line max-sm:border-l-0 max-sm:border-t flex flex-col justify-center">
-          <div class="grid grid-cols-3 gap-3">
+          <div class="grid grid-cols-[auto_auto_1fr] gap-x-4 gap-y-3">
             {[
               [tl('Holdings'), String(priced.filter((r) => r.kind !== 'cash').length)],
               [tl('Currencies'), String(new Set(priced.map((r) => r.ccy)).size || '—')],
-              [tl('FX (live)'), fxNote || '—'],
             ].map(([label, value]) => (
               <div key={label} class="min-w-0">
                 <div class="font-anth text-[8.5px] uppercase tracking-wider text-muted pb-0.5">{label}</div>
                 <div class="truncate font-anth text-[13px] font-semibold text-ink" title={value}>{value}</div>
               </div>
             ))}
+            <div class="min-w-0">
+              <div class="font-anth text-[8.5px] uppercase tracking-wider text-muted pb-0.5">{tl('FX (live)')}</div>
+              {fxRates.length ? (
+                <div class="flex flex-wrap gap-x-3 gap-y-0.5">
+                  {fxRates.map(([ccy, rate]) => (
+                    <span key={ccy} class="font-anth text-[12.5px] font-semibold text-ink whitespace-nowrap">
+                      <span class="text-muted font-normal">{ccy}</span> {rate}
+                    </span>
+                  ))}
+                </div>
+              ) : <div class="font-anth text-[13px] font-semibold text-ink">—</div>}
+            </div>
           </div>
         </div>
       </div>
