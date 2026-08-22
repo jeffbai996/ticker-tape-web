@@ -79,3 +79,14 @@ describe('zhName', () => {
     expect(zhKnownSymbols().length).toBeGreaterThan(8000)   // every listing, generated
   })
 })
+
+import { loadZhTable as _load, zhName as _zh } from '../../src/lib/zhNames.js'
+
+describe('US share classes', () => {
+  it('finds BRK-B whichever way the class suffix is spelled', async () => {
+    await _load()
+    expect(_zh('BRK-B')).toBeTruthy()
+    expect(_zh('BRK-B')).toBe(_zh('BRK.B'))
+    expect(_zh('brk-b')).toBe(_zh('BRK.B'))
+  })
+})

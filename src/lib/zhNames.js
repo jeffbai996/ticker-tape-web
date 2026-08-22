@@ -62,7 +62,10 @@ export function localName(symbol, fallback = '') {
 }
 
 export function zhName(symbol, { traditional = false } = {}) {
-  const row = TABLE?.[String(symbol || '').toUpperCase()]
+  const key = String(symbol || '').toUpperCase()
+  // Yahoo writes US share classes BRK-B, the source directory wrote BRK.B —
+  // same listing, so the lookup tries both spellings (Jeff 2026-08-22)
+  const row = TABLE?.[key] || TABLE?.[key.replace(/-([A-Z])$/, '.$1')] || TABLE?.[key.replace(/\.([A-Z])$/, '-$1')]
   if (!row) return null
   return traditional ? (row[1] || row[0]) : row[0]
 }
