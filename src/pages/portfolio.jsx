@@ -32,6 +32,7 @@ import { BookNews } from './portfolioNews.jsx'
 import { BookEvents } from './portfolioEvents.jsx'
 import { loadPortfolios, onPortfoliosChange } from '../lib/myPortfolios.js'
 import { IS_FAMILY_BUILD } from '../lib/nav.js'
+import { onHeaderActions } from '../lib/headerSlot.js'
 
 const SYMBOLS = DEMO_POSITIONS.map((p) => p.symbol)
 const BOTH_ACCOUNTS = 'all'
@@ -1661,6 +1662,8 @@ function PortfolioHeader({ accounts, account, onChange, book, wired }) {
   // the account ID + broker, not a nickname + margin readout (Jeff 2026-08-10)
   const label = book?.account || book?.accountLabel || (account === BOTH_ACCOUNTS ? tl('Both') : '')
   const family = IS_FAMILY_BUILD
+  const [actions, setActions] = useState(null)
+  useEffect(() => onHeaderActions((v) => setActions(() => v)), [])
   const detail = family ? tl('My Portfolios')
     : live ? `${label} · ${tl('Interactive Brokers')}`
     : book === false ? tt('portfolio.link_down')
@@ -1680,6 +1683,7 @@ function PortfolioHeader({ accounts, account, onChange, book, wired }) {
         </div>
       </div>
       {!family && <AccountSwitcher accounts={accounts} account={account} onChange={onChange} />}
+      {family && actions && <div class="flex items-center gap-1.5 max-sm:basis-full">{actions}</div>}
     </header>
   )
 }
