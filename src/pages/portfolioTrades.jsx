@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'preact/hooks'
+import { useEffect, useMemo, useState } from 'preact/hooks'
 import { addTxn, importTxns, removeTxn } from '../lib/myPortfolios.js'
 import { positionsFromTxns, sortTxns } from '../lib/lots.js'
 import { parseTradesCsv } from '../lib/tradeCsv.js'
 import { fmtCcy } from '../lib/fx.js'
 import { getLocale, tl } from '../lib/i18n.js'
-import { zhName } from '../lib/zhNames.js'
+import { loadZhTable, onZhTable, zhName } from '../lib/zhNames.js'
 import { SymbolSuggest } from '../components/SymbolSuggest.jsx'
 
 // 交易 — the ledger behind a hand-built book (Jeff 2026-08-22: lots instead
@@ -119,6 +119,12 @@ export function BookTrades({ portfolio, quotes }) {
   const txns = sortTxns(portfolio.txns || []).reverse()
   const pos = useMemo(() => positionsFromTxns(portfolio.txns || []), [portfolio.txns])
   const zh = getLocale() === 'zh'
+  const [, zhTick] = useState(0)
+  useEffect(() => {
+    if (!zh) return undefined
+    loadZhTable()
+    return onZhTable(() => zhTick((t) => t + 1))
+  }, [zh])
   const name = (sym) => (zh && zhName(sym)) || quotes?.[sym]?.name || ''
   const realizedByCcy = Object.values(pos).reduce((acc, p) => { const c = p.ccy || '—'; acc[c] = (acc[c] || 0) + p.realized; return acc }, {})
   return (

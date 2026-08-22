@@ -44,6 +44,7 @@ export const NAV = [
       { id: 'mine', label: 'My Portfolios' },
       { id: 'holdings', label: 'Holdings' },
       { id: 'ledger', label: 'Ledger' },
+      { id: 'events', label: 'Events' },
       { id: 'performance', label: 'Performance' },
       { id: 'news', label: 'News' },
       { id: 'account', label: 'Account' },
@@ -96,6 +97,7 @@ if (FAMILY_BUILD) {
   portfolio.subs = [
     { id: 'holdings', label: 'Holdings' },
     { id: 'ledger', label: 'Trades' },
+    { id: 'events', label: 'Events' },
     { id: 'performance', label: 'Performance' },
     { id: 'news', label: 'News' },
   ]
