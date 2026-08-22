@@ -272,7 +272,7 @@ function WatchlistCard({ item, quotes, earnDays, allLists, primary = false }) {
         {!primary && (
           <button onClick={() => { toggleTapeList(item.id); tapeBump((n) => n + 1) }}
             role="switch" aria-checked={onTape} class={onTape ? ctlOn : ctlOff}>
-            {onTape ? '▶ ' : '▷ '}{tl('tape')}
+            {onTape ? '▶ ' : '▷ '}{tl('ticker tape')}
           </button>
         )}
         <button onClick={exportSymbols} disabled={exportState === 'syncing'} class={`${ctlOff} disabled:opacity-50`}>
