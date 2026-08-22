@@ -657,7 +657,7 @@ function MacroCalPanel() {
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden flex flex-col max-h-[42vh]">
       <header class="flex items-center px-3 py-[3px] border-b border-line-2 bg-surface-2">
-        <a href="#/markets/calendar" class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase hover:no-underline">
+        <a href="#/markets/calendar" class="font-anth font-bold text-[12px] tracking-wider text-accent uppercase hover:no-underline">
           {tl('Calendar')}
         </a>
         <a href="#/markets/calendar" aria-label={tl('Open calendar')} class="ml-auto text-[12px] leading-none text-muted hover:text-accent hover:no-underline">→</a>
@@ -671,12 +671,12 @@ function MacroCalPanel() {
             ? `#/research/${e.symbol.toLowerCase()}` : '#/markets/calendar'
           return (
             <a key={`${e.date}-${e.type}-${e.id ?? ''}`} href={href}
-              class="flex items-baseline gap-2 px-3 py-[2px] font-mono text-[11px] hover:bg-surface-3 hover:no-underline">
-              <span class={`w-10 font-bold shrink-0 truncate ${e.user ? 'text-[#00c8ff]' : ECON_COLORS[e.type] || 'text-ink-2'}`}>
+              class="grid grid-cols-[minmax(2.75rem,auto)_minmax(0,1fr)_2.2rem] items-baseline gap-1.5 px-3 py-[3px] font-mono text-[12px] hover:bg-surface-3 hover:no-underline">
+              <span class={`max-w-[6.5rem] truncate font-[650] font-anth ${e.user ? 'text-[#00c8ff]' : ECON_COLORS[e.type] || 'text-ink-2'}`}>
                 {e.user ? (e.symbol === 'MACRO' ? e.type : e.symbol) : e.type}
               </span>
-              <span class="text-muted flex-1 truncate">{e.user ? e.rawLabel : tl(e.label)}</span>
-              <span class={dayCls(e.days)}>{e.days === 0 ? tl('today') : eventDayLabel(e.days)}</span>
+              <span class="min-w-0 truncate font-anth text-[11px] font-light text-muted">{e.user ? e.rawLabel : tl(e.label)}</span>
+              <span class={`text-right ${dayCls(e.days)}`}>{e.days === 0 ? tl('today') : eventDayLabel(e.days)}</span>
             </a>
           )
         })}
@@ -753,9 +753,9 @@ function EarningsPanel({ symbols, quotes = {} }) {
           const mine = held.has(symbol)
           return (
             <a key={symbol} href={`#/research/${symbol.toLowerCase()}/earnings`}
-              class="grid grid-cols-[2.75rem_minmax(0,1fr)_2.2rem] items-baseline gap-1.5 px-3 py-[3px] font-mono text-[12px] hover:bg-surface-3 hover:no-underline"
+              class="grid grid-cols-[minmax(2.75rem,auto)_minmax(0,1fr)_2.2rem] items-baseline gap-1.5 px-3 py-[3px] font-mono text-[12px] hover:bg-surface-3 hover:no-underline"
               title={name || symbol}>
-              <span class={`font-[650] font-anth truncate ${mine ? 'text-ink' : 'text-ink-2'}`}>{symbol}</span>
+              <span class={`max-w-[6.5rem] truncate font-[650] font-anth ${mine ? 'text-ink' : 'text-ink-2'}`}>{symbol}</span>
               {/* company name, quiet — the CLI's `[dim]{name}[/]`, sliding into
                   view on hover when the rail is too narrow to hold it */}
               <Marquee text={name} class="min-w-0 text-left text-[11px] text-muted font-anth font-light" />
