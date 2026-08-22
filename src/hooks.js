@@ -10,6 +10,7 @@ import { getLocale, onLocaleChange } from './lib/i18n.js'
 import { loadZhTable, onZhTable } from './lib/zhNames.js'
 import { getWatchlist, onWatchlistChange } from './lib/watchlist.js'
 import { loadWatchlists, onWatchlistsChange } from './lib/watchlists.js'
+import { onTapeListsChange, tapeListIds, tapeSymbols } from './lib/tapeLists.js'
 import { createQuoteRenderGate } from './lib/quoteRenderGate.js'
 import { createInViewTracker } from './lib/inview.js'
 import { FOCUS_MAX } from './lib/feedSymbols.js'
@@ -52,6 +53,16 @@ export function useNamedWatchlists() {
   const [lists, set] = useState(loadWatchlists)
   useEffect(() => onWatchlistsChange((items) => set([...items])), [])
   return lists
+}
+
+/** What scrolls on the tape: the main watchlist plus any named list the
+ *  reader switched on for it. */
+export function useTapeSymbols() {
+  const main = useWatchlist()
+  const lists = useNamedWatchlists()
+  const [ids, setIds] = useState(tapeListIds)
+  useEffect(() => onTapeListsChange((next) => setIds([...next])), [])
+  return tapeSymbols(main, lists, ids)
 }
 
 /** Live quotes for a symbol list; re-renders as each symbol's data lands. */
