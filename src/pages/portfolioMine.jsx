@@ -341,7 +341,7 @@ function Holdings({ portfolio, quotes, rates }) {
   const ccy = portfolio.ccy
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-x-auto">
-      <table class="w-full border-collapse font-mono text-[11px]">
+      <table class="book-table w-full border-collapse font-mono text-[11px]">
         <thead>
           {/* nowrap: 股数 stacked into two lines on a phone (Jeff 2026-08-20) */}
           <tr class="bg-surface-2 text-[9px] text-muted uppercase tracking-wider whitespace-nowrap">
@@ -481,11 +481,11 @@ function SummaryStrip({ portfolio, quotes, rates, ccys }) {
   const prevMark = previousSnapshot(portfolio, portfolio.ccy)
   const sinceLast = prevMark && Number.isFinite(total.value) ? total.value - prevMark.v : null
   return (
-    <section class="border border-line rounded-xl overflow-hidden bg-surface-1">
+    <section class="book-hero border border-line rounded-xl overflow-hidden bg-surface-1">
       <div class="flex flex-wrap items-stretch">
         <div class="px-4 py-3 flex-1 min-w-[240px]">
           <div class="font-anth text-[9px] uppercase tracking-[.14em] text-muted">{tl('Value')} ({portfolio.ccy})</div>
-          <div class="font-anth text-[30px] leading-tight font-semibold tracking-tight text-ink">{money(total.value, portfolio.ccy)}</div>
+          <div class="font-anth text-[30px] leading-tight font-semibold tracking-tight text-ink tabular-nums">{money(total.value, portfolio.ccy)}</div>
           <div class="flex items-center gap-2 pt-1.5">
             {chip(total.dayPnl, total.dayPct)}
             {total.unrealPnl != null && (
@@ -592,8 +592,8 @@ function BookAnalysis({ portfolio, quotes, rates, slot = null }) {
     // a card whose body is null has nothing to say for this book — same as hidden
     if (hidden.includes(id) || body == null) return null
     return (
-      <section key={id} class="rounded-xl border border-line bg-surface-1 px-3 py-2 min-w-0">
-        <div class="pb-1 font-anth text-[9px] uppercase tracking-wider text-muted">{title}</div>
+      <section key={id} class="book-card rounded-xl border border-line bg-surface-1 px-3 py-2 min-w-0">
+        <div class="book-eyebrow pb-1 font-anth text-[9px] uppercase tracking-wider text-muted">{title}</div>
         {body}
       </section>
     )

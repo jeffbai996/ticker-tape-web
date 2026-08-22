@@ -34,6 +34,22 @@ export function LineChart({ dates, series, colors, baseline = 100 }) {
   return (
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" class="block w-full h-[220px] max-sm:h-[180px]" role="img">
       <line x1={PAD.l} x2={W - PAD.r} y1={y(baseline)} y2={y(baseline)} stroke="currentColor" stroke-opacity="0.25" stroke-dasharray="3 4" />
+      <defs>
+        <linearGradient id="book-fill" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0" stop-color={colors[0]} stop-opacity="0.22" />
+          <stop offset="1" stop-color={colors[0]} stop-opacity="0" />
+        </linearGradient>
+      </defs>
+      {/* the book's own line gets a soft fill down to the baseline — the
+          benchmarks stay as bare lines so the eye lands on the book */}
+      {series[0] && (() => {
+        const v = series[0].values
+        let first = -1; let last = -1
+        v.forEach((x, i) => { if (x != null && Number.isFinite(x)) { if (first < 0) first = i; last = i } })
+        if (first < 0 || last <= first) return null
+        const d = path(v.slice(0, last + 1)).trim()
+        return <path d={`${d} L${x(last).toFixed(1)},${y(baseline).toFixed(1)} L${x(first).toFixed(1)},${y(baseline).toFixed(1)} Z`} fill="url(#book-fill)" stroke="none" />
+      })()}
       {series.map((s, k) => (
         <path key={s.id} d={path(s.values)} fill="none" stroke={colors[k % colors.length]}
           stroke-width={k === 0 ? 2.2 : 1.4} stroke-opacity={k === 0 ? 1 : 0.85} vector-effect="non-scaling-stroke" />
