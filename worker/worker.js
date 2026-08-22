@@ -299,14 +299,32 @@ function jsonResp(data, status = 200) {
 // ── /cn/* — East Money pass-through for Chinese names, news, profiles ──
 
 const CN_UA = 'Mozilla/5.0';
-const CN_TTL = { news: 600, profile: 86400, industry: 86400, report: 21600 };
+const CN_TTL = { news: 600, profile: 86400, industry: 86400, report: 21600, f10: 21600 };
 // East Money datacenter reports the app may ask for, by code — corporate
 // actions only (dividends, results dates). Anything else is a 404.
 const CN_REPORTS = {
     a_dividends: { name: 'RPT_SHAREBONUS_DET', sort: 'EX_DIVIDEND_DATE', code: (sec) => sec.code },
     a_results: { name: 'RPT_PUBLIC_BS_APPOIN', sort: 'REPORT_DATE', code: (sec) => sec.code },
     hk_dividends: { name: 'RPT_HKF10_INFO_DIVIDEND', sort: 'NOTICE_DATE', code: (sec) => sec.code },
+    // standardised HK statements, long format: one row per line item per period
+    hk_income: { name: 'RPT_HKF10_FN_INCOME_PC', sort: 'REPORT_DATE', code: (sec) => sec.code, max: 1500 },
+    hk_balance: { name: 'RPT_HKF10_FN_BALANCE_PC', sort: 'REPORT_DATE', code: (sec) => sec.code, max: 1500 },
+    hk_cashflow: { name: 'RPT_HKF10_FN_CASHFLOW_PC', sort: 'REPORT_DATE', code: (sec) => sec.code, max: 1500 },
 };
+const CN_F10 = { lrb: 'lrbAjaxNew', zcfzb: 'zcfzbAjaxNew', xjllb: 'xjllbAjaxNew' };
+const F10_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Validated upstream for a mainland statement pull, or null. Pure. */
+export function cnF10Upstream({ stmt, market, code, ct, reportType, dates }) {
+    const page = CN_F10[stmt];
+    const n = Number(ct);
+    const rt = Number(reportType) || 1;
+    const list = String(dates || '').split(',').filter(Boolean);
+    if (!page || !(market === 'sh' || market === 'sz') || !/^\d{6}$/.test(code || '')) return null;
+    if (!Number.isInteger(n) || n < 1 || n > 4 || (rt !== 1 && rt !== 2)) return null;
+    if (!list.length || list.length > 8 || !list.every((d) => F10_DATE.test(d))) return null;
+    return `https://emweb.securities.eastmoney.com/PC_HSF10/NewFinanceAnalysis/${page}?companyType=${n}&reportDateType=0&reportType=${rt}&dates=${list.join(',')}&code=${market.toUpperCase()}${code}`;
+}
 
 /** "0700.HK" → {market:'hk', code:'00700'}; "600036.SS" → {market:'sh', code}; "000630.SZ" → sz. */
 export function cnSecurity(symbol) {
@@ -338,10 +356,16 @@ async function handleCn(path, url) {
     } else {
         const sec = cnSecurity(url.searchParams.get('symbol'));
         if (!sec) return jsonResp({ error: 'bad symbol' }, 400);
-        if (kind === 'report') {
+        if (kind === 'f10') {
+            upstream = cnF10Upstream({
+                stmt: url.searchParams.get('stmt'), market: sec.market, code: sec.code,
+                ct: url.searchParams.get('ct'), reportType: url.searchParams.get('rt'), dates: url.searchParams.get('dates'),
+            });
+            if (!upstream) return jsonResp({ error: 'bad f10 query' }, 400);
+        } else if (kind === 'report') {
             const rep = CN_REPORTS[url.searchParams.get('report') || ''];
             if (!rep) return jsonResp({ error: 'bad report' }, 400);
-            const n = Math.min(12, Math.max(1, Number(url.searchParams.get('n')) || 8));
+            const n = Math.min(rep.max || 12, Math.max(1, Number(url.searchParams.get('n')) || 8));
             upstream = 'https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=' + rep.name
                 + '&columns=ALL&filter=' + encodeURIComponent(`(SECURITY_CODE="${rep.code(sec)}")`)
                 + '&sortColumns=' + rep.sort + '&sortTypes=-1&pageSize=' + n + '&source=WEB&client=WEB';

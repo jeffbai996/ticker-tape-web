@@ -32,10 +32,14 @@ import { PORTFOLIO_CCYS, cashAccountName, convertCcy, fmtCcy, fmtCcyZh, fxSymbol
 import { MAX_MY_HOLDINGS, createPortfolio, deletePortfolio, loadPortfolios, onPortfoliosChange, removeCash, removeHolding, renamePortfolio, setCash, setHolding, setPortfolioCcy, portfolioValues, recordSnapshot, previousSnapshot } from '../lib/myPortfolios.js'
 
 const pnlCls = (v) => (v == null ? 'text-muted' : v >= 0 ? 'text-up' : 'text-down')
-// Summaries and cards read 万/亿 to a Chinese reader; the holdings table
-// keeps exact digits in either locale (Jeff 2026-08-22)
-const money = (v, ccy) => (getLocale() === 'zh' ? fmtCcyZh(v, ccy) : fmtCcy(v, ccy))
+// Account totals read in full digits in any locale — 富途/同花顺 print
+// 54,128,742 for an account, and keep 万/亿 for market-wide figures. Only
+// the glance cards (movers, contribution, cash split) use 万/亿, where nobody
+// needs the cents (Jeff 2026-08-22, correcting an earlier over-application).
+const money = (v, ccy) => fmtCcy(v, ccy)
+const glance = (v, ccy) => (getLocale() === 'zh' ? fmtCcyZh(v, ccy) : fmtCcy(v, ccy))
 const signed = (v, ccy) => (v == null ? '—' : `${v >= 0 ? '+' : '-'}${money(Math.abs(v), ccy)}`)
+const signedGlance = (v, ccy) => (v == null ? '—' : `${v >= 0 ? '+' : '-'}${glance(Math.abs(v), ccy)}`)
 
 // The provider names everything in English; a zh reader gets the Chinese
 // name where the table knows it, the English one where it doesn't.
@@ -637,7 +641,7 @@ function BookAnalysis({ portfolio, quotes, rates, slot = null }) {
           <div key={r.symbol} class="flex items-baseline justify-between gap-2">
             <span class="font-bold text-accent">{r.symbol}</span>
             <span class={pnlCls(r.dayPnlDisplay)}>
-              {signed(r.dayPnlDisplay, ccy)}
+              {signedGlance(r.dayPnlDisplay, ccy)}
               <span class="text-[10px] font-normal"> ({fmtPct(r.dayPct)})</span>
             </span>
           </div>
@@ -649,7 +653,7 @@ function BookAnalysis({ portfolio, quotes, rates, slot = null }) {
     card('contribution', tl('Day contribution'), contrib.length ? (
       <div class="flex flex-col gap-1">
         {contrib.map((r) => bar(r.symbol, r.symbol, r.sharePct ?? 0,
-          signed(r.pnl, ccy), r.pnl >= 0 ? 'bg-up/55' : 'bg-down/55',
+          signedGlance(r.pnl, ccy), r.pnl >= 0 ? 'bg-up/55' : 'bg-down/55',
           r.pnl >= 0 ? 'text-up' : 'text-down'))}
       </div>
     ) : <span class="font-anth text-[10px] text-muted">—</span>),
@@ -686,8 +690,8 @@ function BookAnalysis({ portfolio, quotes, rates, slot = null }) {
     )),
     card('unrealized', tl('Open P&L'), un.covered ? (
       <div class="flex flex-col gap-1">
-        {stat(tl('Cost basis'), money(un.costBasis, ccy))}
-        {stat(tl('Open'), `${signed(un.pnl, ccy)}${un.pct != null ? ` (${fmtPct(un.pct)})` : ''}`, pnlCls(un.pnl))}
+        {stat(tl('Cost basis'), glance(un.costBasis, ccy))}
+        {stat(tl('Open'), `${signedGlance(un.pnl, ccy)}${un.pct != null ? ` (${fmtPct(un.pct)})` : ''}`, pnlCls(un.pnl))}
         {un.best && stat(tl('Best'), `${un.best.symbol} ${fmtPct(un.best.unrealPct)}`, 'text-up')}
         {un.worst && stat(tl('Worst'), `${un.worst.symbol} ${fmtPct(un.worst.unrealPct)}`, 'text-down')}
         {un.covered < priced.filter((r) => r.kind !== 'cash').length && (
@@ -758,8 +762,8 @@ function BookAnalysis({ portfolio, quotes, rates, slot = null }) {
         <div class="flex h-2.5 w-full overflow-hidden rounded-sm bg-surface-3">
           <span class="bg-accent/60" style={{ width: `${cs.total > 0 ? (cs.invested / cs.total) * 100 : 0}%` }} />
         </div>
-        {stat(tl('Invested'), money(cs.invested, ccy))}
-        {stat(tl('Cash'), money(cs.cash, ccy), cs.cash < 0 ? 'text-down' : 'text-ink')}
+        {stat(tl('Invested'), glance(cs.invested, ccy))}
+        {stat(tl('Cash'), glance(cs.cash, ccy), cs.cash < 0 ? 'text-down' : 'text-ink')}
         {stat(tl('Cash weight'), cs.cashPct != null ? fmtPctPlain(cs.cashPct) : '—')}
       </div>
     )),
