@@ -200,7 +200,8 @@ def main() -> int:
         if not rows_us:
             break
         for d in rows_us:
-            sym = str(d.get('symbol', '')).upper().strip()
+            # Yahoo's spelling for US share classes (BRK-B), not Sina's BRK.B
+            sym = re.sub(r'\.([A-Z])$', r'-\1', str(d.get('symbol', '')).upper().strip())
             name = clean(d.get('cname', ''))
             if re.fullmatch(r'[A-Z.\-]{1,8}', sym) and name and sym not in table:
                 table[sym] = [name]
