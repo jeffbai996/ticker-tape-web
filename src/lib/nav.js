@@ -89,8 +89,9 @@ if (FAMILY_BUILD) {
   // the hand-built books are the whole portfolio here, split into pages
   // (Jeff 2026-08-22: "split the manual demo portfolio section into pages
   // again, like a news page that grabs news relating to his tickers")
+  // the section landing IS the overview (nav adds the landing entry
+  // itself — a 'mine' sub here rendered a second "overview", Jeff 2026-08-22)
   portfolio.subs = [
-    { id: 'mine', label: 'Overview' },
     { id: 'holdings', label: 'Holdings' },
     { id: 'news', label: 'News' },
   ]
