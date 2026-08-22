@@ -67,7 +67,7 @@ function Reader({ item, onClose }) {
     <article class="flex h-full min-h-0 flex-col">
       <header class="flex items-start gap-2 border-b border-line-2 px-4 py-3">
         <div class="min-w-0 flex-1">
-          <h2 class="font-anth text-[15px] font-semibold leading-snug text-ink">{art?.title || item.title}</h2>
+          <h2 class="font-anth text-[16px] font-semibold leading-snug tracking-tight text-ink">{art?.title || item.title}</h2>
           <div class="mt-1 font-mono text-[10px] text-muted">
             <span class="font-bold text-accent">{item.symbol}</span>
             {(art?.source || item.publisher) && <span> · {art?.source || item.publisher}</span>}
@@ -77,7 +77,7 @@ function Reader({ item, onClose }) {
         <a href={item.link} target="_blank" rel="noopener noreferrer" class="shrink-0 rounded border border-line-2 px-2 py-1 font-anth text-[10px] text-muted hover:text-accent">{tl('Open original')} ↗</a>
         <button type="button" onClick={onClose} aria-label={tl('Close')} class="shrink-0 rounded border border-line-2 px-2 py-1 font-mono text-[11px] text-muted hover:text-ink lg:hidden">✕</button>
       </header>
-      <div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+      <div class="reader-prose min-h-0 flex-1 overflow-y-auto px-4 py-3">
         {readable && !art && !err && <div class="font-anth text-[11px] text-muted">{tl('Reading')}…</div>}
         {readable && err && <div class="font-anth text-[11px] text-down">{tl('Could not load the story — open the original instead.')}</div>}
         {art?.paras?.map((p, i) => (
@@ -154,7 +154,8 @@ export function BookNews({ portfolio, quotes }) {
 
   const railItem = (sym, active, count, name) => (
     <button key={sym || 'all'} type="button" onClick={() => (sym ? choose(sym) : (setPick(null), setLimit(PAGE)))}
-      class={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-md border px-2 py-1 text-left font-mono text-[10.5px] transition-colors lg:w-full lg:whitespace-normal ${
+      data-active={active ? '1' : '0'}
+      class={`rail-item flex shrink-0 items-center gap-2 whitespace-nowrap rounded-md border px-2 py-1 text-left font-mono text-[10.5px] transition-colors lg:w-full lg:whitespace-normal ${
         active ? 'border-accent/50 bg-accent/10 text-accent' : 'border-transparent text-ink-2 hover:bg-surface-3 hover:text-ink max-lg:border-line-2 max-lg:bg-surface-2'}`}>
       <span class={`min-w-0 ${active ? 'font-semibold' : 'font-medium'}`}>{sym || tl('All')}</span>
       {name && <span class="min-w-0 truncate font-anth text-[9.5px] text-muted">{name}</span>}
@@ -192,7 +193,7 @@ export function BookNews({ portfolio, quotes }) {
           )}
           {groups.map((g) => (
             <div key={g.key}>
-              <div class="sticky top-0 z-[1] border-b border-line-2 bg-surface-2/95 px-3 py-1 font-anth text-[9px] uppercase tracking-[.14em] text-muted backdrop-blur">{g.label}</div>
+              <div class="book-eyebrow sticky top-0 z-[1] border-b border-line-2 bg-surface-2/95 px-3 py-1 font-anth text-[9px] uppercase tracking-[.14em] text-muted backdrop-blur">{g.label}</div>
               {g.items.map((n) => {
                 const active = open && open.link === n.link && open.symbol === n.symbol
                 return (

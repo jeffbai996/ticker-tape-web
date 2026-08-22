@@ -141,7 +141,7 @@ export function BookTrades({ portfolio, quotes }) {
 
       {Object.keys(realizedByCcy).length > 0 && (
         <section class="rounded-xl border border-line bg-surface-1 px-3 py-2">
-          <div class="pb-1 font-anth text-[9px] uppercase tracking-wider text-muted">{tl('Realized')}</div>
+          <div class="book-eyebrow pb-1 font-anth text-[9px] uppercase tracking-wider text-muted">{tl('Realized')}</div>
           <div class="flex flex-wrap gap-4 font-mono text-[12px]">
             {Object.entries(realizedByCcy).map(([c, v]) => (
               <span key={c} class={v >= 0 ? 'text-up' : 'text-down'}>{v >= 0 ? '+' : '-'}{fmtCcy(Math.abs(v), c, 2)}</span>
@@ -155,7 +155,7 @@ export function BookTrades({ portfolio, quotes }) {
           <div class="px-4 py-6 text-center font-anth text-[11px] text-muted">{tl('No trades yet. Add one, or import a broker export — holdings for traded symbols are derived from the ledger.')}</div>
         ) : (
           <div class="overflow-x-auto">
-            <table class="w-full border-collapse font-mono text-[11px]">
+            <table class="book-table w-full border-collapse font-mono text-[11px]">
               <thead><tr class="font-anth text-[9px] uppercase tracking-wider text-muted">
                 {[tl('Date'), tl('Symbol'), tl('Side'), tl('Qty'), tl('Price'), tl('Fee'), ''].map((h, i) => <th key={i} class={`px-2.5 py-1.5 ${i >= 3 ? 'text-right' : 'text-left'}`}>{h}</th>)}
               </tr></thead>
