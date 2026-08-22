@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import {
-  breadth, cashSplit, concentration, dayContribution, unrealizedStats, venueSplit,
+  breadth, cashSplit, concentration, dayContribution, sectorSplit, unrealizedStats, venueSplit,
 } from '../../src/lib/bookStats.js'
 
 // a small book: two winners, one loser, one unpriced, one cash account
@@ -112,5 +112,35 @@ describe('venueSplit — where the book is actually listed', () => {
   it('falls back to the raw suffix rather than hiding an unknown venue', () => {
     const v = venueSplit([{ kind: 'equity', symbol: 'ABC.XYZ', valueDisplay: 1 }])
     expect(v[0].name).toBe('XYZ')
+  })
+})
+
+describe('sectorSplit — what the buckets can and cannot say about a book', () => {
+  const buckets = [{ name: 'Tech', symbols: ['AAPL', 'MSFT'] }, { name: 'Autos', symbols: ['TSLA'] }]
+
+  it('files every priced position, cash on its own line, biggest first', () => {
+    const s = sectorSplit(rows, buckets)
+    expect(s.entries).toEqual([['Tech', 8000], ['Autos', 1000], ['Cash', 1000]])
+    expect(s.total).toBe(10000)
+    expect(s.unmappedShare).toBe(0)
+  })
+
+  it('reports the invested share no bucket claims — a HK/mainland book is all Other', () => {
+    const hk = [
+      { kind: 'equity', symbol: '0700.HK', valueDisplay: 6000 },
+      { kind: 'equity', symbol: '2628.HK', valueDisplay: 3000 },
+      { kind: 'equity', symbol: 'AAPL', valueDisplay: 1000 },
+      { kind: 'cash', ccy: 'HKD', symbol: 'CASH.HKD', valueDisplay: 5000 },
+    ]
+    const s = sectorSplit(hk, buckets)
+    expect(s.entries[0]).toEqual(['Other', 9000])
+    // cash is not "invested": 9000 of the 10000 at risk is unmapped, not of 15000
+    expect(s.unmappedShare).toBeCloseTo(0.9)
+  })
+
+  it('is empty rather than wrong with nothing priced or no buckets', () => {
+    expect(sectorSplit([{ kind: 'equity', symbol: 'X', valueDisplay: null }], buckets))
+      .toEqual({ entries: [], total: 0, unmappedShare: 0 })
+    expect(sectorSplit(rows).unmappedShare).toBe(1)
   })
 })
