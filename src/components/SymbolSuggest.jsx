@@ -9,6 +9,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { searchSymbols } from '../lib/symbolSearch.js'
 import { codeSearchQueries } from '../lib/venueCodes.js'
+import { hasCjk, zhAliasHits } from '../lib/zhNames.js'
 import { venueFlag } from '../lib/venueFlag.js'
 import { Marquee } from './Marquee.jsx'
 
@@ -41,9 +42,15 @@ export function SymbolSuggest({
       // A bare board code ("02628") is asked for twice — as typed, and as the
       // venue symbol it means — because the provider knows only the second
       // one and a dropdown that returns nothing is a dead end.
-      Promise.all(codeSearchQueries(q).map((query) => (
-        searchSymbols(query, { signal: ctl.signal }).catch(() => [])
-      )))
+      // A Chinese name is answered from the local table — Yahoo's search
+      // returns nothing for CJK queries, so the round-trip is a guaranteed
+      // empty dropdown (Gordon, 2026-08-22)
+      const lookups = hasCjk(q)
+        ? [Promise.resolve(zhAliasHits(q))]
+        : codeSearchQueries(q).map((query) => (
+          searchSymbols(query, { signal: ctl.signal }).catch(() => [])
+        ))
+      Promise.all(lookups)
         .then((lists) => {
           const seen = new Set()
           const rows = lists.flat().filter((h) => !seen.has(h.symbol) && seen.add(h.symbol))
