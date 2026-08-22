@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { boundedTimeScale } from '../lib/chartview.js'
 import {
-  useFocusedSymbols, useInViewSymbols, useNamedWatchlists, useQuotes, useWatchlist,
+  useFocusedSymbols, useInViewSymbols, useNamedWatchlists, useQuotes, useWatchlist, useZhNames,
 } from '../hooks.js'
 import { etParts, marketState, rollCashSession } from '../lib/marketState.js'
 import { BUCKETS } from '../lib/symbols.js'
@@ -45,6 +45,7 @@ import { FlashMetric, FlashPrice } from '../components/Fig.jsx'
 import { Empty, Loading } from '../components/Loading.jsx'
 import { ChartMount } from '../components/LazyChartMount.jsx'
 import { t as tt, tl } from '../lib/i18n.js'
+import { localName } from '../lib/zhNames.js'
 import { extendedLabelClass } from '../lib/extendedHours.js'
 import { freshnessTitle, symbolFreshness } from '../lib/feedHealth.js'
 import { rememberDashboardLanding } from '../lib/dashboardLanding.js'
@@ -381,7 +382,7 @@ export function TuiRow({ symbol, data, earnDays, onRemove = () => {}, selecting,
                 across rows AND never get pushed past the clip edge. Below
                 820px the text hides but the gutter stays, collapsing to 0. */}
             <span class="tui-company-name-wide hidden @min-[820px]:block flex-1 min-w-0 max-w-[260px] @min-[1080px]:max-w-[340px]">
-              <Marquee text={q?.name || ''} title={q?.name ? `${symbol} — ${q.name}` : symbol}
+              <Marquee text={localName(symbol, q?.name || '')} title={q?.name ? `${symbol} — ${localName(symbol, q.name)}` : symbol}
                 class="inline-block w-full text-[10.5px] text-muted font-normal font-anth" />
             </span>
             {/* The quote cluster is indivisible. The identity slot gets the
@@ -722,6 +723,7 @@ function MarketDeckPanel() {
 }
 
 function EarningsPanel({ symbols, quotes = {} }) {
+  useZhNames()
   // the board's names plus the megacaps whose prints move the whole tape —
   // a widget that misses NVDA's report because it fell off the watchlist is
   // not doing its one job (Jeff 2026-08-06)
@@ -749,7 +751,7 @@ function EarningsPanel({ symbols, quotes = {} }) {
           // universe-only names have no quote here and just show the ticker
           // quote feed first (it's live), static universe map second — the
           // widget lists names you don't hold, which have no quote at all
-          const name = quotes[symbol]?.quote?.name || EARNINGS_NAMES[symbol] || ''
+          const name = localName(symbol, quotes[symbol]?.quote?.name || EARNINGS_NAMES[symbol] || '')
           const mine = held.has(symbol)
           return (
             <a key={symbol} href={`#/research/${symbol.toLowerCase()}/earnings`}
@@ -1582,6 +1584,7 @@ function TickerSearch({ filter, setFilter, activeList }) {
 }
 
 export function Dashboard({ listId = null }) {
+  useZhNames()
   const mainWatchlist = useWatchlist()
   const namedWatchlists = useNamedWatchlists()
   const activeList = listId ? namedWatchlists.find((item) => item.id === listId) : null
