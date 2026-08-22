@@ -177,9 +177,17 @@ export function StatusBar() {
         belt.style.transform = `translateX(${x}px)`
         // force the style to land before the transition arms
         void belt.offsetWidth
-        const ms = Math.min(1200, Math.max(250, Math.abs(x) / 0.058))
+        // the two copies are identical, so translateX(0) and
+        // translateX(-cycle) are the same picture: glide to whichever is
+        // nearer instead of always riding the rest of the cycle forward
+        // (Jeff 2026-08-22: "shouldn't slide a shit ton if I tap to turn it
+        // off after like a second")
+        const w = cycleRef.current?.scrollWidth || 0
+        const target = w && Math.abs(x) > w / 2 ? -w : 0
+        const dist = Math.abs(x - target)
+        const ms = Math.min(900, Math.max(200, dist / 0.058))
         belt.style.transition = `transform ${ms}ms cubic-bezier(0.22, 1, 0.36, 1)`
-        belt.style.transform = 'translateX(0)'
+        belt.style.transform = `translateX(${target}px)`
         setDrift('stopping')
         setTimeout(() => setDrift('off'), ms + 60)
       } else {
@@ -189,6 +197,10 @@ export function StatusBar() {
     }
     if (drift === 'stopping') return   // let the glide finish
     try { localStorage.setItem('strip_drift_v1', '1') } catch { /* best-effort */ }
+    // the stop left `animation: none` + a transform inline on the belt node,
+    // and the diff keeps that node — a second tap was animating against an
+    // inline override and never moved (Jeff 2026-08-22: "works once then
+    // breaks")
     setDrift('on')
   }
   const driftPlay = useTapeMotion()
@@ -196,6 +208,13 @@ export function StatusBar() {
   const [cycleW, setCycleW] = useState(0)
   useEffect(() => {
     if (drift !== 'on') return
+    // the stop left `animation: none` + a transform inline on the belt, and
+    // the diff hands the same node back on the next start — so a second tap
+    // was animating under an inline override and never moved (Jeff
+    // 2026-08-22: "works once then breaks"). Ref is live here, not in the
+    // click handler, because the node is unmounted while drift is off.
+    const belt = beltRef.current
+    if (belt) { belt.style.animation = ''; belt.style.transition = ''; belt.style.transform = '' }
     setCycleW(cycleRef.current?.scrollWidth || 0)
   }, [drift])
 
