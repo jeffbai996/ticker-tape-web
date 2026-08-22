@@ -16,40 +16,70 @@ const ACC = '#ffc800'
 const row = (cmd, desc) => `[bold ${INF}]${cmd.padEnd(18)}[/][${DIM}]${desc}[/]`
 const row2 = (c1, d1, c2, d2) => `${row(c1, d1.padEnd(24))}${row(c2, d2)}`
 const section = (title) => `[bold ${ACC}]═══ ${title} ═══[/]`
-export const HELP_TEXT = [
-  section('research'),
-  row2('SYM', 'open research', 'ta|chart SYM', 'chart + technicals'),
-  row2('intra SYM', 'intraday + VWAP', 'opt SYM', 'options chain'),
-  row2('ei SYM', 'earnings impact', 'an SYM', 'analysts'),
-  row2('ins SYM', 'insider activity', 'n SYM', 'news'),
-  row2('hold SYM', 'holders', 'fil SYM', 'SEC filings'),
-  row2('prof SYM', 'company profile', 'wire SYM', 'fragwire trail'),
-  section('screens'),
-  row2('vs A B \\[C…]', 'compare', 'screen A B', 'valuation grid'),
-  row2('m s hm movers', 'markets views', 'er · cal', 'earnings · calendar'),
-  row2('market sectors …', 'full names work too', 'wire · today', 'wire · calendar'),
-  row2('pos acct cockpit', 'portfolio views', 'carry timeline', 'more portfolio'),
-  row2('b|brief', 'briefing + AI', 'pos · acct', 'demo portfolio'),
-  row2('alerts', 'alert center', 'chat \\[q]', 'AI chat'),
-  row('bt|backtest', 'fills ledger replay'),
-  row2('corr', 'correlation grid', 'margin|trades', 'account · fills'),
-  section('actions'),
-  row2('w|uw SYM', 'watch / unwatch', 'alert SYM > N', 'arm price alert'),
-  row2('alert SYM rsi > 70', 'rsi alert', 'alert SYM vol > 2', 'volume multiple'),
-  row2('cat', 'list catalysts', 'cat rm N', 'remove catalyst'),
-  row('cat add DATE …', '\\[SYM] \\[type] label — type: product conf policy capex macro'),
-  row2('group NAME SYM…', 'name a bucket', 'group rm NAME', 'ungroup'),
-  row2('div SYM', 'dividend history', 'chart SYM 6m', 'range works now'),
-  row2('ws \\[name]', 'saved layouts', 'ws save NAME', 'capture this board'),
-  row('ws rm NAME', 'ws rename OLD / NEW — one board per name'),
-  row('opt SYM DATE', 'jump straight to a 2026-09-18 expiry'),
-  section('notes'),
-  row2('mem \\[add TEXT]', 'AI memories', 'mem edit·rm N', 'update · delete'),
-  row2('journal \\[add …]', 'trade journal', 'journal search T', 'find old thinking'),
-  section('console'),
-  row2('clear', 'wipe the console', 'copy \\[N]', 'copy output to clipboard'),
-  row2('lang \\[en|zh]', 'switch language', 'h · q', 'help · quit'),
-].join('\n')
+// the phone page re-lays the same table one pair per line — padded 80-char
+// rows wrap into soup inside a 360px pre (Jeff 2026-08-21)
+const nrow = (cmd, desc) => `[bold ${INF}]${cmd}[/]\n  [${DIM}]${desc}[/]`
+// One source of truth for the command sheet; the wide pane pairs entries
+// two-up, the phone lists them one per line. `full: true` = a description
+// too long to share a line even on the wide pane.
+const HELP_SHEET = [
+  ['research', [
+    ['SYM', 'open research'], ['ta|chart SYM', 'chart + technicals'],
+    ['intra SYM', 'intraday + VWAP'], ['opt SYM', 'options chain'],
+    ['ei SYM', 'earnings impact'], ['an SYM', 'analysts'],
+    ['ins SYM', 'insider activity'], ['n SYM', 'news'],
+    ['hold SYM', 'holders'], ['fil SYM', 'SEC filings'],
+    ['prof SYM', 'company profile'], ['wire SYM', 'fragwire trail'],
+  ]],
+  ['screens', [
+    ['vs A B \\[C…]', 'compare'], ['screen A B', 'valuation grid'],
+    ['m s hm movers', 'markets views'], ['er · cal', 'earnings · calendar'],
+    ['market sectors …', 'full names work too'], ['wire · today', 'wire · calendar'],
+    ['pos acct cockpit', 'portfolio views'], ['carry timeline', 'more portfolio'],
+    ['b|brief', 'briefing + AI'], ['pos · acct', 'demo portfolio'],
+    ['alerts', 'alert center'], ['chat \\[q]', 'AI chat'],
+    ['bt|backtest', 'fills ledger replay', true],
+    ['corr', 'correlation grid'], ['margin|trades', 'account · fills'],
+  ]],
+  ['actions', [
+    ['w|uw SYM', 'watch / unwatch'], ['alert SYM > N', 'arm price alert'],
+    ['alert SYM rsi > 70', 'rsi alert'], ['alert SYM vol > 2', 'volume multiple'],
+    ['cat', 'list catalysts'], ['cat rm N', 'remove catalyst'],
+    ['cat add DATE …', '\\[SYM] \\[type] label — type: product conf policy capex macro', true],
+    ['group NAME SYM…', 'name a bucket'], ['group rm NAME', 'ungroup'],
+    ['div SYM', 'dividend history'], ['chart SYM 6m', 'range works now'],
+    ['opt SYM DATE', 'jump straight to a 2026-09-18 expiry', true],
+  ]],
+  ['notes', [
+    ['mem \\[add TEXT]', 'AI memories'], ['mem edit·rm N', 'update · delete'],
+    ['journal \\[add …]', 'trade journal'], ['journal search T', 'find old thinking'],
+  ]],
+  ['console', [
+    ['clear', 'wipe the console'], ['copy \\[N]', 'copy output to clipboard'],
+    ['lang \\[en|zh]', 'switch language'], ['h · q', 'help · quit'],
+  ]],
+]
+
+export const HELP_TEXT = HELP_SHEET.flatMap(([title, entries]) => {
+  const lines = [section(title)]
+  let pending = null
+  for (const [cmd, desc, full] of entries) {
+    if (full) {
+      if (pending) { lines.push(row(...pending)); pending = null }
+      lines.push(row(cmd, desc))
+    } else if (pending) {
+      lines.push(row2(pending[0], pending[1], cmd, desc)); pending = null
+    } else {
+      pending = [cmd, desc]
+    }
+  }
+  if (pending) lines.push(row(...pending))
+  return lines
+}).join('\n')
+
+export const HELP_TEXT_NARROW = HELP_SHEET.flatMap(([title, entries]) => [
+  section(title), ...entries.map(([cmd, desc]) => nrow(cmd, desc)),
+]).join('\n')
 
 const low = (s) => s.toLowerCase()
 const research = (sym, view) =>
