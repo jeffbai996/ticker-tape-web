@@ -53,9 +53,17 @@ export function parseCnProfile(data) {
   }
 }
 
-/** push2 stock/get → the East Money industry label ("软件服务"), or ''. */
+/** The East Money industry label, from either shape the worker proxies:
+ *  push2 stock/get (HK: f127 "软件服务") or the mainland company survey
+ *  (EM2016 "金融-银行-股份制与城商行" → the middle tier, "银行"). */
 export function parseCnIndustry(data) {
-  return String(data?.data?.f127 || '').trim()
+  const f127 = String(data?.data?.f127 || '').trim()
+  if (f127) return f127
+  const j = Array.isArray(data?.jbzl) ? data.jbzl[0] : null
+  const em = String(j?.EM2016 || j?.INDUSTRYCSRC1 || '').trim()
+  if (!em) return ''
+  const parts = em.split('-').map((x) => x.trim()).filter(Boolean)
+  return parts.length >= 3 ? parts[1] : parts[parts.length - 1]
 }
 
 async function getJson(path, { fetchImpl = fetch, signal } = {}) {

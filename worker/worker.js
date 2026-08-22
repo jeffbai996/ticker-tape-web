@@ -331,9 +331,14 @@ async function handleCn(path, url) {
     } else {
         const sec = cnSecurity(url.searchParams.get('symbol'));
         if (!sec) return jsonResp({ error: 'bad symbol' }, 400);
-        if (kind === 'industry') {
-            const secid = `${sec.market === 'hk' ? 116 : sec.market === 'sh' ? 1 : 0}.${sec.code}`;
-            upstream = `https://push2.eastmoney.com/api/qt/stock/get?secid=${secid}&fields=f57,f58,f127`;
+        if (kind === 'industry' && sec.market === 'hk') {
+            // push2 rate-limits bursts to a 302 block page; the client paces
+            // these, and a failure is never cached so the next pass retries
+            upstream = `https://push2.eastmoney.com/api/qt/stock/get?secid=116.${sec.code}&fields=f57,f58,f127`;
+        } else if (kind === 'industry') {
+            // mainland: the company survey carries the industry (EM2016) and
+            // the F10 host does not throttle the way push2 does
+            upstream = `https://emweb.securities.eastmoney.com/PC_HSF10/CompanySurvey/PageAjax?code=${sec.market.toUpperCase()}${sec.code}`;
         } else if (sec.market === 'hk') {
             upstream = `https://emweb.securities.eastmoney.com/PC_HKF10/CompanyProfile/PageAjax?code=${sec.code}`;
         } else {
