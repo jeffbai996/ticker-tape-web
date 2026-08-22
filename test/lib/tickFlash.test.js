@@ -257,7 +257,10 @@ describe('the flashing cells', () => {
 describe('a flashing cell end to end', () => {
   const fmt = (v) => v.toFixed(2)
   const flush = () => new Promise((r) => setTimeout(r, 40))
-  const waitFor = async (pred, ms = 2_500) => {
+  // Real timers, real jsdom: the 1350ms clear needs more than 1.1s of
+  // event-loop headroom on a loaded box — this failed ~1 in 3 cold runs at
+  // 2_500 (2026-08-22). Budget scales with the flash, pass speed unchanged.
+  const waitFor = async (pred, ms = TICK_FLASH_MS * 3) => {
     const t0 = Date.now()
     while (!pred()) {
       if (Date.now() - t0 > ms) return false
