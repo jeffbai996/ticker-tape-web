@@ -1,8 +1,11 @@
 /** Chinese company-name search: Yahoo's search returns nothing for a
  *  Chinese query (verified 2026-08-22), so a zh reader adding a holding by
- *  name needs a local table consulted before the provider. */
-import { describe, expect, it } from 'vitest'
-import { hasCjk, zhAliasHits, zhKnownSymbols, zhName } from '../../src/lib/zhNames.js'
+ *  name needs a local table consulted before the provider. The table is
+ *  generated from the exchanges (scripts/gen_zh_names.py) and lazy-loaded. */
+import { beforeAll, describe, expect, it } from 'vitest'
+import { hasCjk, loadZhTable, zhAliasHits, zhKnownSymbols, zhName } from '../../src/lib/zhNames.js'
+
+beforeAll(async () => { await loadZhTable() })
 
 describe('zhAliasHits', () => {
   it('finds a listing by its simplified name, prefix first', () => {
@@ -24,6 +27,15 @@ describe('zhAliasHits', () => {
   it('still hits when the query merely contains the name', () => {
     expect(zhAliasHits('买点比亚迪').map((h) => h.symbol)).toContain('002594.SZ')
     expect(zhAliasHits('比亚迪').map((h) => h.symbol)).toEqual(expect.arrayContaining(['1211.HK', '002594.SZ']))
+  })
+
+  it('answers nothing before the chunk lands, never a wrong name', async () => {
+    // a fresh module instance: nothing loaded yet
+    const fresh = await import('../../src/lib/zhNames.js?fresh=' + Math.random())
+    expect(fresh.zhName('0700.HK')).toBeNull()
+    expect(fresh.zhAliasHits('腾讯')).toEqual([])
+    await fresh.loadZhTable()
+    expect(fresh.zhName('0700.HK')).toBe('腾讯控股')
   })
 
   it('stays out of the way for Latin queries and single characters', () => {
@@ -54,6 +66,6 @@ describe('zhName', () => {
       '1818.HK', '7709.HK', '513050.SS', '000657.SZ', '300308.SZ', '688008.SS',
       '6869.HK', '0981.HK']
     for (const s of book) expect(zhName(s), s).not.toBeNull()
-    expect(zhKnownSymbols().length).toBeGreaterThan(140)
+    expect(zhKnownSymbols().length).toBeGreaterThan(8000)   // every listing, generated
   })
 })

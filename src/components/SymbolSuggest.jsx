@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { searchSymbols } from '../lib/symbolSearch.js'
 import { codeSearchQueries } from '../lib/venueCodes.js'
-import { hasCjk, zhAliasHits } from '../lib/zhNames.js'
+import { hasCjk, loadZhTable, zhAliasHits } from '../lib/zhNames.js'
 import { venueFlag } from '../lib/venueFlag.js'
 import { Marquee } from './Marquee.jsx'
 
@@ -46,7 +46,7 @@ export function SymbolSuggest({
       // returns nothing for CJK queries, so the round-trip is a guaranteed
       // empty dropdown (Gordon, 2026-08-22)
       const lookups = hasCjk(q)
-        ? [Promise.resolve(zhAliasHits(q))]
+        ? [loadZhTable().then(() => zhAliasHits(q))]
         : codeSearchQueries(q).map((query) => (
           searchSymbols(query, { signal: ctl.signal }).catch(() => [])
         ))
