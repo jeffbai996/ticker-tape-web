@@ -27,7 +27,7 @@ import {
 } from '../lib/thesis.js'
 import { StatusPill } from '../components/StatusPill.jsx'
 import { countAdvancers } from '../lib/pulse.js'
-import { MyPortfolios, MyHoldings, MyNews, MyPerformance, MyTrades } from './portfolioMine.jsx'
+import { MyPortfolios, MyHoldings, MyNews, MyPerformance, MyTrades, MyEvents } from './portfolioMine.jsx'
 import { loadPortfolios, onPortfoliosChange } from '../lib/myPortfolios.js'
 import { IS_FAMILY_BUILD } from '../lib/nav.js'
 
@@ -1727,6 +1727,7 @@ export function Portfolio({ route }) {
     mine: MyPortfolios,
     holdings: MyHoldings,
     ledger: MyTrades,
+    events: MyEvents,
     performance: MyPerformance,
     news: MyNews,
     account: Account,

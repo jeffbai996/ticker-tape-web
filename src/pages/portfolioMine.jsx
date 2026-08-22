@@ -27,6 +27,7 @@ import { fetchCnIndustry, isCnListing } from '../lib/cnData.js'
 import { BookNews } from './portfolioNews.jsx'
 import { BookPerformance } from './portfolioPerformance.jsx'
 import { BookTrades } from './portfolioTrades.jsx'
+import { BookEvents } from './portfolioEvents.jsx'
 import { PORTFOLIO_CCYS, cashAccountName, convertCcy, fmtCcy, fmtCcyZh, fxSymbolsFor, holdingCurrency, ratesFromQuotes } from '../lib/fx.js'
 import { MAX_MY_HOLDINGS, createPortfolio, deletePortfolio, loadPortfolios, onPortfoliosChange, removeCash, removeHolding, renamePortfolio, setCash, setHolding, setPortfolioCcy, portfolioValues, recordSnapshot, previousSnapshot } from '../lib/myPortfolios.js'
 
@@ -928,6 +929,7 @@ export const MyHoldings = (props) => <MyPortfolios {...props} view="holdings" />
 export const MyNews = (props) => <MyPortfolios {...props} view="news" />
 export const MyPerformance = (props) => <MyPortfolios {...props} view="performance" />
 export const MyTrades = (props) => <MyPortfolios {...props} view="trades" />
+export const MyEvents = (props) => <MyPortfolios {...props} view="events" />
 
 export function MyPortfolios({ view = 'overview' } = {}) {
   const [items, setItems] = useState(loadPortfolios)
@@ -1025,6 +1027,7 @@ export function MyPortfolios({ view = 'overview' } = {}) {
           {view === 'news' && <BookNews portfolio={selected} quotes={quotes} />}
           {view === 'performance' && <BookPerformance portfolio={selected} quotes={quotes} rates={rates} />}
           {view === 'trades' && <BookTrades portfolio={selected} quotes={quotes} />}
+          {view === 'events' && <BookEvents portfolio={selected} quotes={quotes} />}
         </>
       ) : (
         <div class="rounded-xl border border-line bg-surface-1 px-4 py-6 text-center font-anth text-[11px] text-muted">

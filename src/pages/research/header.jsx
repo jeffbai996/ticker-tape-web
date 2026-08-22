@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'preact/hooks'
 import { getLocale, tl } from '../../lib/i18n.js'
+import { loadPortfolios, onPortfoliosChange } from '../../lib/myPortfolios.js'
 import { loadZhTable, onZhTable, zhName } from '../../lib/zhNames.js'
 import { Marquee } from '../../components/Marquee.jsx'
 import { FlashMetric, FlashPrice } from '../../components/Fig.jsx'
@@ -87,6 +88,11 @@ export function ResearchHeader({ symbol, q, route }) {
     return onZhTable(() => zhTick((t) => t + 1))
   }, [symbol])
   const displayName = (getLocale() === 'zh' && zhName(symbol)) || q?.name || ''
+  // the reader's own position in this name, from every hand-built book
+  // that holds it (Jeff 2026-08-22: "position context on the research page")
+  const [books, setBooks] = useState(loadPortfolios)
+  useEffect(() => onPortfoliosChange((next) => setBooks([...next])), [])
+  const held = books.flatMap((b) => (b.holdings || []).filter((h) => h.symbol === symbol).map((h) => ({ book: b.name, ...h })))
   const up = (q?.pct ?? 0) >= 0
   const extUp = (q?.extPct ?? 0) >= 0
   const tabs = [
@@ -113,6 +119,17 @@ export function ResearchHeader({ symbol, q, route }) {
           <h1 class="font-tick font-bold text-lg text-ink shrink-0">{symbol}</h1>
           <WatchStar symbol={symbol} />
           <AlertButton symbol={symbol} price={q?.price} />
+          {held.length > 0 && (
+            <span data-research-position class="shrink-0 inline-flex items-baseline gap-1.5 rounded-md border border-accent/35 bg-accent/10 px-2 py-0.5 font-mono text-[10.5px] max-sm:text-[10px] whitespace-nowrap"
+              title={held.map((h) => `${h.book}: ${h.shares}${h.cost ? ` @ ${h.cost}` : ''}`).join(' · ')}>
+              <span class="font-anth text-[9px] uppercase tracking-wider text-accent">{tl('Held')}</span>
+              <span class="text-ink">{held.reduce((s, h) => s + h.shares, 0).toLocaleString('en-US')}</span>
+              {held.length === 1 && held[0].cost > 0 && q?.price != null && (
+                <span class={(q.price - held[0].cost) >= 0 ? 'text-up' : 'text-down'}>{fmtPct(((q.price / held[0].cost) - 1) * 100)}</span>
+              )}
+              {held.length > 1 && <span class="text-muted">×{held.length}</span>}
+            </span>
+          )}
           {displayName && (
             /* bounded + sweepable: tap (phone) or hover (desktop) scrolls a
                long legal name; the identity lane no longer relies on the
