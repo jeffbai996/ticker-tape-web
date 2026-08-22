@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'preact/hooks'
-import { tl } from '../../lib/i18n.js'
+import { getLocale, tl } from '../../lib/i18n.js'
+import { isCnListing } from '../../lib/cnData.js'
+import { loadZhTable, onZhTable, zhName } from '../../lib/zhNames.js'
 import { Marquee } from '../../components/Marquee.jsx'
 import { FlashMetric, FlashPrice } from '../../components/Fig.jsx'
 import { fmtPrice, fmtPriceWide, fmtPct, fmtChange, fmtVol } from '../../lib/format.js'
@@ -77,6 +79,15 @@ function StaleQuoteTag() {
  *  name, but the quote cluster and the section strip never do — the price
  *  someone glanced up for, and the tab they're on, stay pinned. */
 export function ResearchHeader({ symbol, q, route }) {
+  // a zh reader sees the exchange's Chinese name for an HK / mainland
+  // listing; the provider's English legal name everywhere else
+  const [, zhTick] = useState(0)
+  useEffect(() => {
+    if (getLocale() !== 'zh' || !isCnListing(symbol)) return undefined
+    loadZhTable()
+    return onZhTable(() => zhTick((t) => t + 1))
+  }, [symbol])
+  const displayName = (getLocale() === 'zh' && zhName(symbol)) || q?.name || ''
   const up = (q?.pct ?? 0) >= 0
   const extUp = (q?.extPct ?? 0) >= 0
   const tabs = [
@@ -103,11 +114,11 @@ export function ResearchHeader({ symbol, q, route }) {
           <h1 class="font-tick font-bold text-lg text-ink shrink-0">{symbol}</h1>
           <WatchStar symbol={symbol} />
           <AlertButton symbol={symbol} price={q?.price} />
-          {q?.name && (
+          {displayName && (
             /* bounded + sweepable: tap (phone) or hover (desktop) scrolls a
                long legal name; the identity lane no longer relies on the
                user discovering it's finger-scrollable (Jeff 2026-08-17) */
-            <Marquee data-research-company-name text={q.name} title={`${symbol} — ${q.name}`}
+            <Marquee data-research-company-name text={displayName} title={`${symbol} — ${displayName}`}
               class="block min-w-0 max-w-[46vw] sm:max-w-[28rem] text-[12px] text-muted font-anth" />
           )}
         </div>
