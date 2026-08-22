@@ -17,6 +17,8 @@ import { fmtPrice, fmtPct, fmtPctPlain } from '../lib/format.js'
 import { tl, getLocale } from '../lib/i18n.js'
 import { loadZhTable, onZhTable, zhName } from '../lib/zhNames.js'
 import { fetchCnIndustry, isCnListing } from '../lib/cnData.js'
+import { VENUE_LABEL, fxDayPct, fxImpact, limitFlag, marketSession, venueDayBreakdown } from '../lib/cnMarkets.js'
+import { fetchSymbolEventsCached } from '../lib/cnEvents.js'
 import { BookNews } from './portfolioNews.jsx'
 import { BookPerformance } from './portfolioPerformance.jsx'
 import { BookTrades } from './portfolioTrades.jsx'
@@ -129,7 +131,8 @@ function AddHoldingForm({ portfolio }) {
           class={`${box} w-24`} />
         <input value={cost} onInput={(e) => setCost(e.currentTarget.value)}
           placeholder={tl('Avg cost (opt.)')} aria-label={tl('Avg cost (opt.)')}
-          inputMode="decimal" data-1p-ignore data-lpignore="true" class={`${box} w-32`} />
+          title={tl('Leave blank if unknown — the current price is not your cost.')}
+          inputMode="decimal" data-1p-ignore data-lpignore="true" class={`${box} w-36`} />
         <button type="submit" disabled={full || !confirmed || !(Number(shares) > 0)}
           class="rounded border border-accent/40 bg-accent/10 px-3 py-1.5 font-anth text-[12px] font-semibold text-accent transition-colors hover:bg-accent/20 disabled:opacity-40">
           {tl('Add')}
@@ -450,7 +453,7 @@ function Holdings({ portfolio, quotes, rates }) {
   )
 }
 
-function SummaryStrip({ portfolio, quotes, rates, ccys }) {
+function SummaryStrip({ portfolio, quotes, rates, ccys, fxLive, bench }) {
   const { total, rows } = portfolioValues(portfolio.holdings, quotes, rates, portfolio.ccy, portfolio.cash)
   const priced = rows.filter((r) => r.valueDisplay != null)
   // The panel beside the headline number was three facts wide and mostly air
@@ -500,39 +503,58 @@ function SummaryStrip({ portfolio, quotes, rates, ccys }) {
           </div>
         </div>
         <div class="px-4 py-3 flex-[1.6] min-w-[300px] border-l border-line max-sm:border-l-0 max-sm:border-t flex flex-col justify-center">
-          <div class="grid grid-cols-[repeat(auto-fit,minmax(88px,1fr))] gap-x-4 gap-y-3">
-            {[
-              [tl('Names'), String(priced.filter((r) => r.kind !== 'cash').length), null],
-              [tl('Breadth'), br.up + br.down + br.flat
-                ? `${br.up} ↑ / ${br.down} ↓` : '—', br.up === br.down ? null : br.up > br.down],
-              [tl('Cost basis'), un.costBasis != null ? money(un.costBasis, portfolio.ccy) : '—', null],
-              [tl('Open P&L'), un.pct != null ? fmtPct(un.pct) : '—', un.pnl == null ? null : un.pnl >= 0],
-              // whole-book basis, matching the table's weight column exactly —
-              // the concentration card renormalises across positions and would
-              // otherwise print a different number for the same holding
-              [tl('Top weight'), topWeight != null ? fmtPctPlain(topWeight) : '—', null],
-              [tl('Cash'), cs.cashPct != null ? fmtPctPlain(cs.cashPct) : '—', null],
-              [tl('Currencies'), String(new Set(priced.map((r) => r.ccy)).size || '—'), null],
-            ].map(([label, value, good]) => (
+          {/* what a HK / mainland holder reads first: where the book sits, how
+              each market did today, what the currency did to it, and whether
+              those markets are even open right now (Jeff 2026-08-22) */}
+          {(() => {
+            const venues = venueDayBreakdown(priced)
+            const fxPct = fxDayPct(fxLive, ccys, portfolio.ccy)
+            const fxImp = fxImpact(priced, fxPct, portfolio.ccy)
+            const rateTo = (c) => (rates?.[c] && rates?.[portfolio.ccy] ? rates[c] / rates[portfolio.ccy] : null)
+            const fact = (label, value, good, sub) => (
               <div key={label} class="min-w-0">
                 <div class="font-anth text-[8.5px] uppercase tracking-wider text-muted pb-0.5">{label}</div>
-                <div class={`truncate font-anth text-[13px] font-semibold ${
-                  good == null ? 'text-ink' : good ? 'text-up' : 'text-down'}`} title={value}>{value}</div>
+                <div class={`truncate font-anth text-[13px] font-semibold tabular-nums ${good == null ? 'text-ink' : good ? 'text-up' : 'text-down'}`} title={value}>{value}</div>
+                {sub && <div class="truncate font-mono text-[9.5px] text-muted">{sub}</div>}
               </div>
-            ))}
-            <div class="min-w-0">
-              <div class="font-anth text-[8.5px] uppercase tracking-wider text-muted pb-0.5">{tl('FX (live)')}</div>
-              {fxRates.length ? (
-                <div class="flex flex-wrap gap-x-3 gap-y-0.5">
-                  {fxRates.map(([ccy, rate]) => (
-                    <span key={ccy} class="font-anth text-[12.5px] font-semibold text-ink whitespace-nowrap">
-                      <span class="text-muted font-normal">{ccy}</span> {rate}
-                    </span>
-                  ))}
+            )
+            return (
+              <>
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-1 pb-2 font-mono text-[10px]">
+                  {SESSION_VENUES.filter((v) => venues.some((b) => b.venue === v) || v !== 'US').map((v) => {
+                    const ss = marketSession(v)
+                    return (
+                      <span key={v} class="inline-flex items-center gap-1 whitespace-nowrap">
+                        <span class={`inline-block h-1.5 w-1.5 rounded-full ${ss.state === 'open' ? 'bg-up' : ss.state === 'closed' ? 'bg-muted/50' : 'bg-accent'}`} />
+                        <span class="text-ink-2">{tl(VENUE_SHORT[v])}</span>
+                        <span class={sessionTone[ss.state]}>{tl(`market ${ss.state}`)}{ss.opensAt ? ` ${ss.opensAt}` : ''}</span>
+                      </span>
+                    )
+                  })}
+                  <span class="mx-1 h-3 w-px bg-line" />
+                  {BENCH.map((b) => {
+                    const q = bench?.[b.symbol]?.quote
+                    return (
+                      <span key={b.symbol} class="inline-flex items-baseline gap-1 whitespace-nowrap">
+                        <span class="text-muted">{tl(b.label)}</span>
+                        <span class={q?.pct == null ? 'text-muted' : q.pct >= 0 ? 'text-up' : 'text-down'}>{q?.pct == null ? '—' : fmtPct(q.pct)}</span>
+                      </span>
+                    )
+                  })}
                 </div>
-              ) : <div class="font-anth text-[13px] font-semibold text-ink">—</div>}
-            </div>
-          </div>
+                <div class="grid grid-cols-[repeat(auto-fit,minmax(96px,1fr))] gap-x-4 gap-y-3">
+                  {venues.slice(0, 3).map((b) => fact(tl(VENUE_SHORT[b.venue] || b.venue),
+                    b.dayPct == null ? fmtPctPlain(b.weightPct) : `${fmtPct(b.dayPct)}`, b.dayPct == null ? null : b.dayPct >= 0,
+                    `${fmtPctPlain(b.weightPct)} ${tl('of book')} · ${b.hasDay ? signed(b.dayPnl, portfolio.ccy) : '—'}`))}
+                  {fact(tl('FX impact'), Object.keys(fxImp.byCcy).length ? signed(fxImp.total, portfolio.ccy) : '—', Object.keys(fxImp.byCcy).length ? fxImp.total >= 0 : null,
+                    Object.entries(fxPct).filter(([c]) => c !== 'USD' || ccys.includes('USD')).slice(0, 2).map(([c, p]) => `${c}→${portfolio.ccy} ${rateTo(c) != null ? rateTo(c).toFixed(4) : '…'} ${p >= 0 ? '+' : ''}${p.toFixed(2)}%`).join(' · ') || null)}
+                  {fact(tl('Open P&L'), un.pct != null ? fmtPct(un.pct) : '—', un.pnl == null ? null : un.pnl >= 0, un.costBasis != null ? `${tl('Cost basis')} ${money(un.costBasis, portfolio.ccy)}` : null)}
+                  {fact(tl('Top weight'), topWeight != null ? fmtPctPlain(topWeight) : '—', null, `${priced.filter((r) => r.kind !== 'cash').length} ${tl('Names').toLowerCase()} · ${br.up} ↑ / ${br.down} ↓`)}
+                  {fact(tl('Cash'), cs.cashPct != null ? fmtPctPlain(cs.cashPct) : '—', null, cs.cash ? money(cs.cash, portfolio.ccy) : null)}
+                </div>
+              </>
+            )
+          })()}
         </div>
       </div>
     </section>
@@ -575,9 +597,67 @@ function useCnIndustries(symbols) {
 // The three cards a reader looks at first sit above the table; the rest
 // follow it (Jeff 2026-08-22: "put the 3 most important cards up top, then
 // the table, then the rest")
-const TOP_CARDS = ['movers', 'contribution', 'weights']
+// movers, the book against its indices, and the currency's share of the day:
+// the three questions a HK / mainland holder asks first (Jeff 2026-08-22)
+const TOP_CARDS = ['movers', 'indices', 'fx']
+const BENCH = [
+  { symbol: '^HSI', label: 'HSI', venue: 'HK' },
+  { symbol: '000300.SS', label: 'CSI 300', venue: 'CN' },
+  { symbol: '^GSPC', label: 'S&P 500', venue: 'US' },
+]
+const SESSION_VENUES = ['HK', 'CN', 'US']
+const VENUE_SHORT = { HK: 'HK stocks', CN: 'A-shares', US: 'US stocks', CA: 'Canada', OTHER: 'Other' }
+const sessionTone = { open: 'text-up', lunch: 'text-accent', pre: 'text-accent', closed: 'text-muted' }
 
-function BookAnalysis({ portfolio, quotes, rates, slot = null }) {
+/** The next 30 days of results dates and ex-dividends across the book —
+ *  the events page's data, cached, trickled in with provider spacing. */
+function UpcomingCard({ symbols, quotes }) {
+  const [ev, setEv] = useState({})
+  const key = symbols.join(',')
+  useEffect(() => {
+    let live = true
+    setEv({})
+    ;(async () => {
+      for (const sym of symbols) {
+        try {
+          const e = await fetchSymbolEventsCached(sym)
+          if (!live) return
+          setEv((m) => ({ ...m, [sym]: e }))
+        } catch { /* a missing calendar is an absent row */ }
+        await new Promise((r) => setTimeout(r, 450))
+      }
+    })()
+    return () => { live = false }
+  }, [key])
+  const today = new Date().toISOString().slice(0, 10)
+  const horizon = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10)
+  const items = symbols.flatMap((sym) => {
+    const e = ev[sym]
+    if (!e) return []
+    const out = []
+    if (e.nextResults && e.nextResults >= today && e.nextResults <= horizon) out.push({ d: e.nextResults, sym, what: tl('results') })
+    if (e.exDate && e.exDate >= today && e.exDate <= horizon) out.push({ d: e.exDate, sym, what: tl('ex-div') })
+    return out
+  }).sort((a, b) => a.d.localeCompare(b.d)).slice(0, 6)
+  const loaded = Object.keys(ev).length
+  if (!items.length) {
+    return <span class="font-anth text-[10px] text-muted">{loaded >= symbols.length ? tl('Nothing due in the next 30 days.') : `${tl('loading')} ${loaded}/${symbols.length}…`}</span>
+  }
+  return (
+    <div class="flex flex-col gap-0.5 font-mono text-[10.5px]">
+      {items.map((it, i) => (
+        <div key={i} class="flex items-baseline gap-2">
+          <span class="w-11 shrink-0 text-accent">{it.d.slice(5).replace('-', '/')}</span>
+          <a href={`#/research/${it.sym.toLowerCase()}`} class="font-bold text-ink hover:underline">{it.sym}</a>
+          <span class="min-w-0 truncate font-anth text-[9.5px] text-muted">{holdingName(it.sym, quotes)}</span>
+          <span class="ml-auto shrink-0 font-anth text-[9.5px] text-muted">{it.what}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function BookAnalysis({ portfolio, quotes, rates, slot = null, fxLive = {}, bench = {} }) {
   const [hidden, setHidden] = useState(hiddenCards)
   const [editing, setEditing] = useState(false)
   useEffect(() => onCardsChange((next) => setHidden([...next])), [])
@@ -630,17 +710,72 @@ function BookAnalysis({ portfolio, quotes, rates, slot = null }) {
   const cards = [
     card('movers', tl('Day movers'), (
       <div class="flex flex-col gap-0.5 font-mono text-[11px]">
-        {movers.map((r) => (
-          <div key={r.symbol} class="flex items-baseline justify-between gap-2">
-            <span class="font-bold text-accent">{r.symbol}</span>
-            <span class={pnlCls(r.dayPnlDisplay)}>
-              {signedGlance(r.dayPnlDisplay, ccy)}
-              <span class="text-[10px] font-normal"> ({fmtPct(r.dayPct)})</span>
-            </span>
-          </div>
-        ))}
+        {movers.map((r) => {
+          const lim = limitFlag(r.symbol, r.dayPct)
+          return (
+            <div key={r.symbol} class="flex items-baseline justify-between gap-2">
+              <span class="min-w-0 flex items-baseline gap-1.5">
+                <span class="font-bold text-accent">{r.symbol}</span>
+                {holdingName(r.symbol, quotes) && <span class="truncate font-anth text-[9.5px] text-muted">{holdingName(r.symbol, quotes)}</span>}
+                {lim && <span class={`rounded px-1 font-anth text-[8.5px] font-bold ${lim === 'up' ? 'bg-up/20 text-up' : 'bg-down/20 text-down'}`}>{tl(lim === 'up' ? 'limit up' : 'limit down')}</span>}
+              </span>
+              <span class={`shrink-0 ${pnlCls(r.dayPnlDisplay)}`}>
+                {signedGlance(r.dayPnlDisplay, ccy)}
+                <span class="text-[10px] font-normal"> ({fmtPct(r.dayPct)})</span>
+              </span>
+            </div>
+          )
+        })}
       </div>
     )),
+    // the book's day against the indices it actually trades under — a HK /
+    // mainland book that "fell" on a day the HSI fell more did its job
+    card('indices', tl('vs indices'), (() => {
+      const dayRows = priced.filter((r) => r.dayPnlDisplay != null)
+      const v = dayRows.reduce((s, r) => s + r.valueDisplay, 0)
+      const pnl = dayRows.reduce((s, r) => s + r.dayPnlDisplay, 0)
+      const bookPct = v - pnl > 0 ? (pnl / (v - pnl)) * 100 : null
+      const row = (label, pct, strong) => (
+        <div key={label} class="flex items-center gap-2 font-mono text-[10.5px]">
+          <span class={`w-16 shrink-0 truncate font-anth ${strong ? 'text-ink font-semibold' : 'text-ink-2'}`}>{label}</span>
+          <span class="relative h-2 flex-1 rounded-sm bg-surface-3 overflow-hidden">
+            {pct != null && <span class={`absolute top-0 h-2 ${pct >= 0 ? 'bg-up/60 left-1/2' : 'bg-down/60 right-1/2'}`} style={{ width: `${Math.min(50, Math.abs(pct) * 8)}%` }} />}
+            <span class="absolute left-1/2 top-0 h-2 w-px bg-line" />
+          </span>
+          <span class={`w-14 text-right ${pct == null ? 'text-muted' : pct >= 0 ? 'text-up' : 'text-down'}`}>{pct == null ? '—' : fmtPct(pct)}</span>
+        </div>
+      )
+      return (
+        <div class="flex flex-col gap-1">
+          {row(tl('This book'), bookPct, true)}
+          {BENCH.map((b) => row(tl(b.label), bench?.[b.symbol]?.quote?.pct ?? null, false))}
+        </div>
+      )
+    })()),
+    // a CNY-denominated book full of HKD names moves with the peg's drift
+    // and the USD/CNY fix as much as with the tape — say how much was that
+    card('fx', tl('FX impact'), (() => {
+      const ccys = [...new Set(priced.map((r) => r.ccy))]
+      const fxPct = fxDayPct(fxLive, ccys, ccy)
+      const imp = fxImpact(priced, fxPct, ccy)
+      const entries = Object.entries(imp.byCcy)
+      if (!entries.length) return <span class="font-anth text-[10px] text-muted">{tl('No currency exposure — everything trades in the display currency.')}</span>
+      const rateTo = (c) => (rates?.[c] && rates?.[ccy] ? rates[c] / rates[ccy] : null)
+      return (
+        <div class="flex flex-col gap-1">
+          {stat(tl('Day move'), signedGlance(imp.total, ccy), pnlCls(imp.total))}
+          {entries.map(([c, v]) => (
+            <div key={c} class="flex items-center gap-2 font-mono text-[10px]">
+              <span class="w-20 shrink-0 font-anth text-ink-2">{c}→{ccy}</span>
+              <span class="text-ink">{rateTo(c) != null ? rateTo(c).toFixed(4) : '…'}</span>
+              <span class={fxPct[c] >= 0 ? 'text-up' : 'text-down'}>{fxPct[c] >= 0 ? '+' : ''}{fxPct[c].toFixed(2)}%</span>
+              <span class={`ml-auto ${pnlCls(v)}`}>{signedGlance(v, ccy)}</span>
+            </div>
+          ))}
+        </div>
+      )
+    })()),
+    card('upcoming', tl('Upcoming'), <UpcomingCard symbols={priced.filter((r) => r.kind !== 'cash').map((r) => r.symbol)} quotes={quotes} />),
     // Movers ranks by size of move; this ranks by share of the day's total
     // move, which is the question "what actually moved my book today".
     card('contribution', tl('Day contribution'), contrib.length ? (
@@ -721,16 +856,18 @@ function BookAnalysis({ portfolio, quotes, rates, slot = null }) {
     // The sector buckets only know US large-caps, so a Hong Kong / mainland
     // book files itself under "Other" and learns nothing. Where the names are
     // listed is the split that book really has.
+    // where the book is listed, and how each market did for it today
     card('venues', tl('Markets'), (() => {
-      const venues = venueSplit(rows).slice(0, 6)
+      const venues = venueDayBreakdown(priced).slice(0, 6)
       const maxV = venues[0]?.value || 1
       return (
         <div class="flex flex-col gap-1">
           {venues.map((v) => (
-            <div key={v.name} class="flex items-center gap-2 font-mono text-[10px]">
-              <span class="w-20 shrink-0 truncate font-anth text-ink-2">{tl(v.name)}</span>
-              <span class="h-2 rounded-sm bg-accent/45" style={{ width: `${(v.value / maxV) * 100}%`, minWidth: '2px' }} />
-              <span class="ml-auto text-muted">{fmtPctPlain(v.pct)}</span>
+            <div key={v.venue} class="flex items-center gap-2 font-mono text-[10px]">
+              <span class="w-14 shrink-0 truncate font-anth text-ink-2">{tl(VENUE_SHORT[v.venue] || v.venue)}</span>
+              <span class="h-2 rounded-sm bg-accent/45" style={{ width: `${(v.value / maxV) * 36}%`, minWidth: '2px' }} />
+              <span class="text-muted">{fmtPctPlain(v.weightPct)}</span>
+              <span class={`ml-auto ${v.dayPct == null ? 'text-muted' : v.dayPct >= 0 ? 'text-up' : 'text-down'}`}>{v.dayPct == null ? '—' : `${signedGlance(v.dayPnl, ccy)} (${fmtPct(v.dayPct)})`}</span>
             </div>
           ))}
         </div>
@@ -889,6 +1026,8 @@ export function MyPortfolios({ view = 'overview' } = {}) {
   }, [selected, preQuotes])
   const fxLive = useQuotes(fxSymbolsFor(ccys))
   const rates = ratesFromQuotes(fxLive)
+  // the indices a HK / mainland book is measured against, for the strip and the cards
+  const bench = useQuotes(BENCH.map((b) => b.symbol))
 
   const rename = () => {
     if (!selected) return
@@ -946,11 +1085,11 @@ export function MyPortfolios({ view = 'overview' } = {}) {
         <>
           {/* overview = everything, as before; holdings = the table alone at
               full width; news = the per-ticker feed (Jeff 2026-08-22) */}
-          {view === 'overview' && <SummaryStrip portfolio={selected} quotes={quotes} rates={rates} ccys={ccys} />}
-          {view === 'overview' && <BookAnalysis portfolio={selected} quotes={quotes} rates={rates} slot="top" />}
+          {view === 'overview' && <SummaryStrip portfolio={selected} quotes={quotes} rates={rates} ccys={ccys} fxLive={fxLive} bench={bench} />}
+          {view === 'overview' && <BookAnalysis portfolio={selected} quotes={quotes} rates={rates} fxLive={fxLive} bench={bench} slot="top" />}
           {(view === 'overview' || view === 'holdings') && <Holdings portfolio={selected} quotes={quotes} rates={rates} />}
           {(view === 'overview' || view === 'holdings') && <BookTools portfolio={selected} quotes={quotes} rates={rates} />}
-          {view === 'overview' && <BookAnalysis portfolio={selected} quotes={quotes} rates={rates} slot="rest" />}
+          {view === 'overview' && <BookAnalysis portfolio={selected} quotes={quotes} rates={rates} fxLive={fxLive} bench={bench} slot="rest" />}
           {view === 'news' && <BookNews portfolio={selected} quotes={quotes} />}
           {view === 'performance' && <BookPerformance portfolio={selected} quotes={quotes} rates={rates} />}
           {view === 'trades' && <BookTrades portfolio={selected} quotes={quotes} />}

@@ -76,6 +76,18 @@ const report = (symbol, name, n, opts) => getJson(`/cn/report?symbol=${encodeURI
 
 /** Everything the page shows for one holding, in one object. Each source
  *  fails independently — a missing dividend report is a dash, not an error. */
+const eventsCache = new Map()          // symbol -> { ts, value } (6h)
+const EVENTS_TTL = 6 * 3600_000
+
+/** Cached wrapper: the overview's upcoming card and the events page ask for
+ *  the same names; one fetch per symbol per six hours serves both. */
+export function fetchSymbolEventsCached(symbol, opts = {}) {
+  const sym = String(symbol).toUpperCase()
+  const hit = eventsCache.get(sym)
+  if (hit && Date.now() - hit.ts < EVENTS_TTL) return Promise.resolve(hit.value)
+  return fetchSymbolEvents(sym, opts).then((v) => { eventsCache.set(sym, { ts: Date.now(), value: v }); return v })
+}
+
 export async function fetchSymbolEvents(symbol, { today = new Date().toISOString().slice(0, 10), dividendsImpl = fetchDividends, ...opts } = {}) {
   const sym = String(symbol).toUpperCase()
   const out = { symbol: sym, nextResults: null, resultsPeriod: null, exDate: null, payDate: null, dividends: [], yieldPct: null }
