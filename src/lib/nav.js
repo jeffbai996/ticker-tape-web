@@ -83,6 +83,14 @@ export const NAV = [
 // gateway) and the wire is the operator's own — the showcase badges only
 // make sense on the public origin.
 if (PRIVATE_BUILD) for (const s of NAV) delete s.badge
+if (PRIVATE_BUILD) {
+  // the broker book IS the portfolio here; the hand-built pages that only
+  // mean something with a manual book (table, ledger, 净值) step aside —
+  // 我的组合 still reaches them, and 分红财报 / 新闻 read the broker book
+  // (Jeff 2026-08-22: "bunch of these new features don't work on our copy")
+  const portfolio = NAV.find((s) => s.id === 'portfolio')
+  portfolio.subs = portfolio.subs.filter((sub) => !['holdings', 'ledger', 'performance'].includes(sub.id))
+}
 if (FAMILY_BUILD) NAV.splice(NAV.findIndex((s) => s.id === 'brief'), 1)
 if (FAMILY_BUILD) {
   // no brokerage will ever be wired here — the broker-book tabs (account,
