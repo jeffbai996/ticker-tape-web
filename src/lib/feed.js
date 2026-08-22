@@ -42,8 +42,26 @@ const DEFAULT_PROXY = 'https://yf-proxy.2phakhvpgh.workers.dev'
 let proxyFailStreak = 0
 let proxyBenched = false
 
+// The first successful price batch is the moment lower-priority lookups
+// (earnings badges, the docket) may start without pushing prices back. Pages
+// await this instead of guessing with a timer (waterfall, 2026-08-22).
+let firstBatchResolve = null
+const firstBatch = new Promise((resolve) => { firstBatchResolve = resolve })
+let firstBatchDone = false
+
+/** Resolves once one price batch has landed; settles at `timeoutMs` anyway so
+ *  a dead feed never holds secondary lookups hostage. */
+export function whenFirstBatch(timeoutMs = 6_000) {
+  if (firstBatchDone) return Promise.resolve(true)
+  return Promise.race([firstBatch, new Promise((r) => setTimeout(() => r(false), timeoutMs))])
+}
+
 export function reportProxyBatch(ok) {
-  if (ok) { proxyFailStreak = 0; return }
+  if (ok) {
+    proxyFailStreak = 0
+    if (!firstBatchDone) { firstBatchDone = true; firstBatchResolve(true) }
+    return
+  }
   if (proxyBenched || import.meta.env.VITE_DATA_PROXY) return
   let saved = null
   try { saved = localStorage.getItem('proxy_url') } catch { return }

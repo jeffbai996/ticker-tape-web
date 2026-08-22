@@ -10,7 +10,7 @@ import { fmtPrice, fmtPct, fmtPctPlain, fmtChange, fmtRatio } from '../lib/forma
 import { getLocale, tl, thesisTerm, t as tt } from '../lib/i18n.js'
 import { FlashPrice } from '../components/Fig.jsx'
 import { Empty, Loading } from '../components/Loading.jsx'
-import { ChartMount } from '../components/LazyChart.jsx'
+import { ChartMount } from '../components/LazyChartMount.jsx'
 import {
   parseFillsCsv, assembleBacktest, convertFills, convertBars, needsFx, symbolCurrency,
   serverFillsToLedger,

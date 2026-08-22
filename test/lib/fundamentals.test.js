@@ -110,3 +110,28 @@ describe('parseAnalysts', () => {
     expect(out.history).toEqual([])
   })
 })
+
+import { vi as vitestVi } from 'vitest'
+import { fetchEarningsDate as fetchCal } from '../../src/lib/fundamentals.js'
+
+describe('fetchEarningsDate — one request per symbol, however many ask', () => {
+  it('shares an in-flight lookup between concurrent callers', async () => {
+    const calls = []
+    vitestVi.stubGlobal('fetch', async (url) => {
+      calls.push(String(url))
+      await new Promise((r) => setTimeout(r, 10))
+      return { ok: true, json: async () => ({ quoteSummary: { result: [{ calendarEvents: { earnings: { earningsDate: [{ raw: 1761696000 }], earningsAverage: { raw: 1.5 } } } }] } }) }
+    })
+    try {
+      const [a, b] = await Promise.all([fetchCal('ZZTEST'), fetchCal('ZZTEST')])
+      expect(calls.filter((u) => u.includes('ZZTEST'))).toHaveLength(1)
+      expect(a).toEqual(b)
+      expect(a).toMatchObject({ epsEstimate: 1.5 })
+      // and the cache answers the third without a request at all
+      await fetchCal('ZZTEST')
+      expect(calls.filter((u) => u.includes('ZZTEST'))).toHaveLength(1)
+    } finally {
+      vitestVi.unstubAllGlobals()
+    }
+  })
+})
