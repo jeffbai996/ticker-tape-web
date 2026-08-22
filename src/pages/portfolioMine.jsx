@@ -17,6 +17,7 @@ import { fmtPrice, fmtPct, fmtPctPlain } from '../lib/format.js'
 import { tl, getLocale } from '../lib/i18n.js'
 import { loadZhTable, onZhTable, zhName } from '../lib/zhNames.js'
 import { fetchCnIndustry, isCnListing } from '../lib/cnData.js'
+import { daysUntil } from '../lib/markets.js'
 import { VENUE_LABEL, fxDayPct, fxImpact, limitFlag, marketSession, venueDayBreakdown } from '../lib/cnMarkets.js'
 import { fetchSymbolEventsCached } from '../lib/cnEvents.js'
 import { BookNews } from './portfolioNews.jsx'
@@ -452,6 +453,60 @@ function Holdings({ portfolio, quotes, rates }) {
   )
 }
 
+/** Shares of a whole as a ring: slices are [{label, value, cls}], the centre
+ *  carries one figure. SVG only — a ring of six arcs is not a chart library. */
+function Donut({ slices, centre, centreSub }) {
+  const total = slices.reduce((s, x) => s + x.value, 0)
+  if (!(total > 0)) return null
+  const R = 22; const C = 2 * Math.PI * R
+  let acc = 0
+  return (
+    <svg viewBox="0 0 56 56" class="h-[72px] w-[72px] shrink-0 -rotate-90" role="img">
+      <circle cx="28" cy="28" r={R} fill="none" stroke="var(--color-surface-3)" stroke-width="7" />
+      {slices.map((x, i) => {
+        const len = (x.value / total) * C
+        const el = <circle key={i} cx="28" cy="28" r={R} fill="none" stroke={x.color} stroke-width="7"
+          stroke-dasharray={`${len.toFixed(2)} ${(C - len).toFixed(2)}`} stroke-dashoffset={(-acc).toFixed(2)} />
+        acc += len
+        return el
+      })}
+      <g class="rotate-90" style={{ transformOrigin: '28px 28px' }}>
+        <text x="28" y={centreSub ? 27 : 30} text-anchor="middle" class="font-anth fill-current text-ink" style={{ fontSize: '10px', fontWeight: 600 }}>{centre}</text>
+        {centreSub && <text x="28" y="36" text-anchor="middle" class="fill-current text-muted" style={{ fontSize: '6px' }}>{centreSub}</text>}
+      </g>
+    </svg>
+  )
+}
+const RING = ['#f59e0b', '#60a5fa', '#f472b6', '#a3e635', '#c084fc', '#34d399', '#6b7280']
+const CCY_RING = { USD: '#f59e0b', CAD: '#34d399', HKD: '#f85149', CNY: '#60a5fa' }
+
+/** The book's marks as a dated line with the first/last values labelled —
+ *  the 净值 page's chart at card size, book only. */
+function MiniLine({ marks, ccy }) {
+  const pts = marks.slice(-90)
+  if (pts.length < 2) return null
+  const W = 200; const H = 56
+  const vs = pts.map((m) => m.v)
+  const lo = Math.min(...vs); const hi = Math.max(...vs); const span = hi - lo || 1
+  const x = (i) => (i / (pts.length - 1)) * W
+  const y = (v) => 4 + (1 - (v - lo) / span) * (H - 8)
+  const d = vs.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ')
+  const up = vs[vs.length - 1] >= vs[0]
+  const col = up ? 'var(--color-up)' : 'var(--color-down)'
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" class="block h-[56px] w-full" role="img">
+      <defs>
+        <linearGradient id="mini-fill" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0" stop-color={col} stop-opacity="0.2" />
+          <stop offset="1" stop-color={col} stop-opacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={`${d} L${W},${H} L0,${H} Z`} fill="url(#mini-fill)" stroke="none" />
+      <path d={d} fill="none" stroke={col} stroke-width="1.6" vector-effect="non-scaling-stroke" />
+    </svg>
+  )
+}
+
 /** The book's own marks (one per day the page saw it fully priced) as a
  *  bare line — needs two marks before it draws anything. */
 function Sparkline({ marks }) {
@@ -678,6 +733,7 @@ function UpcomingCard({ symbols, quotes }) {
     if (e.exDate && e.exDate >= today && e.exDate <= horizon) out.push({ d: e.exDate, sym, what: tl('ex-div') })
     return out
   }).sort((a, b) => a.d.localeCompare(b.d)).slice(0, 6)
+    .map((it) => ({ ...it, days: daysUntil(it.d, today) }))
   const loaded = Object.keys(ev).length
   if (!items.length) {
     return <span class="font-anth text-[10px] text-muted">{loaded >= symbols.length ? tl('Nothing due in the next 30 days.') : `${tl('loading')} ${loaded}/${symbols.length}…`}</span>
@@ -687,6 +743,7 @@ function UpcomingCard({ symbols, quotes }) {
       {items.map((it, i) => (
         <div key={i} class="flex items-baseline gap-2">
           <span class="w-11 shrink-0 text-accent">{it.d.slice(5).replace('-', '/')}</span>
+          <span class={`w-8 shrink-0 text-right font-anth text-[9.5px] ${it.days <= 1 ? 'text-accent font-semibold' : 'text-muted'}`}>{it.days === 0 ? tl('Today') : tl('{n}d').replace('{n}', it.days)}</span>
           <a href={`#/research/${it.sym.toLowerCase()}`} class="font-bold text-ink hover:underline">{it.sym}</a>
           <span class="min-w-0 truncate font-anth text-[9.5px] text-muted">{holdingName(it.sym, quotes)}</span>
           <span class="ml-auto shrink-0 font-anth text-[9.5px] text-muted">{it.what}</span>
@@ -744,7 +801,6 @@ function BookAnalysis({ portfolio, quotes, rates, slot = null, fxLive = {}, benc
   const mix = new Map()
   for (const r of priced) mix.set(r.ccy, (mix.get(r.ccy) || 0) + r.valueDisplay)
   const mixTotal = [...mix.values()].reduce((a, b) => a + b, 0)
-  const MIX_CLS = { USD: 'bg-accent/70', CAD: 'bg-up/60', HKD: 'bg-down/60', CNY: 'bg-ink-2/60' }
 
   const cards = [
     card('movers', tl('Day movers'), (
@@ -843,31 +899,40 @@ function BookAnalysis({ portfolio, quotes, rates, slot = null, fxLive = {}, benc
     )),
     // effective N: the number of equal positions that would concentrate the
     // same way. A 20-name book with one 40% position is not a 20-name book.
-    card('concentration', tl('Concentration'), con.top1 == null ? null : (
-      <div class="flex flex-col gap-1">
-        {stat(tl('Largest'), fmtPctPlain(con.top1))}
-        {stat(tl('Top 3'), fmtPctPlain(con.top3))}
-        {stat(tl('Top 5'), fmtPctPlain(con.top5))}
-        {stat(tl('Effective names'), `${con.effectiveN.toFixed(1)} / ${con.count}`,
-          con.effectiveN < con.count / 2 ? 'text-accent' : 'text-ink')}
-        {cs.cash !== 0 && (
-          <div class="pt-0.5 font-anth text-[9px] text-muted">{tl('share of positions, cash excluded')}</div>
-        )}
-      </div>
-    )),
+    card('concentration', cs.cash !== 0 ? `${tl('Concentration')} · ${tl('ex-cash')}` : tl('Concentration'), con.top1 == null ? null : (() => {
+      const held = priced.filter((r) => r.kind !== 'cash').sort((a, b) => b.valueDisplay - a.valueDisplay)
+      const heldTotal = held.reduce((s, r) => s + r.valueDisplay, 0)
+      const top = held.slice(0, 5)
+      const rest = heldTotal - top.reduce((s, r) => s + r.valueDisplay, 0)
+      const slices = [...top.map((r, i) => ({ label: r.symbol, value: r.valueDisplay, color: RING[i] })),
+        ...(rest > 0 ? [{ label: tl('Other'), value: rest, color: RING[6] }] : [])]
+      return (
+        <div class="flex items-center gap-3">
+          <Donut slices={slices} centre={con.effectiveN.toFixed(1)} centreSub={`/ ${con.count}`} />
+          <div class="flex min-w-0 flex-1 flex-col gap-0.5">
+            {stat(tl('Largest'), `${top[0].symbol} ${fmtPctPlain((top[0].valueDisplay / heldTotal) * 100)}`)}
+            {stat(tl('Top 3'), fmtPctPlain(con.top3))}
+            {stat(tl('Top 5'), fmtPctPlain(con.top5))}
+            {stat(tl('Effective names'), con.effectiveN.toFixed(1), con.effectiveN < con.count / 2 ? 'text-accent' : 'text-ink')}
+          </div>
+        </div>
+      )
+    })()),
     card('unrealized', tl('Open P&L'), un.covered ? (
       <div class="flex flex-col gap-1">
         {stat(tl('Cost basis'), glance(un.costBasis, ccy))}
         {stat(tl('Open'), `${signedGlance(un.pnl, ccy)}${un.pct != null ? ` (${fmtPct(un.pct)})` : ''}`, pnlCls(un.pnl))}
         {un.best && stat(tl('Best'), `${un.best.symbol} ${fmtPct(un.best.unrealPct)}`, 'text-up')}
         {un.worst && stat(tl('Worst'), `${un.worst.symbol} ${fmtPct(un.worst.unrealPct)}`, 'text-down')}
-        {un.covered < priced.filter((r) => r.kind !== 'cash').length && (
-          <div class="pt-0.5 font-anth text-[9px] text-muted">
-            {tl('{n} positions carry a cost basis').replace('{n}', un.covered)}
-          </div>
-        )}
+        {un.covered < priced.filter((r) => r.kind !== 'cash').length && stat(tl('With cost'), `${un.covered} / ${priced.filter((r) => r.kind !== 'cash').length}`, 'text-muted')}
       </div>
-    ) : <span class="font-anth text-[10px] text-muted">{tl('Add an average cost to see open P&L.')}</span>),
+    ) : (
+      <div class="flex flex-col gap-1">
+        {stat(tl('Cost basis'), '—', 'text-muted')}
+        {stat(tl('Open'), '—', 'text-muted')}
+        {stat(tl('With cost'), `0 / ${priced.filter((r) => r.kind !== 'cash').length}`, 'text-muted')}
+      </div>
+    )),
     card('sectors', tl('Sectors'), (() => {
       const cnBuckets = Object.entries(industries).reduce((acc, [sym, label]) => {
         const b = acc.find((x) => x.name === label)
@@ -902,30 +967,38 @@ function BookAnalysis({ portfolio, quotes, rates, slot = null, fxLive = {}, benc
       return (
         <div class="flex flex-col gap-1">
           {venues.map((v) => (
-            <div key={v.venue} class="flex items-center gap-2 font-mono text-[10px]">
-              <span class="w-14 shrink-0 truncate font-anth text-ink-2">{tl(VENUE_SHORT[v.venue] || v.venue)}</span>
-              <span class="h-2 rounded-sm bg-accent/45" style={{ width: `${(v.value / maxV) * 36}%`, minWidth: '2px' }} />
-              <span class="text-muted">{fmtPctPlain(v.weightPct)}</span>
-              <span class={`ml-auto ${v.dayPct == null ? 'text-muted' : v.dayPct >= 0 ? 'text-up' : 'text-down'}`}>{v.dayPct == null ? '—' : `${signedGlance(v.dayPnl, ccy)} (${fmtPct(v.dayPct)})`}</span>
+            <div key={v.venue} class="grid grid-cols-[3.5rem_1fr_auto] items-center gap-x-2 font-mono text-[10px]">
+              <span class="truncate font-anth text-ink-2">{tl(VENUE_SHORT[v.venue] || v.venue)}</span>
+              <span class="flex items-center gap-2 min-w-0">
+                <span class="h-2 rounded-sm bg-accent/45" style={{ width: `${(v.value / maxV) * 60}%`, minWidth: '2px' }} />
+                <span class="text-muted">{fmtPctPlain(v.weightPct)}</span>
+              </span>
+              <span class={`text-right whitespace-nowrap ${v.dayPct == null ? 'text-muted' : v.dayPct >= 0 ? 'text-up' : 'text-down'}`}>
+                {v.dayPct == null ? '—' : signedGlance(v.dayPnl, ccy)}
+                {v.dayPct != null && <span class="block text-[9px] font-normal">{fmtPct(v.dayPct)}</span>}
+              </span>
             </div>
           ))}
         </div>
       )
     })()),
-    card('currency', tl('Currency mix'), (
-      <div class="flex flex-col gap-1.5">
-        <div class="flex h-2.5 w-full overflow-hidden rounded-sm">
-          {[...mix.entries()].map(([c, v]) => (
-            <span key={c} class={MIX_CLS[c] || 'bg-ink-2/40'} style={{ width: `${(v / mixTotal) * 100}%` }} />
-          ))}
+    card('currency', tl('Currency mix'), (() => {
+      const entries = [...mix.entries()].sort((a, b) => b[1] - a[1])
+      const color = (c, i) => CCY_RING[c] || RING[(i + 4) % RING.length]
+      return (
+        <div class="flex items-center gap-3">
+          <Donut slices={entries.map(([c, v], i) => ({ label: c, value: v, color: color(c, i) }))} centre={String(entries.length)} centreSub={tl('ccy')} />
+          <div class="flex min-w-0 flex-1 flex-col gap-0.5">
+            {entries.map(([c, v], i) => (
+              <div key={c} class="flex items-baseline justify-between gap-2 font-mono text-[10.5px]">
+                <span class="font-anth text-ink-2"><span class="mr-1.5 inline-block h-2 w-2 rounded-sm align-middle" style={{ background: color(c, i) }} />{c}</span>
+                <span class="text-ink">{fmtPctPlain((v / mixTotal) * 100)}<span class="text-muted text-[9.5px]"> · {glance(v, ccy)}</span></span>
+              </div>
+            ))}
+          </div>
         </div>
-        <div class="flex flex-wrap gap-x-3 gap-y-0.5 font-mono text-[10px] text-muted">
-          {[...mix.entries()].sort((a, b) => b[1] - a[1]).map(([c, v]) => (
-            <span key={c}><span class={`mr-1 inline-block h-2 w-2 rounded-sm align-middle ${MIX_CLS[c] || 'bg-ink-2/40'}`} />{c} {fmtPctPlain((v / mixTotal) * 100)}</span>
-          ))}
-        </div>
-      </div>
-    )),
+      )
+    })()),
     card('cash', tl('Cash & deployment'), (
       <div class="flex flex-col gap-1">
         <div class="flex h-2.5 w-full overflow-hidden rounded-sm bg-surface-3">
@@ -936,6 +1009,44 @@ function BookAnalysis({ portfolio, quotes, rates, slot = null, fxLive = {}, benc
         {stat(tl('Cash weight'), cs.cashPct != null ? fmtPctPlain(cs.cashPct) : '—')}
       </div>
     )),
+    // the book's own value line, one mark per day the page saw it priced
+    card('trend', tl('Trend'), (() => {
+      const marks = (portfolio.snapshots || []).filter((m) => m.c === ccy)
+      if (marks.length < 2) return null
+      const first = marks[0]; const last = marks[marks.length - 1]
+      const lo = marks.reduce((m, x) => (x.v < m.v ? x : m), first)
+      const hi = marks.reduce((m, x) => (x.v > m.v ? x : m), first)
+      return (
+        <div class="flex flex-col gap-1">
+          <MiniLine marks={marks} ccy={ccy} />
+          {stat(`${tl('since')} ${first.d.slice(5).replace('-', '/')}`, `${signedGlance(last.v - first.v, ccy)} (${fmtPct(((last.v - first.v) / first.v) * 100)})`, pnlCls(last.v - first.v))}
+          {stat(tl('High'), `${hi.d.slice(5).replace('-', '/')} ${glance(hi.v, ccy)}`)}
+          {stat(tl('Low'), `${lo.d.slice(5).replace('-', '/')} ${glance(lo.v, ccy)}`)}
+        </div>
+      )
+    })()),
+    // every position's open P&L as a diverging bar around zero — which names
+    // are carrying the book and which are dragging it
+    card('pnlmap', tl('P&L map'), (() => {
+      const withPnl = priced.filter((r) => r.kind !== 'cash' && r.unrealDisplay != null)
+        .sort((a, b) => Math.abs(b.unrealDisplay) - Math.abs(a.unrealDisplay)).slice(0, 6)
+      if (!withPnl.length) return null
+      const maxA = Math.max(...withPnl.map((r) => Math.abs(r.unrealDisplay))) || 1
+      return (
+        <div class="flex flex-col gap-1">
+          {withPnl.map((r) => (
+            <div key={r.symbol} class="grid grid-cols-[3.5rem_1fr_auto] items-center gap-x-2 font-mono text-[10px]">
+              <span class="truncate font-bold text-ink-2">{r.symbol}</span>
+              <span class="relative h-2 rounded-sm bg-surface-3 overflow-hidden">
+                <span class={`absolute top-0 h-2 ${r.unrealDisplay >= 0 ? 'bg-up/60 left-1/2' : 'bg-down/60 right-1/2'}`} style={{ width: `${(Math.abs(r.unrealDisplay) / maxA) * 50}%` }} />
+                <span class="absolute left-1/2 top-0 h-2 w-px bg-line" />
+              </span>
+              <span class={`text-right whitespace-nowrap ${pnlCls(r.unrealDisplay)}`}>{signedGlance(r.unrealDisplay, ccy)}</span>
+            </div>
+          ))}
+        </div>
+      )
+    })()),
   ].filter(Boolean)
   const shown = slot === 'top' ? cards.filter((c) => TOP_CARDS.includes(c.key))
     : slot === 'rest' ? cards.filter((c) => !TOP_CARDS.includes(c.key)) : cards

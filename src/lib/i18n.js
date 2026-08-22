@@ -940,12 +940,10 @@ const LABELS = {
   Concentration: '集中度', Largest: '最大持仓', 'Top 3': '前三合计', 'Top 5': '前五合计',
   'Effective names': '有效持仓数',
   'Day range': '个股涨跌幅', 'Open P&L': '浮动盈亏', Open: '浮动', 'Cost basis': '成本合计',
-  '{n} positions carry a cost basis': '{n} 只持仓填写了成本',
-  'Add an average cost to see open P&L.': '填写成本价后可查看浮动盈亏。',
+  'With cost': '已填成本', 'ex-cash': '不含现金', Trend: '净值走势', 'P&L map': '盈亏分布', since: '自', ccy: '币种', '{n}d': '{n}天',
   'Cash & deployment': '现金与配置', Invested: '已投资', 'Cash weight': '现金占比',
   'Top weight': '最大权重',
   // Listing venues for the Markets card (2026-08-21)
-  'share of positions, cash excluded': '占持仓比例，不含现金',
   'Hong Kong': '香港',
   'Shanghai': '上海',
   'Shenzhen': '深圳',
