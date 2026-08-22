@@ -13,6 +13,7 @@ Sources (public, no keys):
   SSE    query.sse.com.cn company list, main board + STAR (简体)
   SZSE   szse.cn ShowReport CATALOGID=1110 (简体)
   ETFs   Sina etf_hq_fund node — every mainland ETF, both exchanges (简体)
+  US     Sina US directory, top 2,000 by market cap (简体 cname)
 
 Output: {"0700.HK": ["腾讯控股", "騰訊控股"], "600036.SS": ["招商银行"], …}
 — simplified first, traditional second only when it differs.
@@ -178,6 +179,34 @@ def main() -> int:
         page += 1
         time.sleep(0.3)
     print(f'mainland ETFs: {etf_n}', file=sys.stderr)
+
+    # ── US listings: Sina's US directory carries a Chinese name (cname) for
+    #    18k tickers but pages 20 at a time — take the top 2,000 by market cap
+    #    (100 paced calls), which is every name a family book could hold.
+    us_n = 0
+    for page in range(1, 101):
+        url = ('https://stock.finance.sina.com.cn/usstock/api/jsonp.php/x/US_CategoryService.getList'
+               '?page=%d&num=20&sort=mktcap&asc=0&market=&id=' % page)
+        for attempt in range(3):
+            try:
+                raw = fetch(url, timeout=30, referer='https://finance.sina.com.cn/').decode('utf-8', 'replace')
+                break
+            except Exception as exc:         # noqa: BLE001 — retry the page
+                if attempt == 2:
+                    raise
+                print(f'sina US page {page} retry: {exc}', file=sys.stderr)
+        m = re.search(r'x\((.*)\)\s*;?\s*$', raw, re.S)
+        rows_us = json.loads(m.group(1)).get('data') or [] if m else []
+        if not rows_us:
+            break
+        for d in rows_us:
+            sym = str(d.get('symbol', '')).upper().strip()
+            name = clean(d.get('cname', ''))
+            if re.fullmatch(r'[A-Z.\-]{1,8}', sym) and name and sym not in table:
+                table[sym] = [name]
+                us_n += 1
+        time.sleep(0.3)
+    print(f'US (top by mktcap): {us_n}', file=sys.stderr)
 
     table = {k: [n for n in v if n] for k, v in sorted(table.items()) if v and v[0]}
     OUT.write_text(json.dumps(table, ensure_ascii=False, separators=(',', ':')) + '\n', encoding='utf-8')

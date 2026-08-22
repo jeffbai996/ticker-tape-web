@@ -123,7 +123,10 @@ function QuoteRow({ label, symbol, data, unit, withUnits = false,
       class="border-b border-line last:border-0 hover:bg-white/[0.035] cursor-pointer"
       onClick={() => { if (symbol) location.hash = hrefFor('research', symbol.toLowerCase()) }}
     >
-      <td class="px-3 py-[3px] text-[12px] text-ink whitespace-nowrap max-sm:whitespace-normal font-anth">{label}</td>
+      {/* phone: the name column keeps a real width so a Chinese label reads
+          标普500 on one line instead of one character per line; a long
+          English name wraps to two lines at most (Jeff 2026-08-22) */}
+      <td class="px-3 py-[3px] text-[12px] text-ink whitespace-nowrap max-sm:whitespace-normal max-sm:min-w-[6.5rem] max-sm:max-w-[9rem] max-sm:leading-tight max-sm:line-clamp-2 font-anth">{label}</td>
       {/* Keyed off the TABLE's mode, not this row's value. Gating on
           `unit !== undefined` meant a units table whose items did not all
           carry a unit emitted 7 cells on some rows and 6 on others. */}
