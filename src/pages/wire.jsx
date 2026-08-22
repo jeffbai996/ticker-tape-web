@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import {
   wireUrl, setWireUrl, fragwireHome, calendarSubscriptionUrl, fetchEvents, fetchUpdates, fetchToday, fetchMeta,
-  demoBackfill, demoEvent, demoToday, rankEvents, collapseSessions, clusterStories,
+  demoBackfill, demoEvent, demoToday, DEMO_SESSION_ROWS, rankEvents, collapseSessions, clusterStories,
   srcCred, evHeadline, evBody, matchesWireQuery, pubDisplayName, readMinutes,
   toggleWireArticle, isMirrorBase, mirrorAgeMinutes,
 } from '../lib/wire.js'
@@ -566,7 +566,7 @@ export function Wire({ route }) {
       setEvents(demoBackfill())
       setToday(demoToday())
       setWatchset(new Set(['AAPL', 'MSFT', 'NVDA', 'GOOG', 'AMZN', 'TSLA']))
-      let nextId = 41
+      let nextId = DEMO_SESSION_ROWS + 1
       // catchUp off: this MINTS a row rather than refreshing one, so a reader
       // flicking between tabs must not stack up synthetic headlines.
       demoStop = startVisibleClock(15000, () => {
@@ -657,7 +657,7 @@ export function Wire({ route }) {
           // written demo session rides alongside (Jeff 2026-08-21: "allow the
           // user to see the full functionality") — every synthetic row keeps
           // its demo badge, so the stream stays honestly labeled per row.
-          const demoRows = demoBackfill(30, Date.now() / 1000)
+          const demoRows = demoBackfill(DEMO_SESSION_ROWS, Date.now() / 1000)
           setEvents([...rows, ...demoRows]
             .sort((a, b) => (a.ts_event ?? 0) - (b.ts_event ?? 0)))
           setGeneratedAt(out.generated_at ?? null)
@@ -919,11 +919,6 @@ export function Wire({ route }) {
           </button>
         )}
       </div>
-      {!IS_PRIVATE_BUILD && (
-        <p class="font-mono text-[10.5px] text-muted max-w-[74ch]">
-          {tt(state === 'mirror' ? 'wire.mirror_note' : 'wire.byo_note')}
-        </p>
-      )}
     </div>
   )
 }
