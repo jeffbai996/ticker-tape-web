@@ -115,7 +115,7 @@ function ImportPanel({ portfolio }) {
 }
 
 export function BookTrades({ portfolio, quotes }) {
-  const [tab, setTab] = useState('add')
+  const [tab, setTab] = useState(null)
   const txns = sortTxns(portfolio.txns || []).reverse()
   const pos = useMemo(() => positionsFromTxns(portfolio.txns || []), [portfolio.txns])
   const zh = getLocale() === 'zh'
@@ -129,30 +129,26 @@ export function BookTrades({ portfolio, quotes }) {
   const realizedByCcy = Object.values(pos).reduce((acc, p) => { const c = p.ccy || '—'; acc[c] = (acc[c] || 0) + p.realized; return acc }, {})
   return (
     <div class="flex flex-col gap-2">
-      <section class="rounded-xl border border-line bg-surface-1">
-        <div role="tablist" class="flex gap-1 border-b border-line-2 px-2 pt-1.5">
-          {[['add', tl('Add trade')], ['import', tl('Import trades')]].map(([id, label]) => (
-            <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)}
-              class={`rounded-t-md px-3 py-1 font-anth text-[11px] ${tab === id ? 'border border-b-0 border-line bg-surface-1 text-accent' : 'text-muted hover:text-ink'}`}>{label}</button>
-          ))}
-        </div>
-        <div class="px-3 py-2.5">{tab === 'add' ? <AddTradeForm portfolio={portfolio} /> : <ImportPanel portfolio={portfolio} />}</div>
-      </section>
-
-      {Object.keys(realizedByCcy).length > 0 && (
-        <section class="rounded-xl border border-line bg-surface-1 px-3 py-2">
-          <div class="book-eyebrow pb-1 font-anth text-[9px] uppercase tracking-wider text-muted">{tl('Realized')}</div>
-          <div class="flex flex-wrap gap-4 font-mono text-[12px]">
-            {Object.entries(realizedByCcy).map(([c, v]) => (
-              <span key={c} class={v >= 0 ? 'text-up' : 'text-down'}>{v >= 0 ? '+' : '-'}{fmtCcy(Math.abs(v), c, 2)}</span>
-            ))}
-          </div>
-        </section>
-      )}
-
+      {/* a journal: the record leads, entry controls sit in its header and
+          open on demand (Jeff 2026-08-22: "framed more like a trading
+          journal rather than something that beckons you to add trades") */}
       <section class="rounded-xl border border-line bg-surface-1 overflow-hidden">
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-line-2 px-3 py-1.5">
+          <span class="font-anth text-[9px] uppercase tracking-[.14em] text-muted">{tl('Ledger')} · {txns.length}</span>
+          {Object.entries(realizedByCcy).map(([c, v]) => (
+            <span key={c} class="font-mono text-[11px]"><span class="font-anth text-[9.5px] text-muted">{tl('Realized')} </span>
+              <span class={v >= 0 ? 'text-up' : 'text-down'}>{v >= 0 ? '+' : '-'}{fmtCcy(Math.abs(v), c, 2)}</span></span>
+          ))}
+          <span class="ml-auto flex gap-1">
+            {[['add', tl('Add trade')], ['import', tl('Import trades')]].map(([id, label]) => (
+              <button key={id} type="button" aria-expanded={tab === id} onClick={() => setTab(tab === id ? null : id)}
+                class={`rounded border px-2 py-0.5 font-anth text-[10px] transition-colors ${tab === id ? 'border-accent/45 bg-accent/10 text-accent' : 'border-line-2 text-muted hover:border-line hover:text-ink'}`}>{label}</button>
+            ))}
+          </span>
+        </div>
+        {tab && <div class="border-b border-line-2 px-3 py-2.5">{tab === 'add' ? <AddTradeForm portfolio={portfolio} /> : <ImportPanel portfolio={portfolio} />}</div>}
         {txns.length === 0 ? (
-          <div class="px-4 py-6 text-center font-anth text-[11px] text-muted">{tl('No trades yet. Add one, or import a broker export — holdings for traded symbols are derived from the ledger.')}</div>
+          <div class="px-4 py-4 text-center font-mono text-[11px] text-muted">—</div>
         ) : (
           <div class="overflow-x-auto">
             <table class="book-table w-full border-collapse font-mono text-[11px]">
