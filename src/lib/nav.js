@@ -42,6 +42,8 @@ export const NAV = [
     badge: 'DEMO',
     subs: [
       { id: 'mine', label: 'My Portfolios' },
+      { id: 'holdings', label: 'Holdings' },
+      { id: 'news', label: 'News' },
       { id: 'account', label: 'Account' },
       { id: 'sizing', label: 'Sizing' },
       { id: 'carry', label: 'Carry' },
@@ -84,7 +86,14 @@ if (FAMILY_BUILD) {
   // sizing, carry, cockpit…) would all render a synthetic book that only
   // confuses (Jeff 2026-08-20)
   const portfolio = NAV.find((s) => s.id === 'portfolio')
-  portfolio.subs = []
+  // the hand-built books are the whole portfolio here, split into pages
+  // (Jeff 2026-08-22: "split the manual demo portfolio section into pages
+  // again, like a news page that grabs news relating to his tickers")
+  portfolio.subs = [
+    { id: 'mine', label: 'Overview' },
+    { id: 'holdings', label: 'Holdings' },
+    { id: 'news', label: 'News' },
+  ]
   delete portfolio.badge
 }
 

@@ -27,7 +27,7 @@ import {
 } from '../lib/thesis.js'
 import { StatusPill } from '../components/StatusPill.jsx'
 import { countAdvancers } from '../lib/pulse.js'
-import { MyPortfolios } from './portfolioMine.jsx'
+import { MyPortfolios, MyHoldings, MyNews } from './portfolioMine.jsx'
 import { loadPortfolios, onPortfoliosChange } from '../lib/myPortfolios.js'
 import { IS_FAMILY_BUILD } from '../lib/nav.js'
 
@@ -1720,11 +1720,13 @@ export function Portfolio({ route }) {
   // the family build has no broker surface at all — every route lands on
   // the hand-built books
   const family = IS_FAMILY_BUILD
-  const view = family ? 'mine' : route.sub || (!wired && hasMine ? 'mine' : 'positions')
+  const view = family ? (route.sub || 'mine') : route.sub || (!wired && hasMine ? 'mine' : 'positions')
 
   const View = {
     positions: Positions,
     mine: MyPortfolios,
+    holdings: MyHoldings,
+    news: MyNews,
     account: Account,
     sizing: Sizing,
     carry: Carry,
