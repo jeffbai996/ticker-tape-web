@@ -43,6 +43,18 @@ describe('ratesFromQuotes — live map to a rate table', () => {
     const live = { 'CADUSD=X': { quote: { price: 0 } }, 'CNYUSD=X': {} }
     expect(ratesFromQuotes(live)).toEqual({ USD: 1 })
   })
+
+  // A book is allowed to hold a Tokyo or Seoul line even though neither is a
+  // display currency; the rate table has to cover whatever is actually held
+  // or those rows dash out forever.
+  it('reads any USD pair in the map, not just the display currencies', () => {
+    const live = {
+      'JPYUSD=X': { quote: { price: 0.0064 } },
+      'KRWUSD=X': { quote: { price: 0.00072 } },
+      'AAPL': { quote: { price: 230 } },
+    }
+    expect(ratesFromQuotes(live)).toEqual({ USD: 1, JPY: 0.0064, KRW: 0.00072 })
+  })
 })
 
 describe('convertCcy — one hop through USD', () => {
@@ -77,6 +89,22 @@ describe('holdingCurrency — what a holding is denominated in', () => {
     expect(holdingCurrency('600519.SS')).toBe('CNY')
     expect(holdingCurrency('000001.SZ')).toBe('CNY')
     expect(holdingCurrency('AAPL')).toBe('USD')
+  })
+
+  // Jeff 2026-08-21: "a HK stock should only be in HKD, shouldn't be able to
+  // set it to USD" — currency is a property of the listing, never a choice.
+  it('reads the venue for the markets beyond the four display currencies', () => {
+    expect(holdingCurrency('7203.T')).toBe('JPY')
+    expect(holdingCurrency('000660.KS')).toBe('KRW')
+    expect(holdingCurrency('ASML.AS')).toBe('EUR')
+    expect(holdingCurrency('SHEL.L')).toBe('GBP')
+    expect(holdingCurrency('2330.TW')).toBe('TWD')
+    expect(holdingCurrency('SHOP.NE')).toBe('CAD')
+  })
+
+  it('lets the quote overrule a suffix guess, never the other way round', () => {
+    // a Shanghai line quoted in offshore RMB still reports one currency
+    expect(holdingCurrency('0700.HK', { currency: 'USD' })).toBe('USD')
   })
 })
 

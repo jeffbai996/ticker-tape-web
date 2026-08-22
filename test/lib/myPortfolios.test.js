@@ -7,7 +7,8 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import {
   MAX_MY_PORTFOLIOS, MAX_MY_HOLDINGS,
   createPortfolio, deletePortfolio, loadPortfolios, onPortfoliosChange,
-  portfolioValues, removeHolding, renamePortfolio, setHolding, setPortfolioCcy,
+  portfolioValues, removeCash, removeHolding, renamePortfolio, setCash, setHolding,
+  setPortfolioCcy,
 } from '../../src/lib/myPortfolios.js'
 
 beforeEach(() => localStorage.clear())
@@ -158,5 +159,89 @@ describe('portfolioValues — the live math', () => {
       rates, 'USD')
     expect(v.rows[0].valueDisplay).toBe(2100)
     expect(v.rows[0].dayPct).toBe(5)                   // sessionDayPct semantics
+  })
+})
+
+/** Jeff 2026-08-21: his stepdad entered a Hong Kong/mainland book as broker
+ *  board codes. Nothing priced and every row filed itself as USD. */
+describe('board codes entered without a venue', () => {
+  it('repairs them on the way into the store', () => {
+    const p = createPortfolio('HK book', 'HKD')
+    expect(setHolding(p.id, '02628', 270_000, 28.06)).toMatchObject({ symbol: '2628.HK' })
+    expect(setHolding(p.id, '600489', 140_000)).toMatchObject({ symbol: '600489.SS' })
+    expect(setHolding(p.id, '000630', 200_000)).toMatchObject({ symbol: '000630.SZ' })
+  })
+
+  it('repairs a book already sitting in storage, shares and cost untouched', () => {
+    localStorage.setItem('my_portfolios_v1', JSON.stringify([{
+      id: 'p1', name: 'Gordon', ccy: 'CNY',
+      holdings: [{ symbol: '02628', shares: 270000, cost: 28.06 }],
+    }]))
+    expect(loadPortfolios()[0].holdings).toEqual([
+      { symbol: '2628.HK', shares: 270000, cost: 28.06 },
+    ])
+  })
+})
+
+/** Jeff 2026-08-21: "add the ability to add cash accounts (only 1 at most per
+ *  portfolio in each of the currencies we support)". */
+describe('cash accounts', () => {
+  it('holds at most one account per currency and restates it in place', () => {
+    const p = createPortfolio('Book', 'HKD')
+    expect(setCash(p.id, 'HKD', 50_000)).toEqual({ ccy: 'HKD', amount: 50_000 })
+    setCash(p.id, 'HKD', 65_000)
+    setCash(p.id, 'USD', 1_000)
+    expect(loadPortfolios()[0].cash).toEqual([
+      { ccy: 'HKD', amount: 65_000 }, { ccy: 'USD', amount: 1_000 },
+    ])
+  })
+
+  it('refuses a currency outside the supported set and non-numeric amounts', () => {
+    const p = createPortfolio('Book', 'USD')
+    expect(setCash(p.id, 'GBP', 100)).toBeNull()
+    expect(setCash(p.id, 'USD', NaN)).toBeNull()
+    expect(setCash(p.id, 'USD', 'lots')).toBeNull()
+    expect(setCash('nope', 'USD', 100)).toBeNull()
+  })
+
+  it('keeps a margin balance as the negative number it is', () => {
+    const p = createPortfolio('Book', 'USD')
+    expect(setCash(p.id, 'USD', -25_000)).toEqual({ ccy: 'USD', amount: -25_000 })
+  })
+
+  it('removes an account and survives a corrupt stored list', () => {
+    const p = createPortfolio('Book', 'USD')
+    setCash(p.id, 'USD', 100)
+    removeCash(p.id, 'USD')
+    expect(loadPortfolios()[0].cash).toEqual([])
+    localStorage.setItem('my_portfolios_v1', JSON.stringify([{
+      id: 'p1', name: 'X', ccy: 'USD', holdings: [],
+      cash: [{ ccy: 'GBP', amount: 5 }, { ccy: 'USD', amount: 'x' }, { ccy: 'USD', amount: 7 },
+        { ccy: 'USD', amount: 9 }],
+    }]))
+    expect(loadPortfolios()[0].cash).toEqual([{ ccy: 'USD', amount: 7 }])
+  })
+})
+
+describe('portfolioValues with cash', () => {
+  const rates = { USD: 1, CAD: 0.8, HKD: 0.125, CNY: 0.14 }
+  const quotes = { AAPL: { price: 200, pct: 2, currency: 'USD' } }
+  const holdings = [{ symbol: 'AAPL', shares: 10 }]
+
+  it('counts cash into the value and the weights, but never into day P&L', () => {
+    const v = portfolioValues(holdings, quotes, rates, 'USD', [{ ccy: 'HKD', amount: 16_000 }])
+    expect(v.total.value).toBe(4000)                   // 2000 equity + 2000 cash
+    const cash = v.rows.find((r) => r.kind === 'cash')
+    expect(cash).toMatchObject({ ccy: 'HKD', amount: 16_000, valueDisplay: 2000 })
+    expect(cash.dayPnlDisplay).toBeNull()
+    expect(cash.weightPct).toBeCloseTo(50)
+    expect(v.rows[0].weightPct).toBeCloseTo(50)
+    expect(v.total.dayPnl).toBeCloseTo(2000 - 2000 / 1.02, 6)
+  })
+
+  it('marks a cash account it cannot convert instead of counting it flat', () => {
+    const v = portfolioValues(holdings, quotes, { USD: 1 }, 'USD', [{ ccy: 'CNY', amount: 700 }])
+    expect(v.missing).toContain('CNY cash')
+    expect(v.total.value).toBe(2000)
   })
 })
