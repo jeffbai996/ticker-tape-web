@@ -82,7 +82,12 @@ function crumbBase() {
   return DEFAULT_PROXY
 }
 
-const REQUEST_SPACING_MS = 350   // min gap between proxy requests
+const REQUEST_SPACING_MS = 150   // min gap between requests on one lane
+// three chart fetches in flight at once: a 60-symbol board took ~30s to
+// paint its sparklines one by one at 350ms each (Jeff 2026-08-22: "took
+// proper forever to load"); the worker edge-caches every chart so the
+// upstream only sees the cold misses
+const PUMP_LANES = 3
 const REFRESH_MS = 60_000        // full sweep cadence (charts + technicals)
 const QUOTE_SWEEP_MS = 30_000    // price-only v7 batch — extended hours ticks
 
@@ -161,7 +166,7 @@ export function proxyBase() {
 const cache = createPCache('feed_cache_v4', { max: 60 })
 const listeners = new Set()
 let queue = []
-let pumping = false
+let lanes = 0
 let sweepTimer = null
 let fastTimer = null
 let liveStream = null
@@ -296,23 +301,31 @@ async function fetchSymbol(symbol) {
   emit(symbol)
 }
 
-async function pump() {
-  if (pumping) return
-  pumping = true
-  while (queue.length) {
-    // re-read the focus set every iteration: the user can scroll mid-pump, and
-    // the chart they're looking at should not wait behind the tail of the board
-    const [symbol] = queue.splice(
-      nextPumpIndex(queue, symbolRegistry.focused(), benchCloses ? null : RS_BENCH), 1,
-    )
-    try {
-      await fetchSymbol(symbol)
-    } catch (e) {
-      console.warn('[feed]', e.message ?? e)
-    }
-    await new Promise((r) => setTimeout(r, REQUEST_SPACING_MS))
+function pump() {
+  while (lanes < PUMP_LANES && queue.length) {
+    lanes += 1
+    lane()
   }
-  pumping = false
+}
+
+async function lane() {
+  try {
+    while (queue.length) {
+      // re-read the focus set every iteration: the user can scroll mid-pump, and
+      // the chart they're looking at should not wait behind the tail of the board
+      const [symbol] = queue.splice(
+        nextPumpIndex(queue, symbolRegistry.focused(), benchCloses ? null : RS_BENCH), 1,
+      )
+      try {
+        await fetchSymbol(symbol)
+      } catch (e) {
+        console.warn('[feed]', e.message ?? e)
+      }
+      await new Promise((r) => setTimeout(r, REQUEST_SPACING_MS))
+    }
+  } finally {
+    lanes -= 1
+  }
 }
 
 // Timestamp of the last successful quote fetch (batch or pump) — drives the

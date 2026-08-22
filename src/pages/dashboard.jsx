@@ -362,7 +362,7 @@ export function TuiRow({ symbol, data, earnDays, onRemove = () => {}, selecting,
                 /* the mid band truncated the name with no way to read the rest
                    — same hover-scroll the wide band uses (Jeff 2026-08-06). */
                 <span data-inline-name class="hidden @min-[545px]:block @min-[820px]:hidden min-w-0">
-                  <Marquee text={q.name} title={`${symbol} — ${q.name}`}
+                  <Marquee text={localName(symbol, q.name)} title={`${symbol} — ${localName(symbol, q.name)}`}
                     class="block min-w-0 text-[10.5px] text-muted font-normal font-anth" />
                 </span>
               )}
@@ -371,8 +371,8 @@ export function TuiRow({ symbol, data, earnDays, onRemove = () => {}, selecting,
                   {/* long names sweep once on reveal instead of truncating —
                       only mounted while revealed so the sweep starts on tap */}
                   {revealed
-                    ? <Marquee auto text={q.name} title={`${symbol} — ${q.name}`} class="block min-w-0" />
-                    : q.name}
+                    ? <Marquee auto text={localName(symbol, q.name)} title={`${symbol} — ${localName(symbol, q.name)}`} class="block min-w-0" />
+                    : localName(symbol, q.name)}
                 </span>
               )}
             </span>

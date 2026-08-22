@@ -146,15 +146,16 @@ describe('focused symbols ride the first chunk', () => {
     const feed = await loadFeed()
     const unfollow = feed.follow(BOARD)
     const unfocus = feed.focus(VISIBLE)
-    // the pump is spaced at 350ms and starts with the RS benchmark; after the
-    // first handful of ticks every symbol it has touched must be a visible one
+    // the pump runs three lanes and starts with the RS benchmark; every
+    // symbol it touches until the visible set is exhausted must be a
+    // visible one — the board's tail only starts once they are all in
     await vi.advanceTimersByTimeAsync(350 * 6)
     const fetched = globalThis.fetch.mock.calls
       .map(([url]) => String(url))
       .filter((u) => u.includes('/v8/finance/chart/'))
       .map((u) => decodeURIComponent(u.split('/chart/')[1].split('?')[0]))
     expect(fetched.length).toBeGreaterThan(3)
-    for (const symbol of fetched.slice(1)) expect(VISIBLE).toContain(symbol)
+    for (const symbol of fetched.slice(1, VISIBLE.length + 1)) expect(VISIBLE).toContain(symbol)
 
     unfocus()
     unfollow()
