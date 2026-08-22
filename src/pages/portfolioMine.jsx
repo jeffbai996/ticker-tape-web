@@ -6,13 +6,6 @@
  *  the site is static and nothing entered here leaves the browser.
  */
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
-import {
-  connectPublicWatchlistSync, disconnectPublicWatchlistSync,
-  getWatchlistCapability,
-} from '../lib/cloudsave.js'
-import { onPortfolioSyncStatus } from '../lib/portfolioSync.js'
-import { wireServiceUrl } from '../lib/wire.js'
-import { fixedSyncCapability } from '../lib/watchlistSync.js'
 import { useQuotes } from '../hooks.js'
 import { SymbolSuggest } from '../components/SymbolSuggest.jsx'
 import { sizeForWeight } from '../lib/demo.js'
@@ -859,76 +852,6 @@ function copyText(value) {
   return Promise.reject(new Error('no clipboard'))
 }
 
-/** The same sync code as the watchlist sync — one secret is "your data".
- *  Only the public build shows this; the private build saves through the
- *  wire automatically. */
-function SyncControls() {
-  const [capability, setCapability] = useState(() => getWatchlistCapability())
-  const [entry, setEntry] = useState('')
-  const [copied, setCopied] = useState(false)
-  const [bad, setBad] = useState(false)
-  const [st, setSt] = useState({ state: 'off' })
-  useEffect(() => onPortfolioSyncStatus(setSt), [])
-  if (wireServiceUrl() || fixedSyncCapability()) return null
-
-  const connect = (e) => {
-    e.preventDefault()
-    if (!connectPublicWatchlistSync(entry)) { setBad(true); return }
-    setBad(false)
-    setEntry('')
-    setCapability(getWatchlistCapability())
-  }
-  const disconnect = () => {
-    if (!confirm(tl('Turn off cloud sync on this device?'))) return
-    disconnectPublicWatchlistSync()
-    setCapability('')
-  }
-  const copy = () => copyText(capability).then(() => {
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1600)
-  }).catch(() => {})
-
-  return (
-    <div class="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-line bg-surface-1/70 px-3 py-2 font-anth text-[10px]">
-      {capability ? (
-        <>
-          <span class={`rounded border px-1.5 py-px text-[8px] font-bold uppercase tracking-wider ${
-            st.state === 'synced' ? 'border-up/40 text-up'
-            : st.state === 'syncing' ? 'border-line text-muted'
-            : st.state === 'error' ? 'border-down/40 text-down' : 'border-line text-muted'}`}>
-            {st.state === 'synced' ? tl('cloud saved') : st.state === 'syncing' ? tl('saving…')
-              : st.state === 'error' ? tl('cloud offline') : tl('cloud sync')}
-          </span>
-          <span class="text-muted">{tl('Saved to the cloud — use the same code on another device to see the same portfolios.')}</span>
-          <span class="ml-auto flex items-center gap-1.5">
-            <span class="rounded border border-line bg-black/30 px-2 py-0.5 font-mono text-[9px] text-muted">•••• {capability.slice(-4)}</span>
-            <button type="button" onClick={copy}
-              class="rounded border border-accent/50 bg-accent-soft px-2 py-1 font-semibold text-accent hover:bg-accent/15">
-              {tl(copied ? 'copied code ✓' : 'copy code')}
-            </button>
-            <button type="button" onClick={disconnect} class="px-1 text-[9px] text-muted hover:text-down">{tl('disconnect')}</button>
-          </span>
-        </>
-      ) : (
-        <>
-          <span class="text-muted">{tl('Portfolios live only in this browser right now — turn on cloud sync so they survive and follow you.')}</span>
-          <span class="ml-auto flex flex-wrap items-center gap-1.5">
-            <form onSubmit={connect} class="flex items-center gap-1">
-              <input value={entry} onInput={(e) => { setEntry(e.currentTarget.value); setBad(false) }}
-                aria-label={tl('sync code')} placeholder={tl('sync code')} spellcheck={false}
-                class="w-40 rounded border border-line bg-black/30 px-2 py-1 font-mono text-[9px] text-ink outline-none focus:border-accent" />
-              <button class="rounded border border-line px-2 py-1 text-[9px] font-semibold text-ink-2 hover:border-accent hover:text-accent">
-                {tl('connect')}
-              </button>
-            </form>
-            {bad && <span class="text-[9px] text-down">{tl('not a sync code')}</span>}
-          </span>
-        </>
-      )}
-    </div>
-  )
-}
-
 export const MyHoldings = (props) => <MyPortfolios {...props} view="holdings" />
 export const MyNews = (props) => <MyPortfolios {...props} view="news" />
 export const MyPerformance = (props) => <MyPortfolios {...props} view="performance" />
@@ -1038,7 +961,6 @@ export function MyPortfolios({ view = 'overview' } = {}) {
           {tl('No portfolios yet — create one above. Everything you enter stays in this browser.')}
         </div>
       )}
-      <SyncControls />
     </div>
   )
 }
