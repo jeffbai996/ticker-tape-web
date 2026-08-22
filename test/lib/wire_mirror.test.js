@@ -93,13 +93,19 @@ describe('wire page mirror mode', () => {
     expect(page).toContain("setState({ status: 'empty', paras: [] }); return")
   })
 
-  it('labels the mirror rather than reusing the demo footnote', () => {
-    expect(page).toContain("wire.mirror_note")
+  // The explanatory footnote under the feed was cut (Jeff 2026-08-21) — it
+  // was a paragraph of chrome under a page whose whole job is headlines. The
+  // labelling obligation did not go with it: a mirror still has to say it is
+  // a mirror, and say how stale it is, in the header where the reader looks
+  // for feed state.
+  it('labels the mirror in the status header, with its age', () => {
+    expect(page).toContain("state === 'mirror'")
+    expect(page).toContain('data-wire-mirror-age')
+    expect(page).toContain('wire.mirror_age')
     const i18n = source('src/lib/i18n.js')
-    for (const key of ['wire.mirror_note', 'wire.mirror_age']) {
-      expect(i18n).toContain(`'${key}':`)
-      expect(i18n.slice(i18n.indexOf(`'${key}':`), i18n.indexOf(`'${key}':`) + 400)).toContain('zh:')
-    }
+    const at = i18n.indexOf("'wire.mirror_age':")
+    expect(at).toBeGreaterThan(-1)
+    expect(i18n.slice(at, at + 400)).toContain('zh:')
     expect(i18n).toContain("mirror: '镜像'")
   })
 })
