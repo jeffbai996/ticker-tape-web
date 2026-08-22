@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'preact/hooks'
 import { fetchSymbolEventsCached as fetchSymbolEvents } from '../lib/cnEvents.js'
 import { fmtCcy } from '../lib/fx.js'
+import { daysUntil } from '../lib/markets.js'
 import { getLocale, tl } from '../lib/i18n.js'
 import { loadZhTable, onZhTable, zhName } from '../lib/zhNames.js'
 
@@ -47,11 +48,14 @@ export function BookEvents({ portfolio, quotes }) {
     const e = ev[h.symbol]
     if (!e) return []
     const out = []
-    if (within(e.nextResults, today, 14)) out.push({ d: e.nextResults, symbol: h.symbol, what: tl('Next results') })
-    if (within(e.exDate, today, 14)) out.push({ d: e.exDate, symbol: h.symbol, what: tl('Ex-dividend') })
-    if (within(e.payDate, today, 14)) out.push({ d: e.payDate, symbol: h.symbol, what: tl('paid') })
+    const last = e.dividends?.[0]
+    const amt = last?.perShare != null ? fmtCcy(last.perShare * h.shares, last.ccy, 0) : null
+    const base = { symbol: h.symbol, shares: h.shares }
+    if (within(e.nextResults, today, 14)) out.push({ ...base, d: e.nextResults, what: tl('Next results'), detail: e.resultsPeriod || null })
+    if (within(e.exDate, today, 14)) out.push({ ...base, d: e.exDate, what: tl('Ex-dividend'), detail: amt })
+    if (within(e.payDate, today, 14)) out.push({ ...base, d: e.payDate, what: tl('paid'), detail: amt })
     return out
-  }).sort((a, b) => a.d.localeCompare(b.d))
+  }).sort((a, b) => a.d.localeCompare(b.d)).map((u) => ({ ...u, days: daysUntil(u.d, today) }))
   const income = (h, e) => {
     const last = e?.dividends?.[0]
     return last?.perShare != null ? fmtCcy(last.perShare * h.shares, last.ccy, 0) : '—'
@@ -74,11 +78,16 @@ export function BookEvents({ portfolio, quotes }) {
           : (
             <div class="flex flex-col gap-0.5">
               {upcoming.map((u, i) => (
-                <div key={i} class="flex items-baseline gap-3 font-mono text-[11px]">
-                  <span class="w-12 text-accent">{fmtDate(u.d)}</span>
-                  <a href={`#/research/${u.symbol.toLowerCase()}`} class="font-bold text-ink hover:underline">{u.symbol}</a>
-                  <span class="min-w-0 truncate font-anth text-[10.5px] text-ink-2">{name(u.symbol)}</span>
-                  <span class="ml-auto font-anth text-[10px] text-muted">{u.what}</span>
+                <div key={i} class="grid grid-cols-[3rem_2.5rem_minmax(0,1fr)_auto] items-baseline gap-x-3 font-mono text-[11px] sm:grid-cols-[3rem_2.5rem_minmax(0,1fr)_6rem_8rem_auto]">
+                  <span class="text-accent">{fmtDate(u.d)}</span>
+                  <span class={`font-anth text-[10px] ${u.days <= 1 ? 'text-accent font-semibold' : 'text-muted'}`}>{u.days === 0 ? tl('Today') : tl('{n}d').replace('{n}', u.days)}</span>
+                  <span class="flex min-w-0 items-baseline gap-2">
+                    <a href={`#/research/${u.symbol.toLowerCase()}`} class="font-bold text-ink hover:underline">{u.symbol}</a>
+                    <span class="min-w-0 truncate font-anth text-[10.5px] text-ink-2">{name(u.symbol)}</span>
+                  </span>
+                  <span class="hidden text-right text-muted sm:block">{u.shares.toLocaleString()} {tl('sh')}</span>
+                  <span class="hidden text-right text-ink-2 sm:block">{u.detail || '—'}</span>
+                  <span class="text-right font-anth text-[10px] text-muted">{u.what}</span>
                 </div>
               ))}
             </div>
