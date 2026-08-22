@@ -25,12 +25,9 @@ import { tl, getLocale } from '../lib/i18n.js'
 import { loadZhTable, onZhTable, zhName } from '../lib/zhNames.js'
 import { fetchCnIndustry, isCnListing } from '../lib/cnData.js'
 import { BookNews } from './portfolioNews.jsx'
+import { BookPerformance } from './portfolioPerformance.jsx'
 import { PORTFOLIO_CCYS, cashAccountName, convertCcy, fmtCcy, fmtCcyZh, fxSymbolsFor, holdingCurrency, ratesFromQuotes } from '../lib/fx.js'
-import {
-  MAX_MY_HOLDINGS, createPortfolio, deletePortfolio, loadPortfolios,
-  onPortfoliosChange, removeCash, removeHolding, renamePortfolio, setCash,
-  setHolding, setPortfolioCcy, portfolioValues,
-} from '../lib/myPortfolios.js'
+import { MAX_MY_HOLDINGS, createPortfolio, deletePortfolio, loadPortfolios, onPortfoliosChange, removeCash, removeHolding, renamePortfolio, setCash, setHolding, setPortfolioCcy, portfolioValues, recordSnapshot, previousSnapshot } from '../lib/myPortfolios.js'
 
 const pnlCls = (v) => (v == null ? 'text-muted' : v >= 0 ? 'text-up' : 'text-down')
 // Summaries and cards read 万/亿 to a Chinese reader; the holdings table
@@ -475,6 +472,15 @@ function SummaryStrip({ portfolio, quotes, rates, ccys }) {
   // second pair was cut off mid-word). Two currencies is the common case and
   // both have to be readable; the column is the narrowest of the three.
   const fxRates = fxUsed.map((c) => [c, rates[c] != null ? rates[c].toFixed(3) : '…'])
+  // file today's mark once the whole book has priced — a partial book
+  // would write a value that is just "what loaded so far"
+  const fullyPriced = rows.length > 0 && priced.length === rows.length && Number.isFinite(total.value)
+  useEffect(() => {
+    if (!fullyPriced) return
+    recordSnapshot(portfolio.id, total.value, portfolio.ccy)
+  }, [fullyPriced, Math.round(total.value || 0), portfolio.id, portfolio.ccy])
+  const prevMark = previousSnapshot(portfolio, portfolio.ccy)
+  const sinceLast = prevMark && Number.isFinite(total.value) ? total.value - prevMark.v : null
   return (
     <section class="border border-line rounded-xl overflow-hidden bg-surface-1">
       <div class="flex flex-wrap items-stretch">
@@ -486,6 +492,11 @@ function SummaryStrip({ portfolio, quotes, rates, ccys }) {
             {total.unrealPnl != null && (
               <span class="font-anth text-[10.5px] text-muted">{tl('unreal')}{' '}
                 <span class={`font-semibold ${pnlCls(total.unrealPnl)}`}>{signed(total.unrealPnl, portfolio.ccy)}</span></span>
+            )}
+            {sinceLast != null && (
+              <span class="font-anth text-[10.5px] text-muted" title={prevMark.d}>{tl('since last')}{' '}
+                <span class={`font-semibold ${pnlCls(sinceLast)}`}>{signed(sinceLast, portfolio.ccy)}
+                  {prevMark.v > 0 && <span class="font-normal"> ({fmtPct((sinceLast / prevMark.v) * 100)})</span>}</span></span>
             )}
           </div>
         </div>
@@ -914,6 +925,7 @@ function SyncControls() {
 
 export const MyHoldings = (props) => <MyPortfolios {...props} view="holdings" />
 export const MyNews = (props) => <MyPortfolios {...props} view="news" />
+export const MyPerformance = (props) => <MyPortfolios {...props} view="performance" />
 
 export function MyPortfolios({ view = 'overview' } = {}) {
   const [items, setItems] = useState(loadPortfolios)
@@ -1005,10 +1017,11 @@ export function MyPortfolios({ view = 'overview' } = {}) {
               full width; news = the per-ticker feed (Jeff 2026-08-22) */}
           {view === 'overview' && <SummaryStrip portfolio={selected} quotes={quotes} rates={rates} ccys={ccys} />}
           {view === 'overview' && <BookAnalysis portfolio={selected} quotes={quotes} rates={rates} slot="top" />}
-          {view !== 'news' && <Holdings portfolio={selected} quotes={quotes} rates={rates} />}
-          {view !== 'news' && <BookTools portfolio={selected} quotes={quotes} rates={rates} />}
+          {(view === 'overview' || view === 'holdings') && <Holdings portfolio={selected} quotes={quotes} rates={rates} />}
+          {(view === 'overview' || view === 'holdings') && <BookTools portfolio={selected} quotes={quotes} rates={rates} />}
           {view === 'overview' && <BookAnalysis portfolio={selected} quotes={quotes} rates={rates} slot="rest" />}
           {view === 'news' && <BookNews portfolio={selected} quotes={quotes} />}
+          {view === 'performance' && <BookPerformance portfolio={selected} quotes={quotes} rates={rates} />}
         </>
       ) : (
         <div class="rounded-xl border border-line bg-surface-1 px-4 py-6 text-center font-anth text-[11px] text-muted">

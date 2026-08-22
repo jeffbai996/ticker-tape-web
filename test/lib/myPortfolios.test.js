@@ -245,3 +245,39 @@ describe('portfolioValues with cash', () => {
     expect(v.total.value).toBe(2000)
   })
 })
+
+import { createPortfolio as mkBook, loadPortfolios as loadBooks, previousSnapshot, recordSnapshot, replacePortfolios as replaceBooks } from '../../src/lib/myPortfolios.js'
+
+describe('daily value marks (snapshots)', () => {
+  it('files one mark per date, refreshes the same date, ignores a no-change write', () => {
+    const p = mkBook('Gordon', 'CNY')
+    expect(recordSnapshot(p.id, 1000.004, 'CNY', '2026-08-21')).toEqual({ d: '2026-08-21', v: 1000, c: 'CNY' })
+    expect(recordSnapshot(p.id, 1000.001, 'CNY', '2026-08-21')).toBeNull()      // same cent
+    expect(recordSnapshot(p.id, 1010, 'CNY', '2026-08-21')).toEqual({ d: '2026-08-21', v: 1010, c: 'CNY' })
+    expect(recordSnapshot(p.id, 1020, 'CNY', '2026-08-22')).toEqual({ d: '2026-08-22', v: 1020, c: 'CNY' })
+    expect(loadBooks()[0].snapshots).toEqual([{ d: '2026-08-21', v: 1010, c: 'CNY' }, { d: '2026-08-22', v: 1020, c: 'CNY' }])
+  })
+
+  it('never rewrites history from a clock set backwards, and refuses junk', () => {
+    const p = mkBook('x', 'USD')
+    recordSnapshot(p.id, 100, 'USD', '2026-08-22')
+    expect(recordSnapshot(p.id, 90, 'USD', '2026-08-20')).toBeNull()
+    expect(recordSnapshot(p.id, NaN, 'USD', '2026-08-23')).toBeNull()
+    expect(recordSnapshot(p.id, 100, 'EUR', '2026-08-23')).toBeNull()
+    expect(recordSnapshot('p999', 100, 'USD', '2026-08-23')).toBeNull()
+    expect(loadBooks()[0].snapshots).toHaveLength(1)
+  })
+
+  it('sanitizes marks on load — bad rows dropped, dates deduped and sorted', () => {
+    replaceBooks([{ id: 'p1', name: 'b', ccy: 'CNY', holdings: [], cash: [], snapshots: [
+      { d: '2026-08-22', v: 2, c: 'CNY' }, { d: '2026-08-21', v: 1, c: 'CNY' }, { d: '2026-08-22', v: 3, c: 'CNY' },
+      { d: 'nope', v: 1, c: 'CNY' }, { d: '2026-08-20', v: -1, c: 'CNY' }, { d: '2026-08-19', v: 1, c: 'XXX' }] }])
+    expect(loadBooks()[0].snapshots).toEqual([{ d: '2026-08-21', v: 1, c: 'CNY' }, { d: '2026-08-22', v: 3, c: 'CNY' }])
+  })
+
+  it('"since last" reads the last mark before today in the display currency', () => {
+    const p = { snapshots: [{ d: '2026-08-20', v: 5, c: 'CNY' }, { d: '2026-08-21', v: 7, c: 'USD' }, { d: '2026-08-21', v: 9, c: 'CNY' }, { d: '2026-08-22', v: 11, c: 'CNY' }] }
+    expect(previousSnapshot(p, 'CNY', '2026-08-22')).toEqual({ d: '2026-08-21', v: 9, c: 'CNY' })
+    expect(previousSnapshot(p, 'HKD', '2026-08-22')).toBeNull()
+  })
+})

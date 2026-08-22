@@ -57,6 +57,30 @@ function cleanCash(raw) {
   })
 }
 
+/** Daily value marks — one per local date, in the display currency of the
+ *  day. The book of record for a hand-built portfolio's history: no broker
+ *  statement exists, so the app writes one line a day when it has priced
+ *  every holding (Jeff 2026-08-22). Newest 400 kept. */
+const MAX_SNAPSHOTS = 400
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+function cleanSnapshots(raw) {
+  const byDate = new Map()
+  for (const x of Array.isArray(raw) ? raw : []) {
+    const d = String(x?.d || '')
+    const v = Number(x?.v)
+    const c = String(x?.c || '').toUpperCase()
+    if (!DATE_RE.test(d) || !Number.isFinite(v) || v < 0 || !PORTFOLIO_CCYS.includes(c)) continue
+    byDate.set(d, { d, v, c })
+  }
+  return [...byDate.values()].sort((a, b) => (a.d < b.d ? -1 : 1)).slice(-MAX_SNAPSHOTS)
+}
+
+/** Today's date in the reader's own clock, the key a snapshot is filed under. */
+export function localDate(now = new Date()) {
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+}
+
 let nextId = 1
 function freshId(taken) {
   while (taken.has(`p${nextId}`)) nextId++
@@ -77,7 +101,7 @@ function sanitize(raw) {
       .map(cleanHolding)
       .filter((h) => h && !seen.has(h.symbol) && seen.add(h.symbol))
       .slice(0, MAX_MY_HOLDINGS)
-    return [{ id, name, ccy: item.ccy, holdings, cash: cleanCash(item.cash) }]
+    return [{ id, name, ccy: item.ccy, holdings, cash: cleanCash(item.cash), snapshots: cleanSnapshots(item.snapshots) }]
   }).slice(0, MAX_MY_PORTFOLIOS)
 }
 
@@ -112,7 +136,7 @@ export function createPortfolio(name, ccy) {
   if (!clean || !PORTFOLIO_CCYS.includes(ccy)) return null
   const items = loadPortfolios()
   if (items.length >= MAX_MY_PORTFOLIOS) return null
-  const p = { id: freshId(new Set(items.map((x) => x.id))), name: clean, ccy, holdings: [], cash: [] }
+  const p = { id: freshId(new Set(items.map((x) => x.id))), name: clean, ccy, holdings: [], cash: [], snapshots: [] }
   persist([...items, p])
   return p
 }
@@ -254,4 +278,35 @@ export function portfolioValues(holdings, quotes, rates, displayCcy, cash) {
       unrealPnl: unrealRows.length ? unrealRows.reduce((s, r) => s + r.unrealDisplay, 0) : null,
     },
   }
+}
+
+/** File today's value for a book. Same date → the mark is refreshed in
+ *  place (the day's last reading wins); a value that has not moved by a
+ *  cent is not a write at all, so a re-render never churns storage. Returns
+ *  the mark written, or null. */
+export function recordSnapshot(id, value, ccy, date = localDate()) {
+  if (!Number.isFinite(value) || value < 0 || !PORTFOLIO_CCYS.includes(ccy) || !DATE_RE.test(date)) return null
+  const items = loadPortfolios()
+  const p = items.find((x) => x.id === id)
+  if (!p) return null
+  const snaps = p.snapshots || []
+  const last = snaps[snaps.length - 1]
+  const mark = { d: date, v: Math.round(value * 100) / 100, c: ccy }
+  if (last && last.d === date) {
+    if (last.c === ccy && Math.abs(last.v - mark.v) < 0.005) return null
+    snaps[snaps.length - 1] = mark
+  } else if (last && last.d > date) {
+    return null                       // a clock set backwards never rewrites history
+  } else {
+    snaps.push(mark)
+  }
+  p.snapshots = snaps.slice(-MAX_SNAPSHOTS)
+  persist(items)
+  return mark
+}
+
+/** The last mark filed BEFORE `date` in `ccy` — "since yesterday" reads off this. */
+export function previousSnapshot(p, ccy, date = localDate()) {
+  const snaps = (p?.snapshots || []).filter((x) => x.c === ccy && x.d < date)
+  return snaps[snaps.length - 1] || null
 }

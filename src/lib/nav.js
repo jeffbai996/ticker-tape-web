@@ -43,6 +43,7 @@ export const NAV = [
     subs: [
       { id: 'mine', label: 'My Portfolios' },
       { id: 'holdings', label: 'Holdings' },
+      { id: 'performance', label: 'Performance' },
       { id: 'news', label: 'News' },
       { id: 'account', label: 'Account' },
       { id: 'sizing', label: 'Sizing' },
@@ -93,6 +94,7 @@ if (FAMILY_BUILD) {
   // itself — a 'mine' sub here rendered a second "overview", Jeff 2026-08-22)
   portfolio.subs = [
     { id: 'holdings', label: 'Holdings' },
+    { id: 'performance', label: 'Performance' },
     { id: 'news', label: 'News' },
   ]
   delete portfolio.badge
