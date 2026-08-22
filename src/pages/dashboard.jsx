@@ -672,7 +672,7 @@ function MacroCalPanel() {
             ? `#/research/${e.symbol.toLowerCase()}` : '#/markets/calendar'
           return (
             <a key={`${e.date}-${e.type}-${e.id ?? ''}`} href={href}
-              class="grid grid-cols-[minmax(2.75rem,auto)_minmax(0,1fr)_2.2rem] items-baseline gap-1.5 px-3 py-[3px] font-mono text-[12px] hover:bg-surface-3 hover:no-underline">
+              class="rail-row grid grid-cols-[minmax(2.75rem,auto)_minmax(0,1fr)_2.2rem] items-baseline gap-1.5 px-3 py-[3px] font-mono text-[12px] hover:bg-surface-3 hover:no-underline">
               <span class={`max-w-[6.5rem] truncate font-[650] font-anth ${e.user ? 'text-[#00c8ff]' : ECON_COLORS[e.type] || 'text-ink-2'}`}>
                 {e.user ? (e.symbol === 'MACRO' ? e.type : e.symbol) : e.type}
               </span>
@@ -755,7 +755,7 @@ function EarningsPanel({ symbols, quotes = {} }) {
           const mine = held.has(symbol)
           return (
             <a key={symbol} href={`#/research/${symbol.toLowerCase()}/earnings`}
-              class="grid grid-cols-[minmax(2.75rem,auto)_minmax(0,1fr)_2.2rem] items-baseline gap-1.5 px-3 py-[3px] font-mono text-[12px] hover:bg-surface-3 hover:no-underline"
+              class="rail-row grid grid-cols-[minmax(2.75rem,auto)_minmax(0,1fr)_2.2rem] items-baseline gap-1.5 px-3 py-[3px] font-mono text-[12px] hover:bg-surface-3 hover:no-underline"
               title={name || symbol}>
               <span class={`max-w-[6.5rem] truncate font-[650] font-anth ${mine ? 'text-ink' : 'text-ink-2'}`}>{symbol}</span>
               {/* company name, quiet — the CLI's `[dim]{name}[/]`, sliding into
@@ -1014,7 +1014,7 @@ function AddSymbolRow({ onAdd, isPresent, isFull, cap }) {
                   title={h.exch} />
               )}
               <span class="font-mono font-bold text-[11px] text-accent shrink-0">{h.symbol}</span>
-              <Marquee text={h.name} class="block min-w-0 font-anth text-[10.5px] text-ink-2" />
+              <Marquee text={localName(h.symbol, h.name)} class="block min-w-0 font-anth text-[10.5px] text-ink-2" />
               <span class="ml-auto font-mono text-[8.5px] uppercase tracking-wider text-muted shrink-0">{h.exch}</span>
             </button>
           ))}
@@ -1554,7 +1554,7 @@ function TickerSearch({ filter, setFilter, activeList }) {
                     title={h.exch} />
                 )}
                 <span class="font-mono font-bold text-[10.5px] text-accent shrink-0">{h.symbol}</span>
-                <Marquee text={h.name} class="block min-w-0 font-anth text-[10.5px] text-ink-2" />
+                <Marquee text={localName(h.symbol, h.name)} class="block min-w-0 font-anth text-[10.5px] text-ink-2" />
                 <SearchResultSpark symbol={h.symbol} />
                 <span class="font-mono text-[8.5px] uppercase tracking-wider text-muted shrink-0">{h.exch}</span>
                 <button
@@ -1931,7 +1931,7 @@ export function Dashboard({ listId = null }) {
           )}
           <AddSymbolRow onAdd={addSymbol} isPresent={isPresent} isFull={listFull} cap={listCap} />
         </section>
-        <div class="flex flex-col gap-3 min-w-0">
+        <div class="rail @container flex flex-col gap-3 min-w-0">
           {widgets.map((w) => (
             <WidgetFrame key={w.id} id={w.id}>
               <RailWidget w={w} all={all} watchlist={watchlist} earnDays={earnDays} quotes={quotes} />

@@ -307,7 +307,7 @@ export function StatusBar() {
         <button type="button"
           onClick={() => { location.href = location.href.replace(/[?&]freeze[^&#]*/, '') }}
           title={tl('live updates are frozen by ?freeze in the URL — tap to unfreeze')}
-          class="h-5 inline-flex items-center rounded border border-down bg-down/20 px-1.5 font-anth text-[8.5px] font-bold uppercase tracking-wider text-down animate-pulse">
+          class="h-5 inline-flex items-center rounded border border-down bg-down/20 px-1.5 font-anth text-[8.5px] font-bold uppercase tracking-wider text-down">
           {tl('FROZEN')}
         </button>
       )}
