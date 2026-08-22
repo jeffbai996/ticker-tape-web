@@ -15,7 +15,9 @@ describe('research overview header', () => {
     expect(research).toContain('data-research-identity-scroll')
     expect(research).toContain('overflow-x-auto no-scrollbar')
     expect(research).toContain('data-research-company-name')
-    expect(research).toContain('{q.name}')
+    // the company line renders the display name — the exchange's Chinese
+    // name for an HK / mainland listing in zh, the provider's otherwise
+    expect(research).toContain('text={displayName}')
     expect(research).toContain('data-research-quote-cluster')
     expect(research).toContain('shrink-0 whitespace-nowrap')
     expect(research).toContain('max-sm:hidden price-grouped"><FlashMetric value={q.change}')
