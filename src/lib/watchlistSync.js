@@ -1,27 +1,12 @@
-const CAPABILITY_KEY = 'watchlist_sync_cap_v1'
-// One sync code covers every synced document (watchlists AND portfolios) —
-// engines subscribe here so enable/connect/disconnect restarts them all.
-const capabilityListeners = new Set()
-
-export function onCapabilityChange(fn) {
-  capabilityListeners.add(fn)
-  return () => capabilityListeners.delete(fn)
-}
-
-function fireCapabilityChange() {
-  for (const fn of [...capabilityListeners]) fn()
-}
+// The sync capability comes from the BUILD (the family build's fixed
+// store) or from nowhere. The browser-entered "sync code" path was retired
+// 2026-08-22: the worker accepts exactly one token, so a visitor-typed code
+// could only ever 401 — a control that promised something impossible.
 const CAPABILITY_RE = /^[a-f0-9]{32}$/
 const DEFAULT_WORKER = 'https://yf-proxy.2phakhvpgh.workers.dev'
 
 export function validWatchlistCapability(value) {
   return CAPABILITY_RE.test(String(value || '').trim().toLowerCase())
-}
-
-export function createWatchlistCapability(cryptoImpl = globalThis.crypto) {
-  const bytes = new Uint8Array(16)
-  cryptoImpl.getRandomValues(bytes)
-  return [...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
 // The family build carries its own store (owner decision, Jeff 2026-08-21:
@@ -36,24 +21,7 @@ export function fixedSyncCapability() {
 }
 
 export function getWatchlistCapability() {
-  try {
-    const value = localStorage.getItem(CAPABILITY_KEY) || ''
-    if (validWatchlistCapability(value)) return value.toLowerCase()
-  } catch { /* fall through to the build's own store */ }
   return fixedSyncCapability()
-}
-
-export function saveWatchlistCapability(value) {
-  const clean = String(value || '').trim().toLowerCase()
-  if (!validWatchlistCapability(clean)) return ''
-  try { localStorage.setItem(CAPABILITY_KEY, clean) } catch { return '' }
-  fireCapabilityChange()
-  return clean
-}
-
-export function clearWatchlistCapability() {
-  try { localStorage.removeItem(CAPABILITY_KEY) } catch { /* local-only remains usable */ }
-  fireCapabilityChange()
 }
 
 export function watchlistSyncEndpoint(capability = getWatchlistCapability(), base) {

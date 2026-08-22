@@ -15,7 +15,7 @@
 import { loadPortfolios, onPortfoliosChange, replacePortfolios } from './myPortfolios.js'
 import { wireServiceUrl } from './wire.js'
 import {
-  getWatchlistCapability, onCapabilityChange, watchlistSyncEndpoint,
+  getWatchlistCapability, watchlistSyncEndpoint,
   watchlistSyncHeaders,
 } from './watchlistSync.js'
 
@@ -240,14 +240,6 @@ export function startMyPortfolioSync() {
     savePortfolioSyncMeta(stampLocalEdits(prev, loadPortfolioSyncMeta()))
     prev = loadPortfolios()
     queueSync()
-  })
-  // the sync code is shared with the watchlist sync — enabling, connecting
-  // or disconnecting there (or on the portfolio page) restarts this engine
-  onCapabilityChange(() => {
-    savePortfolioSyncMeta(getWatchlistCapability()
-      ? loadPortfolioSyncMeta()
-      : { rev: 0, touched: {}, deleted: {} })
-    restart()
   })
   restart()
 }

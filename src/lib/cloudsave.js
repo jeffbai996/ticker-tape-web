@@ -5,9 +5,7 @@
 
 import { wireServiceUrl } from './wire.js'
 import {
-  clearWatchlistCapability, getWatchlistCapability,
-  saveWatchlistCapability, validWatchlistCapability, watchlistSyncEndpoint,
-  watchlistSyncHeaders,
+  watchlistSyncEndpoint, watchlistSyncHeaders,
 } from './watchlistSync.js'
 
 export const SAVE_KEY = 'ttw-watchlists'
@@ -262,20 +260,3 @@ function restartWatchlistSync() {
   interval = setInterval(syncOnce, 60_000)
 }
 
-export function connectPublicWatchlistSync(value) {
-  if (!validWatchlistCapability(value)) return false
-  if (!saveWatchlistCapability(value)) return false
-  // The remote copy is authoritative on first connect. Subsequent local edits
-  // receive fresh touches through the normal store listeners.
-  saveMeta({ rev: 0, touched: {}, deleted: {} })
-  restartWatchlistSync()
-  return true
-}
-
-export function disconnectPublicWatchlistSync() {
-  clearWatchlistCapability()
-  saveMeta({ rev: 0, touched: {}, deleted: {} })
-  restartWatchlistSync()
-}
-
-export { getWatchlistCapability }
