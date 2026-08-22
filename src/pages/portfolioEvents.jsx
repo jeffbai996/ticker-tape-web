@@ -87,7 +87,7 @@ export function BookEvents({ portfolio, quotes }) {
 
       <section class="rounded-xl border border-line bg-surface-1 overflow-hidden">
         <div class="overflow-x-auto">
-          <table class="w-full border-collapse font-mono text-[11px]">
+          <table class="book-table w-full border-collapse font-mono text-[11px]">
             <thead><tr class="font-anth text-[9px] uppercase tracking-wider text-muted">
               {[tl('Symbol'), tl('Next results'), tl('Ex-dividend'), tl('Last dividend'), tl('Yield'), tl('Est. income')].map((h, i) => (
                 <th key={i} class={`px-2.5 py-1.5 ${i === 0 ? 'text-left' : 'text-right'}`}>{h}</th>
