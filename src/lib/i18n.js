@@ -928,6 +928,13 @@ const LABELS = {
   'Day movers': '当日异动', 'Weights': '权重分布', 'Currency mix': '币种构成',
   'Symbol or company': '代码或公司名',
   'Type a ticker or a company name and pick from the list.': '输入股票代码或公司名，从列表中选择。',
+  // Cash accounts + the listing gate (2026-08-21)
+  'Pick the listing from the list — a plain board code like 02628 is not a symbol anywhere.':
+    '请从列表中选择上市代码 — 像 02628 这样的纯板块代码在任何交易所都不是有效代码。',
+  'Add cash account': '添加现金账户', 'Cash amount': '现金金额',
+  'Every supported currency already has an account.': '所有支持的币种都已有账户。',
+  'One account per currency. Cash counts toward value and weights, never toward day P&L.':
+    '每种币种一个账户。现金计入市值与权重，不计入当日盈亏。',
 }
 
 export function t(key, params) {

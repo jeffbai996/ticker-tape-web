@@ -24,15 +24,18 @@ export function fxSymbolsFor(ccys) {
   return out
 }
 
-/** Live quote map → `{ USD: 1, CAD: 0.73, ... }` (each ccy in USD). Pairs
- *  that have not priced yet are simply absent. */
+/** Live quote map → `{ USD: 1, CAD: 0.73, ... }` (each ccy in USD). Every
+ *  `<CCY>USD=X` pair present is read, not just the display currencies: a book
+ *  may legitimately hold a Tokyo or Seoul line, and a currency with no rate
+ *  dashes out of every total forever. Pairs that have not priced yet are
+ *  simply absent. */
 export function ratesFromQuotes(live) {
   const rates = { USD: 1 }
-  for (const ccy of PORTFOLIO_CCYS) {
-    const sym = fxPairSymbol(ccy)
-    if (!sym) continue
-    const px = live?.[sym]?.quote?.price
-    if (typeof px === 'number' && Number.isFinite(px) && px > 0) rates[ccy] = px
+  for (const [sym, entry] of Object.entries(live || {})) {
+    const pair = /^([A-Z]{3})USD=X$/.exec(sym)
+    if (!pair) continue
+    const px = entry?.quote?.price
+    if (typeof px === 'number' && Number.isFinite(px) && px > 0) rates[pair[1]] = px
   }
   return rates
 }
@@ -48,7 +51,20 @@ export function convertCcy(amount, from, to, rates) {
 }
 
 // Listing-suffix fallback for before the quote lands (or a dead symbol).
-const SUFFIX_CCY = { TO: 'CAD', V: 'CAD', NE: 'CAD', HK: 'HKD', SS: 'CNY', SZ: 'CNY' }
+// Currency belongs to the listing, not to the person entering it (Jeff
+// 2026-08-21) — so the table covers every venue the symbol search can hand
+// back, and a row's currency is never something the UI offers to change.
+const SUFFIX_CCY = {
+  TO: 'CAD', V: 'CAD', NE: 'CAD', CN: 'CAD',
+  HK: 'HKD', SS: 'CNY', SZ: 'CNY',
+  T: 'JPY', KS: 'KRW', KQ: 'KRW', TW: 'TWD', TWO: 'TWD',
+  SI: 'SGD', AX: 'AUD', NZ: 'NZD', BK: 'THB', JK: 'IDR', KL: 'MYR',
+  NS: 'INR', BO: 'INR',
+  L: 'GBP', IL: 'USD', PA: 'EUR', AS: 'EUR', BR: 'EUR', LS: 'EUR',
+  DE: 'EUR', F: 'EUR', MI: 'EUR', MC: 'EUR', VI: 'EUR', IR: 'EUR', HE: 'EUR',
+  SW: 'CHF', ST: 'SEK', OL: 'NOK', CO: 'DKK',
+  SA: 'BRL', MX: 'MXN', BA: 'ARS', JO: 'ZAR', TA: 'ILS', IS: 'TRY',
+}
 
 /** What a holding is denominated in: the quote's own word first (CNH — the
  *  offshore RMB — folds into CNY), the listing suffix as a fallback. */
