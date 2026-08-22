@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { useQuotes, useWatchlist } from '../hooks.js'
+import { useQuotes, useWatchlist, useTapeSymbols } from '../hooks.js'
 import { fmtPrice, fmtPct } from '../lib/format.js'
 import { FlashPrice } from './Fig.jsx'
 import { hrefFor } from '../lib/route.js'
@@ -132,7 +132,7 @@ function useWireHeadlines() {
 // differently at a glance (Jeff 2026-08-04).
 
 export function Tape() {
-  const watchlist = useWatchlist()
+  const watchlist = useTapeSymbols()
   const quotes = useQuotes(watchlist)
   const heads = useWireHeadlines()
   const watchset = new Set(watchlist)
