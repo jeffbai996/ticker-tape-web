@@ -254,6 +254,7 @@ export function StatusBar() {
       <div class="flex-1 min-w-0 flex items-center overflow-hidden">
         {drift !== 'off' ? (
           <div ref={beltRef}
+            data-strip-belt
             class={`${drift === 'on' ? 'strip-drift ' : ''}flex w-max items-baseline py-0.5`}
             style={drift === 'on' && cycleW ? { '--strip-cycle-width': `${cycleW}px`,
               '--strip-cycle-duration': `${Math.max(8, cycleW / 58)}s`,

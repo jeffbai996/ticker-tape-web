@@ -705,7 +705,7 @@ const LABELS = {
   'prev close': '昨收', gap: '跳空',
   'remove catalyst': '删除事件', 'move up': '上移', 'move down': '下移',
   'cycle timezone': '切换时区（美东 → 香港 → 太平洋）', console: '控制台',
-  'drag to resize': '拖动调整高度', 'tap to cycle size · drag to resize': '点按切换高度 · 拖动调整', 'type command or symbol…  (h = help)': '输入命令或代码…（h = 帮助）',
+  'drag to resize': '拖动调整高度', 'tap to cycle size · drag to resize': '点按切换高度 · 拖动调整', 'type command or symbol…  (h = help)': '输入命令或代码…（h = 帮助）', 'command or symbol… h = help': '命令或代码… h = 帮助',
   'focus console': '按 / 随时聚焦控制台', 'report model': '生成此报告的订阅模型',
   'reset full history': '重置为全部历史', Strike: '行权价', Bid: '买价', Ask: '卖价', IV: '隐波', Vol: '成交量', OI: '未平仓量',
   // options ladder (2026-08-13)

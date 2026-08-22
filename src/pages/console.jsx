@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
-import { parseCommand, HELP_TEXT } from '../lib/commands.js'
+import { parseCommand, HELP_TEXT, HELP_TEXT_NARROW } from '../lib/commands.js'
 import { executePlan } from '../lib/execute.js'
 import { completions, applyCompletion } from '../lib/complete.js'
 import { getWatchlist } from '../lib/watchlist.js'
@@ -67,12 +67,14 @@ export function ConsolePage() {
           register is the desktop panel's) */}
       <div ref={scrollRef} class="flex-1 min-h-0 overflow-y-auto px-3 py-2 font-mono text-[12px] leading-relaxed select-text">
         {log.length === 0 && (
-          <pre class="text-ink-2 whitespace-pre-wrap m-0 font-mono text-[11px]"><Rich text={HELP_TEXT} /></pre>
+          <pre class="text-ink-2 whitespace-pre-wrap m-0 font-mono text-[11px]"><Rich text={HELP_TEXT_NARROW} /></pre>
         )}
         {log.map((entry) => (
           <div key={entry.id} class="pb-1.5">
             <div class="text-muted"><span class="text-accent">ticker&gt;</span> {entry.cmd}</div>
-            <pre class="text-ink-2 whitespace-pre-wrap m-0 font-mono"><Rich text={entry.text} /></pre>
+            {/* `h` output is shared console state with the desktop bar — swap
+                in the narrow register at render time, this pane is the phone */}
+            <pre class="text-ink-2 whitespace-pre-wrap m-0 font-mono"><Rich text={entry.text === HELP_TEXT ? HELP_TEXT_NARROW : entry.text} /></pre>
           </div>
         ))}
       </div>
@@ -94,7 +96,7 @@ export function ConsolePage() {
         <input ref={inputRef} value={value}
           onInput={(e) => setValue(e.currentTarget.value)}
           onKeyDown={onKey}
-          placeholder={tl('type command or symbol…  (h = help)')}
+          placeholder={tl('command or symbol… h = help')}
           autocapitalize="off" autocorrect="off" spellcheck={false} enterkeyhint="go"
           class="flex-1 min-w-0 bg-transparent outline-none text-ink placeholder:text-muted text-[16px]" />
         <button type="submit" class="shrink-0 px-3 h-8 rounded border border-line text-ink-2 text-[12px] active:border-accent">↵</button>

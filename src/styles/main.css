@@ -94,6 +94,17 @@ html {
   text-size-adjust: 100%;
 }
 
+/* Belt insurance: iOS font boosting can re-inflate text inside animated
+   marquee subtrees even when the page opts out at the root — the phone tape
+   rendered ~1.6× while the rest of the page held size (Jeff 2026-08-21).
+   Opt the moving belts out explicitly, at the block that scrolls. */
+.tape-scroll,
+.tape-cycle,
+[data-strip-belt] {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 html, body {
   width: 100%;
   max-width: 100%;
