@@ -163,3 +163,31 @@ export function sectorSplit(rows, buckets) {
   const entries = [...by.entries()].sort((a, b) => b[1] - a[1])
   return { entries, total, unmappedShare: invested > 0 ? unmapped / invested : 0 }
 }
+
+/** Holdings sorted by one column. `dir` is 'asc' | 'desc'; a null key or dir
+ *  returns the rows untouched (insertion order is the default view).
+ *  Unpriced cells (null) always sink to the bottom, whichever direction. */
+export const SORTABLE = {
+  symbol: (r) => r.symbol,
+  ccy: (r) => r.ccy,
+  shares: (r) => r.shares,
+  cost: (r) => r.cost ?? null,
+  price: (r) => r.price,
+  day: (r) => r.dayPct,
+  value: (r) => r.valueDisplay,
+  weight: (r) => r.weightPct,
+  unreal: (r) => r.unrealDisplay,
+}
+export function sortRows(rows, key, dir) {
+  const get = SORTABLE[key]
+  if (!get || !dir) return rows
+  const sign = dir === 'asc' ? 1 : -1
+  return [...rows].sort((a, b) => {
+    const x = get(a); const y = get(b)
+    if (x == null && y == null) return 0
+    if (x == null) return 1
+    if (y == null) return -1
+    if (typeof x === 'string') return sign * x.localeCompare(y)
+    return sign * (x - y)
+  })
+}

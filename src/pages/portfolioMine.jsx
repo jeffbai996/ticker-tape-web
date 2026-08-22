@@ -9,7 +9,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { useQuotes } from '../hooks.js'
 import { SymbolSuggest } from '../components/SymbolSuggest.jsx'
 import { sizeForWeight } from '../lib/demo.js'
-import { breadth, cashSplit, concentration, dayContribution, unrealizedStats, venueSplit, sectorSplit } from '../lib/bookStats.js'
+import { breadth, cashSplit, concentration, dayContribution, sortRows, unrealizedStats, venueSplit, sectorSplit } from '../lib/bookStats.js'
 import { BOOK_CARDS, hiddenCards, onCardsChange, resetCards, toggleCard } from '../lib/bookCards.js'
 import { BUCKETS } from '../lib/symbols.js'
 import { FlashPrice } from '../components/Fig.jsx'
@@ -343,25 +343,42 @@ function Holdings({ portfolio, quotes, rates }) {
   useZhNames()
   const all = portfolioValues(portfolio.holdings, quotes, rates, portfolio.ccy, portfolio.cash)
   const { missing, total } = all
-  const rows = all.rows.filter((r) => r.kind !== 'cash')
   const cashRows = all.rows.filter((r) => r.kind === 'cash')
   const ccy = portfolio.ccy
+  // click a header to sort: numbers start descending, names ascending, a
+  // second click flips, a third returns to the book's own order. The pick
+  // persists across books — it's how this reader likes the table, not a
+  // property of one book (Jeff 2026-08-22)
+  const [sort, setSort] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('my_portfolio_sort_v1')) || {} } catch { return {} }
+  })
+  const clickSort = (key, first) => {
+    const next = sort.key !== key ? { key, dir: first } : sort.dir === first ? { key, dir: first === 'asc' ? 'desc' : 'asc' } : {}
+    setSort(next)
+    try { localStorage.setItem('my_portfolio_sort_v1', JSON.stringify(next)) } catch { /* best-effort */ }
+  }
+  const rows = sortRows(all.rows.filter((r) => r.kind !== 'cash'), sort.key, sort.dir)
+  const th = (key, label, cls, first = 'desc') => (
+    <th class={`${cls} book-th ${sort.key === key ? 'book-th-on' : ''}`} aria-sort={sort.key === key ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+      <button type="button" onClick={() => clickSort(key, first)} class="uppercase tracking-wider">{label}</button>
+    </th>
+  )
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-x-auto">
       <table class="book-table w-full border-collapse font-mono text-[11px]">
         <thead>
           {/* nowrap: 股数 stacked into two lines on a phone (Jeff 2026-08-20) */}
           <tr class="bg-surface-2 text-[9px] text-muted uppercase tracking-wider whitespace-nowrap">
-            <th class="px-2.5 py-1.5 text-left">{tl('Sym')}</th>
-            <th class="px-1.5 py-1.5 text-left">{tl('Ccy')}</th>
+            {th('symbol', tl('Sym'), 'px-2.5 py-1.5 text-left', 'asc')}
+            {th('ccy', tl('Ccy'), 'px-1.5 py-1.5 text-left', 'asc')}
             {/* pr-2.5 = the cell's px-1.5 plus the editable input's own px-1 */}
-            <th class="pl-1.5 pr-2.5 py-1.5 text-right">{tl('Shares')}</th>
-            <th class="pl-1.5 pr-2.5 py-1.5 text-right">{tl('Avg cost')}</th>
-            <th class="px-1.5 py-1.5 text-right">{tl('Price')}</th>
-            <th class="px-1.5 py-1.5 text-right">{tl('Day')}</th>
-            <th class="px-1.5 py-1.5 text-right">{tl('Value')} ({ccy})</th>
-            <th class="px-1.5 py-1.5 text-right">{tl('Weight')}</th>
-            <th class="px-1.5 py-1.5 text-right">{tl('Unreal P&L')}</th>
+            {th('shares', tl('Shares'), 'pl-1.5 pr-2.5 py-1.5 text-right')}
+            {th('cost', tl('Avg cost'), 'pl-1.5 pr-2.5 py-1.5 text-right')}
+            {th('price', tl('Price'), 'px-1.5 py-1.5 text-right')}
+            {th('day', tl('Day'), 'px-1.5 py-1.5 text-right')}
+            {th('value', `${tl('Value')} (${ccy})`, 'px-1.5 py-1.5 text-right')}
+            {th('weight', tl('Weight'), 'px-1.5 py-1.5 text-right')}
+            {th('unreal', tl('Unreal P&L'), 'px-1.5 py-1.5 text-right')}
             <th class="px-1.5 py-1.5" aria-hidden="true" />
           </tr>
         </thead>

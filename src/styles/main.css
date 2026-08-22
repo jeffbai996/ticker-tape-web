@@ -790,5 +790,11 @@ button:hover .burger path:nth-child(2) { transform: scaleX(.55); }
 .rail-item[data-active="1"] { box-shadow: inset 2px 0 0 0 var(--color-accent); }
 .book-table tbody tr:nth-child(even) { background: rgba(255, 255, 255, 0.015); }
 .book-table th, .book-table td { font-variant-numeric: tabular-nums; }
+/* sortable headers: no glyphs, the label itself is the control — it lifts
+   on hover and holds the accent while it is the sort key */
+.book-th button { color: inherit; cursor: pointer; transition: color 120ms; }
+.book-th button:hover { color: var(--color-ink); }
+.book-th-on button { color: var(--color-accent); }
+.book-th-on[aria-sort="ascending"] button { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
 .reader-prose p { max-width: 62ch; }
 .reader-prose p + p { margin-top: 0.85em; }
