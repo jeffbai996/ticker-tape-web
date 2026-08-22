@@ -299,7 +299,40 @@ function jsonResp(data, status = 200) {
 // ── /cn/* — East Money pass-through for Chinese names, news, profiles ──
 
 const CN_UA = 'Mozilla/5.0';
-const CN_TTL = { news: 600, profile: 86400, industry: 86400, report: 21600, f10: 21600 };
+const CN_TTL = { news: 600, profile: 86400, industry: 86400, report: 21600, f10: 21600, read: 86400 };
+// Article pages the reader may open: East Money's own story URLs only.
+const READ_URL = /^https?:\/\/(?:finance|stock|fund|futures|forex|bond|www)\.eastmoney\.com\/a\/\d{12,}\.html$/;
+const MAX_ARTICLE_BYTES = 1_000_000;
+
+const strip = (html) => String(html || '')
+    .replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;|&#160;|\u3000/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
+    .replace(/[ \t]+/g, ' ').trim();
+
+/** East Money story page → {title, time, source, paras}. Pure; exported for tests. */
+export function extractEmArticle(html) {
+    const h = String(html || '');
+    const title = strip((/<title>([\s\S]*?)<\/title>/i.exec(h) || [])[1] || '').replace(/\s*[_|-]\s*东方财富.*$/, '').trim();
+    const time = (/(\d{4}年\d{2}月\d{2}日 \d{2}:\d{2})/.exec(h) || [])[1] || '';
+    const bodyStart = h.search(/<div[^>]+id="ContentBody"[^>]*>/i);
+    let paras = [];
+    let source = '';
+    if (bodyStart >= 0) {
+        const body = h.slice(bodyStart, bodyStart + 200_000)
+            .replace(/<div[^>]+class="ad_[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '');      // in-body ad slots
+        const m = /文章来源[：:]\s*([^）)<]+)/.exec(body);
+        if (m) source = strip(m[1]);
+        // the source line ends the story; the share widget and editor credit
+        // that follow are page chrome
+        for (const x of body.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi)) {
+            const t = strip(x[1]);
+            if (/^[（(]?文章来源/.test(t) || /打开微信|微信扫一扫|扫描二维码|^[（(]?责任编辑/.test(t)) break;
+            if (t && t.length > 1) paras.push(t);
+        }
+    }
+    return { title, time, source, paras };
+}
 // East Money datacenter reports the app may ask for, by code — corporate
 // actions only (dividends, results dates). Anything else is a 404.
 const CN_REPORTS = {
@@ -354,6 +387,31 @@ async function handleCn(path, url) {
         });
         upstream = `https://search-api-web.eastmoney.com/search/jsonp?cb=&param=${encodeURIComponent(param)}`;
     } else {
+        if (kind === 'read') {
+            const target = String(url.searchParams.get('url') || '');
+            if (!READ_URL.test(target)) return jsonResp({ error: 'bad url' }, 400);
+            const cache = caches.default;
+            const key = new Request(`https://cn-cache.invalid/read?u=${encodeURIComponent(target)}`);
+            const hit = await cache.match(key);
+            if (hit) return hit;
+            let resp;
+            try {
+                resp = await fetch(target, { headers: { 'User-Agent': CN_UA, 'Accept': 'text/html', 'Referer': 'https://www.eastmoney.com/' }, redirect: 'follow' });
+            } catch (err) {
+                return jsonResp({ error: `read upstream: ${err.message}` }, 502);
+            }
+            if (!resp.ok) return jsonResp({ error: `read upstream HTTP ${resp.status}` }, 502);
+            const raw = await resp.arrayBuffer();
+            if (raw.byteLength > MAX_ARTICLE_BYTES) return jsonResp({ error: 'article too large' }, 502);
+            const html = new TextDecoder('utf-8').decode(raw);
+            const article = extractEmArticle(html);
+            if (!article.paras.length) return jsonResp({ error: 'no article body' }, 502);
+            const out = new Response(JSON.stringify({ ...article, url: target }), {
+                status: 200, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': `public, max-age=${CN_TTL.read}`, ...CORS_HEADERS },
+            });
+            await cache.put(key, out.clone());
+            return out;
+        }
         const sec = cnSecurity(url.searchParams.get('symbol'));
         if (!sec) return jsonResp({ error: 'bad symbol' }, 400);
         if (kind === 'f10') {

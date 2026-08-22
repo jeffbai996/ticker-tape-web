@@ -42,3 +42,12 @@ describe('positionRows uses the session-aware day move', () => {
     expect(s.dayPnl).toBeCloseTo(-10)
   })
 })
+
+describe('exchange-local day for HK / mainland quotes', () => {
+  it('uses the listing\'s own regular session — no US extended-hours compounding', async () => {
+    const { sessionDayPct } = await import('../../src/lib/dayPnl.js')
+    // Yahoo shape for 0700.HK after its close: no pre/post prints, pct is the HK session
+    expect(sessionDayPct({ pct: 1.2405862, extLabel: undefined, extPct: undefined, extPrice: undefined })).toBeCloseTo(1.2405862)
+    expect(sessionDayPct({ pct: 0.1029, extLabel: 'AH', extPct: null, extPrice: null })).toBeCloseTo(0.1029)
+  })
+})

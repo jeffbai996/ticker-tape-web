@@ -1,4 +1,4 @@
-import { cnF10Upstream, cnSecurity } from '../../worker/worker.js'
+import { cnF10Upstream, cnSecurity, extractEmArticle } from '../../worker/worker.js'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import worker, { allowedYahooGetPath } from '../../worker/worker.js'
 
@@ -81,5 +81,29 @@ describe('cnF10Upstream — mainland statements, every parameter validated', () 
     expect(cnF10Upstream({ stmt: 'lrb', market: 'sh', code: '600036', ct: '9', dates: '2025-12-31' })).toBeNull()
     expect(cnF10Upstream({ stmt: 'lrb', market: 'sh', code: '600036', ct: '1', dates: 'today' })).toBeNull()
     expect(cnF10Upstream({ stmt: 'lrb', market: 'sh', code: '600036', ct: '1', dates: Array(9).fill('2025-12-31').join(',') })).toBeNull()
+  })
+})
+
+describe('extractEmArticle — the reader gets text, never chrome', () => {
+  const page = `<html><head><title>腾讯控股：回购67.3万股股份_东方财富网</title></head><body>
+    <div class="infos"><div class=" item">2026年08月19日 17:46</div><div class="item">界面新闻</div></div>
+    <div class="txtinfos" id="ContentBody" style="margin-top:0;"><!--文章主体-->
+      <p>　　港交所文件显示，<span id="Info.116.00700">腾讯控股</span>于8月19日回购673,000股，耗资3亿港元。</p>
+      <div class="ad_context3"><script>ads()</script><p>广告</p></div>
+      <p>第二段&nbsp;内容。</p>
+      <p class="em_media">（文章来源：界面新闻）</p>
+      <p>（责任编辑：张三）</p>
+      <p>打开微信，</p><p>点击底部的“发现”</p>
+    </div></body></html>`
+  it('lifts title, time, source and the body paragraphs', () => {
+    const a = extractEmArticle(page)
+    expect(a.title).toBe('腾讯控股：回购67.3万股股份')
+    expect(a.time).toBe('2026年08月19日 17:46')
+    expect(a.source).toBe('界面新闻')
+    expect(a.paras).toEqual(['港交所文件显示，腾讯控股于8月19日回购673,000股，耗资3亿港元。', '第二段 内容。'])
+  })
+  it('is empty, not a crash, without a body', () => {
+    expect(extractEmArticle('<html><title>x</title></html>').paras).toEqual([])
+    expect(extractEmArticle(null).paras).toEqual([])
   })
 })

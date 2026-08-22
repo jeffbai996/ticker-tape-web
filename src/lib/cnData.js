@@ -97,3 +97,19 @@ export async function fetchCnIndustry(symbol, opts = {}) {
   try { localStorage.setItem(IND_KEY, JSON.stringify({ ...readInd(), [sym]: label })) } catch { /* best-effort */ }
   return label
 }
+
+/** Can the in-app reader open this link? East Money story pages only. */
+export function readableCnUrl(url) {
+  return /^https?:\/\/(?:finance|stock|fund|futures|forex|bond|www)\.eastmoney\.com\/a\/\d{12,}\.html$/.test(String(url || ''))
+}
+
+const articleCache = new Map()
+/** {title, time, source, paras, url} for a readable story, cached per session. */
+export async function fetchCnArticle(url, opts = {}) {
+  if (!readableCnUrl(url)) throw new Error('not readable')
+  if (articleCache.has(url)) return articleCache.get(url)
+  const out = await getJson(`/cn/read?url=${encodeURIComponent(url)}`, opts)
+  if (!out?.paras?.length) throw new Error('no article body')
+  articleCache.set(url, out)
+  return out
+}
