@@ -9,15 +9,17 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { searchSymbols } from '../lib/symbolSearch.js'
 import { codeSearchQueries } from '../lib/venueCodes.js'
-import { hasCjk, loadZhTable, zhAliasHits } from '../lib/zhNames.js'
+import { hasCjk, loadZhTable, localName, zhAliasHits } from '../lib/zhNames.js'
 import { venueFlag } from '../lib/venueFlag.js'
 import { tl } from '../lib/i18n.js'
 import { Marquee } from './Marquee.jsx'
+import { useZhNames } from '../hooks.js'
 
 export function SymbolSuggest({
   value, onInput, onPick, onHits, placeholder, inputClass = '', dropUp = true,
   inputRef = null, ariaLabel = null,
 }) {
+  useZhNames()
   const [hits, setHits] = useState(null)
   const [active, setActive] = useState(-1)
   const pickedRef = useRef(null)
@@ -94,7 +96,7 @@ export function SymbolSuggest({
                 <img src={venueFlag(h)} alt="" class="h-3 w-4 shrink-0 rounded-[1px]" title={h.exch} />
               )}
               <span class="shrink-0 font-mono text-[11px] font-bold text-accent">{h.symbol}</span>
-              <Marquee text={h.name} class="block min-w-0 font-anth text-[10.5px] text-ink-2" />
+              <Marquee text={localName(h.symbol, h.name)} class="block min-w-0 font-anth text-[10.5px] text-ink-2" />
               <span class="ml-auto shrink-0 font-mono text-[8.5px] uppercase tracking-wider text-muted">{tl(h.exch)}</span>
             </button>
           ))}

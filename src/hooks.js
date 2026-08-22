@@ -7,6 +7,7 @@ import {
 import { fetchHistory } from './lib/history.js'
 import { sma, rsi } from './lib/indicators.js'
 import { getLocale, onLocaleChange } from './lib/i18n.js'
+import { loadZhTable, onZhTable } from './lib/zhNames.js'
 import { getWatchlist, onWatchlistChange } from './lib/watchlist.js'
 import { loadWatchlists, onWatchlistsChange } from './lib/watchlists.js'
 import { createQuoteRenderGate } from './lib/quoteRenderGate.js'
@@ -275,4 +276,24 @@ export function useAlertEngine() {
 
   const dismiss = (id) => setToasts((ts) => ts.filter((t) => t.id !== id))
   return { toasts, dismiss }
+}
+
+/** Chinese security names for the zh reader: pulls the name table when the
+ *  locale is zh and re-renders the caller once it lands (or the locale
+ *  changes). Returns nothing — pair with localName(). */
+export function useZhNames() {
+  const [, tick] = useState(0)
+  useEffect(() => {
+    let off = () => {}
+    const arm = () => {
+      off()
+      off = () => {}
+      if (getLocale() !== 'zh') return
+      loadZhTable()
+      off = onZhTable(() => tick((n) => n + 1))
+    }
+    arm()
+    const offLocale = onLocaleChange(() => { arm(); tick((n) => n + 1) })
+    return () => { off(); offLocale() }
+  }, [])
 }
