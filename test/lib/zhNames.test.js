@@ -58,7 +58,14 @@ describe('zhName', () => {
   it('names a known symbol in either script and null otherwise', () => {
     expect(zhName('0981.hk')).toBe('中芯国际')
     expect(zhName('0981.HK', { traditional: true })).toBe('中芯國際')
-    expect(zhName('AAPL')).toBeNull()
+    expect(zhName('ZZZZ.XX')).toBeNull()
+  })
+
+  it('names the US large-caps too, so a mixed book reads in one script', () => {
+    expect(zhName('AAPL')).toMatch(/苹果/)
+    expect(zhName('NVDA')).toMatch(/英伟达/)
+    expect(zhAliasHits('英伟达').map((h) => h.symbol)).toContain('NVDA')
+    expect(zhAliasHits('英伟达')[0].exch).toBe('')   // venue unknown from the symbol alone
   })
 
   it('covers the family book that motivated it — every row has a name', () => {

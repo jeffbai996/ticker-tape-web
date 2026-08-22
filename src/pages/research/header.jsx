@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'preact/hooks'
 import { getLocale, tl } from '../../lib/i18n.js'
-import { isCnListing } from '../../lib/cnData.js'
 import { loadZhTable, onZhTable, zhName } from '../../lib/zhNames.js'
 import { Marquee } from '../../components/Marquee.jsx'
 import { FlashMetric, FlashPrice } from '../../components/Fig.jsx'
@@ -83,7 +82,7 @@ export function ResearchHeader({ symbol, q, route }) {
   // listing; the provider's English legal name everywhere else
   const [, zhTick] = useState(0)
   useEffect(() => {
-    if (getLocale() !== 'zh' || !isCnListing(symbol)) return undefined
+    if (getLocale() !== 'zh') return undefined
     loadZhTable()
     return onZhTable(() => zhTick((t) => t + 1))
   }, [symbol])
