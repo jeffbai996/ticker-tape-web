@@ -755,7 +755,11 @@ button:hover .burger path:nth-child(2) { transform: scaleX(.55); }
   #app [class*="text-[7.5px]"] { font-size: 8.75px; }
   #app [class*="text-[7px]"] { font-size: 8.5px; }
   #app [class*="text-[6.5px]"] { font-size: 8px; }
-  /* iOS magnifies the viewport when a focused control computes below 16px.
-     Keep the layout widths compact; only the editable text needs this floor. */
-  #app :is(input, textarea, select) { font-size: 16px !important; }
+  /* iOS magnifies the viewport when a control computes below 16px AT THE
+     MOMENT IT TAKES FOCUS — that is the only moment the floor is needed.
+     The always-on version of this rule blew every input and select up to
+     16px on the phone (share/cost cells, currency pickers, alert fields:
+     Jeff 2026-08-22 "lotta weirdly sized elements"). Floor it on focus only;
+     the control returns to its designed size on blur. */
+  #app :is(input, textarea, select):focus { font-size: 16px !important; }
 }

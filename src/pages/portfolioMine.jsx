@@ -899,18 +899,25 @@ export function MyPortfolios() {
 
   return (
     <div class="flex flex-col gap-2.5">
-      <div class="flex flex-wrap items-center gap-1.5">
+      {/* phone: the book chips scroll on one row and the actions sit on a
+          second; from sm up the wrappers dissolve (sm:contents) back into the
+          single wrapping row (Jeff 2026-08-22: "this whole cluster up top is
+          pretty ugly on phone") */}
+      <div class="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center">
+      <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar sm:contents">
         {items.map((p) => (
           <button key={p.id} type="button" onClick={() => select(p.id)}
-            class={`rounded-md border px-2.5 py-1 font-anth text-[11px] transition-colors ${
+            class={`shrink-0 whitespace-nowrap rounded-md border px-2.5 py-1 font-anth text-[11px] transition-colors ${
               selected?.id === p.id
                 ? 'border-accent/50 bg-accent/10 text-accent font-semibold'
                 : 'border-line-2 bg-surface-2 text-ink-2 hover:border-line hover:text-ink'}`}>
             {p.name} <span class="ml-1 text-[9px] uppercase opacity-70">{p.ccy}</span>
           </button>
         ))}
+      </div>
+      <div class="flex items-center gap-1.5 sm:contents">
         <button type="button" onClick={() => setCreating((v) => !v)}
-          class="rounded-md border border-dashed border-line-2 px-2.5 py-1 font-anth text-[11px] text-muted transition-colors hover:border-accent/40 hover:text-accent">
+          class="shrink-0 whitespace-nowrap rounded-md border border-dashed border-line-2 px-2.5 py-1 font-anth text-[11px] text-muted transition-colors hover:border-accent/40 hover:text-accent">
           + {tl('New portfolio')}
         </button>
         {selected && (
@@ -919,11 +926,12 @@ export function MyPortfolios() {
               <CcySelect value={selected.ccy} onChange={(c) => setPortfolioCcy(selected.id, c)} />
             </label>
             <button type="button" onClick={rename} title={tl('Rename portfolio')}
-              class="rounded border border-line-2 px-2 py-0.5 font-anth text-[10px] text-muted transition-colors hover:text-ink">{tl('Rename')}</button>
+              class="rounded border border-line-2 px-2 py-0.5 max-sm:py-1 font-anth text-[10px] max-sm:text-[11px] text-muted transition-colors hover:text-ink">{tl('Rename')}</button>
             <button type="button" onClick={remove} title={tl('Delete portfolio')}
-              class="rounded border border-line-2 px-2 py-0.5 font-anth text-[10px] text-muted transition-colors hover:border-down/50 hover:text-down">{tl('Delete')}</button>
+              class="rounded border border-line-2 px-2 py-0.5 max-sm:py-1 font-anth text-[10px] max-sm:text-[11px] text-muted transition-colors hover:border-down/50 hover:text-down">{tl('Delete')}</button>
           </span>
         )}
+      </div>
       </div>
 
       {creating && <NewPortfolioForm onDone={(id) => { select(id); setCreating(false) }} />}
