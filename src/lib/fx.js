@@ -77,6 +77,19 @@ export function holdingCurrency(symbol, quote) {
 
 const CCY_MARK = { USD: '$', CAD: 'C$', HKD: 'HK$', CNY: '¥' }
 
+// A cash account is named for the money it holds, not called "Cash" four
+// times over (Jeff 2026-08-21). English keys because `tl()` is keyed by its
+// English label; the zh table carries the translations.
+const CASH_NAME = {
+  USD: 'US Dollar Cash', CAD: 'Canadian Dollar Cash',
+  HKD: 'Hong Kong Dollar Cash', CNY: 'Chinese Yuan Cash',
+}
+
+/** The label for a cash account in `ccy`, ready to hand to `tl()`. */
+export function cashAccountName(ccy) {
+  return CASH_NAME[String(ccy || '').toUpperCase()] || 'Cash'
+}
+
 // Quote-price prefixes for foreign listings: home currencies (USD/CAD) stay
 // bare, everything else wears its symbol, three characters max (Jeff
 // 2026-08-21: "W with bar for won"). Unknown currencies stay unmarked — a

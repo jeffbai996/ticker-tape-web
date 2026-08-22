@@ -5,7 +5,7 @@
  *  not six.
  */
 import { describe, expect, it } from 'vitest'
-import { ccyMark,
+import { cashAccountName, ccyMark,
   PORTFOLIO_CCYS, convertCcy, fxPairSymbol, fxSymbolsFor, holdingCurrency,
   ratesFromQuotes, fmtCcy,
 } from '../../src/lib/fx.js'
@@ -138,5 +138,19 @@ describe('ccyMark — foreign listings wear their symbol', () => {
     expect(ccyMark('CAD')).toBe('')
     expect(ccyMark('XYZ')).toBe('')
     expect(ccyMark(null)).toBe('')
+  })
+})
+
+describe('cashAccountName — a cash row says which money it is', () => {
+  it('names the currency rather than repeating "Cash"', () => {
+    expect(cashAccountName('USD')).toBe('US Dollar Cash')
+    expect(cashAccountName('CAD')).toBe('Canadian Dollar Cash')
+    expect(cashAccountName('HKD')).toBe('Hong Kong Dollar Cash')
+    expect(cashAccountName('cny')).toBe('Chinese Yuan Cash')
+  })
+
+  it('falls back rather than render undefined', () => {
+    expect(cashAccountName('GBP')).toBe('Cash')
+    expect(cashAccountName()).toBe('Cash')
   })
 })
