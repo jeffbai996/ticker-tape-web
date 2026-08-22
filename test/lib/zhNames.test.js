@@ -46,7 +46,10 @@ describe('zhAliasHits', () => {
   })
 
   it('marks funds as ETF so the venue flag and filters treat them right', () => {
-    expect(zhAliasHits('沪深300')[0]).toMatchObject({ symbol: '510300.SS', type: 'ETF' })
+    // the generated table carries every 沪深300 tracker, so the flagship is
+    // one of several hits, not necessarily the first
+    const csi = zhAliasHits('沪深300', { limit: 50 })
+    expect(csi.find((h) => h.symbol === '510300.SS')).toMatchObject({ type: 'ETF' })
     expect(zhAliasHits('盈富')[0]).toMatchObject({ symbol: '2800.HK', type: 'ETF' })
   })
 })
