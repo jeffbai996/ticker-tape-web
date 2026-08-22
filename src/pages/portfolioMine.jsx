@@ -18,6 +18,7 @@ import { tl, getLocale } from '../lib/i18n.js'
 import { loadZhTable, onZhTable, zhName } from '../lib/zhNames.js'
 import { fetchCnIndustry, isCnListing } from '../lib/cnData.js'
 import { daysUntil } from '../lib/markets.js'
+import { setHeaderActions } from '../lib/headerSlot.js'
 import { venueFlag } from '../lib/venueFlag.js'
 import { VENUE_LABEL, fxDayPct, fxImpact, limitFlag, marketSession, venueDayBreakdown } from '../lib/cnMarkets.js'
 import { fetchSymbolEventsCached } from '../lib/cnEvents.js'
@@ -57,7 +58,7 @@ function useZhNames() {
 function CcySelect({ value, onChange, id, options = PORTFOLIO_CCYS }) {
   return (
     <select id={id} value={value} onChange={(e) => onChange(e.currentTarget.value)}
-      class="rounded border border-line-2 bg-surface-2 px-2 py-1 font-anth text-[11px] text-ink outline-none focus:border-accent/60">
+      class="h-7 rounded-md border border-line-2 bg-surface-2 px-2 font-anth text-[11px] text-ink outline-none focus:border-accent/60">
       {options.map((c) => <option key={c} value={c}>{c}</option>)}
     </select>
   )
@@ -1218,14 +1219,28 @@ export function MyPortfolios({ view = 'overview' } = {}) {
     }
   }
 
+  // the actions live on the section heading row, the chips stay here
+  const btn = 'h-7 rounded-md border border-line-2 bg-surface-2 px-2.5 font-anth text-[11px] text-ink-2 transition-colors hover:border-line hover:text-ink'
+  useEffect(() => {
+    setHeaderActions(
+      <>
+        <button type="button" onClick={() => setCreating((v) => !v)} class={`${btn} border-dashed text-muted hover:border-accent/40 hover:text-accent`}>+ {tl('New portfolio')}</button>
+        {selected && (
+          <>
+            <span class="ml-auto sm:ml-1 h-4 w-px bg-line-2" />
+            <CcySelect value={selected.ccy} onChange={(c) => setPortfolioCcy(selected.id, c)} />
+            <button type="button" onClick={rename} class={btn}>{tl('Rename')}</button>
+            <button type="button" onClick={remove} class={`${btn} hover:border-down/50 hover:text-down`}>{tl('Delete')}</button>
+          </>
+        )}
+      </>,
+    )
+  }, [selected?.id, selected?.ccy, selected?.name, items.length])
+  useEffect(() => () => setHeaderActions(null), [])
+
   return (
     <div class="flex flex-col gap-2.5">
-      {/* phone: the book chips scroll on one row and the actions sit on a
-          second; from sm up the wrappers dissolve (sm:contents) back into the
-          single wrapping row (Jeff 2026-08-22: "this whole cluster up top is
-          pretty ugly on phone") */}
-      <div class="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center">
-      <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar sm:contents">
+      <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar sm:flex-wrap">
         {items.map((p) => (
           <button key={p.id} type="button" onClick={() => select(p.id)}
             class={`shrink-0 whitespace-nowrap rounded-md border px-2.5 py-1 font-anth text-[11px] transition-colors ${
@@ -1235,24 +1250,6 @@ export function MyPortfolios({ view = 'overview' } = {}) {
             {p.name} <span class="ml-1 text-[9px] uppercase opacity-70">{p.ccy}</span>
           </button>
         ))}
-      </div>
-      <div class="flex items-center gap-1.5 sm:contents">
-        <button type="button" onClick={() => setCreating((v) => !v)}
-          class="shrink-0 whitespace-nowrap rounded-md border border-dashed border-line-2 px-2.5 py-1 font-anth text-[11px] text-muted transition-colors hover:border-accent/40 hover:text-accent">
-          + {tl('New portfolio')}
-        </button>
-        {selected && (
-          <span class="ml-auto flex items-center gap-1">
-            <label class="flex items-center gap-1 font-anth text-[10px] text-muted" title={tl('Display currency')}>
-              <CcySelect value={selected.ccy} onChange={(c) => setPortfolioCcy(selected.id, c)} />
-            </label>
-            <button type="button" onClick={rename} title={tl('Rename portfolio')}
-              class="rounded border border-line-2 px-2 py-0.5 max-sm:py-1 font-anth text-[10px] max-sm:text-[11px] text-muted transition-colors hover:text-ink">{tl('Rename')}</button>
-            <button type="button" onClick={remove} title={tl('Delete portfolio')}
-              class="rounded border border-line-2 px-2 py-0.5 max-sm:py-1 font-anth text-[10px] max-sm:text-[11px] text-muted transition-colors hover:border-down/50 hover:text-down">{tl('Delete')}</button>
-          </span>
-        )}
-      </div>
       </div>
 
       {creating && <NewPortfolioForm onDone={(id) => { select(id); setCreating(false) }} />}
