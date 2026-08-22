@@ -6,6 +6,8 @@ import { parseCommand, describePlan } from '../lib/commands.js'
 import { executePlan } from '../lib/execute.js'
 import { Overlay } from './Overlay.jsx'
 import { t as tt } from '../lib/i18n.js'
+import { localName } from '../lib/zhNames.js'
+import { useZhNames } from '../hooks.js'
 
 // Ctrl/Cmd+K command palette: run a command, jump to a section, or pull up any
 // symbol. The user's own universe (watchlist, named lists, recents) matches
@@ -15,6 +17,7 @@ import { t as tt } from '../lib/i18n.js'
 const TAGS = { command: 'run', symbol: 'sym', nav: 'go to', list: 'list' }
 
 export function Palette({ onClose, seed = '' }) {
+  useZhNames()
   // `seed`: text already typed into a phone search field before it handed
   // off to the sheet — never lose the user's first keystroke
   const [query, setQuery] = useState(seed)
@@ -66,7 +69,7 @@ export function Palette({ onClose, seed = '' }) {
       .map((s) => ({
         kind: 'symbol',
         label: s.symbol,
-        detail: [s.name, s.type, s.exchange].filter(Boolean).join(' · '),
+        detail: [localName(s.symbol, s.name), s.type, s.exchange].filter(Boolean).join(' · '),
         flag: venueFlag({ exch: s.exchange, symbol: s.symbol }),
         href: hrefFor('research', s.symbol.toLowerCase()),
       })),
