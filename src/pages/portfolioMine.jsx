@@ -21,7 +21,8 @@ import { BOOK_CARDS, hiddenCards, onCardsChange, resetCards, toggleCard } from '
 import { BUCKETS } from '../lib/symbols.js'
 import { FlashPrice } from '../components/Fig.jsx'
 import { fmtPrice, fmtPct, fmtPctPlain } from '../lib/format.js'
-import { tl } from '../lib/i18n.js'
+import { tl, getLocale } from '../lib/i18n.js'
+import { zhName } from '../lib/zhNames.js'
 import { PORTFOLIO_CCYS, cashAccountName, convertCcy, fmtCcy, fxSymbolsFor, holdingCurrency, ratesFromQuotes } from '../lib/fx.js'
 import {
   MAX_MY_HOLDINGS, createPortfolio, deletePortfolio, loadPortfolios,
@@ -31,6 +32,12 @@ import {
 
 const pnlCls = (v) => (v == null ? 'text-muted' : v >= 0 ? 'text-up' : 'text-down')
 const signed = (v, ccy) => (v == null ? '—' : `${v >= 0 ? '+' : '-'}${fmtCcy(Math.abs(v), ccy)}`)
+
+// The provider names everything in English; a zh reader gets the Chinese
+// name where the table knows it, the English one where it doesn't.
+function holdingName(symbol, quotes) {
+  return (getLocale() === 'zh' && zhName(symbol)) || quotes[symbol]?.name || ''
+}
 
 function CcySelect({ value, onChange, id, options = PORTFOLIO_CCYS }) {
   return (
@@ -120,7 +127,7 @@ function AddHoldingForm({ portfolio }) {
       </div>
       {confirmed && (
         <div class="mt-1 font-anth text-[10px] text-muted">
-          {confirmed.symbol} · {confirmed.name}
+          {confirmed.symbol} · {(getLocale() === 'zh' && zhName(confirmed.symbol)) || confirmed.name}
           {confirmed.exch && <span class="text-[9px] uppercase tracking-wider"> · {confirmed.exch}</span>}
         </div>
       )}
@@ -345,9 +352,9 @@ function Holdings({ portfolio, quotes, rates }) {
               <td class="px-2.5 py-[2px] cursor-pointer"
                 onClick={() => (location.hash = `#/research/${r.symbol.toLowerCase()}`)}>
                 <span class="font-bold text-accent">{r.symbol}</span>
-                {quotes[r.symbol]?.name && (
+                {holdingName(r.symbol, quotes) && (
                   <span class="block max-w-[9rem] truncate font-anth text-[8.5px] leading-[1.1] text-muted">
-                    {quotes[r.symbol].name}
+                    {holdingName(r.symbol, quotes)}
                   </span>
                 )}
               </td>
