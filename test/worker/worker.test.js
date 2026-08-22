@@ -1,4 +1,4 @@
-import { cnSecurity } from '../../worker/worker.js'
+import { cnF10Upstream, cnSecurity } from '../../worker/worker.js'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import worker, { allowedYahooGetPath } from '../../worker/worker.js'
 
@@ -67,5 +67,19 @@ describe('cnSecurity — the East Money id for a Yahoo-shaped HK / mainland symb
     expect(cnSecurity('RY.TO')).toBeNull()
     expect(cnSecurity('12345678.SS')).toBeNull()
     expect(cnSecurity('')).toBeNull()
+  })
+})
+
+describe('cnF10Upstream — mainland statements, every parameter validated', () => {
+  it('builds the F10 statement URL for a valid query', () => {
+    expect(cnF10Upstream({ stmt: 'lrb', market: 'sh', code: '600036', ct: '3', reportType: '1', dates: '2025-12-31,2024-12-31' }))
+      .toBe('https://emweb.securities.eastmoney.com/PC_HSF10/NewFinanceAnalysis/lrbAjaxNew?companyType=3&reportDateType=0&reportType=1&dates=2025-12-31,2024-12-31&code=SH600036')
+  })
+  it('refuses unknown statements, Hong Kong codes, bad company types and junk dates', () => {
+    expect(cnF10Upstream({ stmt: 'secret', market: 'sh', code: '600036', ct: '1', dates: '2025-12-31' })).toBeNull()
+    expect(cnF10Upstream({ stmt: 'lrb', market: 'hk', code: '00700', ct: '1', dates: '2025-12-31' })).toBeNull()
+    expect(cnF10Upstream({ stmt: 'lrb', market: 'sh', code: '600036', ct: '9', dates: '2025-12-31' })).toBeNull()
+    expect(cnF10Upstream({ stmt: 'lrb', market: 'sh', code: '600036', ct: '1', dates: 'today' })).toBeNull()
+    expect(cnF10Upstream({ stmt: 'lrb', market: 'sh', code: '600036', ct: '1', dates: Array(9).fill('2025-12-31').join(',') })).toBeNull()
   })
 })

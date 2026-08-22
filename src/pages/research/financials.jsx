@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'preact/hooks'
 import { tl, t as tt } from '../../lib/i18n.js'
 import { fetchFinancials, statementRows } from '../../lib/financials.js'
+import { fetchCnFinancials } from '../../lib/cnFinancials.js'
+import { isCnListing } from '../../lib/cnData.js'
 import { fetchDividends as fetchDivHistory, fetchHistory, fetchSplits } from '../../lib/history.js'
 import { fetchFundamentals } from '../../lib/fundamentals.js'
 import { BUCKETS } from '../../lib/symbols.js'
@@ -156,7 +158,10 @@ export function FinancialsView({ symbol }) {
   const [err, setErr] = useState('')
   useEffect(() => {
     setFa(null); setErr('')
-    fetchFinancials(symbol).then(setFa).catch((e) => setErr(String(e.message || e)))
+    // Hong Kong / mainland names: the exchange-filed statements through the
+    // worker (Yahoo carries four annual points and one quarter for 0700.HK —
+    // not a table). Same period shape, same rows, same growth math.
+    ;(isCnListing(symbol) ? fetchCnFinancials(symbol) : fetchFinancials(symbol)).then(setFa).catch((e) => setErr(String(e.message || e)))
   }, [symbol])
   if (err) return <div class="px-1 font-mono text-[11px] text-down">{err}</div>
   if (fa === null) return <Loading label={tt('common.loading')} minH={320} />
