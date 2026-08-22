@@ -137,3 +137,29 @@ export function venueSplit(rows) {
     .sort((a, b) => b[1] - a[1])
     .map(([name, value]) => ({ name, value, pct: total > 0 ? (value / total) * 100 : null }))
 }
+
+/** Value by sector bucket, biggest first, plus how much of the INVESTED book
+ *  no bucket claims. `buckets` is passed in, not imported — this module
+ *  takes rows and nothing else. The buckets only know US large-caps, so a
+ *  Hong Kong / mainland book files ~85% of itself under Other; a card that
+ *  says that says nothing, and the page hides it on `unmappedShare`
+ *  (Gordon, 2026-08-22). */
+export function sectorSplit(rows, buckets) {
+  const by = new Map()
+  let unmapped = 0
+  let invested = 0
+  for (const r of priced(rows)) {
+    if (r.kind === 'cash') {
+      by.set('Cash', (by.get('Cash') || 0) + r.valueDisplay)
+      continue
+    }
+    const b = (buckets || []).find((x) => x.symbols.includes(r.symbol))
+    if (!b) unmapped += r.valueDisplay
+    invested += r.valueDisplay
+    const name = b ? b.name : 'Other'
+    by.set(name, (by.get(name) || 0) + r.valueDisplay)
+  }
+  const total = [...by.values()].reduce((a, b) => a + b, 0)
+  const entries = [...by.entries()].sort((a, b) => b[1] - a[1])
+  return { entries, total, unmappedShare: invested > 0 ? unmapped / invested : 0 }
+}

@@ -16,7 +16,7 @@ import { fixedSyncCapability } from '../lib/watchlistSync.js'
 import { useQuotes } from '../hooks.js'
 import { SymbolSuggest } from '../components/SymbolSuggest.jsx'
 import { sizeForWeight } from '../lib/demo.js'
-import { breadth, cashSplit, concentration, dayContribution, unrealizedStats, venueSplit } from '../lib/bookStats.js'
+import { breadth, cashSplit, concentration, dayContribution, unrealizedStats, venueSplit, sectorSplit } from '../lib/bookStats.js'
 import { BOOK_CARDS, hiddenCards, onCardsChange, resetCards, toggleCard } from '../lib/bookCards.js'
 import { BUCKETS } from '../lib/symbols.js'
 import { FlashPrice } from '../components/Fig.jsx'
@@ -531,7 +531,8 @@ function BookAnalysis({ portfolio, quotes, rates }) {
   if (priced.length < 2) return null
 
   const card = (id, title, body) => {
-    if (hidden.includes(id)) return null
+    // a card whose body is null has nothing to say for this book — same as hidden
+    if (hidden.includes(id) || body == null) return null
     return (
       <section key={id} class="rounded-xl border border-line bg-surface-1 px-3 py-2 min-w-0">
         <div class="pb-1 font-anth text-[9px] uppercase tracking-wider text-muted">{title}</div>
@@ -636,14 +637,11 @@ function BookAnalysis({ portfolio, quotes, rates }) {
       </div>
     ) : <span class="font-anth text-[10px] text-muted">{tl('Add an average cost to see open P&L.')}</span>),
     card('sectors', tl('Sectors'), (() => {
-      const bySector = new Map()
-      for (const r of priced) {
-        const b = r.kind === 'cash' ? null : BUCKETS.find((x) => x.symbols.includes(r.symbol))
-        const name = r.kind === 'cash' ? tl('Cash') : b ? b.name : tl('Other')
-        bySector.set(name, (bySector.get(name) || 0) + r.valueDisplay)
-      }
-      const totalV = [...bySector.values()].reduce((a, b) => a + b, 0)
-      const top = [...bySector.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5)
+      const { entries, total: totalV, unmappedShare } = sectorSplit(priced, BUCKETS)
+      // the buckets only know US large-caps: a book that mostly files under
+      // Other learns nothing from this card, so it steps aside for Markets
+      if (unmappedShare > 0.7) return null
+      const top = entries.slice(0, 5)
       const maxS = top[0]?.[1] || 1
       return (
         <div class="flex flex-col gap-1">
