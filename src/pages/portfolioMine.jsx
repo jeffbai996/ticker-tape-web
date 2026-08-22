@@ -16,6 +16,8 @@ import { fixedSyncCapability } from '../lib/watchlistSync.js'
 import { useQuotes } from '../hooks.js'
 import { SymbolSuggest } from '../components/SymbolSuggest.jsx'
 import { sizeForWeight } from '../lib/demo.js'
+import { breadth, cashSplit, concentration, dayContribution, unrealizedStats, venueSplit } from '../lib/bookStats.js'
+import { BOOK_CARDS, hiddenCards, onCardsChange, resetCards, toggleCard } from '../lib/bookCards.js'
 import { BUCKETS } from '../lib/symbols.js'
 import { FlashPrice } from '../components/Fig.jsx'
 import { fmtPrice, fmtPct, fmtPctPlain } from '../lib/format.js'
@@ -432,6 +434,12 @@ function Holdings({ portfolio, quotes, rates }) {
 function SummaryStrip({ portfolio, quotes, rates, ccys }) {
   const { total, rows } = portfolioValues(portfolio.holdings, quotes, rates, portfolio.ccy, portfolio.cash)
   const priced = rows.filter((r) => r.valueDisplay != null)
+  // The panel beside the headline number was three facts wide and mostly air
+  // (Jeff 2026-08-21). Same rows, read seven ways.
+  const br = breadth(rows)
+  const un = unrealizedStats(rows)
+  const cs = cashSplit(rows)
+  const topWeight = priced.reduce((m, r) => (r.weightPct != null && r.weightPct > m ? r.weightPct : m), 0) || null
   const chip = (v, pct) =>
     v == null ? null : (
       <span class={`font-anth text-[12px] font-semibold px-2 py-0.5 rounded-md border ${
@@ -458,15 +466,25 @@ function SummaryStrip({ portfolio, quotes, rates, ccys }) {
             )}
           </div>
         </div>
-        <div class="px-4 py-3 flex-[1.2] min-w-[260px] border-l border-line max-sm:border-l-0 max-sm:border-t flex flex-col justify-center">
-          <div class="grid grid-cols-[auto_auto_1fr] gap-x-4 gap-y-3">
+        <div class="px-4 py-3 flex-[1.6] min-w-[300px] border-l border-line max-sm:border-l-0 max-sm:border-t flex flex-col justify-center">
+          <div class="grid grid-cols-[repeat(auto-fit,minmax(88px,1fr))] gap-x-4 gap-y-3">
             {[
-              [tl('Holdings'), String(priced.filter((r) => r.kind !== 'cash').length)],
-              [tl('Currencies'), String(new Set(priced.map((r) => r.ccy)).size || '—')],
-            ].map(([label, value]) => (
+              [tl('Holdings'), String(priced.filter((r) => r.kind !== 'cash').length), null],
+              [tl('Breadth'), br.up + br.down + br.flat
+                ? `${br.up} ↑ / ${br.down} ↓` : '—', br.up === br.down ? null : br.up > br.down],
+              [tl('Cost basis'), un.costBasis != null ? fmtCcy(un.costBasis, portfolio.ccy) : '—', null],
+              [tl('Open P&L'), un.pct != null ? fmtPct(un.pct) : '—', un.pnl == null ? null : un.pnl >= 0],
+              // whole-book basis, matching the table's weight column exactly —
+              // the concentration card renormalises across positions and would
+              // otherwise print a different number for the same holding
+              [tl('Top weight'), topWeight != null ? fmtPctPlain(topWeight) : '—', null],
+              [tl('Cash'), cs.cashPct != null ? fmtPctPlain(cs.cashPct) : '—', null],
+              [tl('Currencies'), String(new Set(priced.map((r) => r.ccy)).size || '—'), null],
+            ].map(([label, value, good]) => (
               <div key={label} class="min-w-0">
                 <div class="font-anth text-[8.5px] uppercase tracking-wider text-muted pb-0.5">{label}</div>
-                <div class="truncate font-anth text-[13px] font-semibold text-ink" title={value}>{value}</div>
+                <div class={`truncate font-anth text-[13px] font-semibold ${
+                  good == null ? 'text-ink' : good ? 'text-up' : 'text-down'}`} title={value}>{value}</div>
               </div>
             ))}
             <div class="min-w-0">
@@ -489,88 +507,231 @@ function SummaryStrip({ portfolio, quotes, rates, ccys }) {
 }
 
 /** At-a-glance analysis for a hand-built book (Jeff 2026-08-20: the landing
- *  must still read like an overview, not a bare table). Everything derives
- *  from the same valued rows the table shows — no extra fetch. */
+ *  must still read like an overview, not a bare table; 2026-08-21: "add more
+ *  analytics ... if we add a ton then add a way for user to hide em").
+ *
+ *  Nine cards is more than one screen wants, so every card is individually
+ *  hideable and the hidden set persists. All of it derives from the same
+ *  valued rows the table shows — no extra fetch, and no card that can
+ *  disagree with the total above it. */
 function BookAnalysis({ portfolio, quotes, rates }) {
+  const [hidden, setHidden] = useState(hiddenCards)
+  const [editing, setEditing] = useState(false)
+  useEffect(() => onCardsChange((next) => setHidden([...next])), [])
   const { rows } = portfolioValues(portfolio.holdings, quotes, rates, portfolio.ccy, portfolio.cash)
   const priced = rows.filter((r) => r.valueDisplay != null)
+  const ccy = portfolio.ccy
   if (priced.length < 2) return null
-  const card = (title, body) => (
-    <section class="rounded-xl border border-line bg-surface-1 px-3 py-2 min-w-0">
-      <div class="pb-1 font-anth text-[9px] uppercase tracking-wider text-muted">{title}</div>
-      {body}
-    </section>
+
+  const card = (id, title, body) => {
+    if (hidden.includes(id)) return null
+    return (
+      <section key={id} class="rounded-xl border border-line bg-surface-1 px-3 py-2 min-w-0">
+        <div class="pb-1 font-anth text-[9px] uppercase tracking-wider text-muted">{title}</div>
+        {body}
+      </section>
+    )
+  }
+  // one shared bar row so nine cards do not drift into nine bar styles
+  const bar = (key, label, width, value, cls = 'bg-accent/50', labelCls = 'text-ink-2') => (
+    <div key={key} class="flex items-center gap-2 font-mono text-[10px]">
+      <span class={`w-16 shrink-0 truncate font-bold ${labelCls}`}>{label}</span>
+      <span class={`h-2 rounded-sm ${cls}`} style={{ width: `${Math.max(0, Math.min(100, width))}%`, minWidth: '2px' }} />
+      <span class="ml-auto text-muted">{value}</span>
+    </div>
   )
+  const stat = (label, value, cls = 'text-ink') => (
+    <div key={label} class="flex items-baseline justify-between gap-2">
+      <span class="font-anth text-[10px] text-muted">{label}</span>
+      <span class={`font-mono text-[11.5px] font-semibold ${cls}`}>{value}</span>
+    </div>
+  )
+
   const movers = priced.filter((r) => r.dayPnlDisplay != null)
     .sort((a, b) => Math.abs(b.dayPnlDisplay) - Math.abs(a.dayPnlDisplay)).slice(0, 4)
   const byWeight = [...priced].sort((a, b) => b.weightPct - a.weightPct).slice(0, 6)
   const maxW = byWeight[0]?.weightPct || 1
+  const con = concentration(rows)
+  const br = breadth(rows)
+  const un = unrealizedStats(rows)
+  const contrib = dayContribution(rows).slice(0, 5)
+  const cs = cashSplit(rows)
   const mix = new Map()
   for (const r of priced) mix.set(r.ccy, (mix.get(r.ccy) || 0) + r.valueDisplay)
   const mixTotal = [...mix.values()].reduce((a, b) => a + b, 0)
   const MIX_CLS = { USD: 'bg-accent/70', CAD: 'bg-up/60', HKD: 'bg-down/60', CNY: 'bg-ink-2/60' }
-  return (
-    <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-      {card(tl('Day movers'), (
-        <div class="flex flex-col gap-0.5 font-mono text-[11px]">
-          {movers.map((r) => (
-            <div key={r.symbol} class="flex items-baseline justify-between gap-2">
-              <span class="font-bold text-accent">{r.symbol}</span>
-              <span class={pnlCls(r.dayPnlDisplay)}>
-                {signed(r.dayPnlDisplay, portfolio.ccy)}
-                <span class="text-[10px] font-normal"> ({fmtPct(r.dayPct)})</span>
-              </span>
-            </div>
-          ))}
+
+  const cards = [
+    card('movers', tl('Day movers'), (
+      <div class="flex flex-col gap-0.5 font-mono text-[11px]">
+        {movers.map((r) => (
+          <div key={r.symbol} class="flex items-baseline justify-between gap-2">
+            <span class="font-bold text-accent">{r.symbol}</span>
+            <span class={pnlCls(r.dayPnlDisplay)}>
+              {signed(r.dayPnlDisplay, ccy)}
+              <span class="text-[10px] font-normal"> ({fmtPct(r.dayPct)})</span>
+            </span>
+          </div>
+        ))}
+      </div>
+    )),
+    // Movers ranks by size of move; this ranks by share of the day's total
+    // move, which is the question "what actually moved my book today".
+    card('contribution', tl('Day contribution'), contrib.length ? (
+      <div class="flex flex-col gap-1">
+        {contrib.map((r) => bar(r.symbol, r.symbol, r.sharePct ?? 0,
+          signed(r.pnl, ccy), r.pnl >= 0 ? 'bg-up/55' : 'bg-down/55',
+          r.pnl >= 0 ? 'text-up' : 'text-down'))}
+      </div>
+    ) : <span class="font-anth text-[10px] text-muted">—</span>),
+    card('breadth', tl('Breadth'), (
+      <div class="flex flex-col gap-1">
+        <div class="flex h-2.5 w-full overflow-hidden rounded-sm bg-surface-3">
+          <span class="bg-up/70" style={{ width: `${(br.up / Math.max(1, br.up + br.down + br.flat)) * 100}%` }} />
+          <span class="bg-ink-2/40" style={{ width: `${(br.flat / Math.max(1, br.up + br.down + br.flat)) * 100}%` }} />
+          <span class="bg-down/70" style={{ width: `${(br.down / Math.max(1, br.up + br.down + br.flat)) * 100}%` }} />
         </div>
-      ))}
-      {card(tl('Weights'), (
+        {stat(tl('Advancing'), `${br.up} / ${br.up + br.down + br.flat}`, 'text-up')}
+        {br.best && stat(tl('Best'), `${br.best.symbol} ${fmtPct(br.best.dayPct)}`, 'text-up')}
+        {br.worst && stat(tl('Worst'), `${br.worst.symbol} ${fmtPct(br.worst.dayPct)}`, 'text-down')}
+      </div>
+    )),
+    card('weights', tl('Weights'), (
+      <div class="flex flex-col gap-1">
+        {byWeight.map((r) => bar(r.symbol, r.symbol, (r.weightPct / maxW) * 100, fmtPctPlain(r.weightPct)))}
+      </div>
+    )),
+    // effective N: the number of equal positions that would concentrate the
+    // same way. A 20-name book with one 40% position is not a 20-name book.
+    card('concentration', tl('Concentration'), con.top1 == null ? null : (
+      <div class="flex flex-col gap-1">
+        {stat(tl('Largest'), fmtPctPlain(con.top1))}
+        {stat(tl('Top 3'), fmtPctPlain(con.top3))}
+        {stat(tl('Top 5'), fmtPctPlain(con.top5))}
+        {stat(tl('Effective names'), `${con.effectiveN.toFixed(1)} / ${con.count}`,
+          con.effectiveN < con.count / 2 ? 'text-accent' : 'text-ink')}
+        {cs.cash !== 0 && (
+          <div class="pt-0.5 font-anth text-[9px] text-muted">{tl('share of positions, cash excluded')}</div>
+        )}
+      </div>
+    )),
+    card('unrealized', tl('Open P&L'), un.covered ? (
+      <div class="flex flex-col gap-1">
+        {stat(tl('Cost basis'), fmtCcy(un.costBasis, ccy))}
+        {stat(tl('Open'), `${signed(un.pnl, ccy)}${un.pct != null ? ` (${fmtPct(un.pct)})` : ''}`, pnlCls(un.pnl))}
+        {un.best && stat(tl('Best'), `${un.best.symbol} ${fmtPct(un.best.unrealPct)}`, 'text-up')}
+        {un.worst && stat(tl('Worst'), `${un.worst.symbol} ${fmtPct(un.worst.unrealPct)}`, 'text-down')}
+        {un.covered < priced.filter((r) => r.kind !== 'cash').length && (
+          <div class="pt-0.5 font-anth text-[9px] text-muted">
+            {tl('{n} positions carry a cost basis').replace('{n}', un.covered)}
+          </div>
+        )}
+      </div>
+    ) : <span class="font-anth text-[10px] text-muted">{tl('Add an average cost to see open P&L.')}</span>),
+    card('sectors', tl('Sectors'), (() => {
+      const bySector = new Map()
+      for (const r of priced) {
+        const b = r.kind === 'cash' ? null : BUCKETS.find((x) => x.symbols.includes(r.symbol))
+        const name = r.kind === 'cash' ? tl('Cash') : b ? b.name : tl('Other')
+        bySector.set(name, (bySector.get(name) || 0) + r.valueDisplay)
+      }
+      const totalV = [...bySector.values()].reduce((a, b) => a + b, 0)
+      const top = [...bySector.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5)
+      const maxS = top[0]?.[1] || 1
+      return (
         <div class="flex flex-col gap-1">
-          {byWeight.map((r) => (
-            <div key={r.symbol} class="flex items-center gap-2 font-mono text-[10px]">
-              <span class="w-16 shrink-0 font-bold text-ink-2">{r.symbol}</span>
-              <span class="h-2 rounded-sm bg-accent/50" style={{ width: `${(r.weightPct / maxW) * 100}%`, minWidth: '2px' }} />
-              <span class="ml-auto text-muted">{fmtPctPlain(r.weightPct)}</span>
+          {top.map(([name, v]) => (
+            <div key={name} class="flex items-center gap-2 font-mono text-[10px]">
+              <span class="w-20 shrink-0 truncate font-anth text-ink-2">{tl(name)}</span>
+              <span class="h-2 rounded-sm bg-accent-2/50" style={{ width: `${(v / maxS) * 100}%`, minWidth: '2px' }} />
+              <span class="ml-auto text-muted">{fmtPctPlain((v / totalV) * 100)}</span>
             </div>
           ))}
         </div>
-      ))}
-      {card(tl('Sectors'), (() => {
-        const bySector = new Map()
-        for (const r of priced) {
-          const b = r.kind === 'cash' ? null : BUCKETS.find((x) => x.symbols.includes(r.symbol))
-          const name = r.kind === 'cash' ? tl('Cash') : b ? b.name : tl('Other')
-          bySector.set(name, (bySector.get(name) || 0) + r.valueDisplay)
-        }
-        const totalV = [...bySector.values()].reduce((a, b) => a + b, 0)
-        const top = [...bySector.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5)
-        const maxS = top[0]?.[1] || 1
-        return (
-          <div class="flex flex-col gap-1">
-            {top.map(([name, v]) => (
-              <div key={name} class="flex items-center gap-2 font-mono text-[10px]">
-                <span class="w-20 shrink-0 truncate font-anth text-ink-2">{tl(name)}</span>
-                <span class="h-2 rounded-sm bg-accent-2/50" style={{ width: `${(v / maxS) * 100}%`, minWidth: '2px' }} />
-                <span class="ml-auto text-muted">{fmtPctPlain((v / totalV) * 100)}</span>
-              </div>
-            ))}
-          </div>
-        )
-      })())}
-      {card(tl('Currency mix'), (
-        <div class="flex flex-col gap-1.5">
-          <div class="flex h-2.5 w-full overflow-hidden rounded-sm">
-            {[...mix.entries()].map(([ccy, v]) => (
-              <span key={ccy} class={MIX_CLS[ccy] || 'bg-ink-2/40'} style={{ width: `${(v / mixTotal) * 100}%` }} />
-            ))}
-          </div>
-          <div class="flex flex-wrap gap-x-3 gap-y-0.5 font-mono text-[10px] text-muted">
-            {[...mix.entries()].sort((a, b) => b[1] - a[1]).map(([ccy, v]) => (
-              <span key={ccy}><span class={`mr-1 inline-block h-2 w-2 rounded-sm align-middle ${MIX_CLS[ccy] || 'bg-ink-2/40'}`} />{ccy} {fmtPctPlain((v / mixTotal) * 100)}</span>
-            ))}
-          </div>
+      )
+    })()),
+    // The sector buckets only know US large-caps, so a Hong Kong / mainland
+    // book files itself under "Other" and learns nothing. Where the names are
+    // listed is the split that book really has.
+    card('venues', tl('Markets'), (() => {
+      const venues = venueSplit(rows).slice(0, 6)
+      const maxV = venues[0]?.value || 1
+      return (
+        <div class="flex flex-col gap-1">
+          {venues.map((v) => (
+            <div key={v.name} class="flex items-center gap-2 font-mono text-[10px]">
+              <span class="w-20 shrink-0 truncate font-anth text-ink-2">{tl(v.name)}</span>
+              <span class="h-2 rounded-sm bg-accent/45" style={{ width: `${(v.value / maxV) * 100}%`, minWidth: '2px' }} />
+              <span class="ml-auto text-muted">{fmtPctPlain(v.pct)}</span>
+            </div>
+          ))}
         </div>
-      ))}
+      )
+    })()),
+    card('currency', tl('Currency mix'), (
+      <div class="flex flex-col gap-1.5">
+        <div class="flex h-2.5 w-full overflow-hidden rounded-sm">
+          {[...mix.entries()].map(([c, v]) => (
+            <span key={c} class={MIX_CLS[c] || 'bg-ink-2/40'} style={{ width: `${(v / mixTotal) * 100}%` }} />
+          ))}
+        </div>
+        <div class="flex flex-wrap gap-x-3 gap-y-0.5 font-mono text-[10px] text-muted">
+          {[...mix.entries()].sort((a, b) => b[1] - a[1]).map(([c, v]) => (
+            <span key={c}><span class={`mr-1 inline-block h-2 w-2 rounded-sm align-middle ${MIX_CLS[c] || 'bg-ink-2/40'}`} />{c} {fmtPctPlain((v / mixTotal) * 100)}</span>
+          ))}
+        </div>
+      </div>
+    )),
+    card('cash', tl('Cash & deployment'), (
+      <div class="flex flex-col gap-1">
+        <div class="flex h-2.5 w-full overflow-hidden rounded-sm bg-surface-3">
+          <span class="bg-accent/60" style={{ width: `${cs.total > 0 ? (cs.invested / cs.total) * 100 : 0}%` }} />
+        </div>
+        {stat(tl('Invested'), fmtCcy(cs.invested, ccy))}
+        {stat(tl('Cash'), fmtCcy(cs.cash, ccy), cs.cash < 0 ? 'text-down' : 'text-ink')}
+        {stat(tl('Cash weight'), cs.cashPct != null ? fmtPctPlain(cs.cashPct) : '—')}
+      </div>
+    )),
+  ].filter(Boolean)
+
+  return (
+    <div class="flex flex-col gap-2">
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="font-anth text-[9px] uppercase tracking-[.14em] text-muted">{tl('Analytics')}</span>
+        <button type="button" onClick={() => setEditing((v) => !v)}
+          aria-expanded={editing}
+          class="rounded-md border border-line-2 px-2 py-0.5 font-anth text-[10px] text-muted transition-colors hover:border-accent/40 hover:text-accent">
+          {tl(editing ? 'done' : 'choose cards')}
+        </button>
+        {hidden.length > 0 && !editing && (
+          <span class="font-anth text-[9.5px] text-muted">
+            {tl('{n} hidden').replace('{n}', hidden.length)}
+          </span>
+        )}
+      </div>
+      {editing && (
+        <div class="flex flex-wrap items-center gap-1.5 rounded-xl border border-line bg-surface-1 px-3 py-2">
+          {BOOK_CARDS.map((c) => {
+            const on = !hidden.includes(c.id)
+            return (
+              <button key={c.id} type="button" role="switch" aria-checked={on}
+                onClick={() => toggleCard(c.id)}
+                class={`rounded-md border px-2 py-1 font-anth text-[10.5px] transition-colors ${
+                  on ? 'border-accent/45 bg-accent/10 text-accent'
+                    : 'border-line-2 text-muted hover:border-line hover:text-ink-2'}`}>
+                {on ? '✓ ' : ''}{tl(c.label)}
+              </button>
+            )
+          })}
+          <button type="button" onClick={resetCards}
+            class="ml-auto rounded-md px-2 py-1 font-anth text-[10px] text-muted transition-colors hover:text-accent">
+            {tl('show all')}
+          </button>
+        </div>
+      )}
+      {cards.length > 0 && (
+        <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{cards}</div>
+      )}
     </div>
   )
 }
