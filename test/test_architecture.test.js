@@ -38,6 +38,7 @@ const SOURCE_CONTRACT_ALLOWLIST = new Set([
   'lib/options_ladder.test.js',
   'lib/portfolio_accounts.test.js',
   'lib/public_parity.test.js',
+  'lib/pwa.test.js',
   'lib/quoteColumns.test.js',
   'lib/research_header.test.js',
   'lib/research_split.test.js',
