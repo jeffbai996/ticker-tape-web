@@ -1,9 +1,28 @@
+import { readFileSync, writeFileSync, existsSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { defineConfig } from 'vite'
 import preact from '@preact/preset-vite'
 import tailwindcss from '@tailwindcss/vite'
 
+// Stamp the service worker with a build id so each deploy gets its own cache
+// and activates over the last one. public/sw.js ships the placeholder; the
+// built copy carries the id. No plugin dependency for one string replace.
+function swBuildId() {
+  let outDir = 'dist'
+  return {
+    name: 'ttw-sw-build-id',
+    configResolved(cfg) { outDir = cfg.build.outDir },
+    closeBundle() {
+      const file = resolve(outDir, 'sw.js')
+      if (!existsSync(file)) return
+      const id = `${Date.now().toString(36)}`
+      writeFileSync(file, readFileSync(file, 'utf8').replace('__BUILD__', id))
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [preact(), tailwindcss()],
+  plugins: [preact(), tailwindcss(), swBuildId()],
   base: '/ticker-tape-web/',
   build: {
     outDir: 'dist',
