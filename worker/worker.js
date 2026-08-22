@@ -299,7 +299,14 @@ function jsonResp(data, status = 200) {
 // ── /cn/* — East Money pass-through for Chinese names, news, profiles ──
 
 const CN_UA = 'Mozilla/5.0';
-const CN_TTL = { news: 600, profile: 86400, industry: 86400 };
+const CN_TTL = { news: 600, profile: 86400, industry: 86400, report: 21600 };
+// East Money datacenter reports the app may ask for, by code — corporate
+// actions only (dividends, results dates). Anything else is a 404.
+const CN_REPORTS = {
+    a_dividends: { name: 'RPT_SHAREBONUS_DET', sort: 'EX_DIVIDEND_DATE', code: (sec) => sec.code },
+    a_results: { name: 'RPT_PUBLIC_BS_APPOIN', sort: 'REPORT_DATE', code: (sec) => sec.code },
+    hk_dividends: { name: 'RPT_HKF10_INFO_DIVIDEND', sort: 'NOTICE_DATE', code: (sec) => sec.code },
+};
 
 /** "0700.HK" → {market:'hk', code:'00700'}; "600036.SS" → {market:'sh', code}; "000630.SZ" → sz. */
 export function cnSecurity(symbol) {
@@ -331,7 +338,14 @@ async function handleCn(path, url) {
     } else {
         const sec = cnSecurity(url.searchParams.get('symbol'));
         if (!sec) return jsonResp({ error: 'bad symbol' }, 400);
-        if (kind === 'industry' && sec.market === 'hk') {
+        if (kind === 'report') {
+            const rep = CN_REPORTS[url.searchParams.get('report') || ''];
+            if (!rep) return jsonResp({ error: 'bad report' }, 400);
+            const n = Math.min(12, Math.max(1, Number(url.searchParams.get('n')) || 8));
+            upstream = 'https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=' + rep.name
+                + '&columns=ALL&filter=' + encodeURIComponent(`(SECURITY_CODE="${rep.code(sec)}")`)
+                + '&sortColumns=' + rep.sort + '&sortTypes=-1&pageSize=' + n + '&source=WEB&client=WEB';
+        } else if (kind === 'industry' && sec.market === 'hk') {
             // push2 rate-limits bursts to a 302 block page; the client paces
             // these, and a failure is never cached so the next pass retries
             upstream = `https://push2.eastmoney.com/api/qt/stock/get?secid=116.${sec.code}&fields=f57,f58,f127`;
