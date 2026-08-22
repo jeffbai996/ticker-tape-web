@@ -932,6 +932,11 @@ const LABELS = {
   'Pick the listing from the list — a plain board code like 02628 is not a symbol anywhere.':
     '请从列表中选择上市代码 — 像 02628 这样的纯板块代码在任何交易所都不是有效代码。',
   'Add cash account': '添加现金账户', 'Cash amount': '现金金额',
+  'US Dollar Cash': '美元现金', 'Canadian Dollar Cash': '加元现金',
+  'Hong Kong Dollar Cash': '港元现金', 'Chinese Yuan Cash': '人民币现金',
+  'Portfolio tools': '组合工具',
+  'Sure?': '确认？', 'Tap again to remove': '再点一次删除',
+  'What a target weight works out to in shares, at the live price.': '按实时价格，目标权重对应多少股。',
   'Every supported currency already has an account.': '所有支持的币种都已有账户。',
   'One account per currency. Cash counts toward value and weights, never toward day P&L.':
     '每种币种一个账户。现金计入市值与权重，不计入当日盈亏。',
