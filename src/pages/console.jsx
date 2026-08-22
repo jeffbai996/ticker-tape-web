@@ -91,15 +91,23 @@ export function ConsolePage() {
       )}
       {/* input pinned above the chin nav (BottomNav is fixed bottom-0, ~48px) */}
       <form onSubmit={run}
-        class="sticky bottom-0 flex items-center gap-2 px-3 h-12 bg-surface-1 border-t border-line font-mono">
-        <span class="text-accent font-bold shrink-0 text-[13px]">ticker&gt;</span>
-        <input ref={inputRef} value={value}
-          onInput={(e) => setValue(e.currentTarget.value)}
-          onKeyDown={onKey}
-          placeholder={tl('command or symbol… h = help')}
-          autocapitalize="off" autocorrect="off" spellcheck={false} enterkeyhint="go"
-          class="flex-1 min-w-0 bg-transparent outline-none text-ink placeholder:text-muted text-[16px]" />
-        <button type="submit" class="shrink-0 px-3 h-8 rounded border border-line text-ink-2 text-[12px] active:border-accent">↵</button>
+        class="sticky bottom-0 flex items-center gap-2 px-3 h-10 bg-surface-1 border-t border-line font-mono">
+        <span class="text-accent font-bold shrink-0 text-[12px]">ticker&gt;</span>
+        {/* iOS zooms the page on focus of any input under 16px and never
+            zooms back. The input stays 16px for the engine and is scaled to
+            12px for the eye; the wrapper clips the 133% width that keeps the
+            scaled box flush with the ↵ button (Jeff 2026-08-22: "you also
+            didn't fix the composer") */}
+        <div class="flex-1 min-w-0 overflow-hidden h-full flex items-center">
+          <input ref={inputRef} value={value}
+            onInput={(e) => setValue(e.currentTarget.value)}
+            onKeyDown={onKey}
+            placeholder={tl('command or symbol… h = help')}
+            autocapitalize="off" autocorrect="off" spellcheck={false} enterkeyhint="go"
+            style={{ width: '133.34%' }}
+            class="shrink-0 origin-left scale-75 bg-transparent outline-none text-ink placeholder:text-muted text-[16px]" />
+        </div>
+        <button type="submit" class="shrink-0 px-2.5 h-7 rounded border border-line text-ink-2 text-[11px] active:border-accent">↵</button>
       </form>
     </div>
   )

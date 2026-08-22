@@ -16,9 +16,11 @@ const ACC = '#ffc800'
 const row = (cmd, desc) => `[bold ${INF}]${cmd.padEnd(18)}[/][${DIM}]${desc}[/]`
 const row2 = (c1, d1, c2, d2) => `${row(c1, d1.padEnd(24))}${row(c2, d2)}`
 const section = (title) => `[bold ${ACC}]═══ ${title} ═══[/]`
-// the phone page re-lays the same table one pair per line — padded 80-char
-// rows wrap into soup inside a 360px pre (Jeff 2026-08-21)
-const nrow = (cmd, desc) => `[bold ${INF}]${cmd}[/]\n  [${DIM}]${desc}[/]`
+// the phone page keeps the CLI's two columns — command | description — but
+// one pair per line: the 80-char two-pair rows wrap into soup inside a 360px
+// pre (Jeff 2026-08-22: "in ticker tape cli these are arranged in two
+// columns, have it that way here too")
+const nrow = (cmd, desc) => `[bold ${INF}]${cmd.padEnd(19)}[/][${DIM}]${desc}[/]`
 // One source of truth for the command sheet; the wide pane pairs entries
 // two-up, the phone lists them one per line. `full: true` = a description
 // too long to share a line even on the wide pane.
