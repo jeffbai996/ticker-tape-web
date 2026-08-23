@@ -595,7 +595,9 @@ function SummaryStrip({ portfolio, quotes, rates, ccys, fxLive, bench }) {
           <div>
             <div class="font-anth text-[9px] uppercase tracking-[.14em] text-muted">{tl('Value')} ({portfolio.ccy})</div>
             <div class="font-anth text-[30px] leading-tight font-semibold tracking-tight text-ink tabular-nums">{money(total.value, portfolio.ccy)}</div>
-            <div class="flex flex-wrap items-center gap-x-2 gap-y-1 pt-1.5">
+            {/* one row always (Jeff 2026-08-23) — overflow scrolls rather
+                than wrapping the percent away from its number */}
+            <div class="flex items-center gap-2 pt-1.5 overflow-x-auto no-scrollbar">
               {chip(total.dayPnl, total.dayPct)}
               {sinceLast != null && (
                 <span class="font-anth text-[10.5px] text-muted whitespace-nowrap" title={prevMark.d}>{tl('since last')}{' '}

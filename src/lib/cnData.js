@@ -57,6 +57,10 @@ export function parseCnProfile(data) {
  *  push2 stock/get (HK: f127 "软件服务") or the mainland company survey
  *  (EM2016 "金融-银行-股份制与城商行" → the middle tier, "银行"). */
 export function parseCnIndustry(data) {
+  // HK: 所属行业 from the F10 profile; f127 kept for anything cached from
+  // the retired push2 shape
+  const sshy = String(data?.gszl?.sshy || '').trim()
+  if (sshy) return sshy
   const f127 = String(data?.data?.f127 || '').trim()
   if (f127) return f127
   const j = Array.isArray(data?.jbzl) ? data.jbzl[0] : null
