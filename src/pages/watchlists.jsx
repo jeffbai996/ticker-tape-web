@@ -130,7 +130,7 @@ function WatchlistCard({ item, quotes, earnDays, allLists, primary = false }) {
   const [managing, setManaging] = useState(false)
   const [, tapeBump] = useState(0)
   const onTape = isTapeList(item.id)
-  const ctl = 'inline-flex h-8 items-center rounded-md border px-3 text-[11px] whitespace-nowrap transition-colors'
+  const ctl = 'inline-flex h-8 items-center rounded-md border px-3 max-sm:px-2 text-[11px] whitespace-nowrap transition-colors'
   const ctlOff = `${ctl} border-line-2 bg-surface-2 text-ink-2 hover:border-line hover:text-ink`
   const ctlOn = `${ctl} border-accent/50 bg-accent/10 text-accent`
   const [exportState, setExportState] = useState('idle')
@@ -236,6 +236,16 @@ function WatchlistCard({ item, quotes, earnDays, allLists, primary = false }) {
             <span class="text-[10px] text-muted">{tl(item.symbols.length === 1 ? 'ticker' : 'tickers')}</span>
           </div>
         </div>
+        {!primary && (
+          <label class="flex shrink-0 items-center gap-2 pt-1 font-anth text-[10px] text-muted" onClick={(e) => e.stopPropagation()}>
+            {tl('ticker tape')}
+            <button type="button" role="switch" aria-checked={onTape}
+              onClick={(e) => { e.stopPropagation(); toggleTapeList(item.id); tapeBump((n) => n + 1) }}
+              class={`relative h-5 w-9 shrink-0 rounded-full border transition-colors ${onTape ? 'border-accent/60 bg-accent' : 'border-line-2 bg-surface-3'}`}>
+              <span class={`absolute top-0.5 h-[14px] w-[14px] rounded-full bg-black/80 transition-[left] ${onTape ? 'left-[18px]' : 'left-0.5'}`} />
+            </button>
+          </label>
+        )}
       </div>
 
       <ListSummary symbols={item.symbols} quotes={quotes} earnDays={earnDays} />
@@ -255,7 +265,7 @@ function WatchlistCard({ item, quotes, earnDays, allLists, primary = false }) {
 
       {/* every control is a bordered button of one height — the bare text
           row read as labels, not things to tap (Jeff 2026-08-22) */}
-      <div class="flex flex-wrap items-center gap-2 border-t border-line pt-2.5 font-anth text-[11px] font-semibold">
+      <div class="flex items-center gap-1.5 border-t border-line pt-2.5 font-anth text-[11px] font-semibold">
         <a href={href} data-watchlist-open
           class={`${ctl} border-accent/60 bg-accent-soft text-accent hover:bg-accent hover:text-black hover:no-underline`}>
           <span class="max-sm:hidden">{tl('Open dashboard →')}</span>
@@ -269,12 +279,6 @@ function WatchlistCard({ item, quotes, earnDays, allLists, primary = false }) {
           <span class="max-sm:hidden">{isDefault ? `★ ${tl('default')}` : `☆ ${tl('set default')}`}</span>
           <span class="sm:hidden" aria-hidden="true">{isDefault ? '★' : '☆'}</span>
         </button>
-        {!primary && (
-          <button onClick={() => { toggleTapeList(item.id); tapeBump((n) => n + 1) }}
-            role="switch" aria-checked={onTape} class={onTape ? ctlOn : ctlOff}>
-            {onTape ? '▶ ' : '▷ '}{tl('ticker tape')}
-          </button>
-        )}
         <button onClick={exportSymbols} disabled={exportState === 'syncing'} class={`${ctlOff} disabled:opacity-50`}>
           {exportState === 'syncing' ? '…'
             : exportState === 'done' ? tl('exported ✓')
