@@ -535,12 +535,12 @@ function MiniLine({ marks, ccy }) {
 function Sparkline({ marks }) {
   const pts = marks.slice(-60).map((m) => m.v).filter((v) => Number.isFinite(v))
   if (pts.length < 2) return null
-  const W = 120; const H = 44
+  const W = 120; const H = 30
   const lo = Math.min(...pts); const hi = Math.max(...pts); const span = hi - lo || 1
   const d = pts.map((v, i) => `${i ? 'L' : 'M'}${((i / (pts.length - 1)) * W).toFixed(1)},${(H - 2 - ((v - lo) / span) * (H - 4)).toFixed(1)}`).join(' ')
   const up = pts[pts.length - 1] >= pts[0]
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" class="shrink-0 w-[120px] h-[44px] max-sm:hidden" role="img">
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" class="w-full h-[30px] max-sm:hidden" role="img">
       <path d={d} fill="none" stroke={up ? 'var(--color-up)' : 'var(--color-down)'} stroke-width="1.6" vector-effect="non-scaling-stroke" />
     </svg>
   )
@@ -557,7 +557,7 @@ function SummaryStrip({ portfolio, quotes, rates, ccys, fxLive, bench }) {
   const topWeight = priced.reduce((m, r) => (r.weightPct != null && r.weightPct > m ? r.weightPct : m), 0) || null
   const chip = (v, pct) =>
     v == null ? null : (
-      <span class={`font-anth text-[12px] font-semibold px-2 py-0.5 rounded-md border ${
+      <span class={`font-anth text-[12px] font-semibold px-2 py-0.5 rounded-md border whitespace-nowrap ${
         v >= 0 ? 'text-up border-up/30 bg-up/10' : 'text-down border-down/30 bg-down/10'}`}>
         {signed(v, portfolio.ccy)}{pct != null && <span class="text-[10px] font-normal"> ({fmtPct(pct)})</span>}
       </span>
@@ -588,18 +588,20 @@ function SummaryStrip({ portfolio, quotes, rates, ccys, fxLive, bench }) {
     <section class="book-hero border border-line rounded-xl overflow-hidden bg-surface-1">
       <div class="flex flex-wrap items-stretch">
         <div class="px-4 py-3 flex-1 min-w-[240px] flex flex-col justify-between gap-3">
-          <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0">
-              <div class="font-anth text-[9px] uppercase tracking-[.14em] text-muted">{tl('Value')} ({portfolio.ccy})</div>
-              <div class="font-anth text-[30px] leading-tight font-semibold tracking-tight text-ink tabular-nums">{money(total.value, portfolio.ccy)}</div>
-              <div class="flex items-center gap-2 pt-1.5">
-                {chip(total.dayPnl, total.dayPct)}
-                {sinceLast != null && (
-                  <span class="font-anth text-[10.5px] text-muted" title={prevMark.d}>{tl('since last')}{' '}
-                    <span class={`font-semibold ${pnlCls(sinceLast)}`}>{signed(sinceLast, portfolio.ccy)}
-                      {prevMark.v > 0 && <span class="font-normal"> ({fmtPct((sinceLast / prevMark.v) * 100)})</span>}</span></span>
-                )}
-              </div>
+          {/* the trend line lives under the number, full width — beside it,
+              an eight-digit book at 30px walked straight through the svg
+              (Jeff 2026-08-23). Each chip is atomic: wrap between facts,
+              never inside one. */}
+          <div>
+            <div class="font-anth text-[9px] uppercase tracking-[.14em] text-muted">{tl('Value')} ({portfolio.ccy})</div>
+            <div class="font-anth text-[30px] leading-tight font-semibold tracking-tight text-ink tabular-nums">{money(total.value, portfolio.ccy)}</div>
+            <div class="flex flex-wrap items-center gap-x-2 gap-y-1 pt-1.5">
+              {chip(total.dayPnl, total.dayPct)}
+              {sinceLast != null && (
+                <span class="font-anth text-[10.5px] text-muted whitespace-nowrap" title={prevMark.d}>{tl('since last')}{' '}
+                  <span class={`font-semibold ${pnlCls(sinceLast)}`}>{signed(sinceLast, portfolio.ccy)}
+                    {prevMark.v > 0 && <span class="font-normal"> ({fmtPct((sinceLast / prevMark.v) * 100)})</span>}</span></span>
+              )}
             </div>
             <Sparkline marks={marks} />
           </div>
