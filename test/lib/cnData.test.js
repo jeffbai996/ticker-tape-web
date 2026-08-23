@@ -52,7 +52,8 @@ describe('parseCnProfile', () => {
 })
 
 describe('parseCnIndustry', () => {
-  it('lifts f127 for Hong Kong and the middle EM2016 tier for the mainland', () => {
+  it('lifts the HK profile industry and the middle EM2016 tier for the mainland', () => {
+    expect(parseCnIndustry({ gszl: { sshy: '软件服务' } })).toBe('软件服务')
     expect(parseCnIndustry({ data: { f57: '00700', f127: '软件服务' } })).toBe('软件服务')
     expect(parseCnIndustry({ jbzl: [{ EM2016: '金融-银行-股份制与城商行' }] })).toBe('银行')
     expect(parseCnIndustry({ jbzl: [{ EM2016: '有色金属' }] })).toBe('有色金属')

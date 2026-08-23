@@ -428,9 +428,10 @@ async function handleCn(path, url) {
                 + '&columns=ALL&filter=' + encodeURIComponent(`(SECURITY_CODE="${rep.code(sec)}")`)
                 + '&sortColumns=' + rep.sort + '&sortTypes=-1&pageSize=' + n + '&source=WEB&client=WEB';
         } else if (kind === 'industry' && sec.market === 'hk') {
-            // push2 rate-limits bursts to a 302 block page; the client paces
-            // these, and a failure is never cached so the next pass retries
-            upstream = `https://push2.eastmoney.com/api/qt/stock/get?secid=116.${sec.code}&fields=f57,f58,f127`;
+            // the F10 profile carries 所属行业 (gszl.sshy) and its host is
+            // reliable from Cloudflare; push2 (f127) started 502ing every
+            // request on 2026-08-23 and was dropped
+            upstream = `https://emweb.securities.eastmoney.com/PC_HKF10/CompanyProfile/PageAjax?code=${sec.code}`;
         } else if (kind === 'industry') {
             // mainland: the company survey carries the industry (EM2016) and
             // the F10 host does not throttle the way push2 does
