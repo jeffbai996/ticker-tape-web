@@ -14,7 +14,12 @@ import { SYMBOL_RE } from './symbols.js'
 import { normalizeVenueCode } from './venueCodes.js'
 import { applyLedger } from './lots.js'
 
+import { declareDeleteIntent } from './syncIntent.js'
+
 const KEY = 'my_portfolios_v1'
+const TRASH_KEY = 'my_portfolios_trash_v1'
+/** Deleted books wait this long locally before they are gone for good. */
+export const TRASH_DAYS = 30
 export const MAX_MY_PORTFOLIOS = 20
 export const MAX_MY_HOLDINGS = 60
 const MAX_NAME = 40
@@ -194,8 +199,44 @@ export function setPortfolioCcy(id, ccy) {
   return p
 }
 
+/** Delete = move to the local trash and tell the sync engine the shrink is
+ *  meant (the worker refuses an undeclared one — see syncIntent.js). */
 export function deletePortfolio(id) {
-  persist(loadPortfolios().filter((x) => x.id !== id))
+  const items = loadPortfolios()
+  const gone = items.find((x) => x.id === id)
+  if (gone) saveTrash([{ portfolio: gone, at: Date.now() }, ...loadTrash().filter((t) => t.portfolio.id !== id)])
+  declareDeleteIntent()
+  persist(items.filter((x) => x.id !== id))
+}
+
+function saveTrash(entries) {
+  try { localStorage.setItem(TRASH_KEY, JSON.stringify(entries)) } catch { /* best-effort */ }
+}
+
+export function loadTrash() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(TRASH_KEY))
+    if (!Array.isArray(raw)) return []
+    return raw.filter((t) => t && typeof t.at === 'number' && sanitize([t.portfolio]).length === 1)
+  } catch { return [] }
+}
+
+/** Put a trashed book back, keeping its id unless a live book took it. */
+export function restoreFromTrash(id) {
+  const entry = loadTrash().find((t) => t.portfolio.id === id)
+  if (!entry) return null
+  const items = loadPortfolios()
+  if (items.length >= MAX_MY_PORTFOLIOS) return null
+  const [clean] = sanitize([entry.portfolio])
+  if (!clean) return null
+  if (items.some((p) => p.id === clean.id)) clean.id = freshId(new Set(items.map((x) => x.id)))
+  saveTrash(loadTrash().filter((t) => t.portfolio.id !== id))
+  persist([...items, clean])
+  return clean
+}
+
+export function purgeTrash(now = Date.now()) {
+  saveTrash(loadTrash().filter((t) => now - t.at < TRASH_DAYS * 86_400_000))
 }
 
 /** Add or restate one holding. Returns the stored holding, or null if the
@@ -219,7 +260,9 @@ export function removeHolding(id, symbol) {
   const p = items.find((x) => x.id === id)
   if (!p) return
   const sym = String(symbol || '').toUpperCase()
+  if (!p.holdings.some((h) => h.symbol === sym)) return
   p.holdings = p.holdings.filter((h) => h.symbol !== sym)
+  declareDeleteIntent()
   persist(items)
 }
 

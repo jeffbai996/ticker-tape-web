@@ -6,6 +6,11 @@ function storage() {
     rows,
     async get(key) { return rows.get(key) },
     async put(key, value) { rows.set(key, value) },
+    async delete(key) { rows.delete(key) },
+    async list({ prefix = '', limit } = {}) {
+      const hits = [...rows].filter(([k]) => k.startsWith(prefix)).sort()
+      return new Map(limit ? hits.slice(0, limit) : hits)
+    },
   }
 }
 
