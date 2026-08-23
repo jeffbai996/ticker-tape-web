@@ -27,7 +27,7 @@ import { BookPerformance } from './portfolioPerformance.jsx'
 import { BookTrades } from './portfolioTrades.jsx'
 import { BookEvents } from './portfolioEvents.jsx'
 import { PORTFOLIO_CCYS, cashAccountName, convertCcy, fmtCcy, fmtCcyZh, fxSymbolsFor, holdingCurrency, ratesFromQuotes } from '../lib/fx.js'
-import { MAX_MY_HOLDINGS, createPortfolio, deletePortfolio, loadPortfolios, onPortfoliosChange, removeCash, removeHolding, renamePortfolio, setCash, setHolding, setPortfolioCcy, portfolioValues, recordSnapshot, previousSnapshot } from '../lib/myPortfolios.js'
+import { MAX_MY_HOLDINGS, createPortfolio, deletePortfolio, loadPortfolios, loadTrash, onPortfoliosChange, purgeTrash, restoreFromTrash, removeCash, removeHolding, renamePortfolio, setCash, setHolding, setPortfolioCcy, portfolioValues, recordSnapshot, previousSnapshot } from '../lib/myPortfolios.js'
 
 const pnlCls = (v) => (v == null ? 'text-muted' : v >= 0 ? 'text-up' : 'text-down')
 // Account totals read in full digits in any locale — 富途/同花顺 print
@@ -1189,6 +1189,26 @@ export const MyPerformance = (props) => <MyPortfolios {...props} view="performan
 export const MyTrades = (props) => <MyPortfolios {...props} view="trades" />
 export const MyEvents = (props) => <MyPortfolios {...props} view="events" />
 
+/** Recently deleted books, one line, restorable for TRASH_DAYS. Renders
+ *  nothing when the trash is empty — the usual case. */
+function TrashRow({ items, onRestore }) {
+  const [trash, setTrash] = useState(() => { purgeTrash(); return loadTrash() })
+  useEffect(() => { setTrash(loadTrash()) }, [items])
+  if (!trash.length) return null
+  return (
+    <div class="flex flex-wrap items-center gap-1.5 font-anth text-[11px] text-muted">
+      <span>{tl('Recently deleted')}:</span>
+      {trash.map((t) => (
+        <button key={t.portfolio.id} type="button"
+          onClick={() => { const p = restoreFromTrash(t.portfolio.id); if (p) onRestore(p.id) }}
+          class="rounded-md border border-dashed border-line-2 px-2 py-0.5 text-ink-2 hover:border-accent/40 hover:text-accent">
+          {t.portfolio.name} · {tl('Restore')}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export function MyPortfolios({ view = 'overview' } = {}) {
   const [items, setItems] = useState(loadPortfolios)
   useEffect(() => onPortfoliosChange((next) => setItems([...next])), [])
@@ -1270,6 +1290,7 @@ export function MyPortfolios({ view = 'overview' } = {}) {
       </div>
 
       {creating && <NewPortfolioForm onDone={(id) => { select(id); setCreating(false) }} />}
+      <TrashRow items={items} onRestore={select} />
 
       {selected ? (
         <>

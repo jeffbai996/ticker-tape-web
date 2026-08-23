@@ -14,6 +14,7 @@
 
 import { loadPortfolios, onPortfoliosChange, replacePortfolios } from './myPortfolios.js'
 import { wireServiceUrl } from './wire.js'
+import { hasDeleteIntent, takeDeleteIntent } from './syncIntent.js'
 import {
   getWatchlistCapability, watchlistSyncEndpoint,
   watchlistSyncHeaders,
@@ -102,10 +103,11 @@ function saveEndpoint() {
 
 async function api(init = {}) {
   const capabilityHeaders = wireServiceUrl() ? {} : watchlistSyncHeaders()
+  const { headers: extra = {}, ...rest } = init
   const resp = await fetch(saveEndpoint(), {
-    headers: { 'Content-Type': 'application/json', ...capabilityHeaders },
+    headers: { 'Content-Type': 'application/json', ...capabilityHeaders, ...extra },
     signal: AbortSignal.timeout(10_000),
-    ...init,
+    ...rest,
   })
   const out = await resp.json()
   return { status: resp.status, out }
@@ -117,11 +119,32 @@ async function pullRemote() {
   return { doc: out.data, rev: out.rev }
 }
 
-async function pushRemote(doc, rev) {
-  const { status, out } = await api({ method: 'POST', body: JSON.stringify({ data: doc, rev }) })
+/** What a push reply means for this device. A refused shrink (the worker's
+ *  drop guard, no delete declared) is not a race to retry: the server copy
+ *  is the book, so adopt it wholesale and report blocked. Exported for
+ *  tests; applies the adoption itself. */
+export function applyPushOutcome({ status, out }) {
+  if (status === 409 && out.error === 'shrink') {
+    if (out.data) {
+      applying = true
+      try { replacePortfolios(out.data.portfolios) } finally { applying = false }
+      savePortfolioSyncMeta({ rev: out.rev, touched: out.data.touched || {}, deleted: out.data.deleted || {} })
+    }
+    return { blocked: out.reason || 'shrink', rev: out.rev }
+  }
   if (status === 409) return { conflict: true, doc: out.data, rev: out.rev }
   if (!out.ok) throw new Error(out.error || 'push failed')
   return { conflict: false, rev: out.rev }
+}
+
+async function pushRemote(doc, rev) {
+  // the intent rides on this one push; consumed only once the server
+  // answered, so a network failure does not strand a real delete
+  const intent = hasDeleteIntent()
+  const headers = intent ? { 'X-Capdoc-Intent': 'delete' } : {}
+  const reply = await api({ method: 'POST', headers, body: JSON.stringify({ data: doc, rev }) })
+  if (intent && reply.status !== 409) takeDeleteIntent()
+  return applyPushOutcome(reply)
 }
 
 // ── engine ────────────────────────────────────────────────────────────────
@@ -202,6 +225,10 @@ async function syncOnce() {
         return
       }
       const pushed = await pushRemote(doc, remote.rev)
+      if (pushed.blocked) {
+        setStatus({ state: 'blocked', reason: pushed.blocked, rev: pushed.rev })
+        return
+      }
       if (!pushed.conflict) {
         meta = { ...meta, rev: pushed.rev, touched: doc.touched, deleted: doc.deleted }
         savePortfolioSyncMeta(meta)
