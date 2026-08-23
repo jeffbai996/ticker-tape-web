@@ -1237,14 +1237,14 @@ export function MyPortfolios({ view = 'overview' } = {}) {
   }
 
   // the actions live on the section heading row, the chips stay here
-  const btn = 'h-7 rounded-md border border-line-2 bg-surface-2 px-2.5 font-anth text-[11px] text-ink-2 transition-colors hover:border-line hover:text-ink'
+  const btn = 'h-7 rounded-md border border-line-2 bg-surface-2 px-2.5 max-sm:px-2 font-anth text-[11px] text-ink-2 transition-colors hover:border-line hover:text-ink whitespace-nowrap'
   useEffect(() => {
     setHeaderActions(
       <>
-        <button type="button" onClick={() => setCreating((v) => !v)} class={`${btn} border-dashed text-muted hover:border-accent/40 hover:text-accent`}>+ {tl('New portfolio')}</button>
+        <button type="button" onClick={() => setCreating((v) => !v)} class={`${btn} border-dashed text-muted hover:border-accent/40 hover:text-accent`} aria-label={tl('New portfolio')}>+<span class="max-sm:hidden"> {tl('New portfolio')}</span></button>
         {selected && (
           <>
-            <span class="ml-auto sm:ml-1 h-4 w-px bg-line-2" />
+            <span class="ml-1 h-4 w-px bg-line-2 max-sm:hidden" />
             <CcySelect value={selected.ccy} onChange={(c) => setPortfolioCcy(selected.id, c)} />
             <button type="button" onClick={rename} class={btn}>{tl('Rename')}</button>
             <button type="button" onClick={remove} class={`${btn} hover:border-down/50 hover:text-down`}>{tl('Delete')}</button>
