@@ -225,7 +225,7 @@ function WatchlistCard({ item, quotes, earnDays, allLists, primary = false }) {
                 <button class="font-anth text-[10px] font-semibold text-accent px-1.5">{tl('Save')}</button>
               </form>
             ) : (
-              <a href={href} class="font-anth font-bold text-[14px] text-ink hover:text-accent hover:no-underline truncate">
+              <a href={href} class="font-anth font-bold text-[22px] leading-tight tracking-tight text-ink hover:text-accent hover:no-underline truncate">
                 {item.name}
               </a>
             )}
@@ -255,7 +255,7 @@ function WatchlistCard({ item, quotes, earnDays, allLists, primary = false }) {
 
       {/* every control is a bordered button of one height — the bare text
           row read as labels, not things to tap (Jeff 2026-08-22) */}
-      <div class="flex items-center gap-2 border-t border-line pt-2.5 font-anth text-[11px] font-semibold overflow-x-auto no-scrollbar whitespace-nowrap">
+      <div class="flex flex-wrap items-center gap-2 border-t border-line pt-2.5 font-anth text-[11px] font-semibold">
         <a href={href} data-watchlist-open
           class={`${ctl} border-accent/60 bg-accent-soft text-accent hover:bg-accent hover:text-black hover:no-underline`}>
           <span class="max-sm:hidden">{tl('Open dashboard →')}</span>
@@ -323,7 +323,6 @@ export function WatchlistsPage() {
           <div class="min-w-0">
             <div class="font-anth text-[9px] uppercase tracking-[0.18em] text-accent">{tl('Market workspace')}</div>
             <h1 class="font-anth font-bold text-xl text-ink flex items-center gap-2">{tl('Watchlists')} <CloudChip /></h1>
-            <p class="pt-1 font-anth text-[10px] text-muted">{tt('watchlists.subtitle')}</p>
           </div>
           {/* one slim line at every width — the fields flex instead of owning
               fixed widths, and the button never wraps its label

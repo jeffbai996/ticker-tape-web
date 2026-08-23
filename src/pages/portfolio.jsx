@@ -1669,7 +1669,7 @@ function PortfolioHeader({ accounts, account, onChange, book, wired }) {
     : book === false ? tt('portfolio.link_down')
       : wired ? tt('portfolio.connecting') : tt('demo.banner')
   return (
-    <header class="flex flex-wrap items-center gap-3 mx-1 mb-2 py-1">
+    <header class="flex flex-wrap items-center gap-3 max-sm:flex-nowrap max-sm:gap-2 mx-1 mb-2 py-1">
       <div class="flex min-w-0 items-center gap-2.5 mr-auto">
         <span class="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-line-2 bg-surface-2 text-accent" aria-hidden="true">
           <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 15.5h14M4.5 12l3-3 2.5 2 5-6.5M5 15.5V13m5 2.5V12m5 3.5V8" /></svg>
@@ -1683,7 +1683,7 @@ function PortfolioHeader({ accounts, account, onChange, book, wired }) {
         </div>
       </div>
       {!family && <AccountSwitcher accounts={accounts} account={account} onChange={onChange} />}
-      {family && actions && <div class="flex items-center gap-1.5 max-sm:basis-full">{actions}</div>}
+      {family && actions && <div class="flex shrink-0 items-center gap-1.5 max-sm:gap-1">{actions}</div>}
     </header>
   )
 }
