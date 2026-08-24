@@ -3,7 +3,7 @@ import { useQuotes, useWatchlist, useTapeSymbols } from '../hooks.js'
 import { fmtPrice, fmtPct } from '../lib/format.js'
 import { FlashPrice } from './Fig.jsx'
 import { hrefFor } from '../lib/route.js'
-import { marqueeCopies } from '../lib/marquee.js'
+import { marqueeCopies, preservedMarqueeTime } from '../lib/marquee.js'
 import { REDUCED_MOTION, tapeBadge, tapeEntries, tapePlayState } from '../lib/tape.js'
 import { startVisibleClock } from '../lib/idleClock.js'
 import { tapeworthy, wireUrl, evHeadline } from '../lib/wire.js'
@@ -139,6 +139,7 @@ export function Tape() {
   const items = watchlist.map((s) => ({ symbol: s, q: quotes[s]?.quote }))
   const entries = tapeEntries(heads, items)
   const wrap = useRef(null)
+  const belt = useRef(null)
   const firstCycle = useRef(null)
   const [marquee, setMarquee] = useState({ copies: 2, width: 0 })
   const play = useTapeMotion()
@@ -148,6 +149,8 @@ export function Tape() {
     const viewport = wrap.current
     const cycle = firstCycle.current
     if (!viewport || !cycle) return
+    let measured = marquee
+    let restoreFrame = 0
 
     const measure = () => {
       // getBoundingClientRect returns VISUAL px, but the keyframe translates
@@ -157,15 +160,39 @@ export function Tape() {
       const zoom = Number(getComputedStyle(document.documentElement).zoom) || 1
       const width = Math.ceil(cycle.getBoundingClientRect().width / zoom)
       const copies = marqueeCopies(viewport.clientWidth, width)
-      setMarquee((current) => current.width === width && current.copies === copies
-        ? current
-        : { width, copies })
+      if (measured.width === width && measured.copies === copies) return
+
+      // Rewriting the duration can restart a CSS animation at zero. Capture
+      // its elapsed clock before the width update, then put the new animation
+      // back at that same travelled point on the next frame. This matters
+      // when a user opts another watchlist into the tape: its symbols widen
+      // the cycle while the belt is already moving.
+      const animation = belt.current?.getAnimations?.()[0]
+      const currentTime = typeof animation?.currentTime === 'number' ? animation.currentTime : null
+      const capturedAt = globalThis.performance?.now?.() ?? 0
+      const wasRunning = animation?.playState === 'running'
+      measured = { width, copies }
+      setMarquee(measured)
+      cancelAnimationFrame(restoreFrame)
+      if (currentTime != null) {
+        restoreFrame = requestAnimationFrame(() => {
+          const next = belt.current?.getAnimations?.()[0]
+          if (!next) return
+          const elapsed = wasRunning ? (globalThis.performance?.now?.() ?? capturedAt) - capturedAt : 0
+          const durationMs = Math.max(8_000, (width / 82) * 1_000)
+          const preserved = preservedMarqueeTime(currentTime + elapsed, durationMs)
+          if (preserved != null) next.currentTime = preserved
+        })
+      }
     }
     measure()
     const observer = new ResizeObserver(measure)
     observer.observe(viewport)
     observer.observe(cycle)
-    return () => observer.disconnect()
+    return () => {
+      observer.disconnect()
+      cancelAnimationFrame(restoreFrame)
+    }
   }, [entries.length])
 
   const duration = Math.max(8, marquee.width / 82)
@@ -173,6 +200,7 @@ export function Tape() {
   return (
     <div ref={wrap} class="h-6 shrink-0 bg-black border-b border-line overflow-hidden relative">
       <div
+        ref={belt}
         class={`tape-scroll flex h-full w-max font-mono text-[11px] ${marquee.width ? 'tape-scroll-ready' : ''}`}
         style={marquee.width ? {
           '--tape-cycle-width': `${marquee.width}px`,

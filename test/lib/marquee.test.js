@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { marqueeCopies } from '../../src/lib/marquee.js'
+import { marqueeCopies, preservedMarqueeTime } from '../../src/lib/marquee.js'
 
 describe('marqueeCopies', () => {
   it('keeps one complete spare cycle beyond the viewport', () => {
@@ -10,6 +10,12 @@ describe('marqueeCopies', () => {
   it('falls back to two cycles until the belt is measurable', () => {
     expect(marqueeCopies(390, 0)).toBe(2)
     expect(marqueeCopies(0, 100)).toBe(2)
+  })
+
+  it('keeps the belt at the same elapsed point when its cycle is remeasured', () => {
+    expect(preservedMarqueeTime(47_500, 30_000)).toBe(17_500)
+    expect(preservedMarqueeTime(7_250, 30_000)).toBe(7_250)
+    expect(preservedMarqueeTime(null, 30_000)).toBeNull()
   })
 })
 
