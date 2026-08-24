@@ -42,7 +42,6 @@ export const NAV = [
     badge: 'DEMO',
     subs: [
       { id: 'mine', label: 'My Portfolios' },
-      { id: 'holdings', label: 'Holdings' },
       { id: 'ledger', label: 'Ledger' },
       { id: 'events', label: 'Events' },
       { id: 'performance', label: 'Performance' },
@@ -89,7 +88,7 @@ if (PRIVATE_BUILD) {
   // 我的组合 still reaches them, and 分红财报 / 新闻 read the broker book
   // (Jeff 2026-08-22: "bunch of these new features don't work on our copy")
   const portfolio = NAV.find((s) => s.id === 'portfolio')
-  portfolio.subs = portfolio.subs.filter((sub) => !['holdings', 'ledger', 'performance'].includes(sub.id))
+  portfolio.subs = portfolio.subs.filter((sub) => !['ledger', 'performance'].includes(sub.id))
 }
 if (FAMILY_BUILD) NAV.splice(NAV.findIndex((s) => s.id === 'brief'), 1)
 if (FAMILY_BUILD) {
@@ -97,13 +96,12 @@ if (FAMILY_BUILD) {
   // sizing, carry, cockpit…) would all render a synthetic book that only
   // confuses (Jeff 2026-08-20)
   const portfolio = NAV.find((s) => s.id === 'portfolio')
-  // the hand-built books are the whole portfolio here, split into pages
+  // the hand-built books are the whole portfolio here, with supporting pages
   // (Jeff 2026-08-22: "split the manual demo portfolio section into pages
   // again, like a news page that grabs news relating to his tickers")
   // the section landing IS the overview (nav adds the landing entry
   // itself — a 'mine' sub here rendered a second "overview", Jeff 2026-08-22)
   portfolio.subs = [
-    { id: 'holdings', label: 'Holdings' },
     { id: 'ledger', label: 'Trades' },
     { id: 'events', label: 'Events' },
     { id: 'performance', label: 'Performance' },
