@@ -178,9 +178,26 @@ export const SORTABLE = {
   weight: (r) => r.weightPct,
   unreal: (r) => r.unrealDisplay,
 }
+/** The resting order of a book: venues together (港股, then A股, then the
+ *  rest), codes ascending inside each — how a HK/mainland statement reads
+ *  (Gordon 2026-08-23: entry order mixed his venues together). Stable for
+ *  rows that tie. */
+export function venueOrder(rows) {
+  const venue = (sym) => (/\.HK$/.test(sym) ? 0 : /\.(SS|SZ)$/.test(sym) ? 1 : 2)
+  const code = (sym) => {
+    const digits = /^(\d+)/.exec(sym)
+    return digits ? Number(digits[1]) : Infinity
+  }
+  return [...rows].sort((a, b) => (
+    venue(a.symbol) - venue(b.symbol)
+    || code(a.symbol) - code(b.symbol)
+    || String(a.symbol).localeCompare(String(b.symbol))
+  ))
+}
+
 export function sortRows(rows, key, dir) {
   const get = SORTABLE[key]
-  if (!get || !dir) return rows
+  if (!get || !dir) return venueOrder(rows)
   const sign = dir === 'asc' ? 1 : -1
   return [...rows].sort((a, b) => {
     const x = get(a); const y = get(b)

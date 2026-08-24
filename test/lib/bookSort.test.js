@@ -8,9 +8,11 @@ const rows = [
 ]
 
 describe('sortRows', () => {
-  it('returns the book order untouched without a key', () => {
-    expect(sortRows(rows, null, null)).toBe(rows)
-    expect(sortRows(rows, 'value', null)).toBe(rows)
+  it('rests in venue order without a key — venues grouped, codes ascending', () => {
+    // suffix-less rows all land in the same venue group and keep a stable
+    // alphabetical order (Gordon 2026-08-23: 港股/A股 grouped, 由小到大)
+    expect(sortRows(rows, null, null).map((r) => r.symbol)).toEqual(['A', 'B', 'C'])
+    expect(sortRows(rows, 'value', null).map((r) => r.symbol)).toEqual(['A', 'B', 'C'])
   })
   it('sorts numbers and sinks unpriced rows to the bottom both ways', () => {
     expect(sortRows(rows, 'value', 'desc').map((r) => r.symbol)).toEqual(['C', 'B', 'A'])

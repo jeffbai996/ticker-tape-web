@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import {
-  breadth, cashSplit, concentration, dayContribution, sectorSplit, unrealizedStats, venueSplit,
+  breadth, cashSplit, concentration, dayContribution, sectorSplit, sortRows, unrealizedStats, venueOrder, venueSplit,
 } from '../../src/lib/bookStats.js'
 
 // a small book: two winners, one loser, one unpriced, one cash account
@@ -142,5 +142,18 @@ describe('sectorSplit — what the buckets can and cannot say about a book', () 
     expect(sectorSplit([{ kind: 'equity', symbol: 'X', valueDisplay: null }], buckets))
       .toEqual({ entries: [], total: 0, unmappedShare: 0 })
     expect(sectorSplit(rows).unmappedShare).toBe(1)
+  })
+})
+
+describe('venueOrder — the resting order of the table', () => {
+  const row = (symbol) => ({ symbol })
+  it('groups HK, then A-shares, then the rest, codes ascending inside', () => {
+    const rows = ['AAPL', '600036.SS', '0966.HK', '000333.SZ', '2628.HK', 'MSFT', '0700.HK'].map(row)
+    const want = ['0700.HK', '0966.HK', '2628.HK', '000333.SZ', '600036.SS', 'AAPL', 'MSFT']
+    expect(venueOrder(rows).map((r) => r.symbol)).toEqual(want)
+    // no explicit header sort → the same resting order, not entry order
+    expect(sortRows(rows, null, null).map((r) => r.symbol)).toEqual(want)
+    // an explicit sort still wins
+    expect(sortRows(rows, 'symbol', 'asc')[0].symbol).toBe('000333.SZ')
   })
 })
