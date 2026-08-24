@@ -13,7 +13,7 @@ import { SymbolSuggest } from '../components/SymbolSuggest.jsx'
 
 const box = 'rounded border border-line bg-surface-2 px-2 py-1 font-mono text-[11px] text-ink outline-none focus:border-accent/60'
 
-function AddTradeForm({ portfolio }) {
+export function AddTradeForm({ portfolio }) {
   const [sym, setSym] = useState('')
   const [picked, setPicked] = useState(null)
   const [side, setSide] = useState('buy')
@@ -33,7 +33,7 @@ function AddTradeForm({ portfolio }) {
       <label class="flex flex-col gap-0.5">
         <span class="font-anth text-[9px] uppercase tracking-wider text-muted">{tl('Symbol')}</span>
         <SymbolSuggest value={sym} placeholder={tl('Symbol or company')} ariaLabel={tl('Symbol')} dropUp={false}
-          onInput={(v) => { setSym(v); setPicked(null) }} onPick={(h) => { setSym(h.symbol); setPicked(h) }}
+          onInput={(e) => { setSym(e.currentTarget.value); setPicked(null) }} onPick={(h) => { setSym(h.symbol); setPicked(h) }}
           inputClass={`${box} w-40`} />
       </label>
       <span class="flex h-[26px] items-center gap-0.5 rounded border border-line bg-surface-2 px-0.5 self-end" role="radiogroup" aria-label={tl('Side')}>
