@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
 import {
   loadAlerts, addAlert, updateAlert, removeAlert, rearmAlert, onAlertsChange, conditionDetail,
   getAlertDeliveryPrefs, setAlertDeliveryPrefs, setAlertDelivery,
@@ -18,6 +18,13 @@ const TYPE_META = {
 }
 
 const FIELD = 'bg-surface-2 border border-line rounded-md px-2 py-1.5 font-mono text-[12px] text-ink outline-none focus:border-accent disabled:opacity-40'
+
+// Entry points, not canned alerts: the user still supplies a ticker and level.
+export const ALERT_RECIPES = [
+  { id: 'price', type: 'price', operator: '>', icon: '↗', label: 'alerts.recipe.price' },
+  { id: 'rsi', type: 'rsi', operator: '>', icon: '⌁', label: 'alerts.recipe.rsi' },
+  { id: 'volume', type: 'volume', operator: '>', icon: '▥', label: 'alerts.recipe.volume' },
+]
 
 /** Read-and-clear a ride-along from the research header's ⏰ (mirrors the
  *  command bar's chat_prefill). One-shot: a reload starts empty. */
@@ -42,12 +49,13 @@ function alertErrorText(err) {
 /** One form for both add and edit — the edit path remounts it with the alert's
  *  values (see `key` at the call site), so there's no second layout to keep in
  *  sync. Delivery is add-only: an existing alert's channel lives in its row. */
-function AlertForm({ destinations, prefs, editing, onDone }) {
+function AlertForm({ destinations, prefs, editing, recipe, onDone }) {
   const [prefill] = useState(consumeAlertPrefill)
+  const symbolInput = useRef(null)
   const [symbol, setSymbol] = useState(() =>
     String(editing?.symbol || prefill.symbol || '').toUpperCase())
-  const [type, setType] = useState(() => editing?.type || 'price')
-  const [operator, setOperator] = useState(() => editing?.operator || '>')
+  const [type, setType] = useState(() => editing?.type || recipe?.type || 'price')
+  const [operator, setOperator] = useState(() => editing?.operator || recipe?.operator || '>')
   const [value, setValue] = useState(() => {
     const seed = editing ? editing.value : prefill.value
     return seed != null ? String(seed) : ''
@@ -56,6 +64,9 @@ function AlertForm({ destinations, prefs, editing, onDone }) {
   const [delivery, setDelivery] = useState(prefs)
 
   useEffect(() => setDelivery(prefs), [prefs.enabled, prefs.destination, prefs.maxPerHour])
+  useEffect(() => {
+    if (recipe) symbolInput.current?.focus()
+  }, [recipe?.id])
 
   const submit = (e) => {
     e.preventDefault()
@@ -81,6 +92,12 @@ function AlertForm({ destinations, prefs, editing, onDone }) {
   return (
     <form onSubmit={submit} class={`bg-surface-1 border rounded-xl p-3 flex flex-wrap items-end gap-2 ${
       editing ? 'border-accent' : 'border-line'}`}>
+      {!editing && (
+        <div class="w-full flex items-center justify-between pb-1">
+          <span class="font-mono text-[10px] font-bold uppercase tracking-wider text-accent">{tt('alerts.builder')}</span>
+          <span class="font-mono text-[9px] uppercase tracking-wider text-muted">{tt('alerts.builder.live')}</span>
+        </div>
+      )}
       {editing && (
         <span class="w-full font-mono text-[10px] uppercase tracking-wider text-accent">
           {tl('editing alert')} #{editing.id}
@@ -88,7 +105,7 @@ function AlertForm({ destinations, prefs, editing, onDone }) {
       )}
       <label class="flex flex-col gap-1">
         <span class="text-[9px] text-muted uppercase tracking-wider">{tl('Symbol')}</span>
-        <input class={`${FIELD} w-24 uppercase`} value={symbol}
+        <input ref={symbolInput} class={`${FIELD} w-24 uppercase`} value={symbol}
           onInput={(e) => setSymbol(e.currentTarget.value)} placeholder="MSFT" />
       </label>
       <label class="flex flex-col gap-1">
@@ -203,6 +220,31 @@ function DeliveryDefaults({ destinations, prefs, setPrefs }) {
   )
 }
 
+function AlertEmptyState({ onPick }) {
+  return (
+    <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
+      <div class="px-4 py-3 border-b border-line flex items-center justify-between gap-3">
+        <span class="font-mono text-[11px] font-bold uppercase tracking-wider text-ink">{tt('alerts.empty')}</span>
+        <span class="font-mono text-[9px] uppercase tracking-wider text-muted">{tt('alerts.empty.hint')}</span>
+      </div>
+      <div class="grid md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-line">
+        {ALERT_RECIPES.map((recipe) => (
+          <button key={recipe.id} type="button" onClick={() => onPick(recipe)}
+            class="group min-h-[132px] p-4 text-left hover:bg-surface-2 focus:outline-none focus:bg-surface-2">
+            <div class="flex items-start justify-between gap-3">
+              <span class="w-8 h-8 shrink-0 grid place-items-center rounded-md border border-line font-mono text-lg text-accent group-hover:border-accent">
+                {recipe.icon}
+              </span>
+              <span class="font-mono text-[10px] text-muted group-hover:text-accent">→</span>
+            </div>
+            <span class="block mt-6 font-mono text-[11px] text-ink group-hover:text-accent">{tt(recipe.label)}</span>
+          </button>
+        ))}
+      </div>
+    </section>
+  )
+}
+
 function DeliveryCell({ alert, destinations }) {
   const delivery = alert.delivery || { enabled: false, destination: '', maxPerHour: 6 }
   if (alert.triggered) {
@@ -251,6 +293,7 @@ export function Alerts() {
   const [destinations, setDestinations] = useState([])
   const [prefs, setPrefs] = useState(getAlertDeliveryPrefs)
   const [editingId, setEditingId] = useState(null)
+  const [recipe, setRecipe] = useState(null)
   useEffect(() => onAlertsChange(() => setAlerts(loadAlerts())), [])
   useEffect(() => {
     let live = true
@@ -279,12 +322,13 @@ export function Alerts() {
 
       <div class="flex flex-col gap-3 max-w-6xl">
         <DeliveryDefaults destinations={destinations} prefs={prefs} setPrefs={setPrefs} />
-        <AlertForm key={editing ? `edit-${editing.id}` : 'new'}
+        <AlertForm key={editing ? `edit-${editing.id}` : `new-${recipe?.id || 'blank'}`}
           destinations={destinations} prefs={prefs}
-          editing={editing} onDone={() => setEditingId(null)} />
+          editing={editing} recipe={recipe}
+          onDone={() => { setEditingId(null); setRecipe(null) }} />
 
         {alerts.length === 0 ? (
-          <div class="px-1 font-mono text-[11px] text-muted">{tt('alerts.none')}</div>
+          <AlertEmptyState onPick={(next) => { setEditingId(null); setRecipe(next) }} />
         ) : (
           <section class="bg-surface-1 border border-line rounded-xl overflow-x-auto">
             <table class="w-full border-collapse font-mono text-[11px]">

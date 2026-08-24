@@ -4,10 +4,18 @@ import {
   setAlertDelivery, updateAlert, onAlertsChange,
   evaluatePriceAlerts, evaluateTechnicalAlerts, conditionText, conditionDetail,
 } from '../../src/lib/alerts.js'
+import { ALERT_RECIPES } from '../../src/pages/alerts.jsx'
 
 beforeEach(() => localStorage.clear())
 
 describe('addAlert / removeAlert', () => {
+  it('the empty-book shortcuts create supported alert conditions', () => {
+    for (const recipe of ALERT_RECIPES) {
+      expect(() => addAlert({ symbol: 'MSFT', type: recipe.type, operator: recipe.operator, value: 1 })).not.toThrow()
+    }
+    expect(loadAlerts()).toHaveLength(ALERT_RECIPES.length)
+  })
+
   it('persists a valid price alert with uppercase symbol and next id', () => {
     const a = addAlert({ symbol: 'msft', type: 'price', operator: '>', value: 500 })
     expect(a.symbol).toBe('MSFT')
