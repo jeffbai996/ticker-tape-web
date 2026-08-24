@@ -327,6 +327,12 @@ export function Holdings({ portfolio, quotes, rates }) {
   const [collapsedByBook, setCollapsedByBook] = useState(() => {
     try { return JSON.parse(localStorage.getItem('my_portfolio_venue_collapse_v1')) || {} } catch { return {} }
   })
+  // A subtotal is normally kept in the book's display currency so it agrees
+  // with the column header. A uniform venue can be flipped back to the
+  // listing currency without changing the book total or individual rows.
+  const [subtotalModeByBook, setSubtotalModeByBook] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('my_portfolio_venue_subtotal_ccy_v1')) || {} } catch { return {} }
+  })
   const collapsed = new Set(collapsedByBook[portfolio.id] || [])
   const toggleVenue = (key) => {
     setCollapsedByBook((prev) => {
@@ -335,6 +341,13 @@ export function Holdings({ portfolio, quotes, rates }) {
       if (keys.has(key)) keys.delete(key); else keys.add(key)
       next[portfolio.id] = [...keys]
       try { localStorage.setItem('my_portfolio_venue_collapse_v1', JSON.stringify(next)) } catch { /* best-effort */ }
+      return next
+    })
+  }
+  const setSubtotalMode = (key, mode) => {
+    setSubtotalModeByBook((prev) => {
+      const next = { ...prev, [portfolio.id]: { ...(prev[portfolio.id] || {}), [key]: mode } }
+      try { localStorage.setItem('my_portfolio_venue_subtotal_ccy_v1', JSON.stringify(next)) } catch { /* best-effort */ }
       return next
     })
   }
@@ -376,26 +389,53 @@ export function Holdings({ portfolio, quotes, rates }) {
   )
   const venueTotalRow = (g) => {
     const subtotal = venueSubtotal(g.rows)
+    const currencies = [...new Set(g.rows.map((r) => r.ccy).filter(Boolean))]
+    const sourceCcy = currencies.length === 1 ? currencies[0] : null
+    const mode = sourceCcy && subtotalModeByBook[portfolio.id]?.[g.key] === 'source' ? 'source' : 'portfolio'
+    const subtotalCcy = mode === 'source' ? sourceCcy : ccy
+    const inSubtotalCcy = (value) => mode === 'source'
+      ? convertCcy(value, ccy, sourceCcy, rates) : value
+    const displayed = {
+      dayPnl: inSubtotalCcy(subtotal.dayPnl),
+      value: inSubtotalCcy(subtotal.value),
+      unrealPnl: inSubtotalCcy(subtotal.unrealPnl),
+    }
     return (
       <tr key={`venue-subtotal-${g.key}`} data-venue-subtotal={g.key}
         class="border-t border-line-2 bg-surface-2/55 font-medium whitespace-nowrap">
         <td colSpan={5} class="px-2.5 py-[4px] font-anth text-[10px] text-ink-2">
           {groupLabel[g.key]} <span class="text-muted">{tl('Subtotal')}</span>
           <span class="ml-1.5 font-mono text-[9px] text-muted">{subtotal.count}</span>
+          {sourceCcy && sourceCcy !== ccy && (
+            <span class="ml-2 inline-flex overflow-hidden rounded border border-line-2 font-mono text-[8.5px] leading-4">
+              <button type="button" data-subtotal-currency={g.key} aria-pressed={mode === 'source'}
+                aria-label={`${tl('Show subtotal in source currency')} ${sourceCcy}`}
+                onClick={() => setSubtotalMode(g.key, 'source')}
+                class={`px-1.5 transition-colors ${mode === 'source' ? 'bg-accent-soft text-accent' : 'text-muted hover:text-ink'}`}>
+                {sourceCcy}
+              </button>
+              <button type="button" aria-pressed={mode === 'portfolio'}
+                aria-label={`${tl('Show subtotal in portfolio currency')} ${ccy}`}
+                onClick={() => setSubtotalMode(g.key, 'portfolio')}
+                class={`border-l border-line-2 px-1.5 transition-colors ${mode === 'portfolio' ? 'bg-accent-soft text-accent' : 'text-muted hover:text-ink'}`}>
+                {ccy}
+              </button>
+            </span>
+          )}
         </td>
-        <td class={`px-1.5 py-[4px] text-right ${pnlCls(subtotal.dayPnl)}`}>
-          {subtotal.dayPnl != null
-            ? <>{signed(subtotal.dayPnl, ccy)} {subtotal.dayPct != null && <span class="text-[10px] font-normal">({fmtPct(subtotal.dayPct)})</span>}</>
+        <td class={`px-1.5 py-[4px] text-right ${pnlCls(displayed.dayPnl)}`}>
+          {displayed.dayPnl != null
+            ? <>{signed(displayed.dayPnl, subtotalCcy)} {subtotal.dayPct != null && <span class="text-[10px] font-normal">({fmtPct(subtotal.dayPct)})</span>}</>
             : '—'}
         </td>
         <td class="px-1.5 py-[4px] text-right font-semibold text-ink text-[12px]">
-          {subtotal.value != null ? fmtCcy(subtotal.value, ccy) : '—'}
+          {displayed.value != null ? fmtCcy(displayed.value, subtotalCcy) : '—'}
         </td>
         <td class="px-1.5 py-[4px] text-right text-ink-2">
           {subtotal.weightPct != null ? fmtPctPlain(subtotal.weightPct) : '—'}
         </td>
-        <td class={`px-1.5 py-[4px] text-right font-semibold ${pnlCls(subtotal.unrealPnl)}`}>
-          {subtotal.unrealPnl != null ? signed(subtotal.unrealPnl, ccy) : '—'}
+        <td class={`px-1.5 py-[4px] text-right font-semibold ${pnlCls(displayed.unrealPnl)}`}>
+          {displayed.unrealPnl != null ? signed(displayed.unrealPnl, subtotalCcy) : '—'}
         </td>
         <td />
       </tr>
