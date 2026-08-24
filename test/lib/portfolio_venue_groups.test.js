@@ -34,15 +34,18 @@ describe('portfolio venue groups', () => {
     expect(header.tagName).toBe('BUTTON')
     expect(header.getAttribute('aria-expanded')).toBe('true')
     expect(host.textContent).toContain('0700.HK')
+    expect(host.querySelector('[data-venue-subtotal="hk"]')).not.toBeNull()
 
     header.click()
     await new Promise((resolve) => setTimeout(resolve))
     expect(header.getAttribute('aria-expanded')).toBe('false')
     expect(host.textContent).not.toContain('0700.HK')
+    expect(host.querySelector('[data-venue-subtotal="hk"]')).toBeNull()
 
     header.click()
     await new Promise((resolve) => setTimeout(resolve))
     expect(header.getAttribute('aria-expanded')).toBe('true')
     expect(host.textContent).toContain('0700.HK')
+    expect(host.querySelector('[data-venue-subtotal="hk"]')).not.toBeNull()
   })
 })

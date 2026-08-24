@@ -9,7 +9,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { useQuotes } from '../hooks.js'
 import { SymbolSuggest } from '../components/SymbolSuggest.jsx'
 import { sizeForWeight } from '../lib/demo.js'
-import { breadth, capitalMix, cashSplit, concentration, dayContribution, sortRows, unrealizedStats, venueGroups, venueSplit, sectorSplit } from '../lib/bookStats.js'
+import { breadth, capitalMix, cashSplit, concentration, dayContribution, sortRows, unrealizedStats, venueGroups, venueSplit, venueSubtotal, sectorSplit } from '../lib/bookStats.js'
 import { BOOK_CARDS, hiddenCards, onCardsChange, resetCards, toggleCard } from '../lib/bookCards.js'
 import { BUCKETS } from '../lib/symbols.js'
 import { FlashPrice } from '../components/Fig.jsx'
@@ -374,6 +374,33 @@ export function Holdings({ portfolio, quotes, rates }) {
       </td>
     </tr>
   )
+  const venueTotalRow = (g) => {
+    const subtotal = venueSubtotal(g.rows)
+    return (
+      <tr key={`venue-subtotal-${g.key}`} data-venue-subtotal={g.key}
+        class="border-t border-line-2 bg-surface-2/55 font-medium whitespace-nowrap">
+        <td colSpan={5} class="px-2.5 py-[4px] font-anth text-[10px] text-ink-2">
+          {groupLabel[g.key]} <span class="text-muted">{tl('Subtotal')}</span>
+          <span class="ml-1.5 font-mono text-[9px] text-muted">{subtotal.count}</span>
+        </td>
+        <td class={`px-1.5 py-[4px] text-right ${pnlCls(subtotal.dayPnl)}`}>
+          {subtotal.dayPnl != null
+            ? <>{signed(subtotal.dayPnl, ccy)} {subtotal.dayPct != null && <span class="text-[10px] font-normal">({fmtPct(subtotal.dayPct)})</span>}</>
+            : '—'}
+        </td>
+        <td class="px-1.5 py-[4px] text-right font-semibold text-ink text-[12px]">
+          {subtotal.value != null ? fmtCcy(subtotal.value, ccy) : '—'}
+        </td>
+        <td class="px-1.5 py-[4px] text-right text-ink-2">
+          {subtotal.weightPct != null ? fmtPctPlain(subtotal.weightPct) : '—'}
+        </td>
+        <td class={`px-1.5 py-[4px] text-right font-semibold ${pnlCls(subtotal.unrealPnl)}`}>
+          {subtotal.unrealPnl != null ? signed(subtotal.unrealPnl, ccy) : '—'}
+        </td>
+        <td />
+      </tr>
+    )
+  }
   const th = (key, label, cls, first = 'desc') => (
     <th class={`${cls} book-th ${sort.key === key ? 'book-th-on' : ''}`} aria-sort={sort.key === key ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
       <button type="button" onClick={() => clickSort(key, first)} class="uppercase tracking-wider">{label}</button>
@@ -416,7 +443,7 @@ export function Holdings({ portfolio, quotes, rates }) {
                 </button>
               </td>
             </tr>,
-            ...(collapsed.has(g.key) ? [] : g.rows.map(holdingRow)),
+            ...(collapsed.has(g.key) ? [] : [...g.rows.map(holdingRow), venueTotalRow(g)]),
           ])}
           {!(groups && groups.length > 1) && rows.map(holdingRow)}
           {!rows.length && !cashRows.length && (
@@ -1346,7 +1373,7 @@ export function MyPortfolios({ view = 'overview' } = {}) {
             <span class="ml-1 h-4 w-px bg-line-2 max-sm:hidden" />
             <CcySelect value={selected.ccy} onChange={(c) => setPortfolioCcy(selected.id, c)} />
             <button type="button" onClick={rename} class={btn}>{tl('Rename')}</button>
-            <button type="button" onClick={remove} class={`${btn} hover:border-down/50 hover:text-down`}>{tl('Delete')}</button>
+            <button type="button" onClick={remove} class={`${btn} border-down/45 bg-down/10 text-down hover:border-down/70 hover:bg-down/15`}>{tl('Delete')}</button>
           </>
         )}
       </>,
