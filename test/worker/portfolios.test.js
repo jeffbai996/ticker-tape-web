@@ -96,7 +96,11 @@ describe('optional per-book fields — cash, daily marks, trades', () => {
     expect(validatePortfolioDocument(withBook({
       cash: [{ ccy: 'HKD', amount: -1200.5 }],
       snapshots: [{ d: '2026-08-22', v: 54128742.11, c: 'CNY' }],
-      txns: [{ id: 't1', d: '2026-08-20', sym: '0700.HK', side: 'buy', qty: 100, px: 457, fee: 12.5, ccy: 'HKD' }],
+      txns: [{ id: 't1', d: '2026-08-20', sym: '0700.HK', side: 'buy', qty: 100, px: 457, fee: 12.5, ccy: 'HKD', affectsCash: true }],
+      cashTxns: [
+        { id: 'c1', kind: 'opening', ccy: 'HKD', amount: 50_000 },
+        { id: 'c2', d: '2026-08-22', kind: 'deposit', ccy: 'HKD', amount: 1_000, note: 'transfer', bookAmount: 128.2, bookCcy: 'CNY' },
+      ],
     })).ok).toBe(true)
   })
 
@@ -110,6 +114,8 @@ describe('optional per-book fields — cash, daily marks, trades', () => {
     expect(validatePortfolioDocument(withBook({ cash: [{ ccy: 'HKD', amount: 1 }, { ccy: 'HKD', amount: 2 }] })).ok).toBe(false)
     expect(validatePortfolioDocument(withBook({ txns: [{ id: 't1', d: '2026-08-20', sym: '0700.HK', side: 'short', qty: 1, px: 1 }] })).ok).toBe(false)
     expect(validatePortfolioDocument(withBook({ txns: [{ id: 't1', d: '2026-08-20', sym: '0700.HK', side: 'buy', qty: 0, px: 1 }] })).ok).toBe(false)
+    expect(validatePortfolioDocument(withBook({ cashTxns: [{ id: 'c1', d: 'bad', kind: 'deposit', ccy: 'HKD', amount: 1 }] })).ok).toBe(false)
+    expect(validatePortfolioDocument(withBook({ cashTxns: [{ id: 'c1', d: '2026-08-22', kind: 'withdrawal', ccy: 'HKD', amount: 1 }] })).ok).toBe(false)
     expect(validatePortfolioDocument(withBook({ bogus: 1 })).ok).toBe(false)
   })
 })

@@ -15,6 +15,7 @@ const MAX_NAME_CHARS = 40
 const MAX_BODY_BYTES = 256_000          // raised 2026-08-22: marks + trades per book
 const MAX_SNAPSHOTS = 400
 const MAX_TXNS = 400
+const MAX_CASH_TXNS = 400
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
 export function validPortfolioCapability(value) {
@@ -52,7 +53,7 @@ function validSnapshot(x) {
 /** A trade: {id, d, sym, side, qty, px, fee?, ccy?}. */
 function validTxn(t) {
   if (!plainObject(t)) return false
-  const allowed = new Set(['id', 'd', 'sym', 'side', 'qty', 'px', 'fee', 'ccy'])
+  const allowed = new Set(['id', 'd', 'sym', 'side', 'qty', 'px', 'fee', 'ccy', 'affectsCash', 'opening'])
   if (!Object.keys(t).every((k) => allowed.has(k))) return false
   if (typeof t.id !== 'string' || !/^[A-Za-z0-9_-]{1,24}$/.test(t.id)) return false
   if (typeof t.d !== 'string' || !DATE_RE.test(t.d)) return false
@@ -62,6 +63,33 @@ function validTxn(t) {
   if (typeof t.px !== 'number' || !Number.isFinite(t.px) || t.px < 0) return false
   if ('fee' in t && (typeof t.fee !== 'number' || !Number.isFinite(t.fee) || t.fee < 0)) return false
   if ('ccy' in t && !CCYS.has(t.ccy)) return false
+  if ('affectsCash' in t && t.affectsCash !== true) return false
+  if ('opening' in t && t.opening !== true) return false
+  if (t.affectsCash === true && !CCYS.has(t.ccy)) return false
+  if (t.affectsCash === true && t.opening === true) return false
+  return true
+}
+
+/** A manual cash entry. Opening balances have no date; external activity and
+ *  reconciliations do, so performance can remove those flows. */
+function validCashTxn(entry) {
+  if (!plainObject(entry)) return false
+  const allowed = new Set(['id', 'd', 'kind', 'ccy', 'amount', 'note', 'bookAmount', 'bookCcy'])
+  if (!Object.keys(entry).every((key) => allowed.has(key))) return false
+  if (typeof entry.id !== 'string' || !/^[A-Za-z0-9_-]{1,24}$/.test(entry.id)) return false
+  if (!['opening', 'deposit', 'withdrawal', 'adjustment'].includes(entry.kind)) return false
+  if (!CCYS.has(entry.ccy) || typeof entry.amount !== 'number' || !Number.isFinite(entry.amount)) return false
+  if (entry.kind === 'deposit' && entry.amount <= 0) return false
+  if (entry.kind === 'withdrawal' && entry.amount >= 0) return false
+  if (entry.kind === 'adjustment' && entry.amount === 0) return false
+  if (entry.kind === 'opening') {
+    if ('d' in entry) return false
+  } else if (typeof entry.d !== 'string' || !DATE_RE.test(entry.d)) return false
+  if ('note' in entry && (typeof entry.note !== 'string' || !entry.note.trim() || entry.note.length > 120)) return false
+  const hasBookAmount = 'bookAmount' in entry
+  const hasBookCcy = 'bookCcy' in entry
+  if (hasBookAmount !== hasBookCcy) return false
+  if (hasBookAmount && (typeof entry.bookAmount !== 'number' || !Number.isFinite(entry.bookAmount) || !CCYS.has(entry.bookCcy))) return false
   return true
 }
 
@@ -83,7 +111,7 @@ export function validatePortfolioDocument(value) {
   for (const p of value.portfolios) {
     // cash, snapshots and txns are optional per book; older clients omit them
     const keys = Object.keys(p)
-    const known = new Set(['id', 'name', 'ccy', 'holdings', 'cash', 'snapshots', 'txns'])
+    const known = new Set(['id', 'name', 'ccy', 'holdings', 'cash', 'cashTxns', 'snapshots', 'txns'])
     if (!plainObject(p)
         || !keys.every((k) => known.has(k)) || !['id', 'name', 'ccy', 'holdings'].every((k) => keys.includes(k))
         || typeof p.id !== 'string' || !ID_RE.test(p.id) || ids.has(p.id)
@@ -106,6 +134,10 @@ export function validatePortfolioDocument(value) {
     }
     if ('txns' in p) {
       if (!Array.isArray(p.txns) || p.txns.length > MAX_TXNS || !p.txns.every(validTxn)) return { ok: false, error: 'invalid txns' }
+    }
+    if ('cashTxns' in p) {
+      if (!Array.isArray(p.cashTxns) || p.cashTxns.length > MAX_CASH_TXNS || !p.cashTxns.every(validCashTxn)) return { ok: false, error: 'invalid cash txns' }
+      if (new Set(p.cashTxns.map((entry) => entry.id)).size !== p.cashTxns.length) return { ok: false, error: 'invalid cash txns' }
     }
     ids.add(p.id)
   }

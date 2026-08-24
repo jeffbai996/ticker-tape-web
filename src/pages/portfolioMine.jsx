@@ -25,6 +25,7 @@ import { fetchSymbolEventsCached } from '../lib/cnEvents.js'
 import { BookNews } from './portfolioNews.jsx'
 import { BookPerformance } from './portfolioPerformance.jsx'
 import { BookTrades } from './portfolioTrades.jsx'
+import { CashActivity } from './portfolioCash.jsx'
 import { BookEvents } from './portfolioEvents.jsx'
 import { PORTFOLIO_CCYS, cashAccountName, convertCcy, fmtCcy, fmtCcyZh, fxSymbolsFor, holdingCurrency, ratesFromQuotes } from '../lib/fx.js'
 import { MAX_MY_HOLDINGS, createPortfolio, deletePortfolio, loadPortfolios, loadTrash, onPortfoliosChange, purgeTrash, restoreFromTrash, removeCash, removeHolding, renamePortfolio, setCash, setHolding, setPortfolioCcy, portfolioValues, recordSnapshot, previousSnapshot } from '../lib/myPortfolios.js'
@@ -275,67 +276,26 @@ function CostCell({ portfolio, row }) {
 
 /** A cash balance edits in place the way shares do. Negative is legal — that
  *  is a margin balance, not a typo. */
-function CashCell({ portfolio, row }) {
+function CashCell({ portfolio, row, rates }) {
   const commit = (e) => {
     const raw = e.currentTarget.value.replace(/,/g, '').trim()
     const v = Number(raw)
     // a cleared field is a slip, not a request to zero the account
-    if (raw !== '' && Number.isFinite(v) && v !== row.amount) setCash(portfolio.id, row.ccy, v)
+    if (raw !== '' && Number.isFinite(v) && v !== row.amount) {
+      const bookAmount = convertCcy(v - row.amount, row.ccy, portfolio.ccy, rates)
+      setCash(portfolio.id, row.ccy, v, bookAmount == null ? {} : { bookAmount, bookCcy: portfolio.ccy })
+    }
     else e.currentTarget.value = String(row.amount)
   }
   return (
     <input key={`${row.ccy}:${row.amount}`} defaultValue={String(row.amount)}
       inputMode="decimal" data-1p-ignore data-lpignore="true"
       aria-label={`${tl('Cash')} ${row.ccy}`}
+      title={tl('Direct balance edits are recorded as deposits or withdrawals.')}
       onBlur={commit}
       onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() } }}
       style={{ width: `${Math.max(6, String(row.amount).length + 1.5)}ch` }}
       class="rounded border border-transparent bg-transparent px-1 py-0.5 text-right font-mono text-[11px] text-ink-2 outline-none transition-colors hover:border-line-2 focus:border-accent/60 focus:bg-surface-2" />
-  )
-}
-
-/** One cash account per supported currency, no more (Jeff 2026-08-21) — so
- *  the picker only ever offers the currencies this book has not used yet, and
- *  says so plainly once all four are open. It opens on the book's own display
- *  currency, which is the account most books want first; the rest stay one
- *  click away. */
-function AddCashForm({ portfolio }) {
-  const open = (portfolio.cash || []).map((c) => c.ccy)
-  const free = PORTFOLIO_CCYS.filter((c) => !open.includes(c))
-  const preferred = free.includes(portfolio.ccy) ? portfolio.ccy : free[0]
-  const [ccy, setCcy] = useState(null)            // null = follow the book
-  const [amount, setAmount] = useState('')
-  const pick = ccy && free.includes(ccy) ? ccy : preferred
-  const submit = (e) => {
-    e.preventDefault()
-    if (!pick) return
-    if (setCash(portfolio.id, pick, Number(amount.replace(/,/g, '')))) {
-      setAmount('')
-      setCcy(null)                                // back to the book's currency
-    }
-  }
-  const box = 'rounded-md border border-line-2 bg-surface-2 px-2.5 py-1.5 font-mono text-[11px] text-ink placeholder:text-[10px] placeholder:text-muted outline-none focus:border-accent/60'
-  return (
-    <form onSubmit={submit}>
-      {free.length ? (
-        <div class="flex flex-wrap items-center gap-2">
-          <CcySelect value={pick} onChange={setCcy} options={free} />
-          <input value={amount} onInput={(e) => setAmount(e.currentTarget.value)}
-            placeholder={tl('Cash amount')} aria-label={tl('Cash amount')} inputMode="decimal"
-            data-1p-ignore data-lpignore="true" class={`${box} w-36 text-right`} />
-          <span class="font-anth text-[10.5px] text-muted">{tl(cashAccountName(pick))}</span>
-          <button type="submit" disabled={!Number.isFinite(Number(amount.replace(/,/g, ''))) || amount.trim() === ''}
-            class="ml-auto rounded-md border border-accent/40 bg-accent/10 px-3.5 py-1.5 font-anth text-[12px] font-semibold text-accent transition-colors hover:bg-accent/20 disabled:opacity-40">
-            {tl('Add')}
-          </button>
-        </div>
-      ) : (
-        <div class="font-anth text-[10.5px] text-muted">{tl('Every supported currency already has an account.')}</div>
-      )}
-      <div class="mt-1.5 font-anth text-[9.5px] text-muted">
-        {tl('One account per currency. Cash counts toward value and weights, never toward day P&L.')}
-      </div>
-    </form>
   )
 }
 
@@ -448,7 +408,7 @@ function Holdings({ portfolio, quotes, rates }) {
                 <span class="font-bold text-ink-2">{tl(cashAccountName(r.ccy))}</span>
               </td>
               <td class="px-1.5 py-[2px] font-anth text-[10px] text-muted">{r.ccy}</td>
-              <td class="px-1.5 py-[2px] text-right"><CashCell portfolio={portfolio} row={r} /></td>
+              <td class="px-1.5 py-[2px] text-right"><CashCell portfolio={portfolio} row={r} rates={rates} /></td>
               <td class="px-1.5 py-[2px] text-right text-muted">—</td>
               <td class="px-1.5 py-[2px] text-right text-muted">—</td>
               <td class="px-1.5 py-[2px] text-right text-muted">—</td>
@@ -460,7 +420,14 @@ function Holdings({ portfolio, quotes, rates }) {
               </td>
               <td class="px-1.5 py-[2px] text-right text-muted">—</td>
               <td class="px-1.5 py-[2px] text-right">
-                <ConfirmRemove label={tl(cashAccountName(r.ccy))} onConfirm={() => removeCash(portfolio.id, r.ccy)} />
+                {(portfolio.cashTxns || []).every((entry) => entry.ccy !== r.ccy || entry.kind === 'opening')
+                  && !(portfolio.txns || []).some((txn) => txn.ccy === r.ccy && txn.affectsCash) ? (
+                    <ConfirmRemove label={tl(cashAccountName(r.ccy))} onConfirm={() => removeCash(portfolio.id, r.ccy)} />
+                  ) : (
+                    <button type="button" aria-label={tl('Cash activity')}
+                      onClick={() => window.dispatchEvent(new CustomEvent('portfolio-tool', { detail: 'cash' }))}
+                      class="font-anth text-[9px] text-muted hover:text-accent">{tl('activity')}</button>
+                  )}
               </td>
             </tr>
           ))}
@@ -1168,13 +1135,23 @@ function BookAnalysis({ portfolio, quotes, rates, slot = null, fxLive = {}, benc
  *  design system reserves for controls; the form bodies stay flat. */
 function BookTools({ portfolio, quotes, rates }) {
   const [tab, setTab] = useState('holding')
+  useEffect(() => {
+    const open = (event) => {
+      if (event.detail === 'cash') {
+        setTab('cash')
+        requestAnimationFrame(() => document.getElementById('portfolio-cash-activity')?.scrollIntoView({ behavior: 'smooth', block: 'center' }))
+      }
+    }
+    window.addEventListener('portfolio-tool', open)
+    return () => window.removeEventListener('portfolio-tool', open)
+  }, [])
   const tabs = [
     ['holding', tl('Add holding')],
-    ['cash', tl('Add cash account')],
+    ['cash', tl('Cash activity')],
     ['sizing', tl('Sizing')],
   ]
   return (
-    <section class="overflow-hidden rounded-xl border border-line bg-surface-1">
+    <section id="portfolio-cash-activity" class="overflow-hidden rounded-xl border border-line bg-surface-1">
       <div role="tablist" aria-label={tl('Portfolio tools')}
         class="flex flex-wrap gap-1 border-b border-line bg-surface-2/60 px-2 py-1.5">
         {tabs.map(([id, label]) => (
@@ -1190,7 +1167,7 @@ function BookTools({ portfolio, quotes, rates }) {
       </div>
       <div class="px-3 py-2.5">
         {tab === 'holding' && <AddHoldingForm portfolio={portfolio} />}
-        {tab === 'cash' && <AddCashForm portfolio={portfolio} />}
+        {tab === 'cash' && <CashActivity portfolio={portfolio} rates={rates} />}
         {tab === 'sizing' && <SizingForm portfolio={portfolio} quotes={quotes} rates={rates} />}
       </div>
     </section>

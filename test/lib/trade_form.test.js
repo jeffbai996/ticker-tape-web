@@ -7,7 +7,7 @@
 import { h, render } from 'preact'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { AddTradeForm } from '../../src/pages/portfolioTrades.jsx'
-import { createPortfolio, loadPortfolios } from '../../src/lib/myPortfolios.js'
+import { createPortfolio, loadPortfolios, setCash } from '../../src/lib/myPortfolios.js'
 
 let host
 beforeEach(() => { localStorage.clear(); host = document.createElement('div'); document.body.appendChild(host) })
@@ -42,6 +42,27 @@ describe('AddTradeForm', () => {
     expect(book.txns[0]).toMatchObject({ sym: '600036.SS', side: 'buy', qty: 100, px: 38.9 })
     // and the ledger derived the holding onto the same book, no other
     expect(book.holdings.map((h2) => h2.symbol)).toContain('600036.SS')
+  })
+
+  it('previews and applies the cash balance alongside the position', async () => {
+    const tick = () => new Promise((r) => setTimeout(r))
+    const created = createPortfolio('Core', 'USD')
+    setCash(created.id, 'USD', 5_000)
+    const p = loadPortfolios()[0]
+    render(h(AddTradeForm, { portfolio: p }), host)
+    const boxes = [...host.querySelectorAll('input')]
+    type(boxes[0], 'AAPL')
+    type(boxes[1], '10')
+    type(boxes[2], '200')
+    type(boxes[3], '5')
+    await tick()
+    expect(host.textContent).toContain('Cash after')
+    expect(host.textContent).toContain('$5,000')
+    expect(host.textContent).toContain('$2,995')
+
+    host.querySelector('button[type=submit]').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    await tick()
+    expect(loadPortfolios()[0].cash).toEqual([{ ccy: 'USD', amount: 2_995 }])
   })
 })
 

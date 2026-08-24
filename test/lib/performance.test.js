@@ -44,4 +44,22 @@ describe('buildPerformance', () => {
     expect(out.dates).toEqual([])
     expect(out.series[0].ret).toBeNull()
   })
+
+  it('removes deposits and withdrawals from the book return', () => {
+    const snaps = [
+      { d: '2026-08-20', v: 1_000, c: 'USD' },
+      { d: '2026-08-21', v: 1_600, c: 'USD' },
+      { d: '2026-08-22', v: 1_440, c: 'USD' },
+    ]
+    const cashTxns = [
+      { id: 'c1', d: '2026-08-21', kind: 'deposit', ccy: 'USD', amount: 500, bookAmount: 500, bookCcy: 'USD' },
+      { id: 'c2', d: '2026-08-22', kind: 'withdrawal', ccy: 'USD', amount: -200, bookAmount: -200, bookCcy: 'USD' },
+      { id: 'c3', d: '2026-08-22', kind: 'trade', ccy: 'USD', amount: -300, bookAmount: -300, bookCcy: 'USD' },
+    ]
+    const out = buildPerformance(snaps, [], cashTxns, 'USD')
+    expect(out.series[0].values[0]).toBe(100)
+    expect(out.series[0].values[1]).toBeCloseTo(110)
+    expect(out.series[0].values[2]).toBeCloseTo(112.75)
+    expect(out.series[0].ret).toBeCloseTo(12.75)
+  })
 })

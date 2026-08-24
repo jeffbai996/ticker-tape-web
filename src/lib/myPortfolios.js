@@ -1,11 +1,9 @@
 /** Hand-built portfolios, Koyfin-style (Jeff 2026-08-20).
  *
  *  Several books, each with a display currency chosen at creation; holdings
- *  in any of USD/CAD/HKD/CNY, valued off the live feed. The site is static,
- *  so localStorage is the book of record — nothing a user types here ever
- *  leaves the browser. First run seeds one obviously-generic multi-market
- *  sample so the page demonstrates itself; delete it and it stays gone
- *  (absent key = never visited, stored [] = deliberately empty).
+ *  in any of USD/CAD/HKD/CNY, valued off the live feed. localStorage is the
+ *  working copy; the portfolio sync layer mirrors it when configured. An
+ *  absent key means never visited, while stored [] means deliberately empty.
  */
 
 import { sessionDayPct, dayPnlFromValue } from './dayPnl.js'
@@ -13,6 +11,10 @@ import { convertCcy, holdingCurrency, PORTFOLIO_CCYS } from './fx.js'
 import { SYMBOL_RE } from './symbols.js'
 import { normalizeVenueCode } from './venueCodes.js'
 import { applyLedger } from './lots.js'
+import {
+  MAX_CASH_TXNS, cashBalanceFor, cashBalances, cleanCashTxn, cleanCashTxns,
+  legacyCashTxns,
+} from './cashLedger.js'
 
 import { declareDeleteIntent } from './syncIntent.js'
 
@@ -98,9 +100,13 @@ function cleanTxn(raw) {
   const ccy = String(raw?.ccy || '').toUpperCase()
   if (!TXN_ID_RE.test(id) || !DATE_RE.test(d) || !SYMBOL_RE.test(sym) || !side) return null
   if (!Number.isFinite(qty) || qty <= 0 || !Number.isFinite(px) || px < 0) return null
+  if (raw?.affectsCash === true && !PORTFOLIO_CCYS.includes(ccy)) return null
+  if (raw?.opening === true && raw?.affectsCash === true) return null
   const t = { id, d, sym, side, qty, px }
   if (Number.isFinite(fee) && fee > 0) t.fee = fee
   if (PORTFOLIO_CCYS.includes(ccy)) t.ccy = ccy
+  if (raw?.affectsCash === true) t.affectsCash = true
+  if (raw?.opening === true) t.opening = true
   return t
 }
 function cleanTxns(raw) {
@@ -136,7 +142,13 @@ function sanitize(raw) {
       .map(cleanHolding)
       .filter((h) => h && !seen.has(h.symbol) && seen.add(h.symbol))
       .slice(0, MAX_MY_HOLDINGS)
-    return [{ id, name, ccy: item.ccy, holdings, cash: cleanCash(item.cash), snapshots: cleanSnapshots(item.snapshots), txns: cleanTxns(item.txns) }]
+    const txns = cleanTxns(item.txns)
+    const legacyCash = cleanCash(item.cash)
+    const cashTxns = Array.isArray(item.cashTxns)
+      ? cleanCashTxns(item.cashTxns)
+      : legacyCashTxns(legacyCash)
+    const cash = cashBalances(cashTxns, txns)
+    return [{ id, name, ccy: item.ccy, holdings, cash, cashTxns, snapshots: cleanSnapshots(item.snapshots), txns }]
   }).slice(0, MAX_MY_PORTFOLIOS)
 }
 
@@ -171,7 +183,7 @@ export function createPortfolio(name, ccy) {
   if (!clean || !PORTFOLIO_CCYS.includes(ccy)) return null
   const items = loadPortfolios()
   if (items.length >= MAX_MY_PORTFOLIOS) return null
-  const p = { id: freshId(new Set(items.map((x) => x.id))), name: clean, ccy, holdings: [], cash: [], snapshots: [], txns: [] }
+  const p = { id: freshId(new Set(items.map((x) => x.id))), name: clean, ccy, holdings: [], cash: [], cashTxns: [], snapshots: [], txns: [] }
   persist([...items, p])
   return p
 }
@@ -269,25 +281,118 @@ export function removeHolding(id, symbol) {
 /** Set (or restate) the one cash account this book keeps in `ccy`. Returns
  *  the stored account, or null if the currency or the amount is not one the
  *  book can hold. */
-export function setCash(id, ccy, amount) {
+export function setCash(id, ccy, amount, meta = {}) {
   const [clean] = cleanCash([{ ccy, amount }])
   if (!clean) return null
   const items = loadPortfolios()
   const p = items.find((x) => x.id === id)
   if (!p) return null
-  const at = p.cash.findIndex((c) => c.ccy === clean.ccy)
-  if (at >= 0) p.cash[at] = clean
-  else p.cash.push(clean)
+  const current = cashBalanceFor(p, clean.ccy)
+  const hasActivity = (p.cashTxns || []).some((entry) => entry.ccy === clean.ccy)
+    || (p.txns || []).some((txn) => txn.ccy === clean.ccy && txn.affectsCash === true)
+  if (!hasActivity) {
+    p.cashTxns.push({ id: `clegacy-${clean.ccy}`, kind: 'opening', ccy: clean.ccy, amount: clean.amount })
+  } else if (clean.amount !== current) {
+    const taken = new Set((p.cashTxns || []).map((entry) => entry.id))
+    const delta = clean.amount - current
+    const bookAmount = Number(meta.bookAmount)
+    const entry = cleanCashTxn({
+      id: freshCashTxnId(taken), d: meta.d || localDate(), kind: delta > 0 ? 'deposit' : 'withdrawal', ccy: clean.ccy,
+      amount: delta,
+      note: meta.note,
+      ...(Number.isFinite(bookAmount)
+        ? { bookAmount, bookCcy: meta.bookCcy || p.ccy }
+        : clean.ccy === p.ccy ? { bookAmount: delta, bookCcy: p.ccy } : {}),
+    })
+    if (entry) p.cashTxns.push(entry)
+  }
+  p.cash = cashBalances(p.cashTxns, p.txns)
   persist(items)
-  return clean
+  return p.cash.find((row) => row.ccy === clean.ccy) || null
 }
 
 export function removeCash(id, ccy) {
   const items = loadPortfolios()
   const p = items.find((x) => x.id === id)
   if (!p) return
-  p.cash = p.cash.filter((c) => c.ccy !== String(ccy || '').toUpperCase())
+  const currency = String(ccy || '').toUpperCase()
+  if ((p.txns || []).some((txn) => txn.ccy === currency && txn.affectsCash === true)) return false
+  if ((p.cashTxns || []).some((entry) => entry.ccy === currency && entry.kind !== 'opening')) return false
+  p.cashTxns = (p.cashTxns || []).filter((entry) => entry.ccy !== currency)
+  p.cash = cashBalances(p.cashTxns, p.txns)
   persist(items)
+  return true
+}
+
+let nextCashTxn = 1
+function freshCashTxnId(taken) {
+  let id
+  do { id = `c${Date.now().toString(36)}${(nextCashTxn++).toString(36)}` } while (taken.has(id))
+  return id
+}
+
+/** Deposit or withdraw cash. The public input is always a positive amount;
+ *  the stored ledger carries the sign so replay is unambiguous. */
+export function addCashTxn(id, txn) {
+  const items = loadPortfolios()
+  const p = items.find((x) => x.id === id)
+  if (!p || !['deposit', 'withdrawal'].includes(txn?.kind)) return null
+  const rawAmount = Number(txn?.amount)
+  if (!(rawAmount > 0) || !DATE_RE.test(String(txn?.d || ''))) return null
+  const ccy = String(txn?.ccy || '').toUpperCase()
+  if (!PORTFOLIO_CCYS.includes(ccy) || (p.cashTxns || []).length >= MAX_CASH_TXNS) return null
+  const amount = txn.kind === 'withdrawal' ? -rawAmount : rawAmount
+  const taken = new Set((p.cashTxns || []).map((entry) => entry.id))
+  const bookAmount = Number(txn?.bookAmount)
+  const entry = cleanCashTxn({
+    ...txn, id: freshCashTxnId(taken), ccy, amount,
+    ...(Number.isFinite(bookAmount)
+      ? { bookAmount: txn.kind === 'withdrawal' ? -Math.abs(bookAmount) : Math.abs(bookAmount), bookCcy: txn.bookCcy }
+      : ccy === p.ccy ? { bookAmount: amount, bookCcy: p.ccy } : {}),
+  })
+  if (!entry) return null
+  p.cashTxns = [...(p.cashTxns || []), entry]
+  p.cash = cashBalances(p.cashTxns, p.txns)
+  persist(items)
+  return entry
+}
+
+/** Restate a statement balance without erasing the audit trail. The delta is
+ *  economically money in or money out, so it files as deposit/withdrawal. */
+export function reconcileCash(id, ccy, target, meta = {}) {
+  const items = loadPortfolios()
+  const p = items.find((x) => x.id === id)
+  const currency = String(ccy || '').toUpperCase()
+  const next = Number(target)
+  if (!p || !PORTFOLIO_CCYS.includes(currency) || !Number.isFinite(next)
+      || !DATE_RE.test(String(meta.d || '')) || (p.cashTxns || []).length >= MAX_CASH_TXNS) return null
+  const delta = Math.round((next - cashBalanceFor(p, currency) + Number.EPSILON) * 100) / 100
+  if (delta === 0) return null
+  const taken = new Set((p.cashTxns || []).map((entry) => entry.id))
+  const entry = cleanCashTxn({
+    id: freshCashTxnId(taken), d: meta.d, kind: delta > 0 ? 'deposit' : 'withdrawal', ccy: currency, amount: delta,
+    note: meta.note,
+    ...(Number.isFinite(Number(meta.bookAmount))
+      ? { bookAmount: Number(meta.bookAmount), bookCcy: meta.bookCcy }
+      : currency === p.ccy ? { bookAmount: delta, bookCcy: p.ccy } : {}),
+  })
+  if (!entry) return null
+  p.cashTxns.push(entry)
+  p.cash = cashBalances(p.cashTxns, p.txns)
+  persist(items)
+  return entry
+}
+
+export function removeCashTxn(id, cashTxnId) {
+  const items = loadPortfolios()
+  const p = items.find((x) => x.id === id)
+  if (!p) return false
+  const entry = (p.cashTxns || []).find((row) => row.id === cashTxnId)
+  if (!entry || entry.kind === 'opening') return false
+  p.cashTxns = p.cashTxns.filter((row) => row.id !== cashTxnId)
+  p.cash = cashBalances(p.cashTxns, p.txns)
+  persist(items)
+  return true
 }
 
 /** The live math, pure: holdings + cash + quotes + FX rates →
@@ -416,8 +521,18 @@ function openingFor(p, clean, taken) {
   before.setUTCDate(before.getUTCDate() - 1)
   return cleanTxn({
     id: freshTxnId(taken), d: before.toISOString().slice(0, 10), sym: clean.sym, side: 'buy',
-    qty: row.shares, px: row.cost > 0 ? row.cost : clean.px,
+    qty: row.shares, px: row.cost > 0 ? row.cost : clean.px, ccy: clean.ccy, opening: true,
   })
+}
+
+function cashLinkedTxn(txn) {
+  const inferred = String(txn?.ccy || holdingCurrency(txn?.sym)).toUpperCase()
+  const supported = PORTFOLIO_CCYS.includes(inferred)
+  return {
+    ...txn,
+    ...(supported ? { ccy: inferred } : {}),
+    affectsCash: txn?.affectsCash === false ? false : supported,
+  }
 }
 
 /** Record one trade; holdings for that symbol are re-derived from the
@@ -427,13 +542,14 @@ export function addTxn(id, txn) {
   const p = items.find((x) => x.id === id)
   if (!p) return null
   const taken = new Set((p.txns || []).map((t) => t.id))
-  const clean = cleanTxn({ ...txn, id: txn?.id && !taken.has(txn.id) ? txn.id : freshTxnId(taken) })
+  const clean = cleanTxn({ ...cashLinkedTxn(txn), id: txn?.id && !taken.has(txn.id) ? txn.id : freshTxnId(taken) })
   if (!clean) return null
   taken.add(clean.id)
   const prev = p.txns || []
   const opening = openingFor(p, clean, taken)
   p.txns = [...prev, ...(opening ? [opening] : []), clean].slice(-MAX_TXNS)
   rederive(p, prev)
+  p.cash = cashBalances(p.cashTxns, p.txns)
   persist(items)
   return clean
 }
@@ -449,14 +565,14 @@ export function importTxns(id, rows) {
   let added = 0
   let rejected = 0
   for (const r of rows || []) {
-    const clean = cleanTxn({ ...r, id: freshTxnId(taken) })
+    const clean = cleanTxn({ ...cashLinkedTxn(r), id: freshTxnId(taken) })
     if (!clean || (p.txns || []).length + added >= MAX_TXNS) { rejected++; continue }
     taken.add(clean.id)
     const opening = openingFor(p, clean, taken)
     p.txns = [...(p.txns || []), ...(opening ? [opening] : []), clean]
     added++
   }
-  if (added) { rederive(p, prev); persist(items) }
+  if (added) { rederive(p, prev); p.cash = cashBalances(p.cashTxns, p.txns); persist(items) }
   return { added, rejected }
 }
 
@@ -467,5 +583,6 @@ export function removeTxn(id, txnId) {
   const prev = p.txns || []
   p.txns = prev.filter((t) => t.id !== txnId)
   rederive(p, prev)
+  p.cash = cashBalances(p.cashTxns, p.txns)
   persist(items)
 }

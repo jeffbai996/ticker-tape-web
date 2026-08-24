@@ -4,6 +4,7 @@ import { positionsFromTxns, sortTxns } from '../lib/lots.js'
 import { parseTradesCsv } from '../lib/tradeCsv.js'
 import { offLot, positionAfter, tradeCcy, tradeEstimate } from '../lib/tradeTicket.js'
 import { normalizeVenueCode } from '../lib/venueCodes.js'
+import { cashBalanceFor, tradeCashDelta } from '../lib/cashLedger.js'
 import { useQuotes } from '../hooks.js'
 import { fmtCcy } from '../lib/fx.js'
 import { fmtPct, fmtPrice } from '../lib/format.js'
@@ -32,6 +33,8 @@ export function AddTradeForm({ portfolio }) {
   const zh = getLocale() === 'zh'
   const ccy = tradeCcy(symbol, live)
   const est = tradeEstimate({ side, qty, px, fee })
+  const cashBefore = cashBalanceFor(portfolio, ccy)
+  const cashAfter = est == null ? null : cashBefore + (side === 'sell' ? est : -est)
   const pos = positionAfter(portfolio.holdings, symbol, { side, qty, px, fee })
   const ready = !!symbol && Number(qty) > 0 && String(px).trim() !== '' && Number(px) >= 0 && !!d
   const missing = [!symbol && tl('Symbol'), !(Number(qty) > 0) && tl('Qty'),
@@ -39,7 +42,7 @@ export function AddTradeForm({ portfolio }) {
   const submit = (e) => {
     e.preventDefault()
     if (!ready) { setTried(true); return }
-    const ok = addTxn(portfolio.id, { d, sym: symbol, side, qty: Number(qty), px: Number(px), fee: Number(fee) || 0 })
+    const ok = addTxn(portfolio.id, { d, sym: symbol, side, qty: Number(qty), px: Number(px), fee: Number(fee) || 0, ccy })
     if (ok) { setSym(''); setPicked(null); setQty(''); setPx(''); setFee(''); setTried(false) }
   }
   const buy = side === 'buy'
@@ -110,6 +113,9 @@ export function AddTradeForm({ portfolio }) {
           </button>
         ) : '—')}
         {crow(tl('Est. amount'), est != null ? fmtCcy(est, ccy, 2) : '—', buy ? 'font-semibold text-up' : 'font-semibold text-down')}
+        {crow(tl('Cash after'), cashAfter != null
+          ? <><span class="text-muted">{fmtCcy(cashBefore, ccy, 2)}</span><span class="mx-1 text-muted">→</span>{fmtCcy(cashAfter, ccy, 2)}</>
+          : '—', cashAfter != null && cashAfter < 0 ? 'font-semibold text-down' : 'font-semibold text-ink')}
         {crow(tl('Position after'), pos ? `${pos.before} → ${pos.after} ${tl('shares')}` : '—')}
         {pos?.avgAfter != null && crow(tl('Avg cost after'), fmtPrice(pos.avgAfter))}
       </div>
@@ -207,7 +213,7 @@ export function BookTrades({ portfolio, quotes }) {
           <div class="overflow-x-auto">
             <table class="book-table w-full border-collapse font-mono text-[11px]">
               <thead><tr class="font-anth text-[9px] uppercase tracking-wider text-muted">
-                {[tl('Date'), tl('Symbol'), tl('Side'), tl('Qty'), tl('Price'), tl('Fee'), ''].map((h, i) => <th key={i} class={`px-2.5 py-1.5 ${i >= 3 ? 'text-right' : 'text-left'}`}>{h}</th>)}
+                {[tl('Date'), tl('Symbol'), tl('Side'), tl('Qty'), tl('Price'), tl('Fee'), tl('Cash impact'), ''].map((h, i) => <th key={i} class={`px-2.5 py-1.5 ${i >= 3 ? 'text-right' : 'text-left'}`}>{h}</th>)}
               </tr></thead>
               <tbody>
                 {txns.map((t) => (
@@ -218,6 +224,9 @@ export function BookTrades({ portfolio, quotes }) {
                     <td class="px-2.5 py-[3px] text-right">{t.qty}</td>
                     <td class="px-2.5 py-[3px] text-right">{t.px}{t.ccy ? <span class="ml-1 font-anth text-[9px] text-muted">{t.ccy}</span> : null}</td>
                     <td class="px-2.5 py-[3px] text-right text-muted">{t.fee || ''}</td>
+                    <td class={`px-2.5 py-[3px] text-right ${tradeCashDelta(t) == null ? 'text-muted' : tradeCashDelta(t) >= 0 ? 'text-up' : 'text-down'}`}>
+                      {t.opening ? tl('Opening') : tradeCashDelta(t) == null ? '—' : `${tradeCashDelta(t) >= 0 ? '+' : '-'}${fmtCcy(Math.abs(tradeCashDelta(t)), t.ccy, 2)}`}
+                    </td>
                     <td class="px-2.5 py-[3px] text-right"><button type="button" onClick={() => removeTxn(portfolio.id, t.id)} title={tl('Remove trade')} aria-label={tl('Remove trade')} class="text-muted hover:text-down">✕</button></td>
                   </tr>
                 ))}

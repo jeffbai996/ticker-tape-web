@@ -5,6 +5,8 @@
  *  aligned normalised series out, so the page only draws.
  */
 
+import { externalCashFlows } from './cashLedger.js'
+
 /** ms or s epoch, or a date string → 'YYYY-MM-DD' in UTC (daily bars carry
  *  the session date; the reader's local date is close enough for a line). */
 export function barDate(bar) {
@@ -51,14 +53,40 @@ export function spanReturn(values) {
   return ((finite[finite.length - 1] / finite[0]) - 1) * 100
 }
 
+/** Chain returns between marks after removing external cash flows. A deposit
+ *  is not alpha and a withdrawal is not a drawdown. The daily marks do not
+ *  know intraday flow timing, so flows dated in the interval are treated as
+ *  end-of-period — deterministic and honest enough for a once-daily line. */
+export function flowAdjustedTo100(marks, cashTxns, bookCcy) {
+  if (!marks.length) return []
+  const flows = externalCashFlows(cashTxns, bookCcy)
+  const out = [100]
+  for (let i = 1; i < marks.length; i++) {
+    const previous = marks[i - 1]
+    const current = marks[i]
+    let flow = 0
+    for (const [date, amount] of flows) {
+      if (date > previous.d && date <= current.d) flow += amount
+    }
+    const factor = previous.v > 0 ? (current.v - flow) / previous.v : null
+    out.push(factor != null && Number.isFinite(factor)
+      ? Math.round(out[i - 1] * factor * 1e4) / 1e4
+      : null)
+  }
+  return out
+}
+
 /** The chart's data: the book's marks (one currency) plus each benchmark
  *  aligned to the same dates, all normalised to 100 at the first mark. */
-export function buildPerformance(snapshots, benchmarks = []) {
+export function buildPerformance(snapshots, benchmarks = [], cashTxns = [], bookCcy = null) {
   const marks = (snapshots || []).filter((s) => s && s.d && Number.isFinite(s.v))
   const dates = marks.map((s) => s.d)
   const book = marks.map((s) => s.v)
+  const adjusted = cashTxns.length && bookCcy
+    ? flowAdjustedTo100(marks, cashTxns, bookCcy)
+    : normalizeTo100(book)
   const series = [
-    { id: 'book', values: normalizeTo100(book), raw: book, ret: spanReturn(book) },
+    { id: 'book', values: adjusted, raw: book, ret: spanReturn(adjusted) },
     ...benchmarks.map((b) => {
       const aligned = alignToDates(b.bars, dates)
       return { id: b.id, label: b.label, values: normalizeTo100(aligned), raw: aligned, ret: spanReturn(aligned) }
