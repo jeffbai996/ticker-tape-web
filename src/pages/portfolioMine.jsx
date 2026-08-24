@@ -9,7 +9,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { useQuotes } from '../hooks.js'
 import { SymbolSuggest } from '../components/SymbolSuggest.jsx'
 import { sizeForWeight } from '../lib/demo.js'
-import { breadth, cashSplit, concentration, dayContribution, sortRows, unrealizedStats, venueSplit, sectorSplit } from '../lib/bookStats.js'
+import { breadth, cashSplit, concentration, dayContribution, sortRows, unrealizedStats, venueGroups, venueSplit, sectorSplit } from '../lib/bookStats.js'
 import { BOOK_CARDS, hiddenCards, onCardsChange, resetCards, toggleCard } from '../lib/bookCards.js'
 import { BUCKETS } from '../lib/symbols.js'
 import { FlashPrice } from '../components/Fig.jsx'
@@ -357,7 +357,49 @@ function Holdings({ portfolio, quotes, rates }) {
     setSort(next)
     try { localStorage.setItem('my_portfolio_sort_v1', JSON.stringify(next)) } catch { /* best-effort */ }
   }
-  const rows = sortRows(all.rows.filter((r) => r.kind !== 'cash'), sort.key, sort.dir)
+  const holdRows = all.rows.filter((r) => r.kind !== 'cash')
+  const rows = sortRows(holdRows, sort.key, sort.dir)
+  // resting order shows its venue sections; an explicit header sort is one
+  // flat list again (Gordon 2026-08-23: "make the groups more apparent")
+  const sorted = !!(sort.key && sort.dir)
+  const groups = !sorted ? venueGroups(holdRows) : null
+  const groupLabel = { hk: tl('HK stocks'), cn: tl('A-shares'), other: tl('US & other') }
+  const holdingRow = (r) => (
+    <tr key={r.symbol} class="border-t border-line hover:bg-surface-3 whitespace-nowrap">
+      <td class="px-2.5 py-[2px] cursor-pointer"
+        onClick={() => (location.hash = `#/research/${r.symbol.toLowerCase()}`)}>
+        <span class="font-bold text-accent">{r.symbol}</span>
+        {holdingName(r.symbol, quotes) && (
+          <span class="block max-w-[9rem] truncate font-anth text-[8.5px] leading-[1.1] text-muted">
+            {holdingName(r.symbol, quotes)}
+          </span>
+        )}
+      </td>
+      <td class="px-1.5 py-[2px] font-anth text-[10px] text-muted">{r.ccy}</td>
+      <td class="px-1.5 py-[2px] text-right"><SharesCell portfolio={portfolio} row={r} /></td>
+      <td class="px-1.5 py-[2px] text-right"><CostCell portfolio={portfolio} row={r} /></td>
+      <td class="px-1.5 py-[2px] text-right text-ink-2 font-medium">
+        {r.price != null ? <FlashPrice price={r.price} fmt={fmtPrice} /> : '—'}
+      </td>
+      <td class={`px-1.5 py-[2px] text-right font-medium ${pnlCls(r.dayPct)}`}>
+        {r.dayPnlDisplay != null
+          ? <>{signed(r.dayPnlDisplay, ccy)} <span class="text-[10px] font-normal">({fmtPct(r.dayPct)})</span></>
+          : r.dayPct != null ? fmtPct(r.dayPct) : '—'}
+      </td>
+      <td class="px-1.5 py-[2px] text-right text-ink font-semibold text-[12px]">
+        {r.valueDisplay != null ? fmtCcy(r.valueDisplay, ccy) : '—'}
+      </td>
+      <td class="px-1.5 py-[2px] text-right text-ink-2 font-medium">
+        {r.weightPct != null ? fmtPctPlain(r.weightPct) : '—'}
+      </td>
+      <td class={`px-1.5 py-[2px] text-right font-semibold ${pnlCls(r.unrealDisplay)}`}>
+        {r.unrealDisplay != null ? signed(r.unrealDisplay, ccy) : '—'}
+      </td>
+      <td class="px-1.5 py-[2px] text-right">
+        <ConfirmRemove label={r.symbol} onConfirm={() => removeHolding(portfolio.id, r.symbol)} />
+      </td>
+    </tr>
+  )
   const th = (key, label, cls, first = 'desc') => (
     <th class={`${cls} book-th ${sort.key === key ? 'book-th-on' : ''}`} aria-sort={sort.key === key ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
       <button type="button" onClick={() => clickSort(key, first)} class="uppercase tracking-wider">{label}</button>
@@ -383,42 +425,15 @@ function Holdings({ portfolio, quotes, rates }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((r) => (
-            <tr key={r.symbol} class="border-t border-line hover:bg-surface-3 whitespace-nowrap">
-              <td class="px-2.5 py-[2px] cursor-pointer"
-                onClick={() => (location.hash = `#/research/${r.symbol.toLowerCase()}`)}>
-                <span class="font-bold text-accent">{r.symbol}</span>
-                {holdingName(r.symbol, quotes) && (
-                  <span class="block max-w-[9rem] truncate font-anth text-[8.5px] leading-[1.1] text-muted">
-                    {holdingName(r.symbol, quotes)}
-                  </span>
-                )}
+          {groups && groups.length > 1 && groups.flatMap((g) => [
+            <tr key={`venue-${g.key}`} class="border-t border-line bg-surface-2/70">
+              <td colSpan={10} class="px-2.5 py-[3px] font-anth text-[9px] uppercase tracking-[.14em] text-muted">
+                {groupLabel[g.key]} <span class="normal-case tracking-normal">· {g.rows.length}</span>
               </td>
-              <td class="px-1.5 py-[2px] font-anth text-[10px] text-muted">{r.ccy}</td>
-              <td class="px-1.5 py-[2px] text-right"><SharesCell portfolio={portfolio} row={r} /></td>
-              <td class="px-1.5 py-[2px] text-right"><CostCell portfolio={portfolio} row={r} /></td>
-              <td class="px-1.5 py-[2px] text-right text-ink-2 font-medium">
-                {r.price != null ? <FlashPrice price={r.price} fmt={fmtPrice} /> : '—'}
-              </td>
-              <td class={`px-1.5 py-[2px] text-right font-medium ${pnlCls(r.dayPct)}`}>
-                {r.dayPnlDisplay != null
-                  ? <>{signed(r.dayPnlDisplay, ccy)} <span class="text-[10px] font-normal">({fmtPct(r.dayPct)})</span></>
-                  : r.dayPct != null ? fmtPct(r.dayPct) : '—'}
-              </td>
-              <td class="px-1.5 py-[2px] text-right text-ink font-semibold text-[12px]">
-                {r.valueDisplay != null ? fmtCcy(r.valueDisplay, ccy) : '—'}
-              </td>
-              <td class="px-1.5 py-[2px] text-right text-ink-2 font-medium">
-                {r.weightPct != null ? fmtPctPlain(r.weightPct) : '—'}
-              </td>
-              <td class={`px-1.5 py-[2px] text-right font-semibold ${pnlCls(r.unrealDisplay)}`}>
-                {r.unrealDisplay != null ? signed(r.unrealDisplay, ccy) : '—'}
-              </td>
-              <td class="px-1.5 py-[2px] text-right">
-                <ConfirmRemove label={r.symbol} onConfirm={() => removeHolding(portfolio.id, r.symbol)} />
-              </td>
-            </tr>
-          ))}
+            </tr>,
+            ...g.rows.map(holdingRow),
+          ])}
+          {!(groups && groups.length > 1) && rows.map(holdingRow)}
           {!rows.length && !cashRows.length && (
             <tr class="border-t border-line">
               <td colSpan={10} class="px-3 py-5 text-center font-anth text-[11px] text-muted">
