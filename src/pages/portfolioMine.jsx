@@ -1289,7 +1289,6 @@ function copyText(value) {
   return Promise.reject(new Error('no clipboard'))
 }
 
-export const MyHoldings = (props) => <MyPortfolios {...props} view="holdings" />
 export const MyNews = (props) => <MyPortfolios {...props} view="news" />
 export const MyPerformance = (props) => <MyPortfolios {...props} view="performance" />
 export const MyTrades = (props) => <MyPortfolios {...props} view="trades" />
@@ -1400,12 +1399,12 @@ export function MyPortfolios({ view = 'overview' } = {}) {
 
       {selected ? (
         <>
-          {/* overview = everything, as before; holdings = the table alone at
-              full width; news = the per-ticker feed (Jeff 2026-08-22) */}
+          {/* overview is the complete portfolio workspace; supporting routes
+              replace it with a single focused surface. */}
           {view === 'overview' && <SummaryStrip portfolio={selected} quotes={quotes} rates={rates} ccys={ccys} fxLive={fxLive} bench={bench} />}
           {view === 'overview' && <BookAnalysis portfolio={selected} quotes={quotes} rates={rates} fxLive={fxLive} bench={bench} slot="top" />}
-          {(view === 'overview' || view === 'holdings') && <Holdings portfolio={selected} quotes={quotes} rates={rates} />}
-          {(view === 'overview' || view === 'holdings') && <BookTools portfolio={selected} quotes={quotes} rates={rates} />}
+          {view === 'overview' && <Holdings portfolio={selected} quotes={quotes} rates={rates} />}
+          {view === 'overview' && <BookTools portfolio={selected} quotes={quotes} rates={rates} />}
           {view === 'overview' && <BookAnalysis portfolio={selected} quotes={quotes} rates={rates} fxLive={fxLive} bench={bench} slot="rest" />}
           {view === 'news' && <BookNews portfolio={selected} quotes={quotes} />}
           {view === 'performance' && <BookPerformance portfolio={selected} quotes={quotes} rates={rates} />}

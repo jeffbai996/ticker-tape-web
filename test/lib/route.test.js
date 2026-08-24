@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseHash, hrefFor } from '../../src/lib/route.js'
+import { parseHash, hrefFor, NAV } from '../../src/lib/route.js'
 
 describe('parseHash', () => {
   it('maps empty hash to the dashboard', () => {
@@ -37,6 +37,12 @@ describe('parseHash', () => {
 
   it('drops an unknown sub-tab but keeps the section', () => {
     expect(parseHash('#/markets/bogus')).toEqual({ section: 'markets', sub: null })
+  })
+
+  it('keeps holdings on the portfolio landing instead of duplicating it as a subpage', () => {
+    const portfolio = NAV.find((section) => section.id === 'portfolio')
+    expect(portfolio.subs.map((sub) => sub.id)).not.toContain('holdings')
+    expect(parseHash('#/portfolio/holdings')).toEqual({ section: 'portfolio', sub: null })
   })
 
   it('is case-insensitive', () => {
