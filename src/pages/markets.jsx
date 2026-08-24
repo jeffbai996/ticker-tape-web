@@ -235,13 +235,6 @@ export function MarketControlRail({ groups, visual, window, onVisual, onWindow }
     <nav data-market-controls
       class="mb-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar rounded-xl border border-accent/25 bg-surface-2/90 px-2.5 py-2 shadow-[inset_3px_0_0_rgba(245,158,11,0.55)]"
       aria-label={tl('Market controls')}>
-      <span class="inline-flex shrink-0 items-center gap-1.5 pr-1 font-anth text-[9px] font-bold uppercase tracking-[.14em] text-accent">
-        <svg aria-hidden="true" viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
-          <path d="M2 4h12M2 8h12M2 12h12M5 2v4M11 6v4M7 10v4" />
-        </svg>
-        {tl('Market controls')}
-      </span>
-      <span class="h-4 w-px bg-accent/25 shrink-0 mx-0.5" aria-hidden="true" />
       <MarketVisualPicker visual={visual} window={window} onVisual={onVisual} onWindow={onWindow} />
       <span class="h-4 w-px bg-line shrink-0 mx-1" aria-hidden="true" />
       <span class="font-anth text-[9px] uppercase tracking-wider text-ink-2 shrink-0 mr-1">{tl('Jump to')}</span>
