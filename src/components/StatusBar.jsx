@@ -261,7 +261,7 @@ export function StatusBar() {
       <button
         type="button"
         onClick={toggleDrift}
-        class={`px-1.5 max-md:px-0 py-px max-md:w-5 max-md:h-5 max-md:grid max-md:place-items-center rounded border text-[10px] font-anth font-bold tracking-wider max-md:tracking-normal whitespace-nowrap cursor-pointer ${STATE_CHIP[holiday ? 'closed' : state]}`}
+        class={`px-1.5 max-md:px-0 py-px max-md:w-5 max-md:h-5 max-md:grid max-md:place-items-center rounded border text-[10px] font-anth font-bold tracking-wider max-md:tracking-normal whitespace-nowrap cursor-pointer transition-colors duration-150 hover:border-current hover:bg-white/[0.08] focus-visible:border-current focus-visible:bg-white/[0.08] focus-visible:outline-none ${STATE_CHIP[holiday ? 'closed' : state]}`}
         title={`${chipTitle} · ${tl(drift === 'on' ? 'tap: stop the index drift' : 'tap: drift the index strip')}`}
       >
         <span class="max-md:hidden">{tl(chipLabel)}</span>
