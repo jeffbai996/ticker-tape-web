@@ -400,6 +400,26 @@ function rederive(p, prevTxns) {
   p.holdings = applyLedger(hand, p.txns).slice(0, MAX_MY_HOLDINGS)
 }
 
+/** The ledger owns the holdings row for any traded symbol — but a person
+ *  who hand-typed 1000 shares and then records a 200-share buy means 1200,
+ *  not 200 (Gordon 2026-08-23). So the FIRST trade touching a hand-typed
+ *  row files that row into the ledger as an opening buy (at its recorded
+ *  cost, or this trade's price when no cost was ever typed) before the new
+ *  trade lands. The opening is a visible, deletable ledger row. */
+function openingFor(p, clean, taken) {
+  if ((p.txns || []).some((t) => t.sym === clean.sym)) return null
+  const row = (p.holdings || []).find((h) => h.symbol === clean.sym)
+  if (!row || !(row.shares > 0)) return null
+  // dated the day before the trade: the position genuinely predates it,
+  // and same-day ledger order would otherwise be an id coin-flip
+  const before = new Date(`${clean.d}T12:00:00Z`)
+  before.setUTCDate(before.getUTCDate() - 1)
+  return cleanTxn({
+    id: freshTxnId(taken), d: before.toISOString().slice(0, 10), sym: clean.sym, side: 'buy',
+    qty: row.shares, px: row.cost > 0 ? row.cost : clean.px,
+  })
+}
+
 /** Record one trade; holdings for that symbol are re-derived from the
  *  ledger. Returns the stored trade, or null. */
 export function addTxn(id, txn) {
@@ -409,8 +429,10 @@ export function addTxn(id, txn) {
   const taken = new Set((p.txns || []).map((t) => t.id))
   const clean = cleanTxn({ ...txn, id: txn?.id && !taken.has(txn.id) ? txn.id : freshTxnId(taken) })
   if (!clean) return null
+  taken.add(clean.id)
   const prev = p.txns || []
-  p.txns = [...prev, clean].slice(-MAX_TXNS)
+  const opening = openingFor(p, clean, taken)
+  p.txns = [...prev, ...(opening ? [opening] : []), clean].slice(-MAX_TXNS)
   rederive(p, prev)
   persist(items)
   return clean
@@ -430,7 +452,8 @@ export function importTxns(id, rows) {
     const clean = cleanTxn({ ...r, id: freshTxnId(taken) })
     if (!clean || (p.txns || []).length + added >= MAX_TXNS) { rejected++; continue }
     taken.add(clean.id)
-    p.txns = [...(p.txns || []), clean]
+    const opening = openingFor(p, clean, taken)
+    p.txns = [...(p.txns || []), ...(opening ? [opening] : []), clean]
     added++
   }
   if (added) { rederive(p, prev); persist(items) }

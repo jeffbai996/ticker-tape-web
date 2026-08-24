@@ -2,7 +2,11 @@ import { useEffect, useMemo, useState } from 'preact/hooks'
 import { addTxn, importTxns, removeTxn } from '../lib/myPortfolios.js'
 import { positionsFromTxns, sortTxns } from '../lib/lots.js'
 import { parseTradesCsv } from '../lib/tradeCsv.js'
+import { offLot, positionAfter, tradeCcy, tradeEstimate } from '../lib/tradeTicket.js'
+import { normalizeVenueCode } from '../lib/venueCodes.js'
+import { useQuotes } from '../hooks.js'
 import { fmtCcy } from '../lib/fx.js'
+import { fmtPct, fmtPrice } from '../lib/format.js'
 import { getLocale, tl } from '../lib/i18n.js'
 import { loadZhTable, onZhTable, zhName } from '../lib/zhNames.js'
 import { SymbolSuggest } from '../components/SymbolSuggest.jsx'
@@ -21,44 +25,94 @@ export function AddTradeForm({ portfolio }) {
   const [px, setPx] = useState('')
   const [fee, setFee] = useState('')
   const [d, setD] = useState(() => new Date().toISOString().slice(0, 10))
+  const [tried, setTried] = useState(false)
   const typed = sym.trim().toUpperCase()
-  const symbol = picked && String(picked.symbol).toUpperCase() === typed ? picked.symbol : typed
+  const symbol = picked && String(picked.symbol).toUpperCase() === typed ? picked.symbol : normalizeVenueCode(typed)
+  const live = useQuotes(symbol ? [symbol] : [])[symbol]?.quote
+  const zh = getLocale() === 'zh'
+  const ccy = tradeCcy(symbol, live)
+  const est = tradeEstimate({ side, qty, px, fee })
+  const pos = positionAfter(portfolio.holdings, symbol, { side, qty, px, fee })
+  const ready = !!symbol && Number(qty) > 0 && String(px).trim() !== '' && Number(px) >= 0 && !!d
+  const missing = [!symbol && tl('Symbol'), !(Number(qty) > 0) && tl('Qty'),
+    !(String(px).trim() !== '' && Number(px) >= 0) && tl('Price')].filter(Boolean)
   const submit = (e) => {
     e.preventDefault()
+    if (!ready) { setTried(true); return }
     const ok = addTxn(portfolio.id, { d, sym: symbol, side, qty: Number(qty), px: Number(px), fee: Number(fee) || 0 })
-    if (ok) { setSym(''); setPicked(null); setQty(''); setPx(''); setFee('') }
+    if (ok) { setSym(''); setPicked(null); setQty(''); setPx(''); setFee(''); setTried(false) }
   }
+  const buy = side === 'buy'
+  const field = (label, v, set, opts = {}) => (
+    <label class="flex flex-col gap-0.5 min-w-0">
+      <span class="font-anth text-[9px] uppercase tracking-wider text-muted">{label}</span>
+      <input value={v} onInput={(e) => set(e.currentTarget.value)} inputMode="decimal" aria-label={label}
+        data-1p-ignore data-lpignore="true" class={`${box} w-full text-right`} placeholder={opts.placeholder || ''} />
+    </label>
+  )
+  const crow = (label, value, cls = 'text-ink') => (
+    <div class="flex items-baseline justify-between gap-3">
+      <span class="font-anth text-[9.5px] text-muted">{label}</span>
+      <span class={`font-mono text-[11.5px] tabular-nums ${cls}`}>{value}</span>
+    </div>
+  )
   return (
-    <form onSubmit={submit} class="flex flex-wrap items-end gap-2">
-      <label class="flex flex-col gap-0.5">
-        <span class="font-anth text-[9px] uppercase tracking-wider text-muted">{tl('Symbol')}</span>
-        <SymbolSuggest value={sym} placeholder={tl('Symbol or company')} ariaLabel={tl('Symbol')} dropUp={false}
-          onInput={(e) => { setSym(e.currentTarget.value); setPicked(null) }} onPick={(h) => { setSym(h.symbol); setPicked(h) }}
-          inputClass={`${box} w-40`} />
-      </label>
-      <span class="flex h-[26px] items-center gap-0.5 rounded border border-line bg-surface-2 px-0.5 self-end" role="radiogroup" aria-label={tl('Side')}>
-        {['buy', 'sell'].map((s) => (
-          <button key={s} type="button" role="radio" aria-checked={side === s} onClick={() => setSide(s)}
-            class={`px-2 py-px font-anth text-[10.5px] rounded ${side === s ? (s === 'buy' ? 'bg-up text-black font-bold' : 'bg-down text-black font-bold') : 'text-muted hover:text-ink'}`}>
-            {tl(s === 'buy' ? 'Buy' : 'Sell')}
+    <form onSubmit={submit} class={`grid gap-3 sm:grid-cols-[1fr_15rem] rounded-lg border p-3 ${buy ? 'border-up/25' : 'border-down/25'}`}>
+      <div class="flex flex-col gap-2.5 min-w-0">
+        <div class="flex flex-wrap items-end gap-2">
+          <span class="flex h-[28px] items-center gap-0.5 rounded border border-line bg-surface-2 px-0.5 self-end" role="radiogroup" aria-label={tl('Side')}>
+            {['buy', 'sell'].map((x) => (
+              <button key={x} type="button" role="radio" aria-checked={side === x} onClick={() => setSide(x)}
+                class={`px-3 py-0.5 font-anth text-[11px] rounded ${side === x ? (x === 'buy' ? 'bg-up text-black font-bold' : 'bg-down text-black font-bold') : 'text-muted hover:text-ink'}`}>
+                {tl(x === 'buy' ? 'Buy' : 'Sell')}
+              </button>
+            ))}
+          </span>
+          <label class="flex flex-1 min-w-[10rem] flex-col gap-0.5">
+            <span class="font-anth text-[9px] uppercase tracking-wider text-muted">{tl('Symbol')}</span>
+            <SymbolSuggest value={sym} placeholder={tl('Symbol or company')} ariaLabel={tl('Symbol')} dropUp={false}
+              onInput={(e) => { setSym(e.currentTarget.value); setPicked(null) }} onPick={(h) => { setSym(h.symbol); setPicked(h) }}
+              inputClass={`${box} w-full`} />
+          </label>
+        </div>
+        <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {field(tl('Qty'), qty, setQty)}
+          {field(tl('Price'), px, setPx, { placeholder: live?.price != null ? fmtPrice(live.price) : '' })}
+          {field(tl('Fee'), fee, setFee)}
+          <label class="flex flex-col gap-0.5 min-w-0">
+            <span class="font-anth text-[9px] uppercase tracking-wider text-muted">{tl('Date')}</span>
+            <input type="date" value={d} onInput={(e) => setD(e.currentTarget.value)} aria-label={tl('Date')} class={`${box} w-full`} />
+          </label>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button type="submit"
+            class={`h-[28px] rounded px-4 font-anth text-[12px] font-bold transition-colors ${ready
+              ? (buy ? 'bg-up text-black hover:opacity-90' : 'bg-down text-black hover:opacity-90')
+              : 'border border-line-2 text-muted'}`}>
+            {tl(buy ? 'Record buy' : 'Record sell')}{symbol ? ` · ${symbol}` : ''}
           </button>
-        ))}
-      </span>
-      {[[tl('Qty'), qty, setQty, 'w-24'], [tl('Price'), px, setPx, 'w-24'], [tl('Fee'), fee, setFee, 'w-20']].map(([label, v, set, w]) => (
-        <label key={label} class="flex flex-col gap-0.5">
-          <span class="font-anth text-[9px] uppercase tracking-wider text-muted">{label}</span>
-          <input value={v} onInput={(e) => set(e.currentTarget.value)} inputMode="decimal" aria-label={label}
-            data-1p-ignore data-lpignore="true" class={`${box} ${w} text-right`} />
-        </label>
-      ))}
-      <label class="flex flex-col gap-0.5">
-        <span class="font-anth text-[9px] uppercase tracking-wider text-muted">{tl('Date')}</span>
-        <input type="date" value={d} onInput={(e) => setD(e.currentTarget.value)} aria-label={tl('Date')} class={`${box} w-36`} />
-      </label>
-      <button type="submit" disabled={!symbol || !(Number(qty) > 0) || !(Number(px) >= 0) || !d}
-        class="h-[26px] rounded border border-accent/40 bg-accent/10 px-3 font-anth text-[12px] font-semibold text-accent hover:bg-accent/20 disabled:opacity-40">
-        {tl('Add trade')}
-      </button>
+          {tried && missing.length > 0 && (
+            <span class="font-anth text-[10.5px] text-down">{tl('Still needed')}: {missing.join(' · ')}</span>
+          )}
+          {offLot(symbol, qty) && (
+            <span class="font-anth text-[10.5px] text-muted">{tl('A-shares trade in lots of 100')}</span>
+          )}
+        </div>
+      </div>
+      {/* the broker half of the ticket: what it is, what it costs, what the
+          position becomes — before the tap, like the 委托 panel he knows */}
+      <div class={`flex flex-col justify-center gap-1.5 rounded-md border border-line bg-surface-2/50 px-3 py-2 ${symbol ? '' : 'opacity-50'}`}>
+        {crow(tl('Name'), symbol ? ((zh && zhName(symbol)) || live?.name || '—') : '—', 'text-ink-2 font-anth text-[10.5px] truncate max-w-[10rem]')}
+        {crow(tl('Live price'), live?.price != null ? (
+          <button type="button" onClick={() => setPx(String(live.price))} title={tl('Use live price')}
+            class="rounded border border-line-2 px-1.5 py-px font-mono text-[11px] text-ink hover:border-accent/40 hover:text-accent">
+            {fmtPrice(live.price)}{live.pct != null && <span class={`ml-1.5 text-[10px] ${live.pct >= 0 ? 'text-up' : 'text-down'}`}>{fmtPct(live.pct)}</span>}
+          </button>
+        ) : '—')}
+        {crow(tl('Est. amount'), est != null ? fmtCcy(est, ccy, 2) : '—', buy ? 'font-semibold text-up' : 'font-semibold text-down')}
+        {crow(tl('Position after'), pos ? `${pos.before} → ${pos.after} ${tl('shares')}` : '—')}
+        {pos?.avgAfter != null && crow(tl('Avg cost after'), fmtPrice(pos.avgAfter))}
+      </div>
     </form>
   )
 }
