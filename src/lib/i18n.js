@@ -901,6 +901,7 @@ const LABELS = {
   'Day': '当日',
   'Remove': '移除',
   'No holdings yet — add a symbol below.': '暂无持仓 — 在下方添加代码。',
+  Subtotal: '小计',
   'Awaiting prices or FX for': '等待价格或汇率',
   'excluded from totals': '未计入合计',
   'Rename': '重命名',

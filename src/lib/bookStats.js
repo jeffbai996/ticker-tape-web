@@ -228,6 +228,26 @@ export function venueGroups(rows) {
   return out
 }
 
+/** The total line for one listing section. It deliberately takes valued rows
+ *  from the table rather than fetching or converting again, so a section can
+ *  never disagree with the book's grand total. A percentage needs every
+ *  priced row's day result; otherwise the raw, partial day P&L is all we can
+ *  state honestly. */
+export function venueSubtotal(rows) {
+  const group = rows || []
+  const valued = group.filter((r) => r?.valueDisplay != null)
+  const value = valued.length ? valued.reduce((sum, r) => sum + r.valueDisplay, 0) : null
+  const weightPct = valued.length
+    ? valued.reduce((sum, r) => sum + (r.weightPct || 0), 0) : null
+  const dayRows = valued.filter((r) => r.dayPnlDisplay != null)
+  const dayPnl = dayRows.length ? dayRows.reduce((sum, r) => sum + r.dayPnlDisplay, 0) : null
+  const dayBase = dayPnl != null && value != null ? value - dayPnl : null
+  const dayPct = dayRows.length === valued.length && dayBase ? (dayPnl / dayBase) * 100 : null
+  const unrealRows = valued.filter((r) => r.unrealDisplay != null)
+  const unrealPnl = unrealRows.length ? unrealRows.reduce((sum, r) => sum + r.unrealDisplay, 0) : null
+  return { count: group.length, pricedCount: valued.length, value, weightPct, dayPnl, dayPct, unrealPnl }
+}
+
 export function sortRows(rows, key, dir) {
   const get = SORTABLE[key]
   if (!get || !dir) return venueOrder(rows)

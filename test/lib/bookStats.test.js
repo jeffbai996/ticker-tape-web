@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import {
-  breadth, capitalMix, cashSplit, concentration, dayContribution, sectorSplit, sortRows, unrealizedStats, venueOrder, venueSplit,
+  breadth, capitalMix, cashSplit, concentration, dayContribution, sectorSplit, sortRows, unrealizedStats, venueOrder, venueSplit, venueSubtotal,
 } from '../../src/lib/bookStats.js'
 
 // a small book: two winners, one loser, one unpriced, one cash account
@@ -116,6 +116,32 @@ describe('capitalMix — what occupies the hero allocation slot', () => {
       { kind: 'equity', symbol: 'AAPL', valueDisplay: 1_000 },
       { kind: 'cash', symbol: 'CASH.USD', valueDisplay: -250 },
     ])).toEqual([{ key: 'other', value: 1_000, pct: 100 }])
+  })
+})
+
+describe('venueSubtotal — the totals at the foot of a listing section', () => {
+  it('adds market value, weight and P&L without mixing in another venue', () => {
+    const subtotal = venueSubtotal([
+      { symbol: '600036.SS', valueDisplay: 300, weightPct: 30, dayPnlDisplay: 12, unrealDisplay: 60 },
+      { symbol: '000333.SZ', valueDisplay: 200, weightPct: 20, dayPnlDisplay: -2, unrealDisplay: -20 },
+    ])
+
+    expect(subtotal).toMatchObject({
+      count: 2, pricedCount: 2, value: 500, weightPct: 50,
+      dayPnl: 10, unrealPnl: 40,
+    })
+    expect(subtotal.dayPct).toBeCloseTo((10 / 490) * 100)
+  })
+
+  it('keeps the subtotal honest when a row lacks a day print or price', () => {
+    const subtotal = venueSubtotal([
+      { symbol: '600036.SS', valueDisplay: 300, weightPct: 30, dayPnlDisplay: 12, unrealDisplay: 60 },
+      { symbol: '000333.SZ', valueDisplay: 200, weightPct: 20, dayPnlDisplay: null, unrealDisplay: null },
+      { symbol: 'WAIT.SS', valueDisplay: null, weightPct: null, dayPnlDisplay: null, unrealDisplay: null },
+    ])
+
+    expect(subtotal).toMatchObject({ count: 3, pricedCount: 2, value: 500, weightPct: 50, dayPnl: 12, unrealPnl: 60 })
+    expect(subtotal.dayPct).toBeNull()
   })
 })
 
