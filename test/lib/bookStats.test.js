@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import {
-  breadth, cashSplit, concentration, dayContribution, sectorSplit, sortRows, unrealizedStats, venueOrder, venueSplit,
+  breadth, capitalMix, cashSplit, concentration, dayContribution, sectorSplit, sortRows, unrealizedStats, venueOrder, venueSplit,
 } from '../../src/lib/bookStats.js'
 
 // a small book: two winners, one loser, one unpriced, one cash account
@@ -91,6 +91,31 @@ describe('cashSplit — how much of the book is not invested', () => {
 
   it('reports no cash rather than a divide by zero on an empty book', () => {
     expect(cashSplit([])).toEqual({ cash: 0, invested: 0, total: 0, cashPct: null })
+  })
+})
+
+describe('capitalMix — what occupies the hero allocation slot', () => {
+  it('combines mainland listings while keeping Hong Kong, other equities and cash distinct', () => {
+    const mix = capitalMix([
+      { kind: 'equity', symbol: '0700.HK', valueDisplay: 3_000 },
+      { kind: 'equity', symbol: '600036.SS', valueDisplay: 2_000 },
+      { kind: 'equity', symbol: '000333.SZ', valueDisplay: 1_000 },
+      { kind: 'equity', symbol: 'AAPL', valueDisplay: 2_000 },
+      { kind: 'cash', symbol: 'CASH.CNY', valueDisplay: 2_000 },
+      { kind: 'equity', symbol: 'WAIT', valueDisplay: null },
+    ])
+
+    expect(mix.map((part) => [part.key, part.value])).toEqual([
+      ['cn', 3_000], ['hk', 3_000], ['other', 2_000], ['cash', 2_000],
+    ])
+    expect(mix.reduce((sum, part) => sum + part.pct, 0)).toBeCloseTo(100)
+  })
+
+  it('does not turn a negative cash balance into a positive allocation slice', () => {
+    expect(capitalMix([
+      { kind: 'equity', symbol: 'AAPL', valueDisplay: 1_000 },
+      { kind: 'cash', symbol: 'CASH.USD', valueDisplay: -250 },
+    ])).toEqual([{ key: 'other', value: 1_000, pct: 100 }])
   })
 })
 

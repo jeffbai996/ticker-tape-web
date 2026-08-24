@@ -960,7 +960,12 @@ const LABELS = {
   'cash-flow adjusted': '已调整资金进出',
   'US Dollar Cash': '美元现金', 'Canadian Dollar Cash': '加元现金',
   'Hong Kong Dollar Cash': '港元现金', 'Chinese Yuan Cash': '人民币现金',
-  'Portfolio tools': '组合工具',
+  'Portfolio tools': '组合工具', 'Book tools': '组合操作',
+  'Add or update a position': '添加或更新持仓',
+  'Reconcile deposits and withdrawals': '核对存入与取出',
+  'Turn a target weight into shares': '将目标权重换算成股数',
+  'Saved automatically': '已自动保存', 'cash accounts': '现金账户',
+  'Capital mix': '资金分布', 'Other equities': '其他股票',
   'Sure?': '确认？', 'Tap again to remove': '再点一次删除',
   'What a target weight works out to in shares, at the live price.': '按实时价格，目标权重对应多少股。',
   // Book analytics cards (2026-08-21)
