@@ -38,6 +38,11 @@ describe('wire endpoint config', () => {
 })
 
 describe('demo wire', () => {
+  it('fills a desktop page when the earnings filter is selected', () => {
+    const earnings = demoBackfill().filter((e) => e.type === 'earnings_release')
+    expect(earnings.length).toBeGreaterThanOrEqual(14)
+  })
+
   it('generates a stable synthetic backfill with generic tickers only', () => {
     const evs = demoBackfill(24, 1_000_000)
     expect(evs).toHaveLength(24)
