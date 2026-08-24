@@ -225,6 +225,8 @@ const STRINGS = {
     en: 'No tickers yet. Open this list to build it.',
     zh: '暂无股票。打开这组自选股即可添加。',
   },
+  'watchlists.new': { en: 'New watchlist', zh: '新建自选股' },
+  'watchlists.open': { en: 'Open', zh: '打开' },
   'watchlists.subtitle': {
     en: 'Separate market lenses with the same live dashboard machinery.',
     zh: '用同一套实时看盘，分开追踪不同主题。',
@@ -502,6 +504,7 @@ const LABELS = {
   'fails a band': '未通过条件', 'missing data': '数据缺失',
   'earnings 14d': '14天内财报', 'earnings 7d': '7天内财报', Create: '创建',
   cloud: '云端',  'send symbols to': '发送至', manage: '管理', 'ticker tape': '滚动行情',
+  'display on tape': '显示在行情栏', Default: '默认',
    'enable sync': '启用同步', 
   connect: '连接', or: '或', 'copy code': '复制代码', 'copied code ✓': '代码已复制 ✓',
   '→ moves · ✕ removes': '→ 移动 · ✕ 移除', 'copied ✓': '已复制 ✓', Export: '导出',
