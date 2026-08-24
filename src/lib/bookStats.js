@@ -106,6 +106,26 @@ export function cashSplit(rows) {
   return { cash, invested, total, cashPct: total > 0 ? (cash / total) * 100 : null }
 }
 
+/** Positive capital grouped the way the portfolio reader talks about it:
+ *  mainland A-shares together, Hong Kong together, every other listing as
+ *  one sleeve, and cash. A negative cash account is borrowing, not a slice
+ *  of owned capital, so it never becomes a misleading positive segment. */
+export function capitalMix(rows) {
+  const values = { cn: 0, hk: 0, other: 0, cash: 0 }
+  for (const r of priced(rows)) {
+    if (!(r.valueDisplay > 0)) continue
+    const key = r.kind === 'cash' ? 'cash'
+      : /\.HK$/i.test(r.symbol) ? 'hk'
+        : /\.(SS|SZ)$/i.test(r.symbol) ? 'cn' : 'other'
+    values[key] += r.valueDisplay
+  }
+  const total = Object.values(values).reduce((sum, value) => sum + value, 0)
+  if (!(total > 0)) return []
+  return ['cn', 'hk', 'other', 'cash']
+    .filter((key) => values[key] > 0)
+    .map((key) => ({ key, value: values[key], pct: (values[key] / total) * 100 }))
+}
+
 // Listing venue from the symbol itself. The sector buckets only know US
 // large-caps, so a Hong Kong / mainland book files 85% of itself under
 // "Other" and the sector card says nothing (Jeff's actual demo book,

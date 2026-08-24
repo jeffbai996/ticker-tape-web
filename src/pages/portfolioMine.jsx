@@ -9,7 +9,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { useQuotes } from '../hooks.js'
 import { SymbolSuggest } from '../components/SymbolSuggest.jsx'
 import { sizeForWeight } from '../lib/demo.js'
-import { breadth, cashSplit, concentration, dayContribution, sortRows, unrealizedStats, venueGroups, venueSplit, sectorSplit } from '../lib/bookStats.js'
+import { breadth, capitalMix, cashSplit, concentration, dayContribution, sortRows, unrealizedStats, venueGroups, venueSplit, sectorSplit } from '../lib/bookStats.js'
 import { BOOK_CARDS, hiddenCards, onCardsChange, resetCards, toggleCard } from '../lib/bookCards.js'
 import { BUCKETS } from '../lib/symbols.js'
 import { FlashPrice } from '../components/Fig.jsx'
@@ -299,7 +299,7 @@ function CashCell({ portfolio, row, rates }) {
   )
 }
 
-function Holdings({ portfolio, quotes, rates }) {
+export function Holdings({ portfolio, quotes, rates }) {
   useZhNames()
   const all = portfolioValues(portfolio.holdings, quotes, rates, portfolio.ccy, portfolio.cash)
   const { missing, total } = all
@@ -324,6 +324,20 @@ function Holdings({ portfolio, quotes, rates }) {
   const sorted = !!(sort.key && sort.dir)
   const groups = !sorted ? venueGroups(holdRows) : null
   const groupLabel = { hk: tl('HK stocks'), cn: tl('A-shares'), other: tl('US & other') }
+  const [collapsedByBook, setCollapsedByBook] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('my_portfolio_venue_collapse_v1')) || {} } catch { return {} }
+  })
+  const collapsed = new Set(collapsedByBook[portfolio.id] || [])
+  const toggleVenue = (key) => {
+    setCollapsedByBook((prev) => {
+      const next = { ...prev }
+      const keys = new Set(next[portfolio.id] || [])
+      if (keys.has(key)) keys.delete(key); else keys.add(key)
+      next[portfolio.id] = [...keys]
+      try { localStorage.setItem('my_portfolio_venue_collapse_v1', JSON.stringify(next)) } catch { /* best-effort */ }
+      return next
+    })
+  }
   const holdingRow = (r) => (
     <tr key={r.symbol} class="border-t border-line hover:bg-surface-3 whitespace-nowrap">
       <td class="px-2.5 py-[2px] cursor-pointer"
@@ -386,12 +400,23 @@ function Holdings({ portfolio, quotes, rates }) {
         </thead>
         <tbody>
           {groups && groups.length > 1 && groups.flatMap((g) => [
-            <tr key={`venue-${g.key}`} class="border-t border-line bg-surface-2/70">
-              <td colSpan={10} class="px-2.5 py-[3px] font-anth text-[9px] uppercase tracking-[.14em] text-muted">
-                {groupLabel[g.key]} <span class="normal-case tracking-normal">· {g.rows.length}</span>
+            <tr key={`venue-${g.key}`} class="border-t border-line bg-surface-2/80">
+              <td colSpan={10} class="p-0">
+                <button type="button" data-venue-group={g.key} aria-expanded={!collapsed.has(g.key)}
+                  onClick={() => toggleVenue(g.key)}
+                  class="group flex w-full items-center gap-2 px-2.5 py-1.5 text-left font-anth transition-colors hover:bg-surface-3 focus-visible:bg-surface-3 focus-visible:outline-none">
+                  <span class="h-3.5 w-0.5 rounded-full bg-accent/70" aria-hidden="true" />
+                  <span class="text-[10px] font-semibold uppercase tracking-[.13em] text-ink-2 group-hover:text-ink">
+                    {groupLabel[g.key]}
+                  </span>
+                  <span class="font-mono text-[9.5px] font-semibold tracking-normal text-accent/85">· {g.rows.length}</span>
+                  <svg viewBox="0 0 12 12" class={`ml-auto h-3 w-3 text-muted transition-transform ${collapsed.has(g.key) ? '-rotate-90' : ''}`} aria-hidden="true">
+                    <path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </button>
               </td>
             </tr>,
-            ...g.rows.map(holdingRow),
+            ...(collapsed.has(g.key) ? [] : g.rows.map(holdingRow)),
           ])}
           {!(groups && groups.length > 1) && rows.map(holdingRow)}
           {!rows.length && !cashRows.length && (
@@ -528,6 +553,43 @@ function Sparkline({ marks }) {
   )
 }
 
+const CAPITAL_MIX = {
+  cn: { label: 'A-shares', short: 'A', cls: 'bg-accent' },
+  hk: { label: 'HK stocks', short: 'HK', cls: 'bg-accent-2' },
+  other: { label: 'Other equities', short: 'Other', cls: 'bg-ink-2/65' },
+  cash: { label: 'Cash', short: 'Cash', cls: 'bg-up/70' },
+}
+
+/** The compact allocation rail in the hero's final grid slot. It answers a
+ *  different question from Currency mix below: what capital is deployed in
+ *  A-shares, Hong Kong, elsewhere, or still cash. */
+function CapitalMix({ rows, className = '' }) {
+  const parts = capitalMix(rows)
+  return (
+    <div class={`min-w-0 ${className}`}>
+      <div class="pb-1 font-anth text-[8.5px] uppercase tracking-wider text-muted">{tl('Capital mix')}</div>
+      {parts.length ? (
+        <>
+          <div class="flex h-2 w-full overflow-hidden rounded-sm bg-surface-3" aria-label={tl('Capital mix')}>
+            {parts.map((part) => (
+              <span key={part.key} class={CAPITAL_MIX[part.key].cls}
+                style={{ width: `${part.pct}%` }}
+                title={`${tl(CAPITAL_MIX[part.key].label)} ${fmtPctPlain(part.pct)}`} />
+            ))}
+          </div>
+          <div class="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 font-mono text-[9px] leading-none text-muted">
+            {parts.map((part) => (
+              <span key={part.key} class="whitespace-nowrap">
+                <span class="text-ink-2">{tl(CAPITAL_MIX[part.key].short)}</span> {Math.round(part.pct)}%
+              </span>
+            ))}
+          </div>
+        </>
+      ) : <span class="font-mono text-[11px] text-muted">—</span>}
+    </div>
+  )
+}
+
 function SummaryStrip({ portfolio, quotes, rates, ccys, fxLive, bench }) {
   const { total, rows } = portfolioValues(portfolio.holdings, quotes, rates, portfolio.ccy, portfolio.cash)
   const priced = rows.filter((r) => r.valueDisplay != null)
@@ -605,6 +667,7 @@ function SummaryStrip({ portfolio, quotes, rates, ccys, fxLive, bench }) {
               those markets are even open right now (Jeff 2026-08-22) */}
           {(() => {
             const venues = venueDayBreakdown(priced)
+            const heroVenues = venues.slice(0, 2)
             const fxPct = fxDayPct(fxLive, ccys, portfolio.ccy)
             const fxImp = fxImpact(priced, fxPct, portfolio.ccy)
             const rateTo = (c) => (rates?.[c] && rates?.[portfolio.ccy] ? rates[c] / rates[portfolio.ccy] : null)
@@ -640,7 +703,7 @@ function SummaryStrip({ portfolio, quotes, rates, ccys, fxLive, bench }) {
                   })}
                 </div>
                 <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
-                  {venues.slice(0, 3).map((b) => fact(tl(VENUE_SHORT[b.venue] || b.venue),
+                  {heroVenues.map((b) => fact(tl(VENUE_SHORT[b.venue] || b.venue),
                     b.dayPct == null ? fmtPctPlain(b.weightPct) : `${fmtPct(b.dayPct)}`, b.dayPct == null ? null : b.dayPct >= 0,
                     [`${fmtPctPlain(b.weightPct)} ${tl('of book')}`, b.hasDay ? signed(b.dayPnl, portfolio.ccy) : '—']))}
                   {fact(tl('FX impact'), Object.keys(fxImp.byCcy).length ? signed(fxImp.total, portfolio.ccy) : '—', Object.keys(fxImp.byCcy).length ? fxImp.total >= 0 : null,
@@ -654,6 +717,7 @@ function SummaryStrip({ portfolio, quotes, rates, ccys, fxLive, bench }) {
                     return `${fmtPct(lo)} / ${fmtPct(hi)}`
                   })(), null, null)}
                   {fact(tl('Names'), String(priced.filter((r) => r.kind !== 'cash').length), null, `${br.up} ↑ · ${br.flat || 0} → · ${br.down} ↓`)}
+                  <CapitalMix rows={priced} className={heroVenues.length === 0 ? 'sm:col-span-2' : heroVenues.length === 2 ? 'sm:col-span-3' : ''} />
                 </div>
               </>
             )
@@ -1146,29 +1210,48 @@ function BookTools({ portfolio, quotes, rates }) {
     return () => window.removeEventListener('portfolio-tool', open)
   }, [])
   const tabs = [
-    ['holding', tl('Add holding')],
-    ['cash', tl('Cash activity')],
-    ['sizing', tl('Sizing')],
+    { id: 'holding', label: tl('Add holding'), note: tl('Add or update a position') },
+    { id: 'cash', label: tl('Cash activity'), note: tl('Reconcile deposits and withdrawals') },
+    { id: 'sizing', label: tl('Sizing'), note: tl('Turn a target weight into shares') },
   ]
+  const active = tabs.find((item) => item.id === tab)
   return (
     <section id="portfolio-cash-activity" class="overflow-hidden rounded-xl border border-line bg-surface-1">
-      <div role="tablist" aria-label={tl('Portfolio tools')}
-        class="flex flex-wrap gap-1 border-b border-line bg-surface-2/60 px-2 py-1.5">
-        {tabs.map(([id, label]) => (
-          <button key={id} type="button" role="tab" aria-selected={tab === id}
-            onClick={() => setTab(id)}
-            class={`board-control rounded-md px-3 py-1.5 font-anth text-[11px] transition-colors ${
-              tab === id
-                ? 'border border-accent/45 bg-accent/12 font-semibold text-accent'
-                : 'border border-transparent text-ink-2 hover:border-line-2 hover:text-ink'}`}>
-            {label}
-          </button>
-        ))}
+      <div class="flex flex-col gap-2 border-b border-line bg-surface-2/70 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+        <div class="min-w-0">
+          <div class="font-anth text-[9px] font-semibold uppercase tracking-[.14em] text-ink-2">{tl('Book tools')}</div>
+          <div class="truncate font-anth text-[9.5px] text-muted">{active.note}</div>
+        </div>
+        <div role="tablist" aria-label={tl('Portfolio tools')} class="flex min-w-0 gap-1 overflow-x-auto no-scrollbar">
+          {tabs.map((item, index) => (
+            <button key={item.id} type="button" role="tab" aria-selected={tab === item.id}
+              aria-controls="portfolio-tool-panel" onClick={() => setTab(item.id)}
+              class={`board-control inline-flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 font-anth text-[10.5px] transition-colors ${
+                tab === item.id
+                  ? 'border border-accent/45 bg-accent/12 font-semibold text-accent'
+                  : 'border border-transparent text-ink-2 hover:border-line-2 hover:text-ink'}`}>
+              <span class={`font-mono text-[8px] ${tab === item.id ? 'text-accent/75' : 'text-muted/70'}`}>0{index + 1}</span>
+              {item.label}
+            </button>
+          ))}
+        </div>
       </div>
-      <div class="px-3 py-2.5">
+      <div id="portfolio-tool-panel" role="tabpanel" class="px-3 py-3">
         {tab === 'holding' && <AddHoldingForm portfolio={portfolio} />}
         {tab === 'cash' && <CashActivity portfolio={portfolio} rates={rates} />}
         {tab === 'sizing' && <SizingForm portfolio={portfolio} quotes={quotes} rates={rates} />}
+      </div>
+      <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-line bg-surface-2/40 px-3 py-1.5 font-anth text-[9.5px] text-muted">
+        <span class="inline-flex items-center gap-1.5 whitespace-nowrap">
+          <span class="h-1.5 w-1.5 rounded-full bg-up/80" aria-hidden="true" />
+          {tl('Saved automatically')}
+        </span>
+        <span class="flex flex-wrap items-center justify-end gap-x-2 tabular-nums">
+          <span><b class="font-semibold text-ink-2">{portfolio.holdings.length}</b> {tl('holdings')}</span>
+          <span class="text-line-2" aria-hidden="true">·</span>
+          <span><b class="font-semibold text-ink-2">{(portfolio.cash || []).length}</b> {tl('cash accounts')}</span>
+          <span class="rounded border border-line-2 px-1.5 py-px font-mono text-[9px] text-ink-2">{portfolio.ccy}</span>
+        </span>
       </div>
     </section>
   )
