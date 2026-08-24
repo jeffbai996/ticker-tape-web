@@ -584,6 +584,7 @@ const LABELS = {
   'Jackson Hole Symposium': '杰克逊霍尔年会',
   'reasoned privately': '推理未公开', 'no reasoning returned for this step': '本步骤未返回推理',
   Spark: '走势图', Window: '周期', Volume: '成交量', 'Price line': '价格线', Baseline: '基准线', 'Price area': '价格面积',
+  'Market controls': '市场工具',
   'Daily change': '日涨跌', 'Daily range': '日振幅', Off: '关闭', Visual: '图形',
   'Row visual': '行尾图形', 'Session range': '日内区间',
   'ISM Manufacturing': 'ISM制造业', 'ISM Services': 'ISM服务业',
