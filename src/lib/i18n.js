@@ -917,6 +917,8 @@ const LABELS = {
   'Live price': '现价',
   'Use live price': '按现价填入',
   'Est. amount': '预计金额',
+  'Cash after': '交易后现金',
+  'Cash impact': '现金变动',
   'Position after': '交易后持仓',
   'Avg cost after': '交易后成本',
   shares: '股',
@@ -941,6 +943,21 @@ const LABELS = {
   'Pick the listing from the list — a plain board code like 02628 is not a symbol anywhere.':
     '请从列表中选择上市代码 — 像 02628 这样的纯板块代码在任何交易所都不是有效代码。',
   'Add cash account': '添加现金账户', 'Cash amount': '现金金额',
+  'Cash activity': '现金流水', activity: '流水',
+  'Cash action': '现金操作', Deposit: '存入', Withdraw: '取出', 'Set balance': '设置余额',
+  Currency: '币种', Amount: '金额', 'Actual balance': '实际余额',
+  Note: '备注', 'Note (optional)': '备注（选填）',
+  'Current balance': '当前余额', 'Balance after': '操作后余额',
+  'Cash journal': '现金流水', 'Opening balance': '期初余额', Opening: '期初',
+  Withdrawal: '取出', Adjustment: '调整', 'Trade settlement': '交易结算',
+  'Remove cash activity': '删除现金流水', 'No cash activity yet.': '暂无现金流水。',
+  'Set the actual balance; the difference is recorded as a deposit or withdrawal.':
+    '输入实际余额，差额将记为存入或取出。',
+  'Deposits and withdrawals change cash without changing shares.':
+    '存入和取出只改变现金，不改变持仓股数。',
+  'Direct balance edits are recorded as deposits or withdrawals.':
+    '直接修改余额时，差额会记为存入或取出。',
+  'cash-flow adjusted': '已调整资金进出',
   'US Dollar Cash': '美元现金', 'Canadian Dollar Cash': '加元现金',
   'Hong Kong Dollar Cash': '港元现金', 'Chinese Yuan Cash': '人民币现金',
   'Portfolio tools': '组合工具',

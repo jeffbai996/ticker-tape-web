@@ -37,7 +37,7 @@ export function BookPerformance({ portfolio }) {
 
   const zh = getLocale() === 'zh'
   const benches = BENCHMARKS.filter((b) => bars[b.id]?.length).map((b) => ({ id: b.id, label: zh ? b.zh : b.label, bars: bars[b.id] }))
-  const perf = buildPerformance(marks, benches)
+  const perf = buildPerformance(marks, benches, portfolio.cashTxns || [], portfolio.ccy)
   const names = [portfolio.name, ...benches.map((b) => b.label)]
 
   return (
@@ -46,6 +46,9 @@ export function BookPerformance({ portfolio }) {
         <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 pb-1">
           <span class="font-anth text-[9px] uppercase tracking-[.14em] text-muted">{tl('Performance')}</span>
           <span class="font-mono text-[9.5px] text-muted">{marks.length} {tl('marks')}{marks.length ? ` · ${tl('first mark')} ${marks[0].d}` : ''}</span>
+          {portfolio.cashTxns?.some((entry) => entry.kind !== 'opening') && (
+            <span class="font-anth text-[9px] text-muted">· {tl('cash-flow adjusted')}</span>
+          )}
         </div>
         {perf.dates.length >= 2 ? (
           <>
