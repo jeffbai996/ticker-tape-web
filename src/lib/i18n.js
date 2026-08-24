@@ -908,6 +908,7 @@ const LABELS = {
   'New portfolio': '新建组合',
   'Rename portfolio': '重命名组合',
   'Recently deleted': '最近删除',
+  'US & other': '美股及其他',
   Restore: '恢复',
   'Delete portfolio': '删除组合',
   'No portfolios yet — create one above. Everything you enter stays in this browser.': '还没有组合 — 在上方创建一个。所有输入仅保存在本浏览器。',

@@ -134,7 +134,7 @@ export function BookTrades({ portfolio, quotes }) {
           journal rather than something that beckons you to add trades") */}
       <section class="rounded-xl border border-line bg-surface-1 overflow-hidden">
         <div class="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-line-2 px-3 py-1.5">
-          <span class="font-anth text-[9px] uppercase tracking-[.14em] text-muted">{tl('Ledger')} · {txns.length}</span>
+          <span class="font-anth text-[9px] uppercase tracking-[.14em] text-muted"><span class="text-accent">{portfolio.name}</span> · {tl('Ledger')} · {txns.length}</span>
           {Object.entries(realizedByCcy).map(([c, v]) => (
             <span key={c} class="font-mono text-[11px]"><span class="font-anth text-[9.5px] text-muted">{tl('Realized')} </span>
               <span class={v >= 0 ? 'text-up' : 'text-down'}>{v >= 0 ? '+' : '-'}{fmtCcy(Math.abs(v), c, 2)}</span></span>

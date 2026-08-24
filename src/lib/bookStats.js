@@ -195,6 +195,19 @@ export function venueOrder(rows) {
   ))
 }
 
+/** The resting rows cut into venue sections for display: [{key, rows}] in
+ *  venue order, empty sections dropped. Keys: 'hk' | 'cn' | 'other'. */
+export function venueGroups(rows) {
+  const keyOf = (sym) => (/\.HK$/.test(sym) ? 'hk' : /\.(SS|SZ)$/.test(sym) ? 'cn' : 'other')
+  const out = []
+  for (const r of venueOrder(rows)) {
+    const key = keyOf(r.symbol)
+    if (out.at(-1)?.key !== key) out.push({ key, rows: [] })
+    out.at(-1).rows.push(r)
+  }
+  return out
+}
+
 export function sortRows(rows, key, dir) {
   const get = SORTABLE[key]
   if (!get || !dir) return venueOrder(rows)
