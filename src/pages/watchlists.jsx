@@ -130,7 +130,7 @@ function WatchlistCard({ item, quotes, earnDays, allLists, primary = false }) {
   const [managing, setManaging] = useState(false)
   const [, tapeBump] = useState(0)
   const onTape = isTapeList(item.id)
-  const ctl = 'inline-flex h-8 items-center rounded-md border px-3 max-sm:px-2 text-[11px] whitespace-nowrap transition-colors'
+  const ctl = 'inline-flex h-8 items-center rounded-md border px-2.5 max-sm:px-2 text-[11px] whitespace-nowrap transition-colors'
   const ctlOff = `${ctl} border-line-2 bg-surface-2 text-ink-2 hover:border-line hover:text-ink`
   const ctlOn = `${ctl} border-accent/50 bg-accent/10 text-accent`
   const [exportState, setExportState] = useState('idle')
@@ -225,27 +225,25 @@ function WatchlistCard({ item, quotes, earnDays, allLists, primary = false }) {
                 <button class="font-anth text-[10px] font-semibold text-accent px-1.5">{tl('Save')}</button>
               </form>
             ) : (
-              <a href={href} class="font-anth font-bold text-[22px] leading-tight tracking-tight text-ink hover:text-accent hover:no-underline truncate">
+              <a href={href} class="font-anth font-bold text-[21px] leading-tight tracking-tight text-ink hover:text-accent hover:no-underline truncate">
                 {item.name}
               </a>
             )}
             {primary && <span class="rounded border border-accent/40 bg-accent-soft px-1.5 py-px font-anth text-[7px] font-bold tracking-wider text-accent">{tl('PRIMARY')}</span>}
           </div>
-          <div data-watchlist-count class="pt-1 flex items-baseline gap-1.5 font-anth">
+          <div data-watchlist-count class="pt-1 flex items-baseline gap-1 font-anth">
             <span class="font-mono text-[12px] font-bold text-ink-2">{item.symbols.length}</span>
             <span class="text-[10px] text-muted">{tl(item.symbols.length === 1 ? 'ticker' : 'tickers')}</span>
           </div>
         </div>
-        {!primary && (
-          <label class="flex shrink-0 items-center gap-2 pt-1 font-anth text-[10px] text-muted" onClick={(e) => e.stopPropagation()}>
-            {tl('ticker tape')}
-            <button type="button" role="switch" aria-checked={onTape}
-              onClick={(e) => { e.stopPropagation(); toggleTapeList(item.id); tapeBump((n) => n + 1) }}
-              class={`relative h-5 w-9 shrink-0 rounded-full border transition-colors ${onTape ? 'border-accent/60 bg-accent' : 'border-line-2 bg-surface-3'}`}>
-              <span class={`absolute top-0.5 h-[14px] w-[14px] rounded-full bg-black/80 transition-[left] ${onTape ? 'left-[18px]' : 'left-0.5'}`} />
-            </button>
-          </label>
-        )}
+        <label class="flex shrink-0 items-center gap-2 pt-1 font-anth text-[10px] text-muted" onClick={(e) => e.stopPropagation()}>
+          {tl('display on tape')}
+          <button type="button" role="switch" aria-checked={onTape}
+            onClick={(e) => { e.stopPropagation(); toggleTapeList(item.id); tapeBump((n) => n + 1) }}
+            class={`relative h-5 w-9 shrink-0 rounded-full border transition-colors ${onTape ? 'border-accent/60 bg-accent' : 'border-line-2 bg-surface-3'}`}>
+            <span class={`absolute top-0.5 h-[14px] w-[14px] rounded-full bg-black/80 transition-[left] ${onTape ? 'left-[18px]' : 'left-0.5'}`} />
+          </button>
+        </label>
       </div>
 
       <ListSummary symbols={item.symbols} quotes={quotes} earnDays={earnDays} />
@@ -265,14 +263,13 @@ function WatchlistCard({ item, quotes, earnDays, allLists, primary = false }) {
 
       {/* every control is a bordered button of one height — the bare text
           row read as labels, not things to tap (Jeff 2026-08-22) */}
-      <div class="flex items-center gap-1.5 border-t border-line pt-2.5 font-anth text-[11px] font-semibold">
+      <div class="flex flex-wrap items-center gap-1.5 border-t border-line pt-2.5 font-anth text-[11px] font-semibold">
         <a href={href} data-watchlist-open
           class={`${ctl} border-accent/60 bg-accent-soft text-accent hover:bg-accent hover:text-black hover:no-underline`}>
-          <span class="max-sm:hidden">{tl('Open dashboard →')}</span>
-          <span class="sm:hidden">{tl('Open →')}</span>
+          {tt('watchlists.open')}
         </a>
         <button onClick={() => setManaging((v) => !v)} class={managing ? ctlOn : ctlOff}>
-          {managing ? tl('done') : `⇄ ${tl('manage')}`}
+          {managing ? tl('done') : tl('manage')}
         </button>
         <button onClick={() => { pinDashboardLanding(primary ? null : item.id); pinBump((n) => n + 1) }}
           title={tl('opens first on a fresh load')} class={isDefault ? ctlOn : ctlOff}>
@@ -286,12 +283,12 @@ function WatchlistCard({ item, quotes, earnDays, allLists, primary = false }) {
             : tl('export')}
         </button>
         {!primary && (
-          <>
-            <button onClick={() => { setName(item.name); setEditing((value) => !value) }} class={`ml-auto ${ctlOff}`}>{tl('rename')}</button>
+          <div class="ml-auto flex items-center gap-1.5">
+            <button onClick={() => { setName(item.name); setEditing((value) => !value) }} class={ctlOff}>{tl('rename')}</button>
             <button onClick={() => {
               if (confirm(tt('watchlists.delete_confirm', { name: item.name }))) removeWatchlist(item.id)
             }} class={`${ctlOff} hover:border-down/50 hover:text-down`}>{tl('delete')}</button>
-          </>
+          </div>
         )}
       </div>
     </article>
@@ -307,7 +304,8 @@ export function WatchlistsPage() {
   const [name, setName] = useState('')
   const [seed, setSeed] = useState('')
   const [error, setError] = useState('')
-  const allLists = [{ id: 'main', name: tl('Dashboard') }, ...lists]
+  const [creating, setCreating] = useState(false)
+  const allLists = [{ id: 'main', name: tl('Default') }, ...lists]
   const submit = (event) => {
     event.preventDefault()
     // import path: paste "NVDA MSFT GOOGL" (or CSV) and the list is born full
@@ -317,6 +315,7 @@ export function WatchlistsPage() {
     setName('')
     setSeed('')
     setError('')
+    setCreating(false)
     location.hash = `#/watchlists/${created.id}`
   }
 
@@ -328,23 +327,30 @@ export function WatchlistsPage() {
             <div class="font-anth text-[9px] uppercase tracking-[0.18em] text-accent">{tl('Market workspace')}</div>
             <h1 class="font-anth font-bold text-xl text-ink flex items-center gap-2">{tl('Watchlists')} <CloudChip /></h1>
           </div>
-          {/* one slim line at every width — the fields flex instead of owning
-              fixed widths, and the button never wraps its label
-              (Jeff 2026-08-06: "way too fat") */}
-          <form onSubmit={submit} class="ml-auto w-full sm:w-auto flex items-center flex-nowrap gap-1.5 rounded-lg border border-line bg-surface-1 p-1">
-            <input value={name} onInput={(e) => { setName(e.currentTarget.value); setError('') }}
-              aria-label={tl('Watchlist name')} placeholder={tl('Watchlist name')}
-              class="min-w-0 flex-1 sm:flex-none sm:w-36 bg-transparent px-2 py-0.5 font-anth text-[11px] text-ink outline-none placeholder:text-muted" />
-            <input value={seed} onInput={(e) => setSeed(e.currentTarget.value)}
-              aria-label={tl('symbols (optional)')} placeholder={tl('symbols (optional)')}
-              class="min-w-0 flex-1 sm:flex-none sm:w-40 bg-transparent px-2 py-0.5 font-mono text-[10px] uppercase text-ink outline-none placeholder:text-muted placeholder:normal-case border-l border-line" />
-            <button class="shrink-0 whitespace-nowrap rounded-md border border-accent/60 bg-accent-soft px-2.5 py-1 font-anth text-[10px] font-semibold text-accent hover:bg-accent/15">{tl('Create')}</button>
-          </form>
+          {!creating && (
+            <button type="button" onClick={() => setCreating(true)}
+              class="ml-auto inline-flex h-8 items-center rounded-md border border-accent/60 bg-accent-soft px-3 font-anth text-[11px] font-semibold text-accent transition-colors hover:bg-accent hover:text-black">
+              + {tt('watchlists.new')}
+            </button>
+          )}
+          {creating && (
+            <form onSubmit={submit} class="basis-full flex flex-wrap items-center gap-1.5 rounded-lg border border-accent/40 bg-surface-1 p-1.5 shadow-sm shadow-black/30">
+              <input autoFocus value={name} onInput={(e) => { setName(e.currentTarget.value); setError('') }}
+                aria-label={tl('Watchlist name')} placeholder={tl('Watchlist name')}
+                class="min-w-32 flex-1 bg-transparent px-2 py-1 font-anth text-[11px] text-ink outline-none placeholder:text-muted" />
+              <input value={seed} onInput={(e) => setSeed(e.currentTarget.value)}
+                aria-label={tl('symbols (optional)')} placeholder={tl('symbols (optional)')}
+                class="min-w-28 flex-1 border-l border-line bg-transparent px-2 py-1 font-mono text-[10px] uppercase text-ink outline-none placeholder:text-muted placeholder:normal-case" />
+              <button class="shrink-0 rounded-md border border-accent/60 bg-accent-soft px-2.5 py-1 font-anth text-[10px] font-semibold text-accent hover:bg-accent/15">{tl('Create')}</button>
+              <button type="button" onClick={() => { setCreating(false); setError('') }}
+                class="shrink-0 px-1.5 font-anth text-[10px] text-muted hover:text-ink">{tl('Cancel')}</button>
+            </form>
+          )}
         </header>
         {error && <div class="px-1 pt-2 font-anth text-[10px] text-down">{error}</div>}
 
         <div class="grid md:grid-cols-2 gap-3 pt-4">
-          <WatchlistCard item={{ id: 'main', name: tl('Dashboard'), symbols: main }}
+          <WatchlistCard item={{ id: 'main', name: tl('Default'), symbols: main }}
             quotes={quotes} earnDays={earnDays} allLists={allLists} primary />
           {lists.map((item) => (
             <WatchlistCard key={item.id} item={item} quotes={quotes}
