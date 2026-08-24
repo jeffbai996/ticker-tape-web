@@ -9,6 +9,7 @@ import {
   addWatchlistSymbol, removeWatchlistSymbol, isNamedWatchlistFull, MAX_WATCHLIST_SYMBOLS,
 } from '../lib/watchlists.js'
 import { nextSort, sortSymbols } from '../lib/watchsort.js'
+import { loadSidebarWatchlistId, saveSidebarWatchlistId } from '../lib/sidebarWatchlist.js'
 import { fmtPriceBare, fmtPct } from '../lib/format.js'
 import { lastGoodTs } from '../lib/feed.js'
 import { prefetchSymbol } from '../lib/history.js'
@@ -109,11 +110,20 @@ function SortHead({ label, col, sort, onSort, align = 'left' }) {
 export function Sidebar({ route }) {
   const mainWatchlist = useWatchlist()
   const namedWatchlists = useNamedWatchlists()
-  const activeNamed = route.section === 'watchlists' && route.sub
-    ? namedWatchlists.find((item) => item.id === route.sub)
-    : null
+  const [sidebarListId, setSidebarListId] = useState(() => loadSidebarWatchlistId(namedWatchlists))
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const activeNamed = namedWatchlists.find((item) => item.id === sidebarListId) || null
   const stored = activeNamed?.symbols || mainWatchlist
   const quotes = useQuotes(stored)
+  const listName = activeNamed?.name || tl('Default')
+  const chooseSidebarList = (id) => {
+    saveSidebarWatchlistId(id)
+    setSidebarListId(id)
+    setPickerOpen(false)
+  }
+  useEffect(() => {
+    if (sidebarListId !== 'main' && !activeNamed) chooseSidebarList('main')
+  }, [sidebarListId, activeNamed])
   // a view preference, not a rewrite of the list — the stored order survives
   const [sort, setSort] = useState(() => {
     try { return JSON.parse(localStorage.getItem('watch_sort')) } catch { return null }
@@ -183,9 +193,27 @@ export function Sidebar({ route }) {
         ))}
       </div>
 
-      <div class="px-3 pt-2 pb-1 border-t border-line font-mono text-[10px] tracking-wider text-muted flex items-baseline">
-        {(activeNamed?.name || tl('Watchlist')).toUpperCase()}
+      <div class="relative px-3 pt-2 pb-1 border-t border-line font-mono text-[10px] tracking-wider text-muted flex items-baseline">
+        <button type="button" data-sidebar-watchlist-selector aria-haspopup="listbox" aria-expanded={pickerOpen}
+          onClick={() => setPickerOpen((open) => !open)}
+          class="inline-flex min-w-0 items-center gap-1 text-left uppercase text-muted transition-colors hover:text-accent">
+          <span class="truncate">{listName}</span>
+          <span class={`shrink-0 text-[8px] transition-transform ${pickerOpen ? 'rotate-180' : ''}`} aria-hidden="true">▾</span>
+        </button>
         <AddSymbol onAdd={addSymbol} isFull={listFull} cap={listCap} />
+        {pickerOpen && (
+          <div role="listbox" aria-label={tl('Watchlists')}
+            class="absolute left-2 right-2 top-full z-30 mt-1 overflow-hidden rounded-md border border-line-2 bg-surface-1 py-1 shadow-lg shadow-black/60">
+            {[{ id: 'main', name: tl('Default') }, ...namedWatchlists].map((list) => (
+              <button key={list.id} type="button" role="option" aria-selected={sidebarListId === list.id}
+                onClick={() => chooseSidebarList(list.id)}
+                class={`flex w-full items-center px-2 py-1.5 text-left font-mono text-[10px] transition-colors ${sidebarListId === list.id
+                  ? 'bg-accent-soft text-accent' : 'text-ink-2 hover:bg-surface-3 hover:text-ink'}`}>
+                <span class="truncate">{list.name}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       <div class="px-3 pb-1 flex items-baseline gap-2 border-b border-line/60">
         <SortHead label={tl('sym')} col="sym" sort={sort} onSort={applySort} />
