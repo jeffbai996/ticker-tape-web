@@ -142,9 +142,9 @@ function StripCell({ symbol, label, q }) {
 export function StatusBar() {
   const [now, setNow] = useState(() => new Date())
   const online = useOnline()
-  const stripRef = useRef(null)
   // edge-scroll (creep toward the hovered side) removed outright — on touch a
-  // tap triggered it and it fought the native swipe (Jeff 2026-08-06)
+  // tap triggered it and it fought the native swipe (Jeff 2026-08-06); the
+  // ref it needed went with it
 
   useEffect(() => {
     // 30s, not 1s: `now` only feeds the session chip + countdown title, and a
@@ -273,7 +273,15 @@ export function StatusBar() {
           wordmark: swipe it, drag it, or hover an edge to creep along. */}
       <div class="flex-1 min-w-0 flex items-center overflow-hidden">
         {drift !== 'off' ? (
-          <div ref={beltRef}
+          // Keyed so the belt and the resting strip can never share a DOM
+          // node. Stopping writes `animation`, `transition` and a translate
+          // straight onto the belt, and without a key Preact hands that same
+          // element to the resting branch — which is `w-full`, so a leftover
+          // translateX(-cycle) parked the whole strip off its own box and the
+          // row went black about a second after the glide finished. It only
+          // showed when the glide chose the far boundary, i.e. when you
+          // stopped past the halfway point of a cycle.
+          <div key="belt" ref={beltRef}
             data-strip-belt
             class={`${drift === 'on' ? 'strip-drift ' : ''}flex w-max items-baseline py-0.5`}
             style={drift === 'on' && cycleW ? { '--strip-cycle-width': `${cycleW}px`,
@@ -289,7 +297,7 @@ export function StatusBar() {
             ))}
           </div>
         ) : (
-          <div ref={stripRef} class="w-full flex items-baseline gap-[5px] overflow-x-auto no-scrollbar py-0.5">
+          <div key="resting" class="w-full flex items-baseline gap-[5px] overflow-x-auto no-scrollbar py-0.5">
             {strip.map(({ symbol, label }) => (
               <StripCell key={symbol} symbol={symbol} label={label} q={quotes[symbol]?.quote} />
             ))}
