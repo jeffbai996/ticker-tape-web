@@ -1,17 +1,21 @@
 import { render } from 'preact'
 import { App } from './app.jsx'
-import { startWatchlistSync } from './lib/cloudsave.js'
-import { startMyPortfolioSync } from './lib/portfolioSync.js'
 import { startWireWatchlistSync } from './lib/watchlistExport.js'
 import { startFreshnessWatch } from './lib/freshness.js'
 import { registerServiceWorker } from './lib/pwa.js'
 import './styles/main.css'
 
 render(<App />, document.getElementById('app'))
-// Private builds use the wire save; public builds stay local until the viewer
-// explicitly enables capability-scoped watchlist sync.
-startWatchlistSync()
-startMyPortfolioSync()
+// Capability-scoped sync belongs only to builds that HAVE a capability: the
+// family build (its own host) and the private tailnet build. The public
+// deploy carries none, and until 2026-08-25 it carried one — the family
+// bearer was baked into the world-readable Pages bundle. Importing these
+// behind the flag means the portfolio-sync module is not merely inert in the
+// public build, it is not bundled into it.
+if (import.meta.env.VITE_FAMILY_BUILD === '1' || import.meta.env.VITE_PRIVATE === '1') {
+  import('./lib/cloudsave.js').then((m) => m.startWatchlistSync())
+  import('./lib/portfolioSync.js').then((m) => m.startMyPortfolioSync())
+}
 startWireWatchlistSync()
 // stale open tabs reload themselves on tab-return after a deploy
 startFreshnessWatch()

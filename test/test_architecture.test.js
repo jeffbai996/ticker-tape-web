@@ -77,15 +77,33 @@ describe('test architecture', () => {
     expect(sourceContracts).toEqual([...SOURCE_CONTRACT_ALLOWLIST].sort())
   })
 
-  it('family persistence is zero-setup BY OWNER DECISION — the bearer ships in the build (Jeff 2026-08-21), on the hardened transport', () => {
+  it('the public deploy carries NO family capability — it did until 2026-08-25, which put the shared bearer in a world-readable bundle', () => {
     const workflow = readFileSync(resolve(process.cwd(), '.github/workflows/deploy.yml'), 'utf8')
-    expect(workflow).toContain("VITE_FAMILY_BUILD: '1'")
-    // the value comes from repo secrets; only the plumbing may appear in source
-    expect(workflow).toContain('VITE_SYNC_CAPABILITY: ${{ secrets.SYNC_CAPABILITY }}')
+    // Judge the steps, not the prose: the comment above the build step names
+    // both variables precisely so this can never quietly come back.
+    const steps = workflow.split('\n').filter((line) => !/^\s*#/.test(line)).join('\n')
+    // This is the regression that matters. The family build moved to its own
+    // host; if either of these comes back, the public bundle leaks the
+    // capability to the family portfolio book again.
+    expect(steps).not.toMatch(/VITE_FAMILY_BUILD/)
+    expect(steps).not.toMatch(/VITE_SYNC_CAPABILITY/)
+    expect(steps).not.toMatch(/secrets\.SYNC_CAPABILITY/)
+  })
+
+  it('capability sync starts only in builds that have a capability', () => {
+    const main = readFileSync(resolve(process.cwd(), 'src/main.jsx'), 'utf8')
+    // gated behind the build flags AND dynamically imported, so the portfolio
+    // sync module is absent from the public bundle rather than merely inert
+    expect(main).toMatch(/VITE_FAMILY_BUILD === '1' \|\| import\.meta\.env\.VITE_PRIVATE === '1'/)
+    expect(main).toMatch(/import\('\.\/lib\/portfolioSync\.js'\)/)
+    expect(main).not.toMatch(/^import .*portfolioSync\.js'/m)
+  })
+
+  it('the capability still rides the header transport and is never a literal', () => {
     const sync = readFileSync(resolve(process.cwd(), 'src/lib/watchlistSync.js'), 'utf8')
     expect(sync).toContain('import.meta.env.VITE_SYNC_CAPABILITY')
     expect(sync).not.toMatch(/[a-f0-9]{32}/)          // never a literal value
-    // and it must still ride the header transport — capability never in a URL
+    // capability never in a URL — it would land in access logs and history
     expect(sync).toContain('Bearer ')
     expect(sync).not.toMatch(/watchlists\/\$\{/)
   })

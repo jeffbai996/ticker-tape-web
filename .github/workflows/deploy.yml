@@ -27,15 +27,14 @@ jobs:
           node-version: '22'
           cache: 'npm'
       - run: npm ci
+      # PUBLIC BUILD ONLY. This deploy must never carry VITE_FAMILY_BUILD or
+      # VITE_SYNC_CAPABILITY again (Jeff 2026-08-25). It did until then: the
+      # family bearer was inlined into this bundle, so the shared portfolio
+      # book was readable and writable by anyone who opened the JS served from
+      # this linked, indexed URL. The family build now ships separately from
+      # its own host, and the capability is built there, from a local secret.
+      # test_architecture.test.js fails the build if either reappears here.
       - run: npm run build
-        env:
-          VITE_FAMILY_BUILD: '1'
-          # Owner decision (Jeff 2026-08-21): the family bearer ships in the
-          # public bundle so persistence needs zero setup on any device. The
-          # tradeoff (anyone with the bundle can reach the shared family
-          # book) was explicitly accepted — see CLAUDE.md. Value lives only
-          # in repo secrets and the household vault, never in source.
-          VITE_SYNC_CAPABILITY: ${{ secrets.SYNC_CAPABILITY }}
       # The responsive matrix runs against the bytes that are about to ship,
       # served the way Pages serves them (base path, real origin), and blocks
       # the deploy on a regression. Playwright is installed with pip rather
