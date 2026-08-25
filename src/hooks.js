@@ -7,7 +7,7 @@ import {
 import { fetchHistory } from './lib/history.js'
 import { sma, rsi } from './lib/indicators.js'
 import { getLocale, onLocaleChange } from './lib/i18n.js'
-import { loadZhTable, onZhTable } from './lib/zhNames.js'
+import { loadMissingZhName, loadZhTable, onZhTable } from './lib/zhNames.js'
 import { getWatchlist, onWatchlistChange } from './lib/watchlist.js'
 import { loadWatchlists, onWatchlistsChange } from './lib/watchlists.js'
 import { onTapeListsChange, tapeListIds, tapeSymbols } from './lib/tapeLists.js'
@@ -292,19 +292,24 @@ export function useAlertEngine() {
 /** Chinese security names for the zh reader: pulls the name table when the
  *  locale is zh and re-renders the caller once it lands (or the locale
  *  changes). Returns nothing — pair with localName(). */
-export function useZhNames() {
+export function useZhNames(symbols = []) {
   const [, tick] = useState(0)
+  const symbolKey = [...new Set(symbols)].join('|')
   useEffect(() => {
+    let alive = true
     let off = () => {}
     const arm = () => {
       off()
       off = () => {}
       if (getLocale() !== 'zh') return
-      loadZhTable()
       off = onZhTable(() => tick((n) => n + 1))
+      void loadZhTable().then(() => {
+        if (!alive) return
+        for (const symbol of symbols) void loadMissingZhName(symbol)
+      })
     }
     arm()
     const offLocale = onLocaleChange(() => { arm(); tick((n) => n + 1) })
-    return () => { off(); offLocale() }
-  }, [])
+    return () => { alive = false; off(); offLocale() }
+  }, [symbolKey])
 }

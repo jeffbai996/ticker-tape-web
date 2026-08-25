@@ -299,7 +299,7 @@ function jsonResp(data, status = 200) {
 // ── /cn/* — East Money pass-through for Chinese names, news, profiles ──
 
 const CN_UA = 'Mozilla/5.0';
-const CN_TTL = { news: 600, profile: 86400, industry: 86400, report: 21600, f10: 21600, read: 86400 };
+const CN_TTL = { news: 600, profile: 86400, industry: 86400, report: 21600, f10: 21600, read: 86400, 'us-name': 86400 };
 // Article pages the reader may open: East Money's own story URLs only.
 const READ_URL = /^https?:\/\/(?:finance|stock|fund|futures|forex|bond|www)\.eastmoney\.com\/a\/\d{12,}\.html$/;
 const MAX_ARTICLE_BYTES = 1_000_000;
@@ -369,10 +369,45 @@ export function cnSecurity(symbol) {
     return { market: venue === 'SS' ? 'sh' : 'sz', code: digits };
 }
 
+const US_NAME_SYMBOL = /^[A-Z][A-Z0-9-]{0,8}(?:\.[A-Z])?$/;
+
+/** Tencent's GBK quote record → a Chinese issuer name, or null. */
+export function parseTencentUsName(raw) {
+    const name = String(raw || '').split('~')[1]?.trim() || '';
+    return /[\u3400-\u9fff]/.test(name) ? name : null;
+}
+
+async function handleTencentUsName(url) {
+    const symbol = String(url.searchParams.get('symbol') || '').trim().toUpperCase();
+    if (!US_NAME_SYMBOL.test(symbol)) return jsonResp({ error: 'bad symbol' }, 400);
+    const cache = caches.default;
+    const cacheKey = new Request(`https://cn-cache.invalid/us-name?symbol=${encodeURIComponent(symbol)}`);
+    const hit = await cache.match(cacheKey);
+    if (hit) return hit;
+    let resp;
+    try {
+        resp = await fetch(`https://qt.gtimg.cn/q=us${encodeURIComponent(symbol)}`, {
+            headers: { 'User-Agent': CN_UA, 'Accept': '*/*', 'Referer': 'https://gu.qq.com/' },
+        });
+    } catch (err) {
+        return jsonResp({ error: `cn upstream: ${err.message}` }, 502);
+    }
+    if (!resp.ok) return jsonResp({ error: `cn upstream HTTP ${resp.status}` }, 502);
+    const name = parseTencentUsName(new TextDecoder('gbk').decode(await resp.arrayBuffer()));
+    if (!name) return jsonResp({ error: 'no Chinese name' }, 404);
+    const out = new Response(JSON.stringify({ name }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': `public, max-age=${CN_TTL['us-name']}`, ...CORS_HEADERS },
+    });
+    await cache.put(cacheKey, out.clone());
+    return out;
+}
+
 async function handleCn(path, url) {
     const kind = path.slice('/cn/'.length);
     if (!(kind in CN_TTL)) return jsonResp({ error: 'Unsupported cn route' }, 404);
     if (url.search.length > 512) return jsonResp({ error: 'Query too large' }, 414);
+    if (kind === 'us-name') return handleTencentUsName(url);
 
     let upstream;
     if (kind === 'news') {

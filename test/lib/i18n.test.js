@@ -51,6 +51,14 @@ describe('tl', () => {
     expect(tl('Wire')).toBe('快讯')
   })
 
+  it('translates every market-pulse measure in Chinese', () => {
+    setLocale('zh')
+    expect(tl('A/D')).toBe('涨 / 跌')
+    expect(tl('ext A/D')).toBe('盘外涨 / 跌')
+    expect(tl('Mov >2%')).toBe('异动 >2%')
+    expect(tl('Flt <1%')).toBe('平盘 <1%')
+  })
+
   it('covers every literal UI label routed through tl', () => {
     const root = resolve(process.cwd(), 'src')
     const files = readdirSync(root, { recursive: true })

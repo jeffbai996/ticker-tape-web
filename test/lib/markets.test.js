@@ -159,6 +159,11 @@ describe('earnings universe names', () => {
     const missing = EARNINGS_UNIVERSE.filter((s) => !EARNINGS_NAMES[s])
     expect(missing).toEqual([])
   })
+
+  it('keeps the fallback company names with their own symbols', () => {
+    expect(EARNINGS_NAMES.GOOGL).toBe('Alphabet Inc.')
+    expect(EARNINGS_NAMES.MSFT).toBe('Microsoft Corporation')
+  })
 })
 
 describe('calendar look-back', () => {
