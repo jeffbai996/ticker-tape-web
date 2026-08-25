@@ -15,6 +15,10 @@ render(<App />, document.getElementById('app'))
 if (import.meta.env.VITE_FAMILY_BUILD === '1' || import.meta.env.VITE_PRIVATE === '1') {
   import('./lib/cloudsave.js').then((m) => m.startWatchlistSync())
   import('./lib/portfolioSync.js').then((m) => m.startMyPortfolioSync())
+} else {
+  // ...and on the public build, clear the family book this origin used to
+  // serve. One time only — see familyResidue.js.
+  import('./lib/familyResidue.js').then((m) => m.purgeFamilyResidue(globalThis.localStorage))
 }
 startWireWatchlistSync()
 // stale open tabs reload themselves on tab-return after a deploy
