@@ -23,9 +23,12 @@ function swBuildId() {
 
 export default defineConfig({
   plugins: [preact(), tailwindcss(), swBuildId()],
-  base: '/ticker-tape-web/',
+  // Where the bundle will be served from. The public GitHub Pages deploy keeps
+  // the repo-name base; the family build is hosted elsewhere at its own path,
+  // so both are env-driven rather than forked configs (Jeff 2026-08-25).
+  base: process.env.TTW_BASE || '/ticker-tape-web/',
   build: {
-    outDir: 'dist',
+    outDir: process.env.TTW_OUT_DIR || 'dist',
   },
   server: {
     // Built-in Yahoo pass-through so `npm run dev` has live data with zero

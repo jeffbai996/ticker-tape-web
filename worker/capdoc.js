@@ -8,7 +8,12 @@
 
 import { GUARDED_PREFIXES, HISTORY_KEEP, docCounts, shrinkReason } from './shrink.js'
 
+// The family build moved off public GitHub Pages on 2026-08-25 — it used to
+// BE the public deploy, which put the shared capability in a world-readable
+// bundle on a linked, indexed URL. It now serves from an unguessable path on
+// jeffbai.com; the Pages origin stays listed only until that cutover is done.
 const ALLOWED_ORIGINS = new Set([
+  'https://jeffbai.com',
   'https://jeffbai996.github.io',
   'http://localhost:5199',
   'http://localhost:5173',
