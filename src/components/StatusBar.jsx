@@ -104,8 +104,9 @@ function RollingClock() {
       data-status-clock
       class="h-5 group flex cursor-pointer items-center gap-1 whitespace-nowrap font-anth px-1 py-0 rounded border border-transparent transition-colors duration-200 hover:border-line-2 hover:bg-white/[0.045] focus-visible:border-line-2 focus-visible:bg-white/[0.045] focus-visible:outline-none"
     >
-      {/* Anthropic Sans digits (Jeff 2026-08-06) — falls back to Jakarta on
-          the public build, where the licensing-gated woff2 never ships */}
+      {/* Jakarta digits. This said the licensing-gated face "never ships" on
+          the public build — it did: the woff2 was committed to this public
+          repo and served from it until 2026-08-25. */}
       <span ref={desktopClock} class="max-md:hidden inline-flex items-baseline font-anth text-accent font-semibold text-[12px]" />
       <span ref={mobileClock} class="md:hidden inline-flex items-baseline font-anth text-accent font-semibold text-[12px]" />
       <span class="text-[8.5px] tracking-wider text-muted group-hover:text-white hover:text-white transition-colors">

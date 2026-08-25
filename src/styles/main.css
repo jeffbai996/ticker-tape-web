@@ -339,7 +339,7 @@ html, body {
     white-space: nowrap;
     text-overflow: ellipsis;
     color: var(--color-ink-2);
-    font: 500 12px/1.45 "Anthropic Sans", "Plus Jakarta Sans", system-ui, sans-serif;
+    font: 500 12px/1.45 "Plus Jakarta Sans", system-ui, sans-serif;
     letter-spacing: -0.01em;
     opacity: 0;
     pointer-events: none;
@@ -417,7 +417,7 @@ html, body {
   overflow: hidden auto; border-left: 1px solid var(--color-line-2);
   background: rgba(255, 255, 255, .018); border-radius: 0 6px 6px 0;
   color: var(--color-muted); scrollbar-width: none;
-  font: 450 10.5px/1.5 "Anthropic Sans", "Plus Jakarta Sans", system-ui, sans-serif;
+  font: 450 10.5px/1.5 "Plus Jakarta Sans", system-ui, sans-serif;
   white-space: pre-wrap; overflow-wrap: anywhere;
   -webkit-mask-image: linear-gradient(to bottom, transparent, #000 1.6rem);
   mask-image: linear-gradient(to bottom, transparent, #000 1.6rem);
@@ -556,21 +556,17 @@ button:hover .burger path:nth-child(2) { transform: scaleX(.55); }
    overflow:hidden box — compositor-only, physically unable to touch layout.
    The jitter fix was the boxes, never the roll. */
 
-/* Anthropic Sans (Jeff 2026-08-03). Shipped in public/fonts/ for BOTH builds
-   since 2026-08-06 (Jeff: "put anth sans on the github, i can drop it later")
-   — dropping it later removes the file but not its git history. */
-@font-face {
-  font-family: "Anthropic Sans";
-  font-style: normal;
-  font-weight: 100 900;
-  font-display: swap;
-  src: url("/fonts/AnthropicSansVariable-TextRegular.woff2") format("woff2");
-}
+/* Anthropic Sans was self-hosted here and shipped from public/fonts/ for both
+   builds. Removed 2026-08-25 (Jeff: "do not use Anth sans in the public
+   build") — this repo is public, so committing the woff2 redistributed a
+   proprietary face, and the whole site served it. The UI face is now the
+   Google-linked Plus Jakarta Sans that index.html already loads; nothing here
+   self-hosts a font. Note the file remains in git history. */
 
-/* Tickers read as names, not as data — Anthropic Sans separates a symbol
-   from the mono figures beside it (Jeff 2026-08-04). */
+/* Tickers read as names, not as data — the proportional face separates a
+   symbol from the mono figures beside it (Jeff 2026-08-04). */
 .font-tick {
-  font-family: "Anthropic Sans", "Plus Jakarta Sans", system-ui, sans-serif;
+  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
 }
 
@@ -578,7 +574,7 @@ button:hover .burger path:nth-child(2) { transform: scaleX(.55); }
 .markets-page table,
 .markets-page h2,
 .markets-page footer {
-  font-family: "Anthropic Sans", "Plus Jakarta Sans", system-ui, sans-serif;
+  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
 }
 
@@ -618,7 +614,7 @@ button:hover .burger path:nth-child(2) { transform: scaleX(.55); }
   width: 100%; min-height: 28px; display: flex; align-items: center; gap: .46rem;
   padding: .2rem .15rem; color: var(--color-muted); text-align: left;
   background: transparent; border: 0; cursor: pointer;
-  font-family: "Anthropic Sans", "Plus Jakarta Sans", system-ui, sans-serif;
+  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
 }
 .chat-trace-head:hover { background: transparent; color: var(--color-ink); }
 .chat-trace-title { color: var(--color-ink-2); font-size: 11.5px; font-weight: 625; }
@@ -702,7 +698,7 @@ button:hover .burger path:nth-child(2) { transform: scaleX(.55); }
 .chat-trace-time { color: var(--color-muted); font: 400 9px/1 "IBM Plex Mono", monospace; }
 .chat-trace-detail {
   max-width: 68ch; margin-top: .14rem; color: var(--color-muted);
-  font: 450 10.5px/1.45 "Anthropic Sans", "Plus Jakarta Sans", system-ui, sans-serif;
+  font: 450 10.5px/1.45 "Plus Jakarta Sans", system-ui, sans-serif;
   white-space: pre-wrap; overflow-wrap: anywhere;
 }
 .chat-trace-detail.is-tool {

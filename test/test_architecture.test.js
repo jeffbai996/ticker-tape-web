@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
@@ -106,6 +106,16 @@ describe('test architecture', () => {
     // capability never in a URL — it would land in access logs and history
     expect(sync).toContain('Bearer ')
     expect(sync).not.toMatch(/watchlists\/\$\{/)
+  })
+
+  it('this public repo does not redistribute a proprietary font', () => {
+    // The Anthropic Sans woff2 was committed here and served from the public
+    // site until 2026-08-25 (Jeff: "do not use Anth sans in the public
+    // build"). The UI face is the Google-linked Plus Jakarta Sans instead.
+    const css = readFileSync(resolve(process.cwd(), 'src/styles/main.css'), 'utf8')
+    expect(css).not.toMatch(/font-family:\s*"Anthropic Sans"/)
+    expect(css).not.toMatch(/AnthropicSans/)
+    expect(existsSync(resolve(process.cwd(), 'public/fonts'))).toBe(false)
   })
 
   it('keeps paid AI routes out of the public Worker bundle', () => {
