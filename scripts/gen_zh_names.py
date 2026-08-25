@@ -35,6 +35,11 @@ from pathlib import Path
 OUT = Path(__file__).resolve().parent.parent / 'src' / 'lib' / 'zhNames.data.json'
 UA = {'User-Agent': 'Mozilla/5.0', 'Accept': '*/*'}
 NS = '{http://schemas.openxmlformats.org/spreadsheetml/2006/main}'
+# Sina's US directory can omit a listing or associate a Chinese name with the
+# wrong share class. Preserve verified corrections whenever the table rebuilds.
+US_NAME_OVERRIDES = {
+    'GOOGL': ['谷歌'],
+}
 
 
 def fetch(url: str, timeout: int = 90, referer: str | None = None) -> bytes:
@@ -209,6 +214,7 @@ def main() -> int:
         time.sleep(0.3)
     print(f'US (top by mktcap): {us_n}', file=sys.stderr)
 
+    table.update(US_NAME_OVERRIDES)
     table = {k: [n for n in v if n] for k, v in sorted(table.items()) if v and v[0]}
     OUT.write_text(json.dumps(table, ensure_ascii=False, separators=(',', ':')) + '\n', encoding='utf-8')
     print(f'wrote {OUT} — {len(table)} symbols, {OUT.stat().st_size // 1024} KB', file=sys.stderr)

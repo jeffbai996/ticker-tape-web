@@ -1,4 +1,4 @@
-import { cnF10Upstream, cnSecurity, extractEmArticle } from '../../worker/worker.js'
+import { cnF10Upstream, cnSecurity, extractEmArticle, parseTencentUsName } from '../../worker/worker.js'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import worker, { allowedYahooGetPath } from '../../worker/worker.js'
 
@@ -67,6 +67,14 @@ describe('cnSecurity — the East Money id for a Yahoo-shaped HK / mainland symb
     expect(cnSecurity('RY.TO')).toBeNull()
     expect(cnSecurity('12345678.SS')).toBeNull()
     expect(cnSecurity('')).toBeNull()
+  })
+})
+
+describe('parseTencentUsName', () => {
+  it('accepts only a Chinese issuer name from the quote record', () => {
+    expect(parseTencentUsName('v_usQZX="200~示例公司~QZX.N~1";')).toBe('示例公司')
+    expect(parseTencentUsName('v_usQZX="200~Example Co~QZX.N~1";')).toBeNull()
+    expect(parseTencentUsName('')).toBeNull()
   })
 })
 

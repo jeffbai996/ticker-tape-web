@@ -2,8 +2,8 @@
  *  Chinese query (verified 2026-08-22), so a zh reader adding a holding by
  *  name needs a local table consulted before the provider. The table is
  *  generated from the exchanges (scripts/gen_zh_names.py) and lazy-loaded. */
-import { beforeAll, describe, expect, it } from 'vitest'
-import { hasCjk, loadZhTable, zhAliasHits, zhKnownSymbols, zhName } from '../../src/lib/zhNames.js'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { hasCjk, loadMissingZhName, loadZhTable, onZhTable, zhAliasHits, zhKnownSymbols, zhName } from '../../src/lib/zhNames.js'
 
 beforeAll(async () => { await loadZhTable() })
 
@@ -66,6 +66,21 @@ describe('zhName', () => {
     expect(zhName('NVDA')).toMatch(/英伟达/)
     expect(zhAliasHits('英伟达').map((h) => h.symbol)).toContain('NVDA')
     expect(zhAliasHits('英伟达')[0].exch).toBe('')   // venue unknown from the symbol alone
+  })
+
+  it('keeps Alphabet attached to its Chinese name', () => {
+    expect(zhName('GOOGL')).toBe('谷歌')
+  })
+
+  it('fills a missing US translation from the bounded remote fallback', async () => {
+    const lookup = vi.fn().mockResolvedValue('示例公司')
+    let changes = 0
+    const off = onZhTable(() => { changes += 1 })
+    await expect(loadMissingZhName('QZX', { lookup })).resolves.toBe('示例公司')
+    expect(lookup).toHaveBeenCalledWith('QZX')
+    expect(zhName('QZX')).toBe('示例公司')
+    expect(changes).toBeGreaterThan(1)
+    off()
   })
 
   it('covers the family book that motivated it — every row has a name', () => {

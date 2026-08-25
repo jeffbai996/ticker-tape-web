@@ -13,6 +13,7 @@ import { BottomNav, SubTabs } from './components/BottomNav.jsx'
 import { CommandBar } from './components/CommandBar.jsx'
 import { Palette } from './components/Palette.jsx'
 import { Page } from './pages/index.jsx'
+import { RAIL_LIMITS, saveRailWidth, storedRailWidth } from './lib/railResize.js'
 
 function AlertToasts({ toasts, dismiss }) {
   if (!toasts.length) return null
@@ -107,6 +108,11 @@ export function App() {
   useLocale() // locale toggle re-renders the whole shell
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [paletteSeed, setPaletteSeed] = useState('')
+  const [sidebarWidth, setSidebarWidth] = useState(() => storedRailWidth('ttw-sidebar-width', 208, RAIL_LIMITS.left))
+  const commitSidebarWidth = (width) => {
+    saveRailWidth('ttw-sidebar-width', width)
+    setSidebarWidth(width)
+  }
   // phone search fields hand off to the palette sheet instead of expanding
   // inline (Jeff 2026-08-17: spotlight-style search on mobile)
   useEffect(() => {
@@ -144,7 +150,16 @@ export function App() {
       <Tape />
       <SubTabs route={route} />
       <div class="flex-1 flex min-h-0">
-        <Sidebar route={route} />
+        {sidebarWidth > 0 ? (
+          <Sidebar route={route} width={sidebarWidth} onWidthCommit={commitSidebarWidth} />
+        ) : (
+          <button type="button" data-sidebar-show onClick={() => commitSidebarWidth(208)}
+            class="hidden w-6 shrink-0 items-center justify-center border-r border-line bg-surface-1 font-mono text-[15px] text-muted transition-colors hover:bg-surface-2 hover:text-accent md:flex"
+            title={tl('show sidebar')} aria-label={tl('show sidebar')}
+          >
+            ›
+          </button>
+        )}
         <main ref={mainRef} class="flex-1 flex min-w-0 min-h-0 overflow-y-auto max-md:pb-12">
           <Page route={route} />
         </main>

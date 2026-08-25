@@ -49,6 +49,7 @@ import { localName } from '../lib/zhNames.js'
 import { extendedLabelClass } from '../lib/extendedHours.js'
 import { freshnessTitle, symbolFreshness } from '../lib/feedHealth.js'
 import { rememberDashboardLanding } from '../lib/dashboardLanding.js'
+import { RAIL_LIMITS, railWidthAtDrag, saveRailWidth, storedRailWidth } from '../lib/railResize.js'
 
 const DAY = 86_400_000
 const ETF_SKIP = new Set(['SPY', 'QQQ', 'IWM', 'GLD', 'TLT'])
@@ -64,6 +65,13 @@ const BigPrice = ({ v, fmt = fmtPrice }) => fmt(v)?.endsWith('k')
   )
   : <FlashPrice price={v} fmt={fmt} />
 const fmtSpread = (v) => v == null ? '—' : v < 0.1 ? v.toFixed(3) : v.toFixed(2)
+
+function defaultDashboardRailWidth() {
+  const viewport = typeof window === 'undefined' ? 1200 : window.innerWidth
+  if (viewport >= 2100) return 340
+  if (viewport >= 1700) return 290
+  return viewport >= 1200 ? 230 : 190
+}
 
 /** Days until each symbol's next earnings — feeds the `27d` badge + panel.
  *  Exported for the briefing page, which reuses the same fan-out. */
@@ -612,20 +620,20 @@ function PulsePanel({ quotes }) {
       {!min && (
       <div class="overflow-y-auto min-h-0">
       <div class="py-1">
-        <PulseRow label="A/D" value={`${s.adv} / ${s.dec}`} cls={s.adv >= s.dec ? 'text-up' : 'text-down'} />
+        <PulseRow label={tl('A/D')} value={`${s.adv} / ${s.dec}`} cls={s.adv >= s.dec ? 'text-up' : 'text-down'} />
         <PulseRow label={tl('Avg')} value={fmtPct(s.avg)} cls={tone(s.avg)} />
         <PulseRow label={tl('Hi')} value={`${s.hi.symbol} ${fmtPct(s.hi.pct)}`} cls="text-up" />
         <PulseRow label={tl('Lo')} value={`${s.lo.symbol} ${fmtPct(s.lo.pct)}`} cls="text-down" />
         <PulseRow label={tl('Spd')} value={`${s.spread.toFixed(1)}pp`} />
-        <PulseRow label={`⚠ ${tl('down')} >3%`} value={String(s.stress)} cls={s.stress ? 'text-down' : 'text-ink-2'} />
+        <PulseRow label={`⚠ ${tl('down >3%')}`} value={String(s.stress)} cls={s.stress ? 'text-down' : 'text-ink-2'} />
         {(s.extAdv > 0 || s.extDec > 0) && (
-          <PulseRow label="ExtHr" value={`${s.extAdv} / ${s.extDec}`} cls={s.extAdv >= s.extDec ? 'text-up' : 'text-down'} />
+          <PulseRow label={tl('ext A/D')} value={`${s.extAdv} / ${s.extDec}`} cls={s.extAdv >= s.extDec ? 'text-up' : 'text-down'} />
         )}
         <PulseRow label={tl('Median')} value={fmtPct(s.median)} cls={tone(s.median)} />
         <PulseRow label={tl('Green')} value={`${Math.round(s.greenPct)}%`} cls={tone(s.greenPct - 50)} />
         <PulseRow label="σ" value={s.sigma.toFixed(2)} />
-        <PulseRow label="Mov >2%" value={`${s.movers}/${s.total}`} />
-        <PulseRow label="Flt <1%" value={String(s.flat)} />
+        <PulseRow label={tl('Mov >2%')} value={`${s.movers}/${s.total}`} />
+        <PulseRow label={tl('Flt <1%')} value={String(s.flat)} />
       </div>
     </div>
       )}
@@ -676,7 +684,7 @@ function MacroCalPanel() {
               <span class={`max-w-[6.5rem] truncate font-[650] font-anth ${e.user ? 'text-[#00c8ff]' : ECON_COLORS[e.type] || 'text-ink-2'}`}>
                 {e.user ? (e.symbol === 'MACRO' ? e.type : e.symbol) : e.type}
               </span>
-              <span class="min-w-0 truncate font-anth text-[11px] font-light text-muted">{e.user ? e.rawLabel : tl(e.label)}</span>
+              <span class="min-w-0 truncate font-anth text-[10px] font-light text-muted">{e.user ? e.rawLabel : tl(e.label)}</span>
               <span class={`text-right ${dayCls(e.days)}`}>{e.days === 0 ? tl('today') : eventDayLabel(e.days)}</span>
             </a>
           )
@@ -710,7 +718,7 @@ function MarketDeckPanel() {
                   labels ("WTI Crude Oil", "Nasdaq 100"), so the name sweeps on
                   hover/tap like every other clipped name on the board */}
               <Marquee text={tl(item.label)} title={tl(item.label)}
-                class="min-w-0 font-anth text-[9px] font-medium uppercase tracking-[0.08em] text-muted/80" />
+                class="min-w-0 font-anth text-[10px] font-medium uppercase tracking-[0.08em] text-muted/80" />
               <span class={`ml-auto shrink-0 font-tick text-[11px] font-semibold tabular-nums ${!q ? 'text-muted' : q.pct >= 0 ? 'text-up' : 'text-down'}`}>
                 {q ? fmtPct(q.pct) : '—'}
               </span>
@@ -723,11 +731,11 @@ function MarketDeckPanel() {
 }
 
 function EarningsPanel({ symbols, quotes = {} }) {
-  useZhNames()
   // the board's names plus the megacaps whose prints move the whole tape —
   // a widget that misses NVDA's report because it fell off the watchlist is
   // not doing its one job (Jeff 2026-08-06)
   const uni = [...new Set([...symbols, ...EARNINGS_UNIVERSE])]
+  useZhNames(uni)
   const days = useEarningsDays(uni)
   const held = new Set(symbols)
   const upcoming = uni
@@ -757,10 +765,10 @@ function EarningsPanel({ symbols, quotes = {} }) {
             <a key={symbol} href={`#/research/${symbol.toLowerCase()}/earnings`}
               class="rail-row grid grid-cols-[minmax(2.75rem,auto)_minmax(0,1fr)_2.2rem] items-baseline gap-1.5 px-3 py-[3px] font-mono text-[12px] hover:bg-surface-3 hover:no-underline"
               title={name || symbol}>
-              <span class={`max-w-[6.5rem] truncate font-[650] font-anth ${mine ? 'text-ink' : 'text-ink-2'}`}>{symbol}</span>
+              <span class={`max-w-[6.5rem] truncate font-[650] font-anth ${mine ? 'text-ink' : 'text-ink-2'}`}>{symbol.replace(/\.HK$/, '')}</span>
               {/* company name, quiet — the CLI's `[dim]{name}[/]`, sliding into
                   view on hover when the rail is too narrow to hold it */}
-              <Marquee text={name} class="min-w-0 text-left text-[11px] text-muted font-anth font-light" />
+              <Marquee text={name} class="min-w-0 text-left text-[10px] text-muted font-anth font-light" />
               <span class={`text-right ${d <= 0 ? 'text-imminent font-bold'
                 : d <= 7 ? 'text-down' : d <= 21 ? 'text-accent' : 'text-ink-2'}`}>{d}d</span>
             </a>
@@ -1584,11 +1592,48 @@ function TickerSearch({ filter, setFilter, activeList }) {
 }
 
 export function Dashboard({ listId = null }) {
-  useZhNames()
+  const boardGridRef = useRef(null)
+  const [railWidth, setRailWidth] = useState(() =>
+    storedRailWidth('ttw-dashboard-rail-width', defaultDashboardRailWidth(), RAIL_LIMITS.right))
+  const commitRailWidth = (width) => {
+    saveRailWidth('ttw-dashboard-rail-width', width)
+    setRailWidth(width)
+  }
+  const startRailResize = (event) => {
+    if (event.button != null && event.button !== 0) return
+    event.preventDefault()
+    const grip = event.currentTarget
+    grip.setPointerCapture(event.pointerId)
+    const startX = event.clientX
+    const startWidth = railWidth
+    let next = startWidth
+    let frame = 0
+    const paint = () => {
+      frame = 0
+      boardGridRef.current?.style.setProperty('--dashboard-rail-width', `${next}px`)
+    }
+    const move = (pointer) => {
+      // The right rail's grip is on its left edge: moving it left widens it.
+      next = railWidthAtDrag(startWidth, startX - pointer.clientX, RAIL_LIMITS.right)
+      if (!frame) frame = requestAnimationFrame(paint)
+    }
+    const finish = () => {
+      if (frame) cancelAnimationFrame(frame)
+      paint()
+      grip.removeEventListener('pointermove', move)
+      grip.removeEventListener('pointerup', finish)
+      grip.removeEventListener('pointercancel', finish)
+      commitRailWidth(next)
+    }
+    grip.addEventListener('pointermove', move)
+    grip.addEventListener('pointerup', finish)
+    grip.addEventListener('pointercancel', finish)
+  }
   const mainWatchlist = useWatchlist()
   const namedWatchlists = useNamedWatchlists()
   const activeList = listId ? namedWatchlists.find((item) => item.id === listId) : null
   const watchlist = activeList?.symbols || mainWatchlist
+  useZhNames(watchlist)
   useEffect(() => { rememberDashboardLanding(activeList?.id || null) }, [activeList?.id])
   const quotes = useQuotes(watchlist)
   const earnDays = useEarningsDays(watchlist)
@@ -1879,7 +1924,10 @@ export function Dashboard({ listId = null }) {
       {/* lg (1024px) not xl: the rail used to vanish one browser-zoom notch in.
           1024 keeps it alive through two more notches (115%, 125%) on a 1376px
           CSS viewport before genuinely running out of room. */}
-      <div class="grid gap-2 min-[960px]:grid-cols-[1fr_190px] min-[1200px]:grid-cols-[1fr_230px] min-[1700px]:grid-cols-[1fr_290px] min-[2100px]:grid-cols-[1fr_340px] min-w-0">
+      <div ref={boardGridRef} style={railWidth ? { '--dashboard-rail-width': `${railWidth}px` } : undefined}
+        class={`grid gap-2 min-w-0 ${railWidth
+          ? 'min-[960px]:grid-cols-[minmax(0,1fr)_var(--dashboard-rail-width)]'
+          : 'min-[960px]:grid-cols-1'}`}>
         <section ref={boardRef} data-watchlist-board class="@container relative bg-surface-1 border border-line rounded-xl overflow-hidden min-w-0">
           {/* One element for the whole board, parked at the top and moved by
               transform — a per-row insertion marker would relayout the list
@@ -1930,15 +1978,30 @@ export function Dashboard({ listId = null }) {
             <Empty label={tl('empty watchlist — add the first ticker below')} />
           )}
           <AddSymbolRow onAdd={addSymbol} isPresent={isPresent} isFull={listFull} cap={listCap} />
+          {railWidth === 0 && (
+            <button type="button" data-dashboard-rail-show onClick={() => commitRailWidth(defaultDashboardRailWidth())}
+              class="absolute right-2 top-2 z-20 hidden h-6 w-6 items-center justify-center rounded border border-line bg-surface-1 font-mono text-[14px] text-muted transition-colors hover:border-accent/60 hover:text-accent min-[960px]:inline-flex"
+              title={tl('show dashboard rail')} aria-label={tl('show dashboard rail')}
+            >
+              ‹
+            </button>
+          )}
         </section>
-        <div class="rail @container flex flex-col gap-3 min-w-0">
-          {widgets.map((w) => (
-            <WidgetFrame key={w.id} id={w.id}>
-              <RailWidget w={w} all={all} watchlist={watchlist} earnDays={earnDays} quotes={quotes} />
-            </WidgetFrame>
-          ))}
-          <AddWidget />
-        </div>
+        {railWidth > 0 && (
+          <aside class="rail @container relative flex flex-col gap-3 min-w-0">
+            <div data-dashboard-rail-resize role="separator" aria-orientation="vertical" aria-label={tl('resize dashboard rail')}
+              onPointerDown={startRailResize}
+              class="absolute -left-1 top-0 z-30 hidden h-full w-2 cursor-col-resize touch-none group/rail-resize min-[960px]:block">
+              <span class="absolute left-[3px] top-1/2 h-10 w-px -translate-y-1/2 bg-line opacity-0 transition-opacity group-hover/rail-resize:opacity-100 group-active/rail-resize:bg-accent group-active/rail-resize:opacity-100" />
+            </div>
+            {widgets.map((w) => (
+              <WidgetFrame key={w.id} id={w.id}>
+                <RailWidget w={w} all={all} watchlist={watchlist} earnDays={earnDays} quotes={quotes} />
+              </WidgetFrame>
+            ))}
+            <AddWidget />
+          </aside>
+        )}
       </div>
     </div>
   )

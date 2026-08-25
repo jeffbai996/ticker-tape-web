@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
 import { NAV, hrefFor } from '../lib/route.js'
 import { goChatHome } from '../lib/chatnav.js'
 import { t as tt, tl } from '../lib/i18n.js'
@@ -13,6 +13,7 @@ import { loadSidebarWatchlistId, saveSidebarWatchlistId } from '../lib/sidebarWa
 import { fmtPriceBare, fmtPct } from '../lib/format.js'
 import { lastGoodTs } from '../lib/feed.js'
 import { prefetchSymbol } from '../lib/history.js'
+import { RAIL_LIMITS, railWidthAtDrag } from '../lib/railResize.js'
 
 function WatchRow({ symbol, q, onRemove }) {
   const up = (q?.pct ?? 0) >= 0
@@ -107,7 +108,8 @@ function SortHead({ label, col, sort, onSort, align = 'left' }) {
   )
 }
 
-export function Sidebar({ route }) {
+export function Sidebar({ route, width, onWidthCommit }) {
+  const railRef = useRef(null)
   const mainWatchlist = useWatchlist()
   const namedWatchlists = useNamedWatchlists()
   const [sidebarListId, setSidebarListId] = useState(() => loadSidebarWatchlistId(namedWatchlists))
@@ -145,9 +147,43 @@ export function Sidebar({ route }) {
     ? () => isNamedWatchlistFull(activeNamed.id)
     : isWatchlistFull
   const listCap = activeNamed ? MAX_WATCHLIST_SYMBOLS : MAX_WATCHLIST
+  const startResize = (event) => {
+    if (event.button != null && event.button !== 0) return
+    event.preventDefault()
+    const grip = event.currentTarget
+    grip.setPointerCapture(event.pointerId)
+    const startX = event.clientX
+    const startWidth = width
+    let next = startWidth
+    let frame = 0
+    const paint = () => {
+      frame = 0
+      if (railRef.current) railRef.current.style.width = `${next}px`
+    }
+    const move = (pointer) => {
+      next = railWidthAtDrag(startWidth, pointer.clientX - startX, RAIL_LIMITS.left)
+      if (!frame) frame = requestAnimationFrame(paint)
+    }
+    const finish = () => {
+      if (frame) cancelAnimationFrame(frame)
+      paint()
+      grip.removeEventListener('pointermove', move)
+      grip.removeEventListener('pointerup', finish)
+      grip.removeEventListener('pointercancel', finish)
+      onWidthCommit(next)
+    }
+    grip.addEventListener('pointermove', move)
+    grip.addEventListener('pointerup', finish)
+    grip.addEventListener('pointercancel', finish)
+  }
 
   return (
-    <nav class="w-44 min-[1200px]:w-52 shrink-0 bg-black border-r border-line flex flex-col max-md:hidden min-h-0">
+    <nav ref={railRef} style={{ width: `${width}px` }} class="relative shrink-0 bg-black border-r border-line flex flex-col max-md:hidden min-h-0">
+      <div data-sidebar-resize role="separator" aria-orientation="vertical" aria-label={tl('resize sidebar')}
+        onPointerDown={startResize}
+        class="absolute -right-1 top-0 z-30 h-full w-2 cursor-col-resize touch-none group/rail-resize">
+        <span class="absolute right-[3px] top-1/2 h-10 w-px -translate-y-1/2 bg-line opacity-0 transition-opacity group-hover/rail-resize:opacity-100 group-active/rail-resize:bg-accent group-active/rail-resize:opacity-100" />
+      </div>
       <UpdatedLine />
       <div class="pb-2">
         {NAV.filter((s) => !s.phoneOnly).map((section) => (
