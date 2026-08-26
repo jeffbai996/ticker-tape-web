@@ -339,7 +339,7 @@ html, body {
     white-space: nowrap;
     text-overflow: ellipsis;
     color: var(--color-ink-2);
-    font: 500 12px/1.45 "Plus Jakarta Sans", system-ui, sans-serif;
+    font: 500 12px/1.45 var(--font-sans);
     letter-spacing: -0.01em;
     opacity: 0;
     pointer-events: none;
@@ -417,7 +417,7 @@ html, body {
   overflow: hidden auto; border-left: 1px solid var(--color-line-2);
   background: rgba(255, 255, 255, .018); border-radius: 0 6px 6px 0;
   color: var(--color-muted); scrollbar-width: none;
-  font: 450 10.5px/1.5 "Plus Jakarta Sans", system-ui, sans-serif;
+  font: 450 10.5px/1.5 var(--font-sans);
   white-space: pre-wrap; overflow-wrap: anywhere;
   -webkit-mask-image: linear-gradient(to bottom, transparent, #000 1.6rem);
   mask-image: linear-gradient(to bottom, transparent, #000 1.6rem);
@@ -566,7 +566,7 @@ button:hover .burger path:nth-child(2) { transform: scaleX(.55); }
 /* Tickers read as names, not as data — the proportional face separates a
    symbol from the mono figures beside it (Jeff 2026-08-04). */
 .font-tick {
-  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+  font-family: var(--font-sans);
   font-variant-numeric: tabular-nums;
 }
 
@@ -574,12 +574,12 @@ button:hover .burger path:nth-child(2) { transform: scaleX(.55); }
 .markets-page table,
 .markets-page h2,
 .markets-page footer {
-  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+  font-family: var(--font-sans);
   font-variant-numeric: tabular-nums;
 }
 
 .font-jakarta {
-  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+  font-family: var(--font-sans);
 }
 
 /* AI chat motion + execution trace. The trace is a first-class transcript
@@ -614,7 +614,7 @@ button:hover .burger path:nth-child(2) { transform: scaleX(.55); }
   width: 100%; min-height: 28px; display: flex; align-items: center; gap: .46rem;
   padding: .2rem .15rem; color: var(--color-muted); text-align: left;
   background: transparent; border: 0; cursor: pointer;
-  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+  font-family: var(--font-sans);
 }
 .chat-trace-head:hover { background: transparent; color: var(--color-ink); }
 .chat-trace-title { color: var(--color-ink-2); font-size: 11.5px; font-weight: 625; }
@@ -692,13 +692,13 @@ button:hover .burger path:nth-child(2) { transform: scaleX(.55); }
 .chat-trace-step.is-error .chat-trace-node { color: var(--color-down); }
 @keyframes chat-node-pulse { 50% { opacity: .35; transform: scale(.78); } }
 .chat-trace-label {
-  color: var(--color-ink-2); font: 650 10.5px/1.35 "Plus Jakarta Sans", system-ui, sans-serif;
+  color: var(--color-ink-2); font: 650 10.5px/1.35 var(--font-sans);
 }
 .chat-trace-step.is-running .chat-trace-label { color: var(--color-ink); }
 .chat-trace-time { color: var(--color-muted); font: 400 9px/1 "IBM Plex Mono", monospace; }
 .chat-trace-detail {
   max-width: 68ch; margin-top: .14rem; color: var(--color-muted);
-  font: 450 10.5px/1.45 "Plus Jakarta Sans", system-ui, sans-serif;
+  font: 450 10.5px/1.45 var(--font-sans);
   white-space: pre-wrap; overflow-wrap: anywhere;
 }
 .chat-trace-detail.is-tool {

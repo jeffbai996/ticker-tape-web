@@ -21,8 +21,37 @@ function swBuildId() {
   }
 }
 
+// The public document and bundle never contain the licensed UI face. Private
+// builds opt in at build time; their deploy scripts copy the local asset beside
+// index.html after Vite has finished. A document-relative URL works for both
+// the tailnet root and the family host subpath.
+export function privateFontHtml(enabled) {
+  if (!enabled) return ''
+  return `<style data-ttw-private-font>
+@font-face {
+  font-family: "Anthropic Sans";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("./fonts/AnthropicSansVariable-TextRegular.woff2") format("woff2");
+}
+:root { --font-sans: "Anthropic Sans", "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+</style>`
+}
+
+function privateFont() {
+  const enabled = process.env.VITE_PRIVATE === '1' || process.env.VITE_FAMILY_BUILD === '1'
+  const html = privateFontHtml(enabled)
+  return {
+    name: 'ttw-private-font',
+    transformIndexHtml(document) {
+      return html ? document.replace('</head>', `${html}\n</head>`) : document
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [preact(), tailwindcss(), swBuildId()],
+  plugins: [preact(), tailwindcss(), privateFont(), swBuildId()],
   // Where the bundle will be served from. The public GitHub Pages deploy keeps
   // the repo-name base; the family build is hosted elsewhere at its own path,
   // so both are env-driven rather than forked configs (Jeff 2026-08-25).
