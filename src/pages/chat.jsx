@@ -1441,7 +1441,7 @@ export function Chat() {
                    A3.3 3.3 0 0 1 4 13.2V7.3A3.3 3.3 0 0 1 7.3 4h9.4A3.3 3.3 0 0 1 20 7.3z" />
           <path d="M8.4 9.2h7.2M8.4 12.2h4.4" />
         </svg>
-        <h1 class="font-bold text-[17px] leading-tight text-ink" style="font-family: 'Plus Jakarta Sans', sans-serif">{tl('AI Chat')}</h1>
+        <h1 class="font-bold text-[17px] leading-tight text-ink" style="font-family: var(--font-sans)">{tl('AI Chat')}</h1>
         <span class={`w-1.5 h-1.5 rounded-full ${onWire ? 'bg-up' : 'bg-accent'}`}
               title={tl(onWire ? 'online — private wire' : 'online — public proxy')} />
       </div>
