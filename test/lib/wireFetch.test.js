@@ -21,6 +21,12 @@ describe('fetchEvents', () => {
       .toBe('http://wire/api/events?since_id=12&limit=50')
   })
 
+  it('asks the service for a category tail when a category is selected', async () => {
+    expect(await call({ limit: 200, newest: true,
+      types: 'fed_speech,fed_headline,macro_print' }))
+      .toBe('http://wire/api/events?since_id=0&limit=200&newest=1&types=fed_speech%2Cfed_headline%2Cmacro_print')
+  })
+
   it('throws on a bad response so the caller can fall back', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 502 }))
     await expect(fetchEvents('http://wire')).rejects.toThrow('wire 502')

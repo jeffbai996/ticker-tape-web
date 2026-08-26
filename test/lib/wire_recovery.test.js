@@ -7,8 +7,8 @@ const src = fs.readFileSync('src/pages/wire.jsx', 'utf8')
 // These guard both halves of the fix: it comes back on its own, and the reader
 // can force it sooner.
 describe('wire SSE recovery', () => {
-  it('re-runs the whole connect effect when the reconnect counter bumps', () => {
-    expect(src).toContain('}, [endpoint, reconnect])')
+  it('re-runs the whole connect effect when reconnect or category changes', () => {
+    expect(src).toContain('}, [endpoint, reconnect, filter])')
     expect(src).toContain('const [reconnect, setReconnect] = useState(0)')
   })
 
