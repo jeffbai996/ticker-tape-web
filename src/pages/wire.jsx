@@ -615,7 +615,12 @@ export function Wire({ route }) {
     }
     // A real Fragwire: backfill, then live over SSE.
     const startLive = () => {
-      fetchEvents(endpoint, { limit: 300, newest: true })
+      // The general stream moves quickly enough to evict sparse lanes such as
+      // Fed, macro, and audio from a 300-row tail. On their selected pill,
+      // ask Fragwire for that lane's own tail; the SSE remains broad so a
+      // fresh row still arrives without another request.
+      const types = isMirrorBase(endpoint) ? '' : filter
+      fetchEvents(endpoint, { limit: 300, newest: true, types })
         .then((out) => {
           if (cancelled) return
           setEvents(out.events || [])
@@ -691,7 +696,7 @@ export function Wire({ route }) {
       if (reArmTimer) clearTimeout(reArmTimer)
       if (esRef.current) { esRef.current.close(); esRef.current = null }
     }
-  }, [endpoint, reconnect])
+  }, [endpoint, reconnect, filter])
 
   const wanted = filter ? filter.split(',') : null
   // a session card answers for its audio contents on the type filter

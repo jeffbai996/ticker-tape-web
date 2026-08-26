@@ -110,9 +110,12 @@ export function calendarSubscriptionUrl() {
 // `newest` takes the TAIL of the archive. Without it a since_id=0 backfill
 // returns the OLDEST rows in the store — the board opened on ancient events
 // and a link to a fresh story landed on nothing (Jeff 2026-08-05).
-export async function fetchEvents(base, { sinceId = 0, limit = 100, newest = false } = {}) {
+export async function fetchEvents(base, {
+  sinceId = 0, limit = 100, newest = false, types = '',
+} = {}) {
+  const typeParam = String(types || '').trim()
   const resp = await fetch(
-    `${base}/api/events?since_id=${sinceId}&limit=${limit}${newest ? '&newest=1' : ''}`)
+    `${base}/api/events?since_id=${sinceId}&limit=${limit}${newest ? '&newest=1' : ''}${typeParam ? `&types=${encodeURIComponent(typeParam)}` : ''}`)
   if (!resp.ok) throw new Error(`wire ${resp.status}`)
   return resp.json()
 }
