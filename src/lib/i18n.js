@@ -954,6 +954,15 @@ const LABELS = {
   Sizing: '仓位测算', Target: '目标', shares: '股', buy: '买入', sell: '卖出', now: '现持',
   Sectors: '板块分布', Other: '其他',
   'Day movers': '当日异动', 'Weights': '权重分布', 'Currency mix': '币种构成',
+  'vs indices': '指数对比', 'This book': '本组合',
+  symbol: '代码',
+  'official webcast URL': '官方直播链接',
+  'label (optional)': '标签（选填）',
+  'earnings call': '业绩电话会',
+  'arm capture': '启动录制', 'arming…': '正在启动…',
+  'capture armed — waiting for audio': '录制已启动 — 等待音频',
+  'enter a symbol and official webcast URL': '请输入代码和官方直播链接',
+  'no active capture': '暂无进行中的录制',
   'Symbol or company': '代码或公司名',
   // Cash accounts + the listing gate (2026-08-21)
   'Pick the listing from the list — a plain board code like 02628 is not a symbol anywhere.':
