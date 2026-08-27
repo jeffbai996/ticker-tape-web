@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach } from 'vitest'
-import { mirrorBase, setWireUrl, wireUrl, calendarSubscriptionUrl, demoBackfill, demoEvent, demoToday, demoQuotes, rankEvents, collapseSessions, clusterStories, toggleWireArticle, TYPE_CODE, pubDisplayName, readMinutes } from '../../src/lib/wire.js'
+import { mirrorBase, setWireUrl, wireUrl, calendarSubscriptionUrl, demoBackfill, demoEvent, demoToday, demoQuotes, rankEvents, collapseSessions, clusterStories, toggleWireArticle, TYPE_CODE, pubDisplayName, readMinutes, effectiveEventTime, sortWireLatest, tierOfEvent, matchesWireRelevance } from '../../src/lib/wire.js'
 
 describe('wire article accordion', () => {
   it('replaces the open article and lets the active article close', () => {
@@ -95,6 +95,46 @@ describe('priority ranking (fragwire scorer port)', () => {
       ev(3, 'transcript_chunk', ['TSLA'], 0, { session_id: 9 }),
     ], new Set(), now)
     expect(ranked.map((e) => e.id).sort()).toEqual([2, 3])
+  })
+})
+
+describe('wire ordering and relevance controls', () => {
+  const now = 1_000_000
+  const event = (id, tsEvent, extra = {}) => ({
+    id, type: 'headline', headline: 'story', symbols: [],
+    ts_event: tsEvent, ts_seen: tsEvent + 1, meta: {}, ...extra,
+  })
+
+  it('sorts latest by effective event time and demotes bad future stamps', () => {
+    const future = event(3, now + 3600, { ts_seen: now - 30 })
+    const rows = sortWireLatest([
+      event(1, now - 120), future, event(2, now - 10),
+    ], now)
+
+    expect(rows.map((row) => row.id)).toEqual([2, 3, 1])
+    expect(effectiveEventTime(future, now)).toBe(now - 30)
+  })
+
+  it('combines exact tier selections and thesis/source gates', () => {
+    const watchset = new Set(['AAPL'])
+    const t1 = event(1, now, { meta: { thesis: 1 }, url: 'https://reuters.com/a' })
+    const t2 = event(2, now, { meta: { thesis: 2 }, url: 'https://reuters.com/b' })
+    const t3 = event(3, now, { symbols: ['AAPL'], meta: { thesis: 2 }, url: 'https://reuters.com/c' })
+
+    expect([t1, t2, t3].filter((row) => matchesWireRelevance(
+      row, watchset, { tiers: new Set([1, 3]) },
+    )).map((row) => row.id)).toEqual([1, 3])
+    expect(matchesWireRelevance(t1, watchset, { thesisOnly: true, primeOnly: true })).toBe(true)
+    expect(matchesWireRelevance(t1, watchset, { thesisOnly: true, primeOnly: true,
+      tiers: new Set([2]) })).toBe(false)
+  })
+
+  it('caps a content-mill thesis story below T3', () => {
+    const row = event(1, now, {
+      symbols: ['AAPL'], meta: { thesis: 2 },
+      url: 'https://www.fool.com/investing/story',
+    })
+    expect(tierOfEvent(row, new Set(['AAPL']))).toBe(2)
   })
 })
 

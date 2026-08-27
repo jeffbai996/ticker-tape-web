@@ -508,7 +508,39 @@ export function scoreEvent(ev, watchset, now = Date.now() / 1000) {
   const base = TYPE_WEIGHT[ev.type] ?? 30
   const wl = (ev.symbols || []).some((s) => watchset.has(s)) ? 1.5 : 1
   const ageH = Math.max(0, now - ev.ts_event) / 3600
-  return base * wl * Math.exp(-ageH / 36)
+  const thesis = 1 + 0.15 * ((ev.meta || {}).thesis || 0)
+  return base * wl * thesis * srcCred(ev) * Math.exp(-ageH / 36)
+}
+
+/** Event time is the tape clock unless a feed stamped a scheduled/future
+ *  date. Those rows fall back to when Fragwire actually saw them. */
+export function effectiveEventTime(ev, now = Date.now() / 1000) {
+  const eventTime = Number(ev.ts_event || 0)
+  return eventTime > now + 600 ? Number(ev.ts_seen || eventTime) : eventTime
+}
+
+export function sortWireLatest(events, now = Date.now() / 1000) {
+  return events.slice().sort((a, b) =>
+    (b.is_live ? 1 : 0) - (a.is_live ? 1 : 0)
+    || effectiveEventTime(b, now) - effectiveEventTime(a, now)
+    || b.id - a.id)
+}
+
+export function tierOfEvent(ev, watchset) {
+  const thesis = (ev.meta || {}).thesis || 0
+  const onBook = (ev.symbols || []).some((symbol) => watchset.has(symbol))
+    || ev.type === 'price_move'
+  const tier = thesis >= 2 && onBook ? 3 : thesis
+  return srcCred(ev) < 1 ? Math.min(tier, 2) : tier
+}
+
+export function matchesWireRelevance(ev, watchset, {
+  tiers = new Set(), thesisOnly = false, primeOnly = false,
+} = {}) {
+  if (thesisOnly && !((ev.meta || {}).thesis >= 1) && !ev.live_call) return false
+  if (tiers.size && !tiers.has(tierOfEvent(ev, watchset))) return false
+  if (primeOnly && srcCred(ev) < 1.25) return false
+  return true
 }
 
 // TOP mode collapses live-transcript chatter to the newest chunk per session.

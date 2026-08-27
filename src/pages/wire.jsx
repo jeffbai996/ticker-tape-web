@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import {
   wireUrl, setWireUrl, fragwireHome, calendarSubscriptionUrl, armAudioCapture, fetchEvents, fetchUpdates, fetchToday, fetchMeta,
   demoBackfill, demoEvent, demoToday, DEMO_SESSION_ROWS, rankEvents, collapseSessions, clusterStories,
-  srcCred, evHeadline, evBody, matchesWireQuery, pubDisplayName, readMinutes,
+  srcCred, evHeadline, evBody, matchesWireQuery, matchesWireRelevance,
+  pubDisplayName, readMinutes, sortWireLatest, tierOfEvent, effectiveEventTime,
   toggleWireArticle, isMirrorBase, mirrorAgeMinutes,
 } from '../lib/wire.js'
 import { IS_PRIVATE_BUILD } from '../lib/nav.js'
@@ -11,19 +12,6 @@ import { useEscape } from '../hooks.js'
 import { startVisibleClock } from '../lib/idleClock.js'
 import { Empty, Loading } from '../components/Loading.jsx'
 import { getLocale, t as tt, tl } from '../lib/i18n.js'
-
-// fragwire's relevance ramp, same colors as its pills: T1 sector (blue),
-// T2 core thesis (amber), T3 thesis on a name you hold (red).
-function tierOf(ev, watchset) {
-  const th = (ev.meta || {}).thesis || 0
-  const onBook = (ev.symbols || []).some((s) => watchset.has(s))
-    || ev.type === 'price_move'
-  const t = th >= 2 && onBook ? 3 : th
-  // content mills never make T3 — directional dogshit stays T2 at best
-  // (Jeff 2026-08-09: "dont allow shitty red dot news like motley fool
-  // to be marked a T3")
-  return srcCred(ev) < 1 ? Math.min(t, 2) : t
-}
 
 const TIER_CLS = {
   1: 'text-[#58a6ff] border-[#58a6ff]/50',
@@ -271,7 +259,7 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
             the 1fr headline pushing it there, so it read as a wide empty column
             (Jeff 2026-08-07). 58px fits "+3m 11s" with a hair either side. */}
       <div class="grid grid-cols-[64px_56px_36px_1fr_58px] max-sm:grid-cols-[64px_auto_auto_1fr] gap-x-2.5 items-baseline px-2.5 py-[3px] text-[12px] leading-[1.55]">
-        <span class={hot ? '' : 'text-muted'}>{rowTime(ev.ts_event)}</span>
+        <span class={hot ? '' : 'text-muted'}>{rowTime(effectiveEventTime(ev))}</span>
         {(ev.symbols || []).length ? (
           <span class={`truncate ${hot ? 'font-semibold' : 'text-accent font-medium'}`}>
             {/* array, not a fragment: the key has to ride the link itself */}
@@ -516,6 +504,15 @@ const openStore = new Set()
 // page honest without hammering the worker.
 const MIRROR_POLL_MS = 60_000
 
+const savedTierFilters = () => {
+  try {
+    const saved = JSON.parse(localStorage.getItem('tape-wire-tier-filters') || '[]')
+    return new Set(Array.isArray(saved) ? saved.filter((tier) => [1, 2, 3].includes(tier)) : [])
+  } catch {
+    return new Set()
+  }
+}
+
 export function Wire({ route }) {
   const [endpoint, setEndpoint] = useState(() => wireUrl())
   const [draft, setDraft] = useState(() => wireUrl())
@@ -525,6 +522,9 @@ export function Wire({ route }) {
   const [filter, setFilterRaw] = useState(() => localStorage.getItem('tape-wire-filter') || '')
   const [query, setQueryRaw] = useState(() => localStorage.getItem('tape-wire-filter-text') || '')
   const [mode, setMode] = useState(() => localStorage.getItem('tape-wire-mode') || 'top')
+  const [tierFilters, setTierFiltersRaw] = useState(savedTierFilters)
+  const [thesisOnly, setThesisOnlyRaw] = useState(() => localStorage.getItem('tape-wire-thesis-only') === '1')
+  const [primeOnly, setPrimeOnlyRaw] = useState(() => localStorage.getItem('tape-wire-prime-only') === '1')
   // rail off = full-width reading; sticky, it's a layout preference
   const [rail, setRail] = useState(() => localStorage.getItem('tape-wire-rail') !== '0')
   const [state, setState] = useState('demo')   // demo | connecting | live | mirror | error
@@ -563,6 +563,21 @@ export function Wire({ route }) {
   const setQuery = (q) => {
     setQueryRaw(q)
     localStorage.setItem('tape-wire-filter-text', q)
+  }
+  const toggleTier = (tier) => {
+    const next = new Set(tierFilters)
+    if (next.has(tier)) next.delete(tier)
+    else next.add(tier)
+    setTierFiltersRaw(next)
+    localStorage.setItem('tape-wire-tier-filters', JSON.stringify([...next]))
+  }
+  const setThesisOnly = (on) => {
+    setThesisOnlyRaw(on)
+    localStorage.setItem('tape-wire-thesis-only', on ? '1' : '0')
+  }
+  const setPrimeOnly = (on) => {
+    setPrimeOnlyRaw(on)
+    localStorage.setItem('tape-wire-prime-only', on ? '1' : '0')
   }
 
   useEscape(() => setOpenIds(new Set()), openIds.size > 0)
@@ -766,9 +781,12 @@ export function Wire({ route }) {
   const filtered = clusterStories(collapseSessions(events, now), now)
     .filter((ev) => !wanted || wanted.includes(typeOf(ev)) || wanted.includes(ev.type))
     .filter((ev) => matchesWireQuery(ev, query, getLocale()))
+    .filter((ev) => matchesWireRelevance(ev, watchset, {
+      tiers: tierFilters, thesisOnly, primeOnly,
+    }))
   const shown = mode === 'top'
     ? rankEvents(filtered, watchset, now)
-    : filtered.slice().sort((a, b) => (b.is_live ? 1 : 0) - (a.is_live ? 1 : 0) || b.id - a.id)
+    : sortWireLatest(filtered, now)
 
   const applyEndpoint = (e) => {
     e.preventDefault()
@@ -802,7 +820,12 @@ export function Wire({ route }) {
       setMissing((cur) => (cur === targetId ? null : cur))
       setFilter('')
       setQuery('')
-      setMode('all')
+      setTierFiltersRaw(new Set())
+      setThesisOnly(false)
+      setPrimeOnly(false)
+      localStorage.setItem('tape-wire-tier-filters', '[]')
+      setMode('wire')
+      localStorage.setItem('tape-wire-mode', 'wire')
       setOpenIds(new Set([targetId]))
       requestAnimationFrame(() => {
         document.getElementById(`ev-${targetId}`)
@@ -865,7 +888,7 @@ export function Wire({ route }) {
           <span class="font-sans font-bold text-[14px] tracking-[-0.02em] text-ink group-hover/brand:text-accent transition-colors">fragwire</span>
         </a>
         <nav class="inline-flex border border-line rounded-lg overflow-hidden shrink-0">
-          {['top', 'wire'].map((m) => (
+          {[['top', 'priority'], ['wire', 'latest']].map(([m, label]) => (
             <button
               key={m}
               class={`px-2.5 py-0.5 font-sans font-semibold text-[11px] whitespace-nowrap transition-colors ${
@@ -875,7 +898,7 @@ export function Wire({ route }) {
               } ${m === 'wire' ? 'border-l border-line' : ''}`}
               onClick={() => setModePersist(m)}
             >
-              {tl(m)}
+              {tl(label)}
             </button>
           ))}
         </nav>
@@ -945,6 +968,32 @@ export function Wire({ route }) {
             {tl(f.label)}
           </button>
         ))}
+        <span aria-hidden="true" class="h-4 w-px bg-line mx-0.5" />
+        {[1, 2, 3].map((tier) => (
+          <button key={tier} data-tier-filter={tier}
+            title={tl(tier === 3 ? 'T3 — thesis story on a name you hold'
+              : tier === 2 ? 'T2 — core thesis story' : 'T1 — touches the sector')}
+            onClick={() => toggleTier(tier)}
+            class={`border rounded-md px-2 py-0.5 font-mono text-[10.5px] font-bold transition-colors ${
+              tierFilters.has(tier)
+                ? tier === 1 ? 'bg-[#58a6ff] border-[#58a6ff] text-black'
+                  : tier === 2 ? 'bg-accent border-accent text-black'
+                    : 'bg-[#f85149] border-[#f85149] text-black'
+                : tier === 1 ? 'border-[#58a6ff]/40 text-[#58a6ff] hover:bg-[#58a6ff]/10'
+                  : tier === 2 ? 'border-accent/40 text-accent hover:bg-accent/10'
+                    : 'border-[#f85149]/40 text-[#f85149] hover:bg-[#f85149]/10'
+            }`}>T{tier}</button>
+        ))}
+        <button data-thesis-filter onClick={() => setThesisOnly(!thesisOnly)}
+          title={tl('only thesis-tagged stories')}
+          class={`border rounded-md px-2.5 py-0.5 text-[11px] font-semibold transition-colors ${
+            thesisOnly ? 'bg-up border-up text-black' : 'bg-up/5 border-up/25 text-up/70 hover:text-up hover:border-up/50'
+          }`}>{tl('thesis')}</button>
+        <button data-prime-filter onClick={() => setPrimeOnly(!primeOnly)}
+          title={tl('top-tier sources only')}
+          class={`border rounded-md px-2.5 py-0.5 text-[11px] font-semibold transition-colors ${
+            primeOnly ? 'bg-up border-up text-black' : 'border-line text-ink-2 hover:text-up hover:border-up/40'
+          }`}>●●● {tl('prime')}</button>
         <input
           data-wire-query
           class="bg-surface-2 border border-line rounded-md px-2 py-0.5 font-mono text-[11px] text-ink outline-none focus:border-accent w-36"
@@ -974,7 +1023,7 @@ export function Wire({ route }) {
             // a session card's identity must survive id churn as chunks land
             const key = ev.live_call ? `s${ev.live_call.sid}` : ev.id
             return (
-              <Row key={key} ev={ev} hot={hotIds.has(ev.id)} tier={tierOf(ev, watchset)}
+              <Row key={key} ev={ev} hot={hotIds.has(ev.id)} tier={tierOfEvent(ev, watchset)}
                    open={openIds.has(key)} onToggle={() => toggleOpen(key)} />
             )
           })}
