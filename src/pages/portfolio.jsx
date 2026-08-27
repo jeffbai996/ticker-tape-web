@@ -175,6 +175,106 @@ function BookPulse({ rows }) {
   )
 }
 
+function BrokerCard({ title, children }) {
+  return (
+    <section class="bg-surface-1 border border-line rounded-xl overflow-hidden min-w-0">
+      <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
+        <h2 class="font-anth font-bold text-[10px] tracking-wider text-accent uppercase">{title}</h2>
+      </header>
+      <div class="px-2.5 py-1.5">{children}</div>
+    </section>
+  )
+}
+
+function BrokerDayMovers({ rows, priceMap }) {
+  const movers = rows
+    .map((row) => ({ ...row, dayPct: row.dayPct ?? priceMap[row.symbol]?.pct ?? null }))
+    .filter((row) => row.dayPnl != null)
+    .sort((a, b) => Math.abs(b.dayPnl) - Math.abs(a.dayPnl))
+    .slice(0, 4)
+  return (
+    <BrokerCard title={tl('Day movers')}>
+      {movers.length ? <div class="flex flex-col gap-0.5 font-mono text-[10.5px]">
+        {movers.map((row) => (
+          <div key={`${row.symbol}-${row.currency || ''}`} class="flex min-w-0 items-baseline gap-2 py-[2px]">
+            <SymLink sym={row.symbol} class="shrink-0 font-bold text-accent" />
+            <span class={`ml-auto shrink-0 font-semibold ${pnlCls(row.dayPnl)}`}>{signedMoney(row.dayPnl)}</span>
+            <span class={`w-14 shrink-0 text-right ${pnlCls(row.dayPct)}`}>{row.dayPct == null ? '—' : fmtPct(row.dayPct)}</span>
+          </div>
+        ))}
+      </div> : <div class="font-anth text-[10px] text-muted">—</div>}
+    </BrokerCard>
+  )
+}
+
+function brokerDayPct(rows) {
+  const marked = rows.filter((row) => row.mktValue != null && row.dayPnl != null)
+  const value = marked.reduce((sum, row) => sum + row.mktValue, 0)
+  const pnl = marked.reduce((sum, row) => sum + row.dayPnl, 0)
+  return value - pnl > 0 ? (pnl / (value - pnl)) * 100 : null
+}
+
+function BrokerBenchmarks({ rows }) {
+  const indices = useQuotes(['SPY', 'QQQ'])
+  const bookPct = brokerDayPct(rows)
+  const line = (label, value, strong = false) => (
+    <div key={label} class="flex items-center gap-2 font-mono text-[10.5px] py-[2px]">
+      <span class={`w-14 shrink-0 font-anth ${strong ? 'font-semibold text-ink' : 'text-ink-2'}`}>{label}</span>
+      <span class="relative h-2 flex-1 overflow-hidden rounded-sm bg-surface-3">
+        {value != null && <span class={`absolute top-0 h-2 ${value >= 0 ? 'left-1/2 bg-up/65' : 'right-1/2 bg-down/65'}`}
+          style={{ width: `${Math.min(50, Math.abs(value) * 8)}%` }} />}
+        <span class="absolute left-1/2 top-0 h-2 w-px bg-line" />
+      </span>
+      <span class={`w-14 text-right ${pnlCls(value)}`}>{value == null ? '—' : fmtPct(value)}</span>
+    </div>
+  )
+  return (
+    <BrokerCard title={tl('vs indices')}>
+      <div class="flex flex-col gap-0.5">
+        {line(tl('This book'), bookPct, true)}
+        {line('SPY', indices.SPY?.quote?.pct ?? null)}
+        {line('QQQ', indices.QQQ?.quote?.pct ?? null)}
+      </div>
+    </BrokerCard>
+  )
+}
+
+function BrokerCurrencyMix({ rows }) {
+  const values = new Map()
+  for (const row of rows) {
+    if (row.mktValue == null) continue
+    const ccy = row.currency || 'USD'
+    values.set(ccy, (values.get(ccy) || 0) + Math.abs(row.mktValue))
+  }
+  const entries = [...values.entries()].sort((a, b) => b[1] - a[1])
+  const total = entries.reduce((sum, [, value]) => sum + value, 0)
+  return (
+    <BrokerCard title={tl('Currency mix')}>
+      {entries.length ? <div class="flex flex-col gap-1">
+        {entries.slice(0, 5).map(([ccy, value]) => (
+          <div key={ccy} class="flex items-center gap-2 font-mono text-[10px]">
+            <span class="w-9 shrink-0 font-anth text-ink-2">{ccy}</span>
+            <span class="h-2 min-w-[2px] rounded-sm bg-accent/50" style={{ width: `${(value / total) * 100}%` }} />
+            <span class="ml-auto text-muted">{fmtPctPlain((value / total) * 100)}</span>
+          </div>
+        ))}
+      </div> : <div class="font-anth text-[10px] text-muted">—</div>}
+    </BrokerCard>
+  )
+}
+
+function BrokerAnalysis({ rows, priceMap }) {
+  if (!rows.length) return null
+  return (
+    <div class="grid gap-2 sm:grid-cols-2 xl:grid-cols-4 items-start">
+      <BrokerDayMovers rows={rows} priceMap={priceMap} />
+      <BrokerBenchmarks rows={rows} />
+      <BookPulse rows={rows} />
+      <BrokerCurrencyMix rows={rows} />
+    </div>
+  )
+}
+
 function Positions({ priceMap, positions, margin, accountId }) {
   const combined = accountId === BOTH_ACCOUNTS
   // Both = the broker's consolidated card: same contract across accounts is
@@ -195,6 +295,7 @@ function Positions({ priceMap, positions, margin, accountId }) {
   return (
     <div class="flex flex-col gap-2">
     <BookSummary rows={rows} margin={margin} fallbackNlv={fallback.nlv} />
+    <BrokerAnalysis rows={rows} priceMap={priceMap} />
     <div class="flex flex-col gap-2">
     <section class="bg-surface-1 border border-line rounded-xl overflow-x-auto">
       <table class="w-full border-collapse font-mono text-[11px]">
@@ -275,7 +376,6 @@ function Positions({ priceMap, positions, margin, accountId }) {
           </div>
         </section>
       )}
-      <BookPulse rows={rows} />
     </div>
     </div>
     </div>

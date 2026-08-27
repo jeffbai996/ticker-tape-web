@@ -34,6 +34,12 @@ describe('private portfolio account switching', () => {
     expect(page).toContain('margin?.equity')
     expect(page).toContain('margin?.above_maintenance')
   })
+
+  it('keeps the private broker surface on the same useful card cadence as a manual book', () => {
+    expect(page).toContain('function BrokerAnalysis')
+    expect(page).toContain('<BrokerAnalysis rows={rows} priceMap={priceMap} />')
+    expect(page).toContain('function BrokerDayMovers')
+  })
 })
 
 describe('portfolio translation coverage', () => {
