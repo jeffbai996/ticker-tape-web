@@ -48,4 +48,13 @@ describe('wire workbench sizing', () => {
     expect(src.indexOf("Object.keys(ev.numbers || {}).length > 0"))
       .toBeLessThan(src.indexOf("body && <p"))
   })
+
+  it('labels priority versus chronological ordering and exposes relevance filters', () => {
+    expect(src).toContain("[['top', 'priority'], ['wire', 'latest']]")
+    expect(src).toContain('[1, 2, 3].map((tier) =>')
+    expect(src).toContain('data-tier-filter={tier}')
+    expect(src).toContain('data-thesis-filter')
+    expect(src).toContain('data-prime-filter')
+    expect(src).toContain("localStorage.setItem('tape-wire-mode', 'wire')")
+  })
 })
