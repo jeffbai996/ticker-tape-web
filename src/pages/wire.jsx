@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import {
-  wireUrl, setWireUrl, fragwireHome, calendarSubscriptionUrl, fetchEvents, fetchUpdates, fetchToday, fetchMeta,
+  wireUrl, setWireUrl, fragwireHome, calendarSubscriptionUrl, armAudioCapture, fetchEvents, fetchUpdates, fetchToday, fetchMeta,
   demoBackfill, demoEvent, demoToday, DEMO_SESSION_ROWS, rankEvents, collapseSessions, clusterStories,
   srcCred, evHeadline, evBody, matchesWireQuery, pubDisplayName, readMinutes,
   toggleWireArticle, isMirrorBase, mirrorAgeMinutes,
@@ -63,6 +63,67 @@ const FILTERS = [
   { id: 'fed_speech,fed_headline,macro_print', label: 'macro + fed' },
   { id: 'transcript_chunk,digest', label: 'live audio' },
 ]
+
+function CaptureControl({ endpoint, onArmed }) {
+  const [symbol, setSymbol] = useState('')
+  const [url, setUrl] = useState('')
+  const [label, setLabel] = useState('')
+  const [state, setState] = useState('idle')
+
+  const submit = async (e) => {
+    e.preventDefault()
+    const cleanSymbol = symbol.trim().toUpperCase()
+    const cleanUrl = url.trim()
+    if (!cleanSymbol || !/^https?:\/\//.test(cleanUrl)) {
+      setState('invalid')
+      return
+    }
+    setState('arming')
+    try {
+      const out = await armAudioCapture(endpoint, {
+        symbol: cleanSymbol,
+        url: cleanUrl,
+        label: label.trim() || `${cleanSymbol} live call`,
+      })
+      setState('armed')
+      onArmed(out.session)
+    } catch (err) {
+      setState(String(err.message || err))
+    }
+  }
+
+  return (
+    <form data-wire-arm onSubmit={submit} class="flex flex-wrap items-end gap-2 p-3">
+      <label class="flex flex-col gap-1">
+        <span class="font-sans text-[9px] font-semibold uppercase tracking-wider text-muted">{tl('symbol')}</span>
+        <input value={symbol} onInput={(e) => setSymbol(e.currentTarget.value)}
+          class="w-20 bg-surface-2 border border-line rounded-md px-2 py-1 font-mono text-[11px] uppercase text-ink outline-none focus:border-accent"
+          placeholder="NVDA" aria-label={tl('symbol')} />
+      </label>
+      <label class="flex flex-1 min-w-[180px] flex-col gap-1">
+        <span class="font-sans text-[9px] font-semibold uppercase tracking-wider text-muted">{tl('official webcast URL')}</span>
+        <input value={url} onInput={(e) => setUrl(e.currentTarget.value)}
+          class="w-full bg-surface-2 border border-line rounded-md px-2 py-1 font-mono text-[11px] text-ink outline-none focus:border-accent"
+          placeholder="https://…" aria-label={tl('official webcast URL')} />
+      </label>
+      <label class="flex min-w-[130px] flex-1 flex-col gap-1 max-sm:basis-full">
+        <span class="font-sans text-[9px] font-semibold uppercase tracking-wider text-muted">{tl('label (optional)')}</span>
+        <input value={label} onInput={(e) => setLabel(e.currentTarget.value)}
+          class="w-full bg-surface-2 border border-line rounded-md px-2 py-1 font-mono text-[11px] text-ink outline-none focus:border-accent"
+          placeholder={tl('earnings call')} aria-label={tl('label (optional)')} />
+      </label>
+      <button disabled={state === 'arming'}
+        class="h-[30px] border border-accent rounded-md bg-accent-soft px-3 font-sans text-[11px] font-semibold text-accent hover:bg-accent hover:text-black disabled:opacity-50">
+        {tl(state === 'arming' ? 'arming…' : 'arm capture')}
+      </button>
+      <span class={`basis-full font-mono text-[10px] ${state === 'armed' ? 'text-up' : state === 'invalid' || state === 'idle' || state === 'arming' ? 'text-muted' : 'text-down'}`}>
+        {state === 'armed' ? tl('capture armed — waiting for audio')
+          : state === 'invalid' ? tl('enter a symbol and official webcast URL')
+            : state === 'idle' ? tl('no active capture') : state === 'arming' ? tl('arming…') : state}
+      </span>
+    </form>
+  )
+}
 
 const hhmmss = (ts) =>
   new Date(ts * 1000).toLocaleTimeString('en-US', { hour12: false })
@@ -485,6 +546,7 @@ export function Wire({ route }) {
   // one archive read per missed deep link, whatever the SSE feed does after
   const missRef = useRef(null)
   const [missing, setMissing] = useState(null)
+  const [armedSession, setArmedSession] = useState(null)
 
   // Same shape as the raw setters (value or updater), so callers below read as
   // plain state — they just also write through to the store / localStorage.
@@ -899,7 +961,14 @@ export function Wire({ route }) {
       <div class="flex flex-1 min-h-0 gap-2 items-stretch max-lg:flex-col max-lg:flex-none">
         <div data-wire-feed class="flex-1 min-w-0 min-h-0 border border-line rounded-lg overflow-y-auto overscroll-contain bg-surface max-lg:h-[55vh] max-lg:min-h-[360px] max-lg:flex-none">
           {shown.length === 0 && (
-            <div class="px-3 py-6 font-mono text-[12px] text-muted">{tl('no events')}</div>
+            filter === 'transcript_chunk,digest' && !isMirrorBase(endpoint)
+              ? <CaptureControl endpoint={endpoint} onArmed={setArmedSession} />
+              : <div class="px-3 py-6 font-mono text-[12px] text-muted">{tl('no events')}</div>
+          )}
+          {armedSession && filter === 'transcript_chunk,digest' && (
+            <div class="mx-3 mt-3 rounded-md border border-up/35 bg-up/5 px-2.5 py-1.5 font-mono text-[10.5px] text-up">
+              {tl('capture armed — waiting for audio')} · #{armedSession.id}
+            </div>
           )}
           {shown.slice(0, 250).map((ev) => {
             // a session card's identity must survive id churn as chunks land

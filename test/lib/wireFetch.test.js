@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { fetchEvents, fetchUpdates } from '../../src/lib/wire.js'
+import { armAudioCapture, fetchEvents, fetchUpdates } from '../../src/lib/wire.js'
 
 describe('fetchEvents', () => {
   const call = async (opts) => {
@@ -42,6 +42,35 @@ describe('fetchUpdates', () => {
     vi.stubGlobal('fetch', fetchMock)
     await fetchUpdates('http://wire', 10.25)
     expect(fetchMock.mock.calls[0][0]).toBe('http://wire/api/updates?since=10.25')
+    vi.unstubAllGlobals()
+  })
+})
+
+describe('armAudioCapture', () => {
+  it('posts an explicit capture request with its event metadata', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true, json: async () => ({ ok: true, session: { id: 42 } }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const out = await armAudioCapture('http://wire', {
+      symbol: 'NVDA',
+      url: 'https://events.q4inc.com/attendee/842602961',
+      label: 'NVIDIA earnings call',
+      startsAt: 123,
+    })
+
+    expect(out.session.id).toBe(42)
+    expect(fetchMock).toHaveBeenCalledWith('http://wire/api/arm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        symbol: 'NVDA',
+        url: 'https://events.q4inc.com/attendee/842602961',
+        label: 'NVIDIA earnings call',
+        starts_at: 123,
+      }),
+    })
     vi.unstubAllGlobals()
   })
 })

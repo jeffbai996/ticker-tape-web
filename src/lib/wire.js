@@ -120,6 +120,23 @@ export async function fetchEvents(base, {
   return resp.json()
 }
 
+/** Arm a capture only after the reader explicitly supplies an official
+ * webcast/player URL. Fragwire resolves supported player pages when the
+ * session reaches its scheduled start; the browser never sees a direct HLS
+ * stream or a stored broker credential. */
+export async function armAudioCapture(base, {
+  symbol, url, label = '', startsAt = Date.now() / 1000,
+}) {
+  const resp = await fetch(`${base}/api/arm`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ symbol, url, label, starts_at: startsAt }),
+  })
+  const out = await resp.json()
+  if (!resp.ok || !out.ok) throw new Error(out.error || `arm ${resp.status}`)
+  return out
+}
+
 // Symbol-scoped tail for the research overview's wire strip. Persisted so a
 // tab flip paints the last ten rows immediately and the fetch only ever
 // replaces them (2026-08-10) — the panel is hidden when empty, so a cold miss
