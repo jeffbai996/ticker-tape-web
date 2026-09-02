@@ -1,3 +1,5 @@
+import { ttwDeviceHeader } from './deviceIdentity.js'
+
 // The sync capability comes from the BUILD (the family build's fixed
 // store) or from nowhere. The browser-entered "sync code" path was retired
 // 2026-08-22: the worker accepts exactly one token, so a visitor-typed code
@@ -39,7 +41,7 @@ export function watchlistSyncEndpoint(capability = getWatchlistCapability(), bas
 
 /** Capabilities authorize the request but never enter the URL (and therefore
  * access logs, browser history, or error telemetry). */
-export function watchlistSyncHeaders(capability = getWatchlistCapability()) {
+export function watchlistSyncHeaders(capability = getWatchlistCapability(), deviceId) {
   if (!validWatchlistCapability(capability)) return {}
-  return { Authorization: `Bearer ${capability}` }
+  return { Authorization: `Bearer ${capability}`, ...ttwDeviceHeader(deviceId) }
 }

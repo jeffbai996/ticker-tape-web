@@ -15,6 +15,10 @@ render(<App />, document.getElementById('app'))
 if (import.meta.env.VITE_FAMILY_BUILD === '1' || import.meta.env.VITE_PRIVATE === '1') {
   import('./lib/cloudsave.js').then((m) => m.startWatchlistSync())
   import('./lib/portfolioSync.js').then((m) => m.startMyPortfolioSync())
+  // One call per tab session distinguishes JavaScript execution from an edge
+  // HTML fetch by a link-preview bot. Failure is silent and never retries in a
+  // loop; observability cannot be allowed to impair the family page.
+  import('./lib/securityTelemetry.js').then((m) => m.recordFamilyView())
 } else {
   // ...and on the public build, clear the family book this origin used to
   // serve. One time only — see familyResidue.js.
