@@ -123,6 +123,22 @@ describe('test architecture', () => {
     expect(source).not.toContain("from './chat.js'")
     expect(source).toContain("return jsonResp({ error: 'Not found' }, 404)")
   })
+
+  it('collects only explicit custom Worker events, not every market-data invocation', () => {
+    const config = readFileSync(resolve(process.cwd(), 'worker/wrangler.toml'), 'utf8')
+    const logConfig = config.match(/\[observability\.logs\]([\s\S]*?)(?:\n\[|$)/)?.[1] || ''
+    expect(config).toMatch(/\[observability\][\s\S]*enabled\s*=\s*true/)
+    expect(logConfig).toMatch(/head_sampling_rate\s*=\s*1/)
+    expect(logConfig).toMatch(/invocation_logs\s*=\s*false/)
+    expect(config).toMatch(/TTW_SECURITY_LOGGING\s*=\s*"1"/)
+  })
+
+  it('stages family assets beneath the routed URL prefix before deployment', () => {
+    const deploy = readFileSync(resolve(process.cwd(), 'scripts/deploy_family.sh'), 'utf8')
+    expect(deploy).toContain('$asset_root/tape-fmnco7yjx6')
+    expect(deploy).toContain('--assets "$asset_root"')
+    expect(deploy).not.toContain('--assets dist-family')
+  })
 })
 
 describe('research rail scroll container', () => {

@@ -9,6 +9,7 @@
 import { handleWatchlists } from './watchlists.js'
 import { handlePortfolios } from './portfolios.js'
 import { handleWire } from './wire.js'
+import { handleFamilyView, withFamilyDocumentLog } from './security_log.js'
 export { CapDocCoordinator } from './capdoc.js'
 
 const CORS_HEADERS = {
@@ -45,7 +46,7 @@ let _crumbTs = 0;
 const CRUMB_TTL = 3600 * 1000; // refresh crumb every hour
 
 export default {
-    async fetch(request, env) {
+    async fetch(request, env, ctx) {
         const url = new URL(request.url);
         const path = url.pathname;
 
@@ -58,10 +59,17 @@ export default {
         // Public watchlist sync is capability-scoped and intentionally does
         // not proxy the private Fragwire API.
         if (path === '/watchlists' || path.startsWith('/watchlists/')) {
-            return handleWatchlists(request, env, path);
+            return withFamilyDocumentLog(
+                request, env, path, ctx, () => handleWatchlists(request, env, path),
+            );
         }
         if (path === '/portfolios' || path.startsWith('/portfolios/')) {
-            return handlePortfolios(request, env, path);
+            return withFamilyDocumentLog(
+                request, env, path, ctx, () => handlePortfolios(request, env, path),
+            );
+        }
+        if (path === '/telemetry/family-view') {
+            return handleFamilyView(request, env, ctx);
         }
 
         // Public wire mirror: a pushed, sanitized headline snapshot read by

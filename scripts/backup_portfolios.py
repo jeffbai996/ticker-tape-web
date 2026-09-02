@@ -22,7 +22,9 @@ import argparse
 import json
 import logging
 import os
+import stat
 import sys
+import tempfile
 import time
 from pathlib import Path
 from urllib.error import URLError
@@ -85,6 +87,7 @@ def token() -> str:
 def pull(url: str, bearer: str) -> tuple[int, dict | None]:
     req = Request(url, headers={"Authorization": f"Bearer {bearer}",
                                 "Origin": "https://jeffbai996.github.io",
+                                "X-TTW-Device-ID": "scheduled-backup-v1",
                                 "User-Agent": "ttw-backup/1"})
     with urlopen(req, timeout=20) as resp:
         out = json.loads(resp.read().decode("utf-8"))
@@ -133,7 +136,48 @@ def latest(directory: Path) -> tuple[Path | None, dict | None]:
         return files[-1], None
 
 
+def secure_runtime(directory: Path) -> None:
+    """Make private-state modes independent of the caller's ambient umask.
+
+    Only the configured runtime path is touched; tracked source files and
+    public assets are deliberately outside this boundary.
+    """
+    directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+    directory.chmod(0o700)
+    if directory == DEFAULT_DIR:
+        directory.parent.chmod(0o700)
+        log_path = directory.parent / "backup.log"
+        if log_path.exists():
+            log_path.chmod(0o600)
+    for path in directory.glob("*.json"):
+        if path.is_file():
+            path.chmod(0o600)
+
+
+def private_atomic_write(path: Path, text: str) -> None:
+    """Create mode-0600 bytes before rename; never expose a permissive temp."""
+    fd, temporary = tempfile.mkstemp(prefix=".tmp-", dir=path.parent)
+    tmp = Path(temporary)
+    try:
+        os.fchmod(fd, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            fd = -1
+            handle.write(text)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp, path)
+        path.chmod(0o600)
+    finally:
+        if fd >= 0:
+            os.close(fd)
+        try:
+            tmp.unlink()
+        except FileNotFoundError:
+            pass
+
+
 def run(url: str, directory: Path) -> int:
+    secure_runtime(directory)
     bearer = token()
     if not bearer:
         log.error("no sync token")
@@ -144,7 +188,6 @@ def run(url: str, directory: Path) -> int:
         log.error("pull failed: %s", exc)
         alert(f"⚠️ ttw portfolio backup: pull failed — {exc}")
         return 1
-    directory.mkdir(parents=True, exist_ok=True)
     prev_path, prev = latest(directory)
     drop = drop_alert(prev, data)
     if drop:
@@ -156,8 +199,11 @@ def run(url: str, directory: Path) -> int:
     if should_write(prev, data):
         stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
         path = directory / f"{stamp}-rev{rev}.json"
-        path.write_text(json.dumps({"rev": rev, "pulled": stamp, "counts": counts(data), "data": data},
-                                   ensure_ascii=False, indent=1))
+        private_atomic_write(
+            path,
+            json.dumps({"rev": rev, "pulled": stamp, "counts": counts(data), "data": data},
+                       ensure_ascii=False, indent=1),
+        )
         log.info("wrote %s %s", path.name, counts(data))
         for name in prune([p.name for p in directory.glob("*.json")]):
             (directory / name).unlink()
@@ -180,11 +226,24 @@ def selftest() -> int:
     assert drop_alert(book(1, 5), None) == "portfolios 1 → 0"
     assert prune([f"{i:03}" for i in range(52)]) == ["000", "001"]
     assert prune(["a", "b"]) == []
+    with tempfile.TemporaryDirectory() as root:
+        directory = Path(root) / "backups" / "portfolios"
+        old_umask = os.umask(0)
+        try:
+            secure_runtime(directory)
+            output = directory / "sample.json"
+            private_atomic_write(output, '{"private":true}')
+        finally:
+            os.umask(old_umask)
+        assert stat.S_IMODE(directory.stat().st_mode) == 0o700
+        assert stat.S_IMODE(output.stat().st_mode) == 0o600
+        assert not list(directory.glob(".tmp-*"))
     print("selftest ok")
     return 0
 
 
 def main(argv: list[str] | None = None) -> int:
+    os.umask(0o077)
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--run", action="store_true")
     ap.add_argument("--selftest", action="store_true")

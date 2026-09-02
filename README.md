@@ -61,11 +61,13 @@ Cloudflare Worker (worker/)
 ```
 
 The public Worker has no AI route. Paid/model-backed actions exist only through
-the private tailnet service. Family sync is an explicit one-time pairing: enter
-the provisioned 128-bit code in the browser, after which it remains in that
-origin's local storage. The Worker accepts only the matching
-`FAMILY_SYNC_TOKEN` secret and fails closed if it is absent. A public static
-build can carry a family presentation flag, never the code itself.
+the private tailnet service. Family sync deliberately favors zero-setup family
+use: its separately hosted build receives the 128-bit capability from the
+off-git deploy secret, and the Worker accepts only the matching
+`FAMILY_SYNC_TOKEN`. The ordinary GitHub Pages build carries neither the family
+flag nor the capability. Anyone who obtains the family bundle can recover its
+shared capability; the unindexed path limits discovery, logging detects use,
+and rotation is the recovery boundary.
 
 ## Tech Stack
 
@@ -99,15 +101,43 @@ against a served build (Playwright + chromium).
 
 Worker: `cd worker && npx wrangler deploy` (needs Cloudflare credentials).
 Provision or rotate family sync separately with
-`npx wrangler secret put FAMILY_SYNC_TOKEN`; enter the same value interactively
-in the intended browser. Never pass it on the command line or through a `VITE_`
-variable.
+`npx wrangler secret put FAMILY_SYNC_TOKEN`; the separately hosted family build
+must use the matching value from its off-git deploy configuration. Never pass
+it on the command line or commit it.
+
+The family build also emits privacy-bounded `ttw_security` objects to
+Cloudflare Workers Logs. Provision `TTW_AUDIT_KEY` as a separate strong Worker
+secret before deploy; it HMAC-pseudonymizes device and network identifiers.
+The event never contains the family bearer, raw IP, document body, symbol,
+portfolio name, full URL, referer, or full user agent. Generic invocation logs
+are disabled because the same Worker carries ordinary market-data traffic.
+Cloudflare is still the edge provider and can attach its own request metadata
+to invocation and real-time-tail views; the privacy bound applies to the
+application's `ttw_security` object.
+
+View the events in **Cloudflare → Workers & Pages → yf-proxy → Observability →
+Query Builder** with `event = ttw_security`. Useful saved views are:
+
+- `TTW — all security events`: `event = ttw_security`
+- `TTW — writes and restores`: add `operation IN (write, restore)`
+- `TTW — failures`: add `status >= 400`
+- `TTW — unfamiliar clients`: group by `device`, `country`, and `asn`
+
+The `kind = browser` / `operation = view` event means the family JavaScript
+actually executed. Cloudflare zone Traffic Analytics for the exact family path
+also includes HTML-only fetches such as WeChat previews. Neither device IDs nor
+Origin headers are authentication; the bearer remains the machine credential.
+
+Build the separately hosted family bundle with
+`scripts/deploy_family.sh --build-only`. Publish it with `--deploy`; the script
+reads the capability from `~/.config/ttw/sync_token`, validates it without
+printing it, and preserves the existing `ttw-family` Assets Worker routes.
 
 ## Constraints
 
-- **No personal data in public assets.** Source, fixtures, and downloadable bundles contain no real positions, accounts, portfolio symbols, or family capability. A paired family browser can access its private Worker document.
+- **No personal data in the public repository or ordinary Pages assets.** Source and fixtures contain no real positions, accounts, or portfolio symbols. The separately deployed family bundle contains its shared capability by design; a browser holding it can access the private Worker document.
 - API keys never touch the browser. Public AI controls are previews only; the private build calls its server-side router.
-- Family capabilities are bearer credentials: share them out of band, do not put them in links, and rotate them if disclosed. Clearing browser storage disconnects that device.
+- The family capability is a shared bearer embedded only in the separately hosted family bundle. Treat the page path as capability-adjacent, keep it unindexed, and rotate the bearer if either is broadly disclosed.
 - Yahoo data quirks are handled explicitly (crumb auth, ^TNX change fields, patchy earnings-calendar coverage) rather than papered over.
 
 ## Repo Layout

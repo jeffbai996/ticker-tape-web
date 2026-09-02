@@ -7,18 +7,12 @@
 // without a declared intent — see shrink.js.
 
 import { GUARDED_PREFIXES, HISTORY_KEEP, docCounts, shrinkReason } from './shrink.js'
+import { familyCorsFor } from './security_log.js'
 
 // The family build moved off public GitHub Pages on 2026-08-25 — it used to
 // BE the public deploy, which put the shared capability in a world-readable
 // bundle on a linked, indexed URL. It now serves from an unguessable path on
 // jeffbai.com; the Pages origin stays listed only until that cutover is done.
-const ALLOWED_ORIGINS = new Set([
-  'https://jeffbai.com',
-  'https://jeffbai996.github.io',
-  'http://localhost:5199',
-  'http://localhost:5173',
-  'http://localhost:8098',
-])
 export const CAPABILITY_RE = /^[a-f0-9]{32}$/
 
 export function plainObject(value) {
@@ -29,22 +23,10 @@ export function exactKeys(value, allowed) {
   return Object.keys(value).every((key) => allowed.has(key))
 }
 
-function corsFor(request) {
-  const origin = request.headers.get('Origin')
-  return {
-    'Access-Control-Allow-Origin': ALLOWED_ORIGINS.has(origin)
-      ? origin : 'https://jeffbai996.github.io',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Capdoc-Intent',
-    'Cache-Control': 'no-store',
-    Vary: 'Origin',
-  }
-}
-
 function json(request, data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { ...corsFor(request), 'Content-Type': 'application/json' },
+    headers: { ...familyCorsFor(request), 'Content-Type': 'application/json' },
   })
 }
 
@@ -200,7 +182,7 @@ export function makeCapDocHandler({ route, keyPrefix, validate, maxBody }) {
       return json(request, { ok: false, error: 'not found' }, 404)
     }
     if (request.method === 'OPTIONS') {
-      return new Response(null, { status: 204, headers: corsFor(request) })
+      return new Response(null, { status: 204, headers: familyCorsFor(request) })
     }
     if (request.method !== 'GET' && request.method !== 'POST') {
       return json(request, { ok: false, error: 'method not allowed' }, 405)

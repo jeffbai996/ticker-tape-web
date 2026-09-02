@@ -2,6 +2,19 @@ name = "yf-proxy"
 main = "worker.js"
 compatibility_date = "2024-12-01"
 
+[vars]
+TTW_SECURITY_LOGGING = "1"
+
+[observability]
+enabled = true
+
+# The shared Worker also carries high-volume market-data reads. Keep the
+# privacy-bounded ttw_security objects and uncaught errors, not a duplicate
+# access log for every quote/chart request.
+[observability.logs]
+invocation_logs = false
+head_sampling_rate = 1
+
 [[kv_namespaces]]
 binding = "SPEND"
 id = "bf70e74407934939bb511990611cb9e7"
