@@ -3,6 +3,8 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch: {}
 
 permissions:
@@ -11,15 +13,12 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: pages-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  validate:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -27,6 +26,8 @@ jobs:
           node-version: '22'
           cache: 'npm'
       - run: npm ci
+      - name: Unit, component, and architecture gate
+        run: npm test
       # PUBLIC BUILD ONLY. This deploy must never carry VITE_FAMILY_BUILD or
       # VITE_SYNC_CAPABILITY again (Jeff 2026-08-25). It did until then: the
       # family bearer was inlined into this bundle, so the shared portfolio
@@ -59,9 +60,19 @@ jobs:
           path: probe-matrix.json
           if-no-files-found: warn
       - uses: actions/configure-pages@v4
+        if: github.event_name != 'pull_request'
       - uses: actions/upload-pages-artifact@v3
+        if: github.event_name != 'pull_request'
         with:
           path: 'dist'
+  deploy:
+    needs: validate
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       # Pages throttles rapid-fire deploys: after a burst, the deployment
       # sits "queued" until deploy-pages' timeout kills it — and that timeout
       # is HARD-CAPPED at 10 minutes inside the action (MAX_TIMEOUT clamps
@@ -69,6 +80,7 @@ jobs:
       # five stale deploys in a row during a heavy iteration burst). So the
       # ride-out has to be a second attempt, not a longer first one.
       - id: deployment
+        if: github.event_name != 'pull_request'
         uses: actions/deploy-pages@v4
         continue-on-error: true
       - name: Cool off before retrying the throttled deployment
