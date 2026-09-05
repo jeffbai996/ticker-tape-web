@@ -90,6 +90,16 @@ describe('test architecture', () => {
     expect(steps).not.toMatch(/secrets\.SYNC_CAPABILITY/)
   })
 
+  it('runs tests before the build and browser smoke that gate publication', () => {
+    const workflow = readFileSync(resolve(process.cwd(), '.github/workflows/deploy.yml'), 'utf8')
+    const commands = workflow.split('\n').filter((line) => !/^\s*#/.test(line)).join('\n')
+    const stages = ['npm ci', 'npm test', 'npm run build', 'npm run probe', 'actions/deploy-pages@']
+    const offsets = stages.map((stage) => commands.indexOf(stage))
+    expect(offsets.every((offset) => offset >= 0)).toBe(true)
+    expect(offsets).toEqual([...offsets].sort((a, b) => a - b))
+    expect(commands).toContain('pull_request:')
+  })
+
   it('capability sync starts only in builds that have a capability', () => {
     const main = readFileSync(resolve(process.cwd(), 'src/main.jsx'), 'utf8')
     // gated behind the build flags AND dynamically imported, so the portfolio

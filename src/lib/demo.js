@@ -72,10 +72,12 @@ export function positionRows(positions, priceMap) {
       // aggregate math runs in the account's base currency; a raw CAD leg
       // summed against USD legs poisons gross, weights and leverage. The
       // per-leg fx ratio also converts the broker's native unreal P&L.
-      const fx = p.liveBase != null && native ? p.liveBase / native : 1
+      const fx = p.liveBase != null && native ? p.liveBase / Math.abs(native) : 1
       const mktValue = p.liveBase ?? native
+      // Broker base value is gross exposure; P&L retains the position sign.
+      const signedValue = native * fx
       const costBasis = p.avgCost * p.shares * fx
-      const unrealPnl = p.liveUnreal != null ? p.liveUnreal * fx : mktValue - costBasis
+      const unrealPnl = p.liveUnreal != null ? p.liveUnreal * fx : signedValue - costBasis
       // day = since the last close at the latest print (PM of a new day is
       // the pre-market move, not yesterday's session) — see dayPnl.js
       const dayPct = sessionDayPct(q)
@@ -83,10 +85,10 @@ export function positionRows(positions, priceMap) {
         ...p,
         price: p.livePrice,
         mktValue,
-        dayPnl: dayPnlFromValue(mktValue, dayPct),
+        dayPnl: dayPnlFromValue(signedValue, dayPct),
         dayPct,
         unrealPnl,
-        unrealPct: costBasis > 0 ? (unrealPnl / costBasis) * 100 : null,
+        unrealPct: costBasis ? (unrealPnl / Math.abs(costBasis)) * 100 : null,
         weight: null,
       }
     }
