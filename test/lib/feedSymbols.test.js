@@ -38,3 +38,18 @@ describe('live feed symbol registry', () => {
     expect(feed).toContain('export function follow(symbols)')
   })
 })
+
+describe('feed registry under route churn', () => {
+  it('releases hundreds of off-route symbols without accumulating history', () => {
+    const registry = createFeedSymbolRegistry()
+    registry.persist(['AAPL'])
+    for (let route = 0; route < 40; route++) {
+      const symbols = Array.from({ length: 500 }, (_, i) => `EXAMPLE${route}_${i}`)
+      const release = registry.retain(symbols)
+      expect(registry.values()).toHaveLength(501)
+      release()
+      release() // unmount cleanup is idempotent
+      expect(registry.values()).toEqual(['AAPL'])
+    }
+  })
+})
