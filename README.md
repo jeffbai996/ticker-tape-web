@@ -129,9 +129,19 @@ also includes HTML-only fetches such as WeChat previews. Neither device IDs nor
 Origin headers are authentication; the bearer remains the machine credential.
 
 Build the separately hosted family bundle with
-`scripts/deploy_family.sh --build-only`. Publish it with `--deploy`; the script
+`scripts/deploy_family.sh --build-only FULL_SOURCE_SHA`. Publish it with
+`--deploy FULL_SOURCE_SHA`; the script
 reads the capability from `~/.config/ttw/sync_token`, validates it without
 printing it, and preserves the existing `ttw-family` Assets Worker routes.
+Both private release scripts require the full current HEAD SHA and a clean
+checkout, export only committed files, and run `npm ci`, full Vitest, production
+build, then the offline served responsive probe before publishing. Ignored
+`.env` files are excluded; the family capability is supplied only to the build.
+Each output carries `release.json` with its source SHA and an asset hash manifest.
+Use `npm run build:tailnet -- --build-only FULL_SOURCE_SHA` to validate a tailnet
+release, or `--deploy FULL_SOURCE_SHA` to swap its symlink after all gates pass.
+Build-only is the default; both commands still require the SHA argument. The previous
+tailnet releases retain the existing three-release rollback window.
 
 ## Constraints
 
