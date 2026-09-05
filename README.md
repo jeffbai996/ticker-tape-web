@@ -34,7 +34,7 @@ Personal project. See [LICENSE](LICENSE).
 - **Alerts** — price + technical (RSI / SMA cross / volume) alerts evaluated in-browser, with browser notifications
 - **Watchlists** — named lists next to the main one, with opt-in cloud sync: the browser pulls, merges locally, and pushes against the revision it read, so two devices reconcile without the server arbitrating
 - **AI surfaces** — public and private builds ship the same navigation. Publicly the **Briefing** / report controls and the multi-model chat workspace render as inert `PREVIEW` surfaces that never call a model; the private tailnet build activates them through its server-side router
-- **Demo portfolio** — clearly-marked synthetic positions exercising the account / sizing / carry / cockpit / what-if / thesis / timeline / backtest views
+- **Portfolios** — public synthetic demo views; separate private broker/account views and family/manual books with a FIFO trade ledger, cash journal, multi-currency valuation, and session-aware day P&L
 - **Wire** — a news-and-events board scored by event type × watched name × freshness, running on a synthetic public session, on the **public mirror** (a sanitized headline snapshot pushed to the Worker's `/wire/*` routes and read back read-only, with the snapshot age on screen), or on a user-supplied Fragwire-compatible endpoint
 - **Mobile** — bottom tab bar, spotlight-style inline search, and the `ticker>` console promoted to its own phone page (desktop keeps the floating drop-up)
 - **i18n** — EN / 中文 toggle, PWA-installable
@@ -53,7 +53,7 @@ Cloudflare Worker (worker/)
                         (single-flight refresh, survives 401 stampedes)
   /watchlists            Capability-authenticated family watchlist document
   /portfolios            Capability-authenticated family portfolio document
-                        (bearer stays in browser storage; never a URL/build value;
+                        (bearer is confined to the separate family artifact; never a URL;
                         per-document Durable Object serializes revisions)
   /wire/*               Public wire mirror: a sanitized headline snapshot is
                         PUSHed in and served back read-only. Every event is
