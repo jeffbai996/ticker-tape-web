@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "contract": "positions-base-gross-v1",
+  "semantics": {
+    "market_value": "signed native currency",
+    "market_value_base": "absolute gross exposure in account base currency",
+    "weight_pct": "percent of account gross base exposure",
+    "estimated": "true when FX is missing or uses fallback",
+    "account": "opaque account identifier; retain per-row attribution"
+  },
+  "accounts": [
+    {
+      "account": "account-a",
+      "base_currency": "USD",
+      "fx_to_base": {
+        "CAD": "0.5"
+      },
+      "positions": [
+        {
+          "symbol": "AAPL",
+          "currency": "USD",
+          "shares": 10,
+          "market_price": 100,
+          "market_value": 1000,
+          "expected_market_value_base": 1000,
+          "expected_weight_pct": 66.67
+        },
+        {
+          "symbol": "MSFT",
+          "currency": "CAD",
+          "shares": -10,
+          "market_price": 100,
+          "market_value": -1000,
+          "expected_market_value_base": 500,
+          "expected_weight_pct": 33.33
+        }
+      ]
+    },
+    {
+      "account": "account-b",
+      "base_currency": "CAD",
+      "fx_to_base": {
+        "USD": "2"
+      },
+      "positions": [
+        {
+          "symbol": "AAPL",
+          "currency": "USD",
+          "shares": 5,
+          "market_price": 100,
+          "market_value": 500,
+          "expected_market_value_base": 1000,
+          "expected_weight_pct": 100.0
+        }
+      ]
+    }
+  ],
+  "not_covered": [
+    "order and option routes currently return markdown",
+    "session-aware prices and day P&L require the downstream price-stream contract",
+    "Fragwire transformation has not yet been verified"
+  ]
+}
