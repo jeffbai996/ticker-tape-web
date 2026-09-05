@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { follow, focus, track, subscribe, getCached } from './lib/feed.js'
+import { follow, focus, subscribe, getCached } from './lib/feed.js'
 import {
   loadAlerts, onAlertsChange, markTriggered, conditionText,
   evaluatePriceAlerts, evaluateTechnicalAlerts,
@@ -238,9 +238,11 @@ export function useAlertEngine() {
   useEffect(() => {
     let alerts = loadAlerts()
 
+    let releaseAlerts = () => {}
     const trackAlertSymbols = () => {
       const syms = [...new Set(alerts.filter((a) => !a.triggered).map((a) => a.symbol))]
-      if (syms.length) track(syms)
+      releaseAlerts()
+      releaseAlerts = syms.length ? follow(syms) : () => {}
     }
     trackAlertSymbols()
 
@@ -278,6 +280,7 @@ export function useAlertEngine() {
     const iv = setInterval(checkTech, TECH_CHECK_MS)
 
     return () => {
+      releaseAlerts()
       unsubChange()
       unsubFeed()
       clearInterval(iv)

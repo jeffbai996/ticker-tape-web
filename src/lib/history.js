@@ -1,7 +1,7 @@
 // One-shot fetches for the Research view: OHLC history and news headlines.
 // Light TTL cache so tab-flipping doesn't refetch.
 
-import { proxyBase, track } from './feed.js'
+import { proxyBase } from './feed.js'
 import { quoteFromChart, barsFromChart } from './yahoo.js'
 import { createPCache } from './pcache.js'
 
@@ -144,17 +144,10 @@ export function fetchSplits(symbol) {
   })
 }
 
-/** Warm a symbol's quote + chart caches on hover intent, so the click lands on
- *  a painted page instead of a spinner. Both calls dedupe against their own
- *  caches, so no debounce is needed and a re-hover costs nothing; failures are
- *  silent because this is speculative work nobody asked for (2026-08-10). */
+/** Warm the one-shot history cache on hover. Speculative work must never
+ *  retain a live feed subscription after the pointer has moved away. */
 export function prefetchSymbol(symbol) {
   if (!symbol) return
-  try {
-    track([symbol])
-  } catch {
-    // feed unavailable (SSR/tests): the real fetch on navigation still runs
-  }
   fetchHistory(symbol, '6M').catch(() => {})
 }
 
