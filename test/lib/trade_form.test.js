@@ -5,9 +5,15 @@
  *  "我敲那个代码它没有反应"). This types into the real component.
  */
 import { h, render } from 'preact'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AddTradeForm } from '../../src/pages/portfolioTrades.jsx'
 import { createPortfolio, loadPortfolios, setCash } from '../../src/lib/myPortfolios.js'
+
+// Form/ledger behavior must not open the production quote WebSocket in jsdom.
+vi.mock('../../src/hooks.js', async (importOriginal) => ({
+  ...await importOriginal(),
+  useQuotes: () => ({}),
+}))
 
 let host
 beforeEach(() => { localStorage.clear(); host = document.createElement('div'); document.body.appendChild(host) })
