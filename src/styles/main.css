@@ -85,8 +85,12 @@ body {
      currentColor keeps selected amber and semantic red/green controls legible.
      Pointer-capable devices only, so touch taps never leave a stuck wash. */
   @media (hover: hover) and (pointer: fine) {
-    :where(a[href], button, [role="button"], summary, select, .cursor-pointer):not(:where(:disabled, [aria-disabled="true"], [inert], [inert] *)):hover {
+    :where(a[href], button, [role="button"], summary, select, .cursor-pointer):not(:where(:disabled, [aria-disabled="true"], [inert], [inert] *, .text-black, .text-surface-0)):hover {
       background-color: color-mix(in srgb, currentColor 8%, var(--color-surface-2));
+    }
+    /* Solid semantic fills carry dark text: keep the fill and its contrast. */
+    :where(a[href], button, [role="button"], summary, select, .cursor-pointer):where(.text-black, .text-surface-0):not(:where(:disabled, [aria-disabled="true"], [inert], [inert] *)):hover {
+      filter: brightness(1.1);
     }
     :where(a[href]):not(:where([class])):hover {
       background-color: transparent;
