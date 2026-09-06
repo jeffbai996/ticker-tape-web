@@ -55,26 +55,16 @@ body {
   user-select: none;
 }
 
-/* Every clickable gets a hover response by default. This lives in the base
-   layer, so any component's own `hover:` utility overrides it — the point is
-   that nothing can be silently dead just because someone forgot. Subtle on
-   purpose; the loud treatments (.hl-row, .tape-hot) opt in explicitly.
-   Audited 2026-08-03: ~260 clickables had no hover rule at all. */
+/* Focus and motion defaults stay below component utilities. Hover backgrounds
+   live in the utilities layer below: a base-layer hover loses even to a static
+   bg-surface-* class, making filled controls appear unresponsive. */
 @layer base {
   a,
   button:not(:disabled),
-  [role="button"] {
-    transition: background-color 0.12s ease, color 0.12s ease;
-  }
-  a:hover,
-  button:not(:disabled):hover,
-  [role="button"]:hover {
-    background-color: rgba(245, 158, 11, 0.08);
-  }
-  /* Text links inside prose shouldn't grow a box. */
-  a:hover:not([class]) {
-    background-color: transparent;
-    text-decoration: underline;
+  [role="button"],
+  summary,
+  select:not(:disabled) {
+    transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
   }
   /* Same argument as the hover rule, for the keyboard: the UA outline is
      invisible on pitch black, so tabbing through the shell showed nothing at
@@ -86,6 +76,22 @@ body {
   input:focus-visible {
     outline: 1px solid var(--color-accent);
     outline-offset: 1px;
+  }
+}
+
+@layer utilities {
+  /* One pseudo-class of specificity beats a resting background by source
+     order; explicit hover:bg-* utilities (two classes) still win. Tint from
+     currentColor keeps selected amber and semantic red/green controls legible.
+     Pointer-capable devices only, so touch taps never leave a stuck wash. */
+  @media (hover: hover) and (pointer: fine) {
+    :where(a[href], button, [role="button"], summary, select, .cursor-pointer):not(:where(:disabled, [aria-disabled="true"], [inert], [inert] *)):hover {
+      background-color: color-mix(in srgb, currentColor 8%, var(--color-surface-2));
+    }
+    :where(a[href]):not(:where([class])):hover {
+      background-color: transparent;
+      text-decoration: underline;
+    }
   }
 }
 
