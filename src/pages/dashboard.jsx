@@ -49,7 +49,9 @@ import { localName } from '../lib/zhNames.js'
 import { extendedLabelClass } from '../lib/extendedHours.js'
 import { freshnessTitle, symbolFreshness } from '../lib/feedHealth.js'
 import { rememberDashboardLanding } from '../lib/dashboardLanding.js'
-import { RAIL_LIMITS, railWidthAtDrag, saveRailWidth, storedRailWidth } from '../lib/railResize.js'
+import {
+  RAIL_LIMITS, railWidthAtDrag, saveRailWidth, storedRailWidth, toggleRailWidth,
+} from '../lib/railResize.js'
 
 const DAY = 86_400_000
 const ETF_SKIP = new Set(['SPY', 'QQQ', 'IWM', 'GLD', 'TLT'])
@@ -1595,10 +1597,14 @@ export function Dashboard({ listId = null }) {
   const boardGridRef = useRef(null)
   const [railWidth, setRailWidth] = useState(() =>
     storedRailWidth('ttw-dashboard-rail-width', defaultDashboardRailWidth(), RAIL_LIMITS.right))
+  const lastRailWidth = useRef(railWidth || defaultDashboardRailWidth())
   const commitRailWidth = (width) => {
+    if (width > 0) lastRailWidth.current = width
     saveRailWidth('ttw-dashboard-rail-width', width)
     setRailWidth(width)
   }
+  const toggleRail = () => commitRailWidth(
+    toggleRailWidth(railWidth, lastRailWidth.current || defaultDashboardRailWidth()))
   const startRailResize = (event) => {
     if (event.button != null && event.button !== 0) return
     event.preventDefault()
@@ -1979,7 +1985,7 @@ export function Dashboard({ listId = null }) {
           )}
           <AddSymbolRow onAdd={addSymbol} isPresent={isPresent} isFull={listFull} cap={listCap} />
           {railWidth === 0 && (
-            <button type="button" data-dashboard-rail-show onClick={() => commitRailWidth(defaultDashboardRailWidth())}
+            <button type="button" data-dashboard-rail-show onClick={toggleRail}
               class="absolute right-2 top-2 z-20 hidden h-6 w-6 items-center justify-center rounded border border-line bg-surface-1 font-mono text-[14px] text-muted transition-colors hover:border-accent/60 hover:text-accent min-[960px]:inline-flex"
               title={tl('show dashboard rail')} aria-label={tl('show dashboard rail')}
             >
@@ -1989,6 +1995,12 @@ export function Dashboard({ listId = null }) {
         </section>
         {railWidth > 0 && (
           <aside class="rail @container relative flex flex-col gap-3 min-w-0">
+            <button type="button" data-dashboard-rail-hide onClick={toggleRail}
+              class="absolute -left-2 top-2 z-40 hidden h-6 w-5 -translate-x-full items-center justify-center rounded-l border border-line bg-surface-1 font-mono text-[15px] text-muted shadow-sm transition-colors hover:border-accent/60 hover:bg-accent-soft hover:text-accent focus-visible:border-accent focus-visible:text-accent focus-visible:outline-none min-[960px]:inline-flex"
+              title={tl('hide dashboard rail')} aria-label={tl('hide dashboard rail')}
+            >
+              ›
+            </button>
             <div data-dashboard-rail-resize role="separator" aria-orientation="vertical" aria-label={tl('resize dashboard rail')}
               onPointerDown={startRailResize}
               class="absolute -left-1 top-0 z-30 hidden h-full w-2 cursor-col-resize touch-none group/rail-resize min-[960px]:block">

@@ -18,14 +18,14 @@ const STATE_CLASS = {
  * pulled it the same day ("remove the word LIVE here, not sure how it made
  * it"): a status row that announces the normal case is noise, and the prices
  * ticking are already the proof. Only the abnormal states earn a word. State
- * logic stays in feedHealth.js — this only paints, on its own 10s tick so the
+ * logic stays in feedHealth.js — this only paints, on its own 1s tick so the
  * rest of the bar doesn't repaint.
  */
 export function FeedIndicator() {
   const [, tick] = useState(0)
   // a buried tab has nothing to re-render for; the clock resumes with a
   // catch-up tick so the age is current before it can be read (idleClock.js)
-  useEffect(() => startVisibleClock(10_000, () => tick((n) => n + 1)), [])
+  useEffect(() => startVisibleClock(1000, () => tick((n) => n + 1)), [])
   const health = feedHealth(feedStatus())
   if (health.state === 'live') return null
   return (

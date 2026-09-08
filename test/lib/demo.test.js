@@ -33,6 +33,7 @@ describe('positionRows', () => {
     const rows = positionRows(POS, PRICES)
     const a = rows.find((r) => r.symbol === 'AAA')
     expect(a.mktValue).toBeCloseTo(1000)
+    expect(a.costBasis).toBeCloseTo(800)
     expect(a.unrealPnl).toBeCloseTo(200)           // (100-80)*10
     expect(a.unrealPct).toBeCloseTo(25)            // 200 / 800
     expect(a.dayPnl).toBeCloseTo(19.6)             // 1.96 * 10
@@ -44,9 +45,22 @@ describe('positionRows', () => {
     const rows = positionRows(POS, { AAA: PRICES.AAA })
     const b = rows.find((r) => r.symbol === 'BBB')
     expect(b.mktValue).toBeNull()
+    expect(b.costBasis).toBeNull()
     expect(b.unrealPnl).toBeNull()
     const a = rows.find((r) => r.symbol === 'AAA')
     expect(a.mktValue).toBeCloseTo(1000)
+  })
+
+  it('keeps a broker row\'s P&L and cost basis in account-base currency', () => {
+    const [row] = positionRows([{
+      symbol: 'AAA', shares: 100, avgCost: 50,
+      livePrice: 80, liveValue: 8000, liveBase: 11200, liveUnreal: 3000,
+    }], {})
+    // The broker mark is 1.4 base units per native unit. P&L and cost must
+    // carry that same factor before a percentage can be meaningful.
+    expect(row.costBasis).toBeCloseTo(7000)
+    expect(row.unrealPnl).toBeCloseTo(4200)
+    expect(row.unrealPct).toBeCloseTo(60)
   })
 })
 

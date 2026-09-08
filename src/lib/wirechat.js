@@ -36,10 +36,27 @@ export function toolProtocol(defs = TOOL_DEFS) {
     'TOOLS. When you need live data or want to act, reply with ONE JSON object',
     'and nothing else: {"tool": "<name>", "args": {…}}. You will then receive a',
     'line beginning TOOL_RESULT and may either call another tool or answer.',
+    'Do not narrate what data you still need: call the relevant tool instead.',
+    'After a TOOL_RESULT, keep calling tools until you can answer the original',
+    'request. Only stop with prose when that prose is the complete answer, not',
+    'a plan, status update, or promise to fetch more data.',
     'When you are answering the user, reply in plain prose with no JSON.',
     '',
     ...lines,
   ].join('\n')
+}
+
+/** A short planning/status sentence after a tool result is not a final answer.
+ * Some plain-text CLI models occasionally narrate the next lookup instead of
+ * emitting its JSON call; let the agent nudge that turn back onto the rails.
+ * The length cap keeps an actual answer that happens to discuss missing data
+ * from being second-guessed by a tiny pile of regexes. */
+export function isPlanningStub(text) {
+  const value = String(text || '').trim().replace(/\s+/g, ' ')
+  if (!value || value.length > 360) return false
+  return /^(?:i|we)\s+(?:still\s+)?need(?:\s+to)?\s+(?:check|fetch|look|pull|read|inspect|search|review|gather|see|the current|current|more)\b/i.test(value)
+    || /^(?:let me|(?:i|we)(?:'ll| will))\s+(?:first\s+)?(?:check|fetch|look|pull|read|inspect|search|review|gather)\b/i.test(value)
+    || /^before\b.{0,160}\b(?:i|we)\s+(?:still\s+)?need\b/i.test(value)
 }
 
 /**

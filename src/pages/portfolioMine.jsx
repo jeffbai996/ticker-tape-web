@@ -1402,11 +1402,11 @@ export function MyPortfolios({ view = 'overview' } = {}) {
   }
 
   // the actions live on the section heading row, the chips stay here
-  const btn = 'h-7 rounded-md border border-line-2 bg-surface-2 px-2.5 max-sm:px-2 font-anth text-[11px] text-ink-2 transition-colors hover:border-line hover:text-ink whitespace-nowrap'
+  const btn = 'h-7 rounded-md border border-line-2 bg-surface-2 px-2.5 max-sm:px-2 font-anth text-[11px] text-ink-2 transition-colors hover:bg-surface-3 hover:border-line-2 hover:text-ink whitespace-nowrap'
   useEffect(() => {
     setHeaderActions(
       <>
-        <button type="button" onClick={() => setCreating((v) => !v)} class={`${btn} border-dashed text-muted hover:border-accent/40 hover:text-accent`} aria-label={tl('New portfolio')}>+<span class="max-sm:hidden"> {tl('New portfolio')}</span></button>
+        <button type="button" onClick={() => setCreating((v) => !v)} class={`${btn} border-dashed text-muted hover:border-accent/40 hover:text-accent`} aria-label={tl('New portfolio')} aria-expanded={creating}>+<span class="max-sm:hidden"> {tl('New portfolio')}</span></button>
         {selected && (
           <>
             <span class="ml-1 h-4 w-px bg-line-2 max-sm:hidden" />
@@ -1417,7 +1417,7 @@ export function MyPortfolios({ view = 'overview' } = {}) {
         )}
       </>,
     )
-  }, [selected?.id, selected?.ccy, selected?.name, items.length])
+  }, [selected?.id, selected?.ccy, selected?.name, items.length, creating])
   useEffect(() => () => setHeaderActions(null), [])
 
   return (
@@ -1425,10 +1425,11 @@ export function MyPortfolios({ view = 'overview' } = {}) {
       <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar sm:flex-wrap">
         {items.map((p) => (
           <button key={p.id} type="button" onClick={() => select(p.id)}
+            aria-pressed={selected?.id === p.id}
             class={`shrink-0 whitespace-nowrap rounded-md border px-2.5 py-1 font-anth text-[11px] transition-colors ${
               selected?.id === p.id
-                ? 'border-accent/50 bg-accent/10 text-accent font-semibold'
-                : 'border-line-2 bg-surface-2 text-ink-2 hover:border-line hover:text-ink'}`}>
+                ? 'border-accent/50 bg-accent/10 text-accent font-semibold hover:bg-accent/20 hover:border-accent/70'
+                : 'border-line-2 bg-surface-2 text-ink-2 hover:bg-surface-3 hover:border-accent/30 hover:text-ink'}`}>
             {p.name} <span class="ml-1 text-[9px] uppercase opacity-70">{p.ccy}</span>
           </button>
         ))}

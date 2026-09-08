@@ -628,7 +628,9 @@ export function collapseSessions(events, now = Date.now() / 1000) {
     const digests = evs.filter((e) => e.type === 'digest').sort((a, b) => a.id - b.id)
     const latest = evs.reduce((a, b) => (b.id > a.id ? b : a))
     const label = evs.map((e) => e.meta && e.meta.label).find(Boolean) || ''
-    const latestChunk = chunks.length ? chunks.reduce((a, b) => (b.id > a.id ? b : a)) : null
+    const transcript = chunks.slice().sort((a, b) =>
+      Number((a.meta || {}).seq ?? a.id) - Number((b.meta || {}).seq ?? b.id) || a.id - b.id)
+    const latestChunk = transcript.length ? transcript[transcript.length - 1] : null
     const live = latest.ts_seen > now - 120
     rest.push({
       is_live: live,
@@ -637,7 +639,7 @@ export function collapseSessions(events, now = Date.now() / 1000) {
       headline: `${(latest.symbols || [])[0] || ''} call${label ? ' · ' + label : ''}`
         + `${live ? ' · LIVE' : ''} — ${chunks.length} chunks · ${digests.length} digests`
         + (latestChunk ? ` · latest: ${(latestChunk.body || '').slice(0, 60)}` : ''),
-      live_call: { sid, digests, tail: chunks.slice(-4) },
+      live_call: { sid, digests, transcript },
       meta: { session_id: sid },
     })
   }
@@ -748,25 +750,47 @@ export function clusterStories(events, now = Date.now() / 1000) {
 function clusterGroup(events) {
   const out = []
   const clusters = []          // [{tokens, members}]
+  const clusterIdsByToken = new Map()
+  const indexTokens = (clusterId, tokens) => {
+    for (const token of tokens) {
+      if (!clusterIdsByToken.has(token)) clusterIdsByToken.set(token, new Set())
+      clusterIdsByToken.get(token).add(clusterId)
+    }
+  }
   for (const ev of events) {
     const toks = storyTokens(ev.headline)
-    let home = null
+    let homeId = null
     if (toks.size >= 3) {
-      for (const c of clusters) {
+      const candidates = new Set()
+      for (const token of toks) {
+        for (const clusterId of clusterIdsByToken.get(token) || []) {
+          candidates.add(clusterId)
+        }
+      }
+      for (const clusterId of [...candidates].sort((a, b) => a - b)) {
+        const c = clusters[clusterId]
         if (Math.abs(c.members[0].ts_event - ev.ts_event) > 48 * 3600) continue
         let inter = 0
         for (const w of toks) if (c.tokens.has(w)) inter += 1
         // overlap coefficient (∩ / min size): robust to the cluster's token
         // set growing as members join, unlike Jaccard
         const denom = Math.min(c.tokens.size, toks.size)
-        if (denom > 0 && inter / denom >= 0.6) { home = c; break }
+        if (denom > 0 && inter / denom >= 0.6) { homeId = clusterId; break }
       }
     }
-    if (home) {
+    if (homeId !== null) {
+      const home = clusters[homeId]
       home.members.push(ev)
-      for (const w of toks) home.tokens.add(w)
+      const added = []
+      for (const w of toks) {
+        if (!home.tokens.has(w)) added.push(w)
+        home.tokens.add(w)
+      }
+      indexTokens(homeId, added)
     } else {
+      const clusterId = clusters.length
       clusters.push({ tokens: new Set(toks), members: [ev] })
+      indexTokens(clusterId, toks)
     }
   }
   for (const c of clusters) {

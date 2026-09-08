@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import {
-  breadth, capitalMix, cashSplit, concentration, dayContribution, sectorSplit, sortRows, unrealizedStats, venueOrder, venueSplit, venueSubtotal,
+  breadth, brokerBookStats, capitalMix, cashSplit, concentration, dayContribution, sectorSplit, sortRows, unrealizedStats, venueOrder, venueSplit, venueSubtotal,
 } from '../../src/lib/bookStats.js'
 
 // a small book: two winners, one loser, one unpriced, one cash account
@@ -66,6 +66,34 @@ describe('unrealizedStats — the book against what it cost', () => {
 
   it('says nothing rather than zero when no position carries a cost', () => {
     expect(unrealizedStats([rows[2]])).toMatchObject({ costBasis: null, pnl: null, pct: null, covered: 0 })
+  })
+
+  it('uses an explicit account-base cost when one is available', () => {
+    const u = unrealizedStats([{
+      kind: 'equity', symbol: 'AAA', valueDisplay: 160, unrealDisplay: 60, costBasis: 100,
+    }])
+    expect(u).toMatchObject({ costBasis: 100, pnl: 60, pct: 60, covered: 1 })
+  })
+})
+
+describe('brokerBookStats — the broker table and cards share one base-currency ledger', () => {
+  it('normalises marked broker rows without using NLV as a P&L denominator', () => {
+    const stats = brokerBookStats([
+      { symbol: 'AAA', mktValue: 160, costBasis: 100, unrealPnl: 60, dayPnl: 8, dayPct: 5 },
+      { symbol: 'BBB', mktValue: 120, costBasis: 150, unrealPnl: -30, dayPnl: -4, dayPct: -3 },
+    ])
+    expect(stats.unrealized).toMatchObject({ costBasis: 250, pnl: 30, pct: 12, covered: 2 })
+    expect(stats.breadth).toMatchObject({ up: 1, down: 1, flat: 0 })
+    expect(stats.contribution.map((row) => row.symbol)).toEqual(['AAA', 'BBB'])
+  })
+
+  it('withholds an aggregate P&L percentage when one row lacks a base cost', () => {
+    const stats = brokerBookStats([
+      { symbol: 'AAA', mktValue: 160, costBasis: 100, unrealPnl: 60, dayPnl: 8, dayPct: 5 },
+      { symbol: 'BBB', mktValue: 120, costBasis: null, unrealPnl: -30, dayPnl: -4, dayPct: -3 },
+    ])
+    expect(stats.completeCost).toBe(false)
+    expect(stats.unrealized.pct).toBeNull()
   })
 })
 

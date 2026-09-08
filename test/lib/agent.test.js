@@ -11,7 +11,7 @@ vi.mock('../../src/lib/tools.js', () => ({
 
 import { streamChat } from '../../src/lib/chatClient.js'
 import { executeTool } from '../../src/lib/tools.js'
-import { runAgentic, trimHistory } from '../../src/lib/agent.js'
+import { runAgentic, runAgenticOverWire, trimHistory } from '../../src/lib/agent.js'
 
 const u = (i) => ({ role: 'user', content: `u${i}` })
 const a = (i) => ({ role: 'assistant', content: `a${i}` })
@@ -137,5 +137,39 @@ describe('agent trace lifecycle', () => {
     expect(events.at(-1)).toMatchObject({
       type: 'tool_error', id: 't1', name: 'get_watchlist', error: 'quote feed down',
     })
+  })
+})
+
+describe('private wire agent loop', () => {
+  it('continues after a tool-backed planning stub and keeps it out of chat', async () => {
+    const wireStream = vi.fn()
+      .mockResolvedValueOnce({ text: '{"tool":"get_watchlist","args":{}}' })
+      .mockResolvedValueOnce({ text: 'I need the current tape before answering.' })
+      .mockResolvedValueOnce({ text: 'AAPL leads the list; watch the next earnings print.' })
+    const runTool = vi.fn().mockResolvedValue('{"symbols":["AAPL"]}')
+    const rounds = []
+
+    const added = await runAgenticOverWire({
+      model: 'gpt-terra', effort: 'high', system: 'system',
+      messages: [{ role: 'user', content: 'What should I watch?' }],
+      onRound: (entries) => rounds.push(entries),
+    }, {
+      wireStream,
+      wireComplete: vi.fn(),
+      executeTool: runTool,
+    })
+
+    expect(wireStream).toHaveBeenCalledTimes(3)
+    expect(runTool).toHaveBeenCalledWith('get_watchlist', {})
+    expect(added.at(-1)).toEqual({
+      role: 'assistant',
+      content: 'AAPL leads the list; watch the next earnings print.',
+    })
+    expect(added.some((entry) => entry.content?.startsWith('I need the current'))).toBe(false)
+    expect(wireStream.mock.calls[2][0].messages).toEqual(expect.arrayContaining([
+      { role: 'assistant', content: 'I need the current tape before answering.' },
+      expect.objectContaining({ role: 'user', content: expect.stringContaining('Continue the original request') }),
+    ]))
+    expect(rounds.length).toBeGreaterThan(2)
   })
 })

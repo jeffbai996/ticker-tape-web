@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { RAIL_LIMITS, railWidthAtDrag, validRailWidth } from '../../src/lib/railResize.js'
+import {
+  RAIL_LIMITS, railWidthAtDrag, toggleRailWidth, validRailWidth,
+} from '../../src/lib/railResize.js'
 
 describe('railWidthAtDrag', () => {
   it('keeps a visible rail within its usable bounds', () => {
@@ -19,5 +21,10 @@ describe('railWidthAtDrag', () => {
     expect(validRailWidth(208, RAIL_LIMITS.left)).toBe(208)
     expect(validRailWidth(20, RAIL_LIMITS.left)).toBeNull()
     expect(validRailWidth(999, RAIL_LIMITS.left)).toBeNull()
+  })
+
+  it('collapses a visible rail and restores its last usable width', () => {
+    expect(toggleRailWidth(280, 230)).toBe(0)
+    expect(toggleRailWidth(0, 230)).toBe(230)
   })
 })
