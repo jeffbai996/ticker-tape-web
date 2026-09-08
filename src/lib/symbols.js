@@ -33,9 +33,14 @@ export const WATCHLIST = [
 export const BUCKETS = [
   { name: 'Megacaps', symbols: ['AAPL', 'MSFT', 'GOOG', 'GOOGL', 'AMZN', 'META', 'TSLA'] },
   { name: 'Semis', symbols: [
-    'NVDA', 'AMD', 'INTC', 'TSM', 'MSFT', 'QCOM', 'MU', 'AMAT', 'GOOGL',
-    'ASML', 'KLAC', 'MRVL', 'ARM', 'TXN', 'ADI', 'NXPI', 'ON', 'MCHP', 'SMCI', 'SNDK',
-    'SKHY', '000660.KS',
+    // Designers, IDMs, foundries, memory, equipment, materials, and test.
+    // This is intentionally broader than the default watchlist: membership is
+    // our no-round-trip fallback when a user adds a new name to the board.
+    'NVDA', 'AMD', 'AVGO', 'INTC', 'TSM', 'MSFT', 'QCOM', 'MU', 'AMAT', 'GOOGL',
+    'ASML', 'LRCX', 'KLAC', 'MRVL', 'ARM', 'TXN', 'ADI', 'NXPI', 'ON', 'MCHP',
+    'MPWR', 'QRVO', 'SWKS', 'MTSI', 'ALAB', 'CRDO',
+    'GFS', 'UMC', 'STM', 'TSEM', 'WOLF', 'SNDK', 'SKHY', '000660.KS',
+    'TER', 'ACLS', 'CAMT', 'ONTO', 'ENTG', 'MKSI', 'AMKR', 'ASX', 'SMCI',
   ] },
   { name: 'Software & AI', symbols: [
     'PLTR', 'CRM', 'ORCL', 'ADBE', 'NOW', 'SNOW', 'MDB', 'DDOG', 'NET',

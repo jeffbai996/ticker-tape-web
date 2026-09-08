@@ -27,6 +27,7 @@ import {
   openThread, removeThread, saveActiveHistory, startNewThread, currentThreadId,
 } from '../lib/threads.js'
 import { wireServiceUrl } from '../lib/wire.js'
+import { plainTraceText } from '../lib/chatTrace.js'
 
 // Base prompt stays generic in source. Whether the assistant has a real book
 // is decided at runtime by whether the viewer wired in their own fragwire —
@@ -265,6 +266,10 @@ function durationLabel(ms) {
 function traceArgs(args) {
   if (!args || typeof args !== 'object' || !Object.keys(args).length) return ''
   const raw = Object.entries(args)
+    // These are already printed in the step title by toolRunLabel. Repeating
+    // `symbol: AVGO` underneath `Checking AVGO earnings` is database chrome,
+    // not useful status.
+    .filter(([key]) => !['symbols', 'symbol', 'view', 'label'].includes(key))
     .map(([key, value]) => `${key}: ${typeof value === 'string' ? value : JSON.stringify(value)}`)
     .join(' · ')
   return raw.length > 320 ? `${raw.slice(0, 319)}…` : raw
@@ -335,7 +340,7 @@ function ThinkingPane({ text }) {
     if (el) el.scrollTop = el.scrollHeight
   }, [text])
   if (!text) return null
-  return <div ref={ref} class="chat-think">{text}</div>
+  return <div ref={ref} class="chat-think">{plainTraceText(text)}</div>
 }
 
 /** One complete provider/tool timeline. Live traces stay open; completed traces
@@ -473,7 +478,7 @@ function ActivityTrace({ steps, busy = false, startedAt, usage = null }) {
                         reasoning shows it; a step with only a token count says
                         so; a step with neither says nothing. */}
                     {step.detail
-                      ? <div class={`chat-trace-detail ${step.kind === 'tool' ? 'is-tool' : ''}`}>{step.detail}</div>
+                      ? <div class={`chat-trace-detail ${step.kind === 'tool' ? 'is-tool' : ''}`}>{plainTraceText(step.detail)}</div>
                       : step.kind === 'model' && step.thinkTokens ? (
                         <div class="chat-trace-detail">
                           {`${tl('reasoned privately')} · ${thinkDepth(step.thinkTokens)}`}

@@ -6,9 +6,9 @@ import {
 beforeEach(() => localStorage.clear())
 
 describe('dashboard categories', () => {
-  it('recognizes SNDK as a semiconductor from the built-in universe', () => {
-    expect(groupDashboardRows(['SNDK']))
-      .toEqual([{ name: 'Semis', symbols: ['SNDK'] }])
+  it('recognizes semiconductor designers, foundries, and equipment names', () => {
+    expect(groupDashboardRows(['AVGO', 'LRCX', 'SNDK', 'GFS', 'TER']))
+      .toEqual([{ name: 'Semis', symbols: ['AVGO', 'LRCX', 'SNDK', 'GFS', 'TER'] }])
   })
 
   it('classifies ADM and both SK hynix listings instead of using General', () => {

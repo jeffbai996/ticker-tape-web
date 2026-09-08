@@ -11,6 +11,7 @@ import { prefetchSymbol } from '../lib/history.js'
 import { useEscape } from '../hooks.js'
 import { startVisibleClock } from '../lib/idleClock.js'
 import { Empty, Loading } from '../components/Loading.jsx'
+import { MdLite } from '../components/AiReport.jsx'
 import { getLocale, t as tt, tl } from '../lib/i18n.js'
 
 const TIER_CLS = {
@@ -217,8 +218,17 @@ function sourceTag(ev) {
   } catch { return ev.source ? String(ev.source).slice(0, 8) : '' }
 }
 
-/** fragwire's source-credibility pips: ●●● wires/majors (green), ●● standard
- *  (amber), ● SEO content mill (red). Self-made rows carry no source to rate. */
+function SourceSignal({ tier, className = '' }) {
+  const active = tier >= 1.25 ? 3 : tier < 1 ? 1 : 2
+  return (
+    <span aria-hidden="true" class={`source-signal ${className}`}>
+      {[1, 2, 3].map((level) => <i key={level} class={level <= active ? 'is-on' : ''} />)}
+    </span>
+  )
+}
+
+/** Source credibility is a stepped signal: major wires at three bars,
+ * standard outlets at two, lower-quality sources at one. */
 function CredPips({ ev, hot }) {
   const selfMade = ['prices', 'brief', 'wrap'].includes(ev.source)
     || ['price_move', 'brief', 'digest', 'transcript_chunk'].includes(ev.type)
@@ -226,12 +236,12 @@ function CredPips({ ev, hot }) {
   const c = srcCred(ev)
   return (
     <span
-      class={`inline-block align-middle mr-1.5 font-mono text-[6.5px] tracking-[0.5px] ${
+      class={`inline-flex items-center align-middle mr-1.5 ${
         hot ? 'text-black/60' : c >= 1.25 ? 'text-up' : c < 1 ? 'text-down opacity-75' : 'text-accent'}`}
       title={tl(c >= 1.25 ? 'source: top tier (wires/majors)'
         : c < 1 ? 'source: low tier (SEO/content mill)' : 'source: standard')}
     >
-      {c >= 1.25 ? '●●●' : c < 1 ? '●' : '●●'}
+      <SourceSignal tier={c} />
     </span>
   )
 }
@@ -300,21 +310,22 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
         </div>
       )}
       {open && ev.live_call && (
-        <div class="px-2.5 pb-2 pl-[168px] max-sm:pl-2.5 flex flex-col gap-1.5">
+        <div data-wire-session-document class="ml-[168px] mr-2.5 mb-2 max-sm:mx-2.5 max-w-[80ch] border-l-2 border-up/70 pl-3">
+          <div class="flex items-baseline gap-2 pb-2">
+            <span class="font-mono text-[8.5px] uppercase tracking-wider text-up">{tt(ev.is_live ? 'wire.live_transcript' : 'wire.call_transcript')}</span>
+            <span class="font-mono text-[9px] text-muted">{tt('wire.segment_count', { n: ev.live_call.transcript.length })}</span>
+          </div>
           {ev.live_call.digests.map((dg) => (
             <p key={dg.id} class="text-[11.5px] leading-relaxed text-ink-2 max-w-[72ch] border-l-2 border-accent pl-2.5">
               <span class="text-[8.5px] uppercase tracking-wider text-muted mr-1.5">{tt('wire.digest_number', { number: (dg.meta || {}).digest_n || '' })}</span>
               {dg.body}
             </p>
           ))}
-          {ev.live_call.tail.length > 0 && (
-            <div>
-              <p class="text-[8.5px] uppercase tracking-wider text-muted">{tl('latest audio')}</p>
-              {ev.live_call.tail.map((c) => (
-                <p key={c.id} class="text-[11px] leading-relaxed text-muted max-w-[72ch]">{c.body}</p>
-              ))}
-            </div>
-          )}
+          <div class="flex flex-col gap-2 pt-1">
+            {ev.live_call.transcript.map((c) => (
+              <p key={c.id} class="text-[11px] leading-relaxed text-ink-2 max-w-[72ch]">{c.body}</p>
+            ))}
+          </div>
         </div>
       )}
       {open && !ev.live_call && (
@@ -353,7 +364,11 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
               ))}
             </div>
           )}
-          {body && <p class="text-[11.5px] leading-relaxed text-ink-2 max-w-[72ch] whitespace-pre-wrap">{body}</p>}
+          {body && (
+            <div data-wire-rich-body class="text-[11.5px] leading-relaxed text-ink-2 max-w-[72ch]">
+              <MdLite text={body} />
+            </div>
+          )}
           {!ev.body && !ev.story_cluster && ev.url && <ReadBody ev={ev} />}
         </div>
       )}
@@ -974,7 +989,7 @@ export function Wire({ route }) {
             title={tl(tier === 3 ? 'T3 — thesis story on a name you hold'
               : tier === 2 ? 'T2 — core thesis story' : 'T1 — touches the sector')}
             onClick={() => toggleTier(tier)}
-            class={`border rounded-md px-2 py-0.5 font-mono text-[10.5px] font-bold transition-colors ${
+            class={`w-[38px] justify-center border rounded-md px-0 py-0.5 font-mono text-[10.5px] font-bold transition-colors ${
               tierFilters.has(tier)
                 ? tier === 1 ? 'bg-[#58a6ff] border-[#58a6ff] text-black'
                   : tier === 2 ? 'bg-accent border-accent text-black'
@@ -990,10 +1005,10 @@ export function Wire({ route }) {
             thesisOnly ? 'bg-up border-up text-black' : 'bg-up/5 border-up/25 text-up/70 hover:text-up hover:border-up/50'
           }`}>{tl('thesis')}</button>
         <button data-prime-filter onClick={() => setPrimeOnly(!primeOnly)}
-          title={tl('top-tier sources only')}
-          class={`border rounded-md px-2.5 py-0.5 text-[11px] font-semibold transition-colors ${
-            primeOnly ? 'bg-up border-up text-black' : 'border-line text-ink-2 hover:text-up hover:border-up/40'
-          }`}>●●● {tl('prime')}</button>
+          title={tl('top-tier sources only')} aria-label={tl('top-tier sources only')}
+          class={`box-border inline-flex items-center justify-center w-[28px] h-[22px] shrink-0 border rounded-md px-[6px] py-0 leading-none text-up transition-colors ${
+            primeOnly ? 'bg-up border-up text-black' : 'border-up/40 hover:bg-up/10 hover:border-up'
+          }`}><SourceSignal tier={1.25} className={primeOnly ? 'text-black' : 'text-up'} /></button>
         <input
           data-wire-query
           class="bg-surface-2 border border-line rounded-md px-2 py-0.5 font-mono text-[11px] text-ink outline-none focus:border-accent w-36"

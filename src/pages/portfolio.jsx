@@ -27,6 +27,7 @@ import {
 } from '../lib/thesis.js'
 import { StatusPill } from '../components/StatusPill.jsx'
 import { countAdvancers } from '../lib/pulse.js'
+import { brokerBookStats } from '../lib/bookStats.js'
 import { MyPortfolios, MyNews, MyPerformance, MyTrades, MyEvents } from './portfolioMine.jsx'
 import { BookNews } from './portfolioNews.jsx'
 import { BookEvents } from './portfolioEvents.jsx'
@@ -56,7 +57,7 @@ const signedMoney = (v) =>
 
 const pnlCls = (v) => (v == null ? 'text-muted' : v >= 0 ? 'text-up' : 'text-down')
 
-function BookSummary({ rows, margin, fallbackNlv }) {
+function BookSummary({ rows, stats, margin, fallbackNlv }) {
   const sum = (key) => rows.every((row) => row[key] != null)
     ? rows.reduce((total, row) => total + row[key], 0) : null
   // leverage the way the broker states it: gross position value over NLV.
@@ -66,20 +67,22 @@ function BookSummary({ rows, margin, fallbackNlv }) {
   const equity = margin?.nlv ?? margin?.equity ?? fallbackNlv ?? null
   const leverage = gross != null && equity ? gross / equity : null
   const dayPnl = sum('dayPnl')
-  const unreal = sum('unrealPnl')
+  const unreal = stats?.unrealized?.pnl ?? sum('unrealPnl')
   const cushion = margin?.cushion_pct
   // risk runway: maintenance → equity on one bar. The filled span IS the
   // cushion — the one picture that says how far the book is from trouble.
   const maint = margin?.maintenance
   const runway = maint != null && equity ? Math.max(0, Math.min(1, (equity - maint) / equity)) : null
-  // day % against yesterday's NLV (equity minus today's move); unreal %
-  // against cost basis (gross minus the open gain) — the standard bases
+  // Day % is against yesterday's NLV. Open P&L % is against the sum of the
+  // marked positions' account-base costs — never NLV or a broker GPV field.
   const dayBase = equity != null && dayPnl != null ? equity - dayPnl : null
   const dayPct = dayBase ? (dayPnl / dayBase) * 100 : null
-  const costBase = gross != null && unreal != null ? gross - unreal : null
-  const unrealPct = costBase ? (unreal / costBase) * 100 : null
-  const pctSpan = (pct, cls) => pct == null ? null : (
-    <span class={cls}>{' '}({fmtPct(pct)})</span>
+  const costBase = stats?.unrealized?.costBasis ?? (gross != null && unreal != null ? gross - unreal : null)
+  const unrealPct = stats?.unrealized?.pct ?? (costBase ? (unreal / costBase) * 100 : null)
+  const pctSpan = (pct, cls, basis = null) => pct == null ? null : (
+    <span class={cls} title={basis == null ? undefined : `${tl('Cost basis')}: ${dollars(basis)}`}>
+      {' '}({fmtPct(pct)}{basis == null ? '' : ` ${tl('On cost')}`})
+    </span>
   )
   const chip = (v, pct) =>
     v == null ? null : (
@@ -98,7 +101,7 @@ function BookSummary({ rows, margin, fallbackNlv }) {
             {chip(dayPnl, dayPct)}
             {unreal != null && (
               <span class="font-anth text-[10.5px] text-muted">{tl('unreal')}{' '}
-                <span class={`font-semibold ${pnlCls(unreal)}`}>{signedMoney(unreal)}{pctSpan(unrealPct, 'text-[9.5px] font-normal')}</span></span>
+                <span class={`font-semibold ${pnlCls(unreal)}`}>{signedMoney(unreal)}{pctSpan(unrealPct, 'text-[9.5px] font-normal', costBase)}</span></span>
             )}
           </div>
         </div>
@@ -263,7 +266,63 @@ function BrokerCurrencyMix({ rows }) {
   )
 }
 
-function BrokerAnalysis({ rows, priceMap }) {
+function BrokerBreadth({ breadth: b }) {
+  const total = b.up + b.down + b.flat
+  return (
+    <BrokerCard title={tl('Breadth')}>
+      <div class="flex flex-col gap-1 font-mono text-[10.5px]">
+        <div class="flex h-2.5 overflow-hidden rounded-sm bg-surface-3">
+          <span class="bg-up/70" style={{ width: `${(b.up / Math.max(1, total)) * 100}%` }} />
+          <span class="bg-ink-2/40" style={{ width: `${(b.flat / Math.max(1, total)) * 100}%` }} />
+          <span class="bg-down/70" style={{ width: `${(b.down / Math.max(1, total)) * 100}%` }} />
+        </div>
+        <div class="flex justify-between"><span class="text-muted">{tl('Advancing')}</span><span class="text-up">{b.up} / {total}</span></div>
+        <div class="flex justify-between gap-2"><span class="text-muted">{tl('Best')}</span><span class="truncate text-up">{b.best ? <><SymLink sym={b.best.symbol} /> {fmtPct(b.best.dayPct)}</> : '—'}</span></div>
+        <div class="flex justify-between gap-2"><span class="text-muted">{tl('Worst')}</span><span class="truncate text-down">{b.worst ? <><SymLink sym={b.worst.symbol} /> {fmtPct(b.worst.dayPct)}</> : '—'}</span></div>
+      </div>
+    </BrokerCard>
+  )
+}
+
+function BrokerContribution({ rows }) {
+  const top = rows.slice(0, 4)
+  const max = top[0]?.sharePct || 1
+  return (
+    <BrokerCard title={tl('Day contribution')}>
+      {top.length ? <div class="flex flex-col gap-1">
+        {top.map((row) => (
+          <div key={row.symbol} class="grid grid-cols-[3rem_1fr_auto] items-center gap-2 font-mono text-[10px]">
+            <SymLink sym={row.symbol} class={`truncate font-bold ${pnlCls(row.pnl)}`} />
+            <span class={`h-2 rounded-sm ${row.pnl >= 0 ? 'bg-up/55' : 'bg-down/55'}`}
+              style={{ width: `${Math.max(2, (row.sharePct / max) * 100)}%` }} />
+            <span class={`text-right whitespace-nowrap ${pnlCls(row.pnl)}`}>{signedMoney(row.pnl)}</span>
+          </div>
+        ))}
+      </div> : <div class="font-anth text-[10px] text-muted">—</div>}
+    </BrokerCard>
+  )
+}
+
+function BrokerOpenPnl({ openPnl, completeCost }) {
+  const stat = (label, value, cls = 'text-ink') => (
+    <div class="flex items-baseline justify-between gap-2 font-mono text-[10.5px]">
+      <span class="font-anth text-muted">{label}</span>
+      <span class={`text-right ${cls}`}>{value}</span>
+    </div>
+  )
+  return (
+    <BrokerCard title={tl('Open P&L')}>
+      {completeCost ? <div class="flex flex-col gap-1">
+        {stat(tl('Cost basis'), money(openPnl.costBasis))}
+        {stat(tl('Open'), `${signedMoney(openPnl.pnl)} (${fmtPct(openPnl.pct)})`, pnlCls(openPnl.pnl))}
+        {stat(tl('Best'), openPnl.best ? `${openPnl.best.symbol} ${fmtPct(openPnl.best.unrealPct)}` : '—', 'text-up')}
+        {stat(tl('Worst'), openPnl.worst ? `${openPnl.worst.symbol} ${fmtPct(openPnl.worst.unrealPct)}` : '—', 'text-down')}
+      </div> : <div class="font-anth text-[10px] text-muted">—</div>}
+    </BrokerCard>
+  )
+}
+
+function BrokerAnalysis({ rows, priceMap, stats }) {
   if (!rows.length) return null
   return (
     <div class="grid gap-2 sm:grid-cols-2 xl:grid-cols-4 items-start">
@@ -271,6 +330,9 @@ function BrokerAnalysis({ rows, priceMap }) {
       <BrokerBenchmarks rows={rows} />
       <BookPulse rows={rows} />
       <BrokerCurrencyMix rows={rows} />
+      <BrokerBreadth breadth={stats.breadth} />
+      <BrokerContribution rows={stats.contribution} />
+      <BrokerOpenPnl openPnl={stats.unrealized} completeCost={stats.completeCost} />
     </div>
   )
 }
@@ -281,6 +343,7 @@ function Positions({ priceMap, positions, margin, accountId }) {
   // ONE line at blended avg cost, so P&L% matches the ibkr readout
   const legs = combined ? mergeLegs(positions) : positions
   const rows = positionRows(legs, priceMap)
+  const stats = brokerBookStats(rows)
   const fallback = accountSummary(legs, priceMap)
   const tot = (k) => (rows.every((r) => r[k] != null) ? rows.reduce((s, r) => s + r[k], 0) : null)
   // aggregate by symbol for the weight ladder — CDR + US lines merge
@@ -294,8 +357,8 @@ function Positions({ priceMap, positions, margin, accountId }) {
 
   return (
     <div class="flex flex-col gap-2">
-    <BookSummary rows={rows} margin={margin} fallbackNlv={fallback.nlv} />
-    <BrokerAnalysis rows={rows} priceMap={priceMap} />
+    <BookSummary rows={rows} stats={stats} margin={margin} fallbackNlv={fallback.nlv} />
+    <BrokerAnalysis rows={rows} priceMap={priceMap} stats={stats} />
     <div class="flex flex-col gap-2">
     <section class="bg-surface-1 border border-line rounded-xl overflow-x-auto">
       <table class="w-full border-collapse font-mono text-[11px]">

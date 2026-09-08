@@ -7,7 +7,8 @@
 import { streamChat } from './chatClient.js'
 import { TOOL_DEFS, executeTool } from './tools.js'
 import {
-  parseToolCall, toolProtocol, wireChatAvailable, wireComplete, wireStream,
+  isPlanningStub, parseToolCall, toolProtocol, wireChatAvailable, wireComplete,
+  wireStream,
 } from './wirechat.js'
 
 const MAX_ROUNDS = 6
@@ -49,17 +50,27 @@ function receiveFollowUps(takeFollowUps, added, onRound) {
   onRound?.([...added])
 }
 
-async function runAgenticOverWire({
+export async function runAgenticOverWire({
   model, effort, system, messages, onDelta, onThinking, onRound, onTrace,
   takeFollowUps, signal,
-}) {
+}, services = {}) {
+  const streamTurn = services.wireStream || wireStream
+  const completeTurn = services.wireComplete || wireComplete
+  const runTool = services.executeTool || executeTool
   const added = []
+  // Full provider transcript, including hidden corrective nudges. `added` is
+  // only what belongs in the user's visible/persisted conversation.
+  const contextAdded = []
   const sys = `${system}\n\n${toolProtocol()}`
   for (let round = 0; round < MAX_ROUNDS; round++) {
     // A follow-up is a polite queue, not a barge-in: only splice it into the
     // transcript between provider rounds, when no request is in flight.
+    const beforeFollowUps = added.length
     receiveFollowUps(takeFollowUps, added, onRound)
-    const convo = [...messages, ...added]
+    if (added.length > beforeFollowUps) {
+      contextAdded.push(...added.slice(beforeFollowUps))
+    }
+    const convo = [...messages, ...contextAdded]
       .filter((m) => m.role !== 'tool' || m.content)
       .map((m) => (m.role === 'tool'
         ? { role: 'user', content: `TOOL_RESULT ${m.name}: ${m.content}` }
@@ -72,7 +83,7 @@ async function runAgenticOverWire({
     // the one-shot endpoint on any pre-output failure (older fragwire).
     let text = ''
     try {
-      ;({ text } = await wireStream({
+      ;({ text } = await streamTurn({
         model, effort, system: roundSystem, messages: convo,
         onDelta,
         onThinking: (delta) => {
@@ -85,26 +96,49 @@ async function runAgenticOverWire({
       }))
     } catch (err) {
       if (signal?.aborted) throw err        // a user stop is not a fallback case
-      ;({ text } = await wireComplete({
+      ;({ text } = await completeTurn({
         model, effort, system: roundSystem, messages: convo,
       }))
     }
     if (signal?.aborted) throw new DOMException('stopped', 'AbortError')
     const call = last ? null : parseToolCall(text)
     if (!call) {
-      onTrace?.({ type: 'model_done', round, outcome: 'answer' })
+      const needsAnotherRound = !last
+        && contextAdded.some((entry) => entry.role === 'tool')
+        && isPlanningStub(text)
+      onTrace?.({
+        type: 'model_done', round,
+        outcome: needsAnotherRound ? 'continue' : 'answer',
+      })
+      if (needsAnotherRound) {
+        contextAdded.push(
+          { role: 'assistant', content: text },
+          {
+            role: 'user',
+            content: 'Continue the original request now. Do not narrate what you still need. Call the available tools directly, or give the complete answer if you already have enough data.',
+          },
+        )
+        // Clears the planning stub from the live answer without persisting it.
+        onRound?.([...added])
+        continue
+      }
       added.push({ role: 'assistant', content: text })
       onRound?.([...added])
       return added
     }
     const id = `w${round}`
     onTrace?.({ type: 'model_done', round, outcome: 'tool' })
-    added.push({ role: 'assistant', content: '', toolCalls: [{ id, name: call.name, args: call.args }] })
+    const callEntry = {
+      role: 'assistant', content: '',
+      toolCalls: [{ id, name: call.name, args: call.args }],
+    }
+    added.push(callEntry)
+    contextAdded.push(callEntry)
     onRound?.([...added])
     onTrace?.({ type: 'tool_start', round, id, name: call.name, args: call.args })
     let result
     try {
-      result = await executeTool(call.name, call.args)
+      result = await runTool(call.name, call.args)
     } catch (err) {
       onTrace?.({
         type: 'tool_error', round, id, name: call.name,
@@ -113,7 +147,9 @@ async function runAgenticOverWire({
       throw err
     }
     onTrace?.({ type: 'tool_done', round, id, name: call.name })
-    added.push({ role: 'tool', id, name: call.name, content: result })
+    const resultEntry = { role: 'tool', id, name: call.name, content: result }
+    added.push(resultEntry)
+    contextAdded.push(resultEntry)
     onRound?.([...added])
   }
   return added

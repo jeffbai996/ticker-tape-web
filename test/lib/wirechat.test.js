@@ -9,7 +9,10 @@ afterEach(() => {
 describe('wire chat model selection', () => {
   it('loads the model registry from fragwire', async () => {
     localStorage.setItem('tape-wire-url', 'https://wire.example')
-    const models = [{ key: 'auto', label: 'Auto' }, { key: 'claude', label: 'Claude Sonnet' }]
+    const models = [
+      { key: 'auto', label: 'Auto' },
+      { key: 'gpt-terra', label: 'GPT 5.6 Terra', efforts: ['low', 'medium', 'high', 'xhigh'] },
+    ]
     const fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ ok: true, models }),

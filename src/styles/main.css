@@ -55,26 +55,47 @@ body {
   user-select: none;
 }
 
-/* Every clickable gets a hover response by default. This lives in the base
-   layer, so any component's own `hover:` utility overrides it — the point is
-   that nothing can be silently dead just because someone forgot. Subtle on
-   purpose; the loud treatments (.hl-row, .tape-hot) opt in explicitly.
-   Audited 2026-08-03: ~260 clickables had no hover rule at all. */
+/* Source quality is a tiny stepped signal — data, not an accidental kebab
+   menu. It is shared by the compact wire mark and the Prime filter. */
+.source-signal {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  width: 14px;
+  height: 11px;
+  vertical-align: middle;
+}
+.source-signal i {
+  display: block;
+  width: 3px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: .2;
+}
+.source-signal i:nth-child(1) { height: 4px; }
+.source-signal i:nth-child(2) { height: 7px; }
+.source-signal i:nth-child(3) { height: 10px; }
+.source-signal i.is-on { opacity: 1; }
+
+/* The Prime control is a compact square, not a text pill. Matching the
+   icon's actual bounds keeps it optically centered instead of one pixel low. */
+button[data-prime-filter] .source-signal {
+  flex: 0 0 13px;
+  width: 13px;
+  height: 10px;
+}
+
+
+/* Focus and motion defaults stay below component utilities. Hover backgrounds
+   live in the utilities layer below: a base-layer hover loses even to a static
+   bg-surface-* class, making filled controls appear unresponsive. */
 @layer base {
   a,
   button:not(:disabled),
-  [role="button"] {
-    transition: background-color 0.12s ease, color 0.12s ease;
-  }
-  a:hover,
-  button:not(:disabled):hover,
-  [role="button"]:hover {
-    background-color: rgba(245, 158, 11, 0.08);
-  }
-  /* Text links inside prose shouldn't grow a box. */
-  a:hover:not([class]) {
-    background-color: transparent;
-    text-decoration: underline;
+  [role="button"],
+  summary,
+  select:not(:disabled) {
+    transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
   }
   /* Same argument as the hover rule, for the keyboard: the UA outline is
      invisible on pitch black, so tabbing through the shell showed nothing at
@@ -86,6 +107,26 @@ body {
   input:focus-visible {
     outline: 1px solid var(--color-accent);
     outline-offset: 1px;
+  }
+}
+
+@layer utilities {
+  /* One pseudo-class of specificity beats a resting background by source
+     order; explicit hover:bg-* utilities (two classes) still win. Tint from
+     currentColor keeps selected amber and semantic red/green controls legible.
+     Pointer-capable devices only, so touch taps never leave a stuck wash. */
+  @media (hover: hover) and (pointer: fine) {
+    :where(a[href], button, [role="button"], summary, select, .cursor-pointer):not(:where(:disabled, [aria-disabled="true"], [inert], [inert] *, .text-black, .text-surface-0)):hover {
+      background-color: color-mix(in srgb, currentColor 8%, var(--color-surface-2));
+    }
+    /* Solid semantic fills carry dark text: keep the fill and its contrast. */
+    :where(a[href], button, [role="button"], summary, select, .cursor-pointer):where(.text-black, .text-surface-0):not(:where(:disabled, [aria-disabled="true"], [inert], [inert] *)):hover {
+      filter: brightness(1.1);
+    }
+    :where(a[href]):not(:where([class])):hover {
+      background-color: transparent;
+      text-decoration: underline;
+    }
   }
 }
 

@@ -41,4 +41,10 @@ describe('status bar responsive labels', () => {
     expect(source).toContain('focus-visible:border-line-2')
     expect(source).toContain('focus-visible:bg-white/[0.045]')
   })
+
+  it('gives the clickable market-session chip an explicit subtle hover state', () => {
+    expect(source).toContain('data-status-session')
+    expect(source).toContain('hover:border-accent/70')
+    expect(source).toContain('hover:bg-accent/[0.10]')
+  })
 })

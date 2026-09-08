@@ -33,4 +33,9 @@ describe('chat composer shortcuts', () => {
     expect(chat).toContain("tl('recall')")
     expect(chat).toContain("tl('commands')")
   })
+
+  it('renders the private model registry effort list instead of hard-coding tiers', () => {
+    expect(chat).toContain('(selectedModel?.efforts || [])')
+    expect(chat).toContain('effortLevels.map((lv)')
+  })
 })

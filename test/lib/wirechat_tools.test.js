@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseToolCall, toolProtocol } from '../../src/lib/wirechat.js'
+import { isPlanningStub, parseToolCall, toolProtocol } from '../../src/lib/wirechat.js'
 
 const DEFS = [
   {
@@ -23,6 +23,19 @@ describe('toolProtocol', () => {
 
   it('states the reply contract', () => {
     expect(toolProtocol(DEFS)).toContain('{"tool": "<name>", "args": {…}}')
+    expect(toolProtocol(DEFS)).toContain('Do not narrate what data you still need')
+  })
+})
+
+describe('isPlanningStub', () => {
+  it('recognises a narrated next lookup', () => {
+    expect(isPlanningStub('I need the current AVGO technical setup and latest wire before calling the print.')).toBe(true)
+    expect(isPlanningStub('Let me check the latest tape first.')).toBe(true)
+  })
+
+  it('does not second-guess a substantive answer', () => {
+    expect(isPlanningStub('AVGO is above its 50-day average; watch $402 support and the guide.')).toBe(false)
+    expect(isPlanningStub('I need to flag one risk: custom silicon is pressuring the multiple.')).toBe(false)
   })
 })
 

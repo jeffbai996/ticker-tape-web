@@ -493,7 +493,7 @@ const TOOL_VERBS = {
 const TOOL_GERUNDS = {
   get_quotes: 'Reading quotes',
   get_technicals: 'Reading technicals',
-  get_earnings: 'Reading earnings',
+  get_earnings: 'Checking earnings',
   get_market_pulse: 'Reading the tape',
   get_watchlist: 'Reading the watchlist',
   watch: 'Adding to the watchlist',
@@ -517,6 +517,7 @@ function toolArg(tc) {
 /** Human-readable chip label for a tool call. Exported for the UI. */
 export function toolLabel(tc) {
   const arg = toolArg(tc)
+  if (tc.name === 'get_earnings' && arg) return `${arg} earnings`
   const verb = TOOL_VERBS[tc.name] || tc.name
   return arg ? `${verb} ${arg}` : verb
 }
@@ -524,6 +525,7 @@ export function toolLabel(tc) {
 /** Same call, phrased as the work in progress. */
 export function toolRunLabel(tc) {
   const arg = toolArg(tc)
+  if (tc.name === 'get_earnings' && arg) return `Checking ${arg} earnings`
   const verb = TOOL_GERUNDS[tc.name] || TOOL_VERBS[tc.name] || tc.name
   return arg ? `${verb} ${arg}` : verb
 }

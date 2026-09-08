@@ -18,6 +18,12 @@ export function railWidthAtDrag(startWidth, delta, { min, max, hideAt }) {
   return Math.min(max, Math.max(min, raw))
 }
 
+/** A button toggle preserves the user's chosen width; drag-to-edge remains
+ * the direct gesture for people who want to change it. */
+export function toggleRailWidth(currentWidth, restoreWidth) {
+  return currentWidth > 0 ? 0 : restoreWidth
+}
+
 export function storedRailWidth(key, fallback, limits) {
   try {
     const saved = validRailWidth(localStorage.getItem(key), limits)

@@ -163,7 +163,7 @@ describe('collapseSessions', () => {
     body, meta: { session_id: sid, ...extra },
   })
 
-  it('folds a session into one live_call card with counts and latest snippet', () => {
+  it('folds a session into one live_call document with its full ordered transcript', () => {
     const out = collapseSessions([
       audio(1, 'transcript_chunk', 5, 'first words', { seq: 0, label: 'Q2 call' }),
       audio(2, 'transcript_chunk', 5, 'later words', { seq: 1 }),
@@ -176,7 +176,7 @@ describe('collapseSessions', () => {
     expect(card.headline).toContain('later words')
     expect(card.headline).toContain('Q2 call')
     expect(card.live_call.digests).toHaveLength(1)
-    expect(card.live_call.tail.map((c) => c.id)).toEqual([1, 2])
+    expect(card.live_call.transcript.map((c) => c.id)).toEqual([1, 2])
     // non-audio events pass through untouched
     expect(out.find((e) => e.id === 4).type).toBe('headline')
   })

@@ -44,8 +44,9 @@ describe('shell feed indicator', () => {
     expect(statusbar).toContain("import { FeedIndicator } from './FeedIndicator.jsx'")
   })
 
-  it('shows the reconnect age beside the state word', () => {
+  it('repaints the reconnect age on the same one-second cadence as its label', () => {
     expect(indicator).toContain('health.ageLabel')
+    expect(indicator).toContain('startVisibleClock(1000')
   })
 })
 

@@ -74,8 +74,10 @@ export function positionRows(positions, priceMap) {
       // per-leg fx ratio also converts the broker's native unreal P&L.
       const fx = p.liveBase != null && native ? p.liveBase / native : 1
       const mktValue = p.liveBase ?? native
-      const costBasis = p.avgCost * p.shares * fx
-      const unrealPnl = p.liveUnreal != null ? p.liveUnreal * fx : mktValue - costBasis
+      const costBasis = Number.isFinite(p.avgCost) && Number.isFinite(p.shares)
+        ? p.avgCost * p.shares * fx : null
+      const unrealPnl = p.liveUnreal != null ? p.liveUnreal * fx
+        : costBasis != null ? mktValue - costBasis : null
       // day = since the last close at the latest print (PM of a new day is
       // the pre-market move, not yesterday's session) — see dayPnl.js
       const dayPct = sessionDayPct(q)
@@ -85,17 +87,19 @@ export function positionRows(positions, priceMap) {
         mktValue,
         dayPnl: dayPnlFromValue(mktValue, dayPct),
         dayPct,
+        costBasis,
         unrealPnl,
-        unrealPct: costBasis > 0 ? (unrealPnl / costBasis) * 100 : null,
+        unrealPct: costBasis > 0 && unrealPnl != null ? (unrealPnl / costBasis) * 100 : null,
         weight: null,
       }
     }
     if (!q?.price) {
       return { ...p, price: null, mktValue: null, dayPnl: null, dayPct: null,
-        unrealPnl: null, unrealPct: null, weight: null }
+        costBasis: null, unrealPnl: null, unrealPct: null, weight: null }
     }
     const mktValue = q.price * p.shares
-    const costBasis = p.avgCost * p.shares
+    const costBasis = Number.isFinite(p.avgCost) && Number.isFinite(p.shares)
+      ? p.avgCost * p.shares : null
     const dayPct = sessionDayPct(q)
     return {
       ...p,
@@ -107,7 +111,8 @@ export function positionRows(positions, priceMap) {
         ? dayPnlFromValue(q.extPrice * p.shares, dayPct)
         : (q.change ?? 0) * p.shares,
       dayPct,
-      unrealPnl: mktValue - costBasis,
+      costBasis,
+      unrealPnl: costBasis != null ? mktValue - costBasis : null,
       unrealPct: costBasis > 0 ? ((mktValue - costBasis) / costBasis) * 100 : null,
       weight: null, // filled below once gross is known
     }

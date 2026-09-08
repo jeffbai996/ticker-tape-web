@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { cleanSymbols, toolLabel, executeTool, TOOL_DEFS, NAV_DELAY_MS } from '../../src/lib/tools.js'
+import { cleanSymbols, toolLabel, toolRunLabel, executeTool, TOOL_DEFS, NAV_DELAY_MS } from '../../src/lib/tools.js'
 import { loadAlerts } from '../../src/lib/alerts.js'
 import { getWatchlist } from '../../src/lib/watchlist.js'
 
@@ -36,9 +36,17 @@ describe('toolLabel', () => {
   it('humanizes the verb and shows the most relevant arg', () => {
     expect(toolLabel({ name: 'get_quotes', args: { symbols: ['NVDA', 'AMD'] } })).toBe('quotes NVDA, AMD')
     expect(toolLabel({ name: 'get_technicals', args: { symbol: 'MU' } })).toBe('technicals MU')
+    expect(toolLabel({ name: 'get_earnings', args: { symbol: 'AVGO' } })).toBe('AVGO earnings')
     expect(toolLabel({ name: 'navigate', args: { view: 'heatmap' } })).toBe('open heatmap')
     expect(toolLabel({ name: 'get_watchlist', args: {} })).toBe('watchlist')
     expect(toolLabel({ name: 'future_tool', args: {} })).toBe('future_tool')
+  })
+})
+
+describe('toolRunLabel', () => {
+  it('phrases earnings lookups as a readable activity', () => {
+    expect(toolRunLabel({ name: 'get_earnings', args: { symbol: 'AVGO' } }))
+      .toBe('Checking AVGO earnings')
   })
 })
 

@@ -65,10 +65,11 @@ export function unrealizedStats(rows) {
   if (!held.length) {
     return { costBasis: null, pnl: null, pct: null, best: null, worst: null, covered: 0 }
   }
+  const basisOf = (r) => Number.isFinite(r.costBasis) ? r.costBasis : r.valueDisplay - r.unrealDisplay
   const pnl = held.reduce((s, r) => s + r.unrealDisplay, 0)
-  const costBasis = held.reduce((s, r) => s + (r.valueDisplay - r.unrealDisplay), 0)
+  const costBasis = held.reduce((s, r) => s + basisOf(r), 0)
   const withPct = held.map((r) => {
-    const basis = r.valueDisplay - r.unrealDisplay
+    const basis = basisOf(r)
     return { ...r, unrealPct: basis > 0 ? (r.unrealDisplay / basis) * 100 : null }
   }).filter((r) => r.unrealPct != null).sort((a, b) => b.unrealPct - a.unrealPct)
   return {
@@ -78,6 +79,35 @@ export function unrealizedStats(rows) {
     best: withPct[0] || null,
     worst: withPct[withPct.length - 1] || null,
     covered: held.length,
+  }
+}
+
+/** Make the broker positions table the one source of truth for its cards.
+ *  `costBasis` and `unrealPnl` are already account-base values by the time
+ *  positionRows emits them; NLV is deliberately not a P&L denominator. */
+export function brokerBookStats(rows) {
+  const normalized = (rows || []).map((r) => ({
+    kind: 'equity',
+    symbol: r.symbol,
+    valueDisplay: r.mktValue,
+    costBasis: r.costBasis,
+    dayPnlDisplay: r.dayPnl,
+    dayPct: r.dayPct,
+    unrealDisplay: r.unrealPnl,
+  }))
+  const marked = normalized.filter((r) => r.valueDisplay != null)
+  const completeCost = marked.length > 0 && marked.every((r) => (
+    r.unrealDisplay != null && r.costBasis > 0
+  ))
+  const rawUnrealized = unrealizedStats(normalized)
+  return {
+    rows: normalized,
+    breadth: breadth(normalized),
+    contribution: dayContribution(normalized),
+    // A partial total looks precise but is not. Keep the coverage count so
+    // the card can say why the aggregate is withheld.
+    unrealized: completeCost ? rawUnrealized : { ...rawUnrealized, pnl: null, pct: null },
+    completeCost,
   }
 }
 

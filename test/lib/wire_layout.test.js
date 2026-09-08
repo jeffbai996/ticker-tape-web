@@ -46,7 +46,7 @@ describe('wire workbench sizing', () => {
 
   it('puts earnings facts before release prose in expanded rows', () => {
     expect(src.indexOf("Object.keys(ev.numbers || {}).length > 0"))
-      .toBeLessThan(src.indexOf("body && <p"))
+      .toBeLessThan(src.indexOf("data-wire-rich-body"))
   })
 
   it('labels priority versus chronological ordering and exposes relevance filters', () => {
@@ -55,6 +55,16 @@ describe('wire workbench sizing', () => {
     expect(src).toContain('data-tier-filter={tier}')
     expect(src).toContain('data-thesis-filter')
     expect(src).toContain('data-prime-filter')
+    expect(src).toContain('w-[38px] justify-center')
+    expect(src).toContain('w-[28px] h-[22px] shrink-0')
+    expect(src).toContain('px-[6px] py-0')
+    expect(src).toContain('<SourceSignal tier={1.25}')
     expect(src).toContain("localStorage.setItem('tape-wire-mode', 'wire')")
+  })
+
+  it('renders generated event bodies instead of leaking markdown markers', () => {
+    expect(src).toContain("import { MdLite } from '../components/AiReport.jsx'")
+    expect(src).toContain('data-wire-rich-body')
+    expect(src).toContain('<MdLite text={body} />')
   })
 })

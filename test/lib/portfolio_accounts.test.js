@@ -37,8 +37,11 @@ describe('private portfolio account switching', () => {
 
   it('keeps the private broker surface on the same useful card cadence as a manual book', () => {
     expect(page).toContain('function BrokerAnalysis')
-    expect(page).toContain('<BrokerAnalysis rows={rows} priceMap={priceMap} />')
+    expect(page).toContain('<BrokerAnalysis rows={rows} priceMap={priceMap} stats={stats} />')
     expect(page).toContain('function BrokerDayMovers')
+    expect(page).toContain('function BrokerBreadth')
+    expect(page).toContain('function BrokerContribution')
+    expect(page).toContain('function BrokerOpenPnl')
   })
 })
 
@@ -48,6 +51,8 @@ describe('portfolio translation coverage', () => {
       'portfolio.live', 'portfolio.connecting', 'portfolio.link_down',
       'portfolio.gateway_loading', 'portfolio.gateway_empty',
     ]) expect(labels).toContain(`'${key}'`)
+    expect(labels).toContain("'On cost': '按成本'")
+    expect(page).toContain("tl('On cost')")
     expect(page).not.toContain('>asking the gateway…<')
     expect(page).not.toContain('>CONNECTING TO IBKR…<')
   })
