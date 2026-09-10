@@ -35,6 +35,9 @@ import { Spark } from '../components/Spark.jsx'
 import {
   MARKET_VISUALS, MARKET_VISUAL_WINDOWS, loadMarketVisualPrefs, saveMarketVisualPrefs,
 } from '../lib/marketVisuals.js'
+import {
+  MOVER_FLOORS, buildMoverRows, filterMoverRows, rankMoverRows,
+} from '../lib/movers.js'
 
 /** The day's session on one labeled track: the grey rail is today's range, the
  *  coloured span is the distance travelled from yesterday's close to the last
@@ -205,7 +208,7 @@ function MarketVisualPicker({ visual, window, onVisual, onWindow }) {
   const field = 'appearance-none rounded-full border border-line-2 bg-surface-2 py-1 max-sm:py-0.5 pl-2.5 max-sm:pl-2 pr-6 font-anth text-[10px] max-sm:text-[9px] text-ink-2 outline-none hover:border-accent/50 focus:border-accent/70'
   return (
     <div class="flex shrink-0 items-center gap-1">
-      <span class="font-anth text-[9px] uppercase tracking-wider text-ink-2">{tl('Visual')}</span>
+      <span class="font-anth text-[9px] uppercase tracking-wider text-muted">{tl('Graph')}</span>
       <span class="relative">
         <select value={visual} onChange={(e) => onVisual(e.currentTarget.value)}
           aria-label={tl('Row visual')} class={field}>
@@ -524,43 +527,53 @@ function HeatTiles({ tiles }) {
   )
 }
 
-function MoverTable({ title, rows }) {
+function MoverTable({ title, rows, activity = false }) {
   return (
-    <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
-      <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
-        <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{title}</h2>
+    <section class="min-w-0 overflow-hidden rounded-xl border border-line bg-surface-1">
+      <header class="flex items-baseline gap-2 border-b border-line-2 bg-surface-2 px-3 py-1.5">
+        <h2 class="font-anth text-[11px] font-bold uppercase tracking-wider text-accent">{title}</h2>
+        <span class="ml-auto font-mono text-[9px] tabular-nums text-muted">{rows.length}</span>
       </header>
       <table class="w-full border-collapse font-mono text-[11px]">
         <thead>
-          <tr class="text-[8.5px] text-muted uppercase tracking-wider">
+          <tr class="text-[8.5px] uppercase tracking-wider text-muted">
             <th class="px-3 py-1 text-left">{tl('sym')}</th>
-            <th class="px-2 py-1 text-right">{tl('px')}</th>
-            <th class="px-2 py-1 text-right">{tl('chg')}</th>
+            <th class="px-2 py-1 text-right max-sm:hidden">{tl('px')}</th>
             <th class="px-2 py-1 text-right">%</th>
-            <th class="px-2 py-1 text-right max-xl:hidden">{tl('vol')}</th>
             <th class="px-2 py-1 text-right max-2xl:hidden">{tl('ext')}</th>
-            <th class="px-2 py-1 max-xl:hidden">{tl('day')}</th>
+            <th class="px-2 py-1 text-right max-xl:hidden" title={tl('volume / average')}>
+              {activity ? 'VOL/AVG' : tl('chg')}
+            </th>
+            <th class="px-2 py-1 max-[1180px]:hidden">{tl('day')}</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map(({ symbol, q }) => {
+          {rows.map(({ symbol, q, name, volRatio }) => {
             const up = (q?.pct ?? 0) >= 0
             const extUp = (q?.extPct ?? 0) >= 0
             return (
-              <tr key={symbol} class="border-t border-line hover:bg-surface-3 cursor-pointer"
+              <tr key={symbol} class="cursor-pointer border-t border-line hover:bg-surface-3"
                 onClick={() => (location.hash = `#/research/${symbol.toLowerCase()}`)}>
-                <td class="px-3 py-[3px] font-[650] font-tick text-ink">{symbol}</td>
-                <td class="px-2 py-[3px] text-right text-ink font-semibold">{fmtPrice(q?.price)}</td>
-                <td class={`px-2 py-[3px] text-right text-[10.5px] ${up ? 'text-up' : 'text-down'}`}>{fmtChange(q?.change)}</td>
+                <td class="min-w-0 px-3 py-[4px]">
+                  <div class="font-tick font-[650] leading-none text-ink">{symbol}</div>
+                  {name && <div class="mt-1 max-w-[14rem] truncate font-anth text-[8.5px] leading-none text-muted" title={name}>{name}</div>}
+                </td>
+                <td class="px-2 py-[3px] text-right font-semibold text-ink max-sm:hidden">{fmtPrice(q?.price)}</td>
                 <td class={`px-2 py-[3px] text-right font-semibold ${up ? 'text-up' : 'text-down'}`}>{fmtPct(q?.pct)}</td>
-                <td class="px-2 py-[3px] text-right text-muted text-[10.5px] max-xl:hidden">{q?.volume != null ? fmtVol(q.volume) : ''}</td>
                 <td class={`px-2 py-[3px] text-right text-[10.5px] max-2xl:hidden ${q?.extPct != null ? (extUp ? 'text-up' : 'text-down') : 'text-muted'}`}>
                   {q?.extPct != null ? fmtPct(q.extPct) : ''}
                 </td>
-                <td class="px-2 py-[3px] max-xl:hidden"><DayMeter q={q} /></td>
+                <td class={`px-2 py-[3px] text-right text-[10.5px] max-xl:hidden ${activity && volRatio != null && volRatio >= 1.5 ? 'text-accent' : 'text-ink-2'}`}
+                    title={activity && q?.volume != null ? `${tl('vol')} ${fmtVol(q.volume)}${q.avgVolume ? ` · ${tl('avg volume')} ${fmtVol(q.avgVolume)}` : ''}` : ''}>
+                  {activity ? (volRatio != null ? `${volRatio.toFixed(1)}×` : (q?.volume != null ? fmtVol(q.volume) : '')) : fmtChange(q?.change)}
+                </td>
+                <td class="px-2 py-[3px] max-[1180px]:hidden"><DayMeter q={q} /></td>
               </tr>
             )
           })}
+          {!rows.length && (
+            <tr><td colSpan="6" class="px-3 py-7 text-center font-anth text-[10px] text-muted">{tl('No matching movers')}</td></tr>
+          )}
         </tbody>
       </table>
     </section>
@@ -570,11 +583,15 @@ function MoverTable({ title, rows }) {
 function Movers() {
   const watchlist = useWatchlist()
   const quotes = useQuotes(watchlist)
-  const priced = watchlist
-    .map((s) => ({ symbol: s, q: quotes[s]?.quote }))
-    .filter((r) => r.q?.pct != null)
-  const byPct = [...priced].sort((a, b) => b.q.pct - a.q.pct)
-  const byVol = [...priced].sort((a, b) => (b.q.volume ?? 0) - (a.q.volume ?? 0))
+  const [query, setQuery] = useState('')
+  const [minMove, setMinMove] = useState(0)
+  const priced = buildMoverRows(watchlist, quotes)
+  const visible = filterMoverRows(priced, { query, minMove })
+  const gainers = rankMoverRows(visible, 'gainers').slice(0, 14)
+  const losers = rankMoverRows(visible, 'losers').slice(0, 14)
+  const active = rankMoverRows(visible, 'active').slice(0, 14)
+  const byPct = rankMoverRows(priced, 'gainers')
+  const byLoss = rankMoverRows(priced, 'losers')
   // same breadth maths as the rail's Pulse block — one definition of
   // advancing/±2%/stress so the two panels can't disagree
   const stats = pulseStats(priced.map((r) => ({ symbol: r.symbol, pct: r.q.pct })))
@@ -585,24 +602,62 @@ function Movers() {
       system: BRIEFING_SYSTEM,
       prompt: 'Today\'s watchlist tape.\nGainers: '
         + byPct.slice(0, 8).map(line).join(', ')
-        + '\nLosers: ' + byPct.slice(-8).reverse().map(line).join(', ')
+        + '\nLosers: ' + byLoss.slice(0, 8).map(line).join(', ')
         + '\n\nWrite a tight market read: what theme is driving the dispersion,'
         + ' which moves look like signal vs noise, one risk. Under 150 words.',
     }
   }
   return (
     <div class="flex flex-col gap-2">
-      <div class="flex flex-wrap gap-2 font-mono text-[11px]">
-        {[
-          ['breadth', <span><span class="text-up">{stats?.adv ?? 0}</span><span class="text-muted">/</span><span class="text-down">{stats?.dec ?? 0}</span></span>],
-          ['avg move', <span class={stats && stats.avg >= 0 ? 'text-up' : 'text-down'}>{stats ? fmtPct(stats.avg) : '—'}</span>],
-          ['±2% movers', <span class="text-ink">{stats?.movers ?? 0}<span class="text-muted">/{priced.length}</span></span>],
-          ['down >3%', <span class={stats?.stress ? 'text-down font-bold' : 'text-ink-2'}>{stats?.stress ?? 0}</span>],
-        ].map(([label, val]) => (
-          <span key={label} class="bg-surface-1 border border-line rounded-lg px-2.5 py-1 flex items-baseline gap-1.5">
-            <span class="text-[9px] uppercase tracking-wider text-muted">{tl(label)}</span>{val}
-          </span>
-        ))}
+      <section class="overflow-hidden rounded-xl border border-line bg-surface-1">
+        <div class="flex flex-wrap items-center gap-2 border-b border-line-2 bg-surface-2 px-3 py-2">
+          <div class="mr-auto min-w-0 max-sm:w-full">
+            <h1 class="font-anth text-[14px] font-bold leading-tight text-ink">{tl('Market movers')}</h1>
+            <p class="mt-0.5 font-mono text-[9px] text-muted">{priced.length}/{watchlist.length} {tl('priced')}</p>
+          </div>
+          <label class="relative min-w-[8rem] flex-1 sm:max-w-[17rem]">
+            <span class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-muted">⌕</span>
+            <input value={query} onInput={(e) => setQuery(e.currentTarget.value)}
+              aria-label={tl('search movers')} placeholder={tl('search movers')}
+              class="h-7 w-full rounded-md border border-line-2 bg-surface-1 pl-7 pr-2 font-anth text-[10px] text-ink outline-none placeholder:text-muted focus:border-accent/60" />
+          </label>
+          <div class="inline-flex h-7 items-center rounded-md border border-line-2 bg-surface-1 p-0.5" aria-label={tl('Move floor')}>
+            {MOVER_FLOORS.map((floor) => (
+              <button key={floor} type="button" aria-pressed={minMove === floor}
+                onClick={() => setMinMove(floor)}
+                class={`h-6 rounded px-2 font-mono text-[9px] transition-colors ${minMove === floor ? 'bg-accent font-bold text-black' : 'text-muted hover:text-ink'}`}>
+                {floor ? `±${floor}%` : tl('all')}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div class="px-3 pb-2.5 pt-2">
+          <div class="mb-2 flex h-1.5 overflow-hidden rounded-full bg-line-2" role="img"
+            aria-label={`${tl('Watchlist breadth')}: ${stats?.adv ?? 0}/${stats?.dec ?? 0}`}>
+            <span class="bg-up transition-[width]" style={{ width: `${stats?.greenPct ?? 0}%` }} />
+            <span class="flex-1 bg-down" />
+          </div>
+          <div class="grid grid-cols-3 gap-x-3 gap-y-2 sm:grid-cols-6">
+            {[
+              ['breadth', <span><span class="text-up">{stats?.adv ?? 0}</span><span class="text-muted">/</span><span class="text-down">{stats?.dec ?? 0}</span></span>],
+              ['avg move', <span class={stats && stats.avg >= 0 ? 'text-up' : 'text-down'}>{stats ? fmtPct(stats.avg) : '—'}</span>],
+              ['median', <span class={stats && stats.median >= 0 ? 'text-up' : 'text-down'}>{stats ? fmtPct(stats.median) : '—'}</span>],
+              ['spread', <span class="text-ink">{stats ? `${stats.spread.toFixed(2)}pp` : '—'}</span>],
+              ['±2% movers', <span class="text-ink">{stats?.movers ?? 0}<span class="text-muted">/{priced.length}</span></span>],
+              ['down >3%', <span class={stats?.stress ? 'font-bold text-down' : 'text-ink-2'}>{stats?.stress ?? 0}</span>],
+            ].map(([label, val]) => (
+              <div key={label} class="min-w-0 font-mono text-[11px]">
+                <div class="truncate text-[8px] uppercase tracking-wider text-muted">{tl(label)}</div>
+                <div class="mt-0.5 tabular-nums">{val}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+      <div class="grid gap-2 lg:grid-cols-3">
+        <MoverTable title={tl('Gainers')} rows={gainers} />
+        <MoverTable title={tl('Losers')} rows={losers} />
+        <MoverTable title={tl('Most active')} rows={active} activity />
       </div>
       <AiReport
         label="AI market read"
@@ -610,11 +665,6 @@ function Movers() {
         buildPrompt={buildMoversPrompt}
         archive={{ kind: 'market-read', title: 'market read' }}
       />
-      <div class="grid gap-2 lg:grid-cols-3">
-        <MoverTable title={tl('Gainers')} rows={byPct.filter((r) => r.q.pct > 0).slice(0, 14)} />
-        <MoverTable title={tl('Losers')} rows={byPct.filter((r) => r.q.pct < 0).slice(-14).reverse()} />
-        <MoverTable title={tl('Most active')} rows={byVol.slice(0, 14)} />
-      </div>
     </div>
   )
 }
