@@ -89,6 +89,7 @@ describe('quoteFromV7', () => {
       symbol: 'MSFT', shortName: 'Microsoft Corporation',
       regularMarketPrice: 390.49, regularMarketChange: 6.21,
       regularMarketChangePercent: 1.616, regularMarketVolume: 40690198,
+      averageDailyVolume3Month: 23100000,
       regularMarketDayHigh: 392.19, regularMarketDayLow: 383.7,
       bid: 390.45, ask: 390.52,
     })
@@ -97,6 +98,7 @@ describe('quoteFromV7', () => {
     expect(q.price).toBeCloseTo(390.49)
     expect(q.pct).toBeCloseTo(1.616)
     expect(q.volume).toBe(40690198)
+    expect(q.avgVolume).toBe(23100000)
     expect(q.bid).toBe(390.45)
     expect(q.ask).toBe(390.52)
   })

@@ -68,6 +68,11 @@ export function quoteFromV7(row, now = new Date()) {
     dayHigh: row?.regularMarketDayHigh ?? null,
     dayLow: row?.regularMarketDayLow ?? null,
     volume: row?.regularMarketVolume ?? null,
+    // v7 carries a rolling baseline in the same batch as the live print. Keep
+    // it on the quote so Movers can rank ACTIVITY rather than raw share count
+    // (where AAPL wins by existing). Prefer the broader three-month series;
+    // the ten-day field is an honest fallback when Yahoo omits it.
+    avgVolume: row?.averageDailyVolume3Month ?? row?.averageDailyVolume10Day ?? null,
     marketTime: row?.regularMarketTime ?? null,
     // Fragwire's calendar sync uses this to exclude funds, indices, futures,
     // and crypto from company-earnings polling.

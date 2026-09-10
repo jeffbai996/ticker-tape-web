@@ -12,8 +12,8 @@ describe('tapeworthy', () => {
     expect(tapeworthy([ev()], { now: NOW })).toHaveLength(1)
   })
 
-  it('drops low-relevance chatter', () => {
-    expect(tapeworthy([ev({ meta: { thesis: 1 } })], { now: NOW })).toHaveLength(0)
+  it('takes T1-and-up relevance while dropping unranked chatter', () => {
+    expect(tapeworthy([ev({ meta: { thesis: 1 } })], { now: NOW })).toHaveLength(1)
     expect(tapeworthy([ev({ meta: {} })], { now: NOW })).toHaveLength(0)
   })
 
@@ -27,9 +27,9 @@ describe('tapeworthy', () => {
     }
   })
 
-  it('still drops untyped chatter that the triage scored low', () => {
+  it('carries untyped T1 stories onto the tape', () => {
     expect(tapeworthy([ev({ type: 'headline', meta: { thesis: 1 } })], { now: NOW }))
-      .toHaveLength(0)
+      .toHaveLength(1)
   })
 
   it('always takes price moves, whatever the triage said', () => {

@@ -468,7 +468,7 @@ export async function fetchMeta(base) {
 // SEO content mills sink. Matched on the article domain or the "— Source"
 // suffix aggregators append to headlines. Unlisted sources ride at 1.0.
 const SRC_CRED = [
-  [/reuters|wsj\.com|bloomberg|ft\.com|apnews|federalreserve\.gov|sec\.gov/i, 1.3],
+  [/reuters|wsj\.com|bloomberg|ft\.com|apnews|federalreserve\.gov|sec\.gov|ecb\.europa\.eu|bankofengland\.co\.uk|eia\.gov/i, 1.3],
   [/cnbc|marketwatch|barrons|economist|asia\.nikkei|trendforce/i, 1.15],
   [/benzinga|businessinsider|yahoo|investing\.com|seekingalpha|fortune|axios/i, 1.0],
   [/thestreet|fool\.com|motley fool|zacks|investorplace|tipranks|gurufocus|insider monkey|247wallst|barchart/i, 0.45],
@@ -838,7 +838,10 @@ export function tapeworthy(events, { now = Date.now() / 1000, maxAgeH = 6, limit
       // (Jeff 2026-08-09)
       if (srcCred(e) < 1) return false
       if (TAPE_TYPES.has(e.type)) return true
-      return ((e.meta || {}).thesis || 0) >= 2
+      // T1 still cleared the wire's relevance pass; excluding it here made
+      // the web tape imply that only T2/T3 existed. The six-item/6h window
+      // remains the spam brake.
+      return ((e.meta || {}).thesis || 0) >= 1
     })
     .sort((a, b) => (b.ts_event || 0) - (a.ts_event || 0))
     .slice(0, limit)
