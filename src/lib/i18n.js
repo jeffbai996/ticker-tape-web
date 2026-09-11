@@ -527,6 +527,7 @@ const LABELS = {
   Solana: 'Solana', Dogecoin: '狗狗币', Movers: '异动榜', Analysts: '分析师',
   Gainers: '涨幅榜', Losers: '跌幅榜', 'Most active': '成交活跃',
   'Market movers': '市场异动', priced: '已报价', median: '中位数', spread: '区间',
+  'Stale quote': '报价已过时', 'Last quote': '最新报价', 'min ago': '分钟前', 'Quote time unavailable': '报价时间未知',
   'Move floor': '涨跌门槛', 'search movers': '搜索异动', 'No matching movers': '暂无匹配异动',
   'Watchlist breadth': '自选涨跌分布', 'volume / average': '成交量 / 均量',
   'Price targets': '目标价', 'Rec trend': '评级分布', 'Recent rating changes': '近期评级变动',
