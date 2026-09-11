@@ -11,3 +11,9 @@ const LABEL_CLASS = {
 export function extendedLabelClass(label) {
   return LABEL_CLASS[label] || 'text-ink-2'
 }
+
+export function extendedQuoteStale(quote, nowSec = Date.now() / 1000) {
+  const time = quote?.extMarketTime
+  return !Number.isFinite(time) || time <= 0 || nowSec - time >= 300
+    || time < (quote?.marketTime || 0)
+}

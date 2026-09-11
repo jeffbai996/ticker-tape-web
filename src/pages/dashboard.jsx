@@ -46,7 +46,7 @@ import { Empty, Loading } from '../components/Loading.jsx'
 import { ChartMount } from '../components/LazyChartMount.jsx'
 import { t as tt, tl } from '../lib/i18n.js'
 import { localName } from '../lib/zhNames.js'
-import { extendedLabelClass } from '../lib/extendedHours.js'
+import { extendedLabelClass, extendedQuoteStale } from '../lib/extendedHours.js'
 import { freshnessTitle, symbolFreshness } from '../lib/feedHealth.js'
 import { rememberDashboardLanding } from '../lib/dashboardLanding.js'
 import {
@@ -285,6 +285,16 @@ export function TuiRow({ symbol, data, earnDays, onRemove = () => {}, selecting,
                    intradayBars = null, revealed = false, onReveal,
                    dragScope = null, dragging = false, drag = null }) {
   const q = data?.quote
+  const [quoteClock, setQuoteClock] = useState(() => Date.now() / 1000)
+  useEffect(() => {
+    if (!q?.extLabel) return
+    const timer = setInterval(() => setQuoteClock(Date.now() / 1000), 30_000)
+    return () => clearInterval(timer)
+  }, [q?.extLabel])
+  const extStale = extendedQuoteStale(q, Math.max(quoteClock, Date.now() / 1000))
+  const extTitle = q?.extMarketTime > 0
+    ? `${extStale ? tl('Stale quote') : tl('Last quote')} · ${new Date(q.extMarketTime * 1000).toLocaleString()} · ${Math.max(0, Math.floor((Date.now() / 1000 - q.extMarketTime) / 60))} ${tl('min ago')}`
+    : tl('Quote time unavailable')
   const identityRef = useRef(null)
   const onIdentityTap = (e) => {
     // The compact layout itself owns this interaction. Once revealed, or
@@ -443,22 +453,23 @@ export function TuiRow({ symbol, data, earnDays, onRemove = () => {}, selecting,
                   identity gutter is what yields. */}
               {q?.extLabel && q.extPrice != null ? (
                 <span class="whitespace-nowrap text-[11px] max-sm:text-[10px] shrink-0 max-sm:ml-auto max-sm:min-w-[6.2rem] @min-[545px]:min-w-(--col-ext) @min-[545px]:text-right">
-                  <span data-col="ext" class="inline-block whitespace-nowrap">
+                  <span data-col="ext" class="inline-block whitespace-nowrap" title={extTitle} aria-label={extTitle}>
                   {/* only the PERCENT drops a weight tier (Jeff 2026-08-06);
                       the extended price keeps its weight and runs a size
                       bigger than the tag beside it — it's the figure you read,
                       the tag and the % are its annotations */}
-                  <span class={`font-semibold ${extendedLabelClass(q.extLabel)}`}>{q.extLabel}</span>{' '}
+                  <span class={`font-semibold ${extStale ? 'text-muted' : extendedLabelClass(q.extLabel)}`}>{q.extLabel}</span>{' '}
                   {/* Flash restored 2026-08-11: it was stripped mid-shimmer-hunt
                       as a suspect, but the dimming was the dither re-roll on
                       .board-control (fixed by layer promotion) — the flash was
                       collateral. Off-hours the ext print is the only live
                       number on the row; without its flash the board reads
                       dead (Jeff: "lost its price change red green animation"). */}
-                  <span class="text-ink-2 font-semibold text-[12px] max-sm:text-[11px]"><BigPrice v={q.extPrice} fmt={fmtPriceBare} /></span>{' '}
-                  <span class={`font-normal ${extUp ? 'text-up' : 'text-down'}`}>
+                  <span class={`${extStale ? 'text-muted' : 'text-ink-2'} font-semibold text-[12px] max-sm:text-[11px]`}>{extStale ? fmtPriceBare(q.extPrice) : <BigPrice v={q.extPrice} fmt={fmtPriceBare} />}</span>{' '}
+                  <span class={`font-normal ${extStale ? 'text-muted' : extUp ? 'text-up' : 'text-down'}`}>
                     {extUp ? '▲' : '▼'}{fmtPctPlain(Math.abs(q.extPct ?? 0))}
                   </span>
+                  {extStale && <span class="text-muted ml-1" aria-hidden="true">◷</span>}
                   </span>
                 </span>
               ) : (

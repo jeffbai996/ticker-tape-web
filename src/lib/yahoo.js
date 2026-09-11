@@ -40,7 +40,8 @@ export function quoteFromV7(row, now = new Date()) {
   // Extended hours: post-market after the close, pre-market before the open.
   let ext = {}
   if (row?.preMarketPrice != null && (row?.marketState === 'PRE' || row?.marketState === 'PREPRE')) {
-    ext = { extLabel: 'PM', extPrice: row.preMarketPrice, extPct: row.preMarketChangePercent ?? null }
+    ext = { extLabel: 'PM', extPrice: row.preMarketPrice, extPct: row.preMarketChangePercent ?? null,
+            extMarketTime: row.preMarketTime ?? null }
   // PREPRE is the dead zone between the 8pm ET after-hours close and the 4am
   // pre-market open: Yahoo has already flipped the state but preMarketPrice is
   // still null, so without PREPRE here every AH print vanished overnight
@@ -54,7 +55,8 @@ export function quoteFromV7(row, now = new Date()) {
     // session; live ticks only move the number.
     ext = { extLabel: isOvernight(now) ? 'ON' : 'AH',
             extPrice: row.postMarketPrice,
-            extPct: row.postMarketChangePercent ?? null }
+            extPct: row.postMarketChangePercent ?? null,
+            extMarketTime: row.postMarketTime ?? null }
   }
 
   return {
@@ -105,7 +107,7 @@ export function quoteFromStream(tick, previous = {}) {
       extPrice: tick.price,
       extPct: tick.changePercent ?? previous.extPct ?? null,
       extChange: tick.change ?? previous.extChange ?? null,
-      extMarketTime: marketTime,
+      extMarketTime: tick.time != null ? Math.floor(tick.time / 1000) : null,
     }
   }
 
@@ -135,7 +137,7 @@ export function quoteFromStream(tick, previous = {}) {
 
 /** A streamed extended-session print carries its own event time; v7 has no
  *  overnight field at all, so its postMarketPrice is the frozen 20:00 close
- *  with no event time to judge it by. Overnight the tape is thin enough that
+ *  with its original postMarketTime. Overnight the tape is thin enough that
  *  most rows go quiet past STREAM_FRESH_MS, and without this the 30s batch
  *  dragged every silent row back to the close in one synchronized step, then
  *  the next tick jumped it forward again. Session naming stays the batch's
