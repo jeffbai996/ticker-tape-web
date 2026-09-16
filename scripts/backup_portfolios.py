@@ -294,11 +294,15 @@ def run(url: str, directory: Path) -> int:
     prev_path, prev = latest(directory)
     drop = drop_alert(prev, data)
     if drop:
-        msg = (f"🚨 family portfolio book shrank between backups: {drop} "
-               f"(rev {rev}, last copy {prev_path.name if prev_path else '-'}). "
-               f"Restore: worker /portfolios/history → /portfolios/restore.")
-        log.warning(msg)
-        alert(msg)
+        # Logged, not pinged (Jeff 2026-09-16: "kill the portfolio backup
+        # alert, dont think we need it now that we keep backups"). A shrink is
+        # normal position management far more often than it is a mistake, and
+        # changes.log now records exactly which holding moved, so the ping was
+        # interrupting to say something the log already says better.
+        # The pull-failure alert above STAYS: that one means no backup happened
+        # at all, which no amount of retention tells you about.
+        log.warning("book shrank: %s (rev %s, last copy %s)", drop, rev,
+                    prev_path.name if prev_path else "-")
     if should_write(prev, data):
         stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
         path = directory / f"{stamp}-rev{rev}.json"
