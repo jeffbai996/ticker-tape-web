@@ -32,15 +32,26 @@ from urllib.error import URLError
 from urllib.request import Request, urlopen
 
 DEFAULT_URL = "https://yf-proxy.2phakhvpgh.workers.dev/portfolios"
-DEFAULT_DIR = Path.home() / "local-projects" / "ttw-backups" / "portfolios"
+# Off the Intel. ~/local-projects rides the WSL root vhdx, which lives on C:,
+# the QLC drive with the write budget; /mnt/wsl-storage is the Toshiba vdisk
+# that exists for exactly this kind of churn (Jeff 2026-09-16). The volume is
+# trivial either way -- ~136 KB/day -- so this is about not putting new writes
+# on that drive by default, not about relieving pressure. TTW_BACKUP_DIR still
+# wins, and the old path is read for copies written before the move.
+DEFAULT_DIR = Path("/mnt/wsl-storage/ttw-backups/portfolios")
+LEGACY_DIR = Path.home() / "local-projects" / "ttw-backups" / "portfolios"
 # Copies are only written when the book actually changes and run ~34 KB each,
 # so KEEP is a count that buys a wildly variable window: 50 bought 12 days at
-# the 2026-09 edit rate. A holding removed by another family member can sit
-# unnoticed across a holiday, which is exactly the case this exists for, so
-# retention is a TIME window now and the count is only a floor under it
-# (2026-09-16, after 000630.SZ left the Gordon book unnoticed for two days).
-KEEP = 50
-KEEP_DAYS = 180
+# the 2026-09 edit rate. Retention is a TIME window now, with the count only a
+# floor under it. 30 days because a wrong book gets reported long before then
+# (Jeff 2026-09-16); the worker's own 30-revision ring is the restore source,
+# these copies are the paper trail that says which revision to restore.
+# The floor exists so a quiet stretch cannot empty the directory, and it must
+# only ever keep MORE than the window, never fewer. At 10 it is a safety net
+# under a slow month; at 50 it was the binding constraint against a 30-day
+# window and would have quietly given a shorter retention than asked for.
+KEEP = 10
+KEEP_DAYS = 30
 CHANGE_LOG = "changes.log"
 log = logging.getLogger("ttw-backup")
 
@@ -212,7 +223,7 @@ def secure_runtime(directory: Path) -> None:
     """
     directory.mkdir(parents=True, exist_ok=True, mode=0o700)
     directory.chmod(0o700)
-    if directory == DEFAULT_DIR:
+    if directory in (DEFAULT_DIR, LEGACY_DIR):
         directory.parent.chmod(0o700)
         log_path = directory.parent / "backup.log"
         if log_path.exists():
@@ -323,13 +334,21 @@ def selftest() -> int:
     # Retention is a window with a count as its floor. Names that are not
     # stamped copies are never proposed for deletion.
     stamped = lambda day, n: f"2026{day:04}T120000Z-rev{n}.json"
-    old = [stamped(101 + i, i) for i in range(60)]          # 2026-01-01 onward
-    assert prune(old, today="20260901") == old[:10]         # all but the newest 50
-    assert prune(old, today="20260301") == []               # inside the window
-    assert prune([f"{i:03}" for i in range(52)]) == []      # unstamped: left alone
+    old = [stamped(101 + i, i) for i in range(28)]           # 2026-01-01 onward
+    # Everything is far outside a 30-day window, so only the floor survives.
+    assert len(old) - len(prune(old, today="20260901")) == KEEP
+    assert prune(old, today="20260102") == []                # inside the window
+    assert prune([f"{i:03}" for i in range(52)]) == []       # unstamped: untouched
     assert prune(["a", "b"]) == []
-    fresh = [stamped(901 + i, i) for i in range(60)]
-    assert prune(fresh, today="20260916") == []             # recent, nothing due
+
+    # The window decides; the floor only ever keeps MORE. With a copy a day for
+    # 40 days, a 30-day window keeps ~30 -- comfortably above the floor, and the
+    # floor must not drag that number down.
+    daily = [stamped(801 + i, i) for i in range(28)]         # 2026-08-01..08-28
+    kept = sorted(set(daily) - set(prune(daily, today="20260820")))
+    assert len(kept) > KEEP and kept[0][:8] >= "20260721", kept[:3]
+    # A short window never keeps fewer than the floor.
+    assert len(daily) - len(prune(daily, keep_days=1, today="20261231")) == KEEP
 
     # describe_change names the holding, which is the whole point of the log.
     one = {"portfolios": [{"id": "p1", "name": "Gordon", "holdings": [
