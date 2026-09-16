@@ -289,7 +289,10 @@ def run(url: str, directory: Path) -> int:
         rev, data = pull(url, bearer)
     except (URLError, OSError, ValueError, RuntimeError) as exc:
         log.error("pull failed: %s", exc)
-        alert(f"⚠️ ttw portfolio backup: pull failed — {exc}")
+        # Names the project and the book so the ping is readable cold, and puts
+        # the reason on its own line instead of trailing an em dash (Jeff
+        # 2026-09-16).
+        alert(f"⚠️ ticker-tape-web (Gordon) backup: pull failed\n{exc}")
         return 1
     prev_path, prev = latest(directory)
     drop = drop_alert(prev, data)
