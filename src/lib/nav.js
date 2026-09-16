@@ -49,7 +49,7 @@ export const NAV = [
       { id: 'account', label: 'Account' },
       { id: 'sizing', label: 'Sizing' },
       { id: 'carry', label: 'Carry' },
-      { id: 'cockpit', label: 'Cockpit' },
+      { id: 'cockpit', label: 'Risk' },
       { id: 'whatif', label: 'What-if' },
       { id: 'trades', label: 'Trades' },
       { id: 'timetravel', label: 'Time travel' },
@@ -89,6 +89,8 @@ if (PRIVATE_BUILD) {
   // (Jeff 2026-08-22: "bunch of these new features don't work on our copy")
   const portfolio = NAV.find((s) => s.id === 'portfolio')
   portfolio.subs = portfolio.subs.filter((sub) => !['ledger', 'performance'].includes(sub.id))
+  const manual = portfolio.subs.find((sub) => sub.id === 'mine')
+  if (manual) manual.label = 'Manual'
 }
 if (FAMILY_BUILD) NAV.splice(NAV.findIndex((s) => s.id === 'brief'), 1)
 if (FAMILY_BUILD) {
