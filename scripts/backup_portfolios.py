@@ -19,6 +19,7 @@ Endpoint and token: TTW_SYNC_URL (default public worker) and TTW_SYNC_TOKEN
 from __future__ import annotations
 
 import argparse
+import datetime
 import json
 import logging
 import os
@@ -32,7 +33,15 @@ from urllib.request import Request, urlopen
 
 DEFAULT_URL = "https://yf-proxy.2phakhvpgh.workers.dev/portfolios"
 DEFAULT_DIR = Path.home() / "local-projects" / "ttw-backups" / "portfolios"
+# Copies are only written when the book actually changes and run ~34 KB each,
+# so KEEP is a count that buys a wildly variable window: 50 bought 12 days at
+# the 2026-09 edit rate. A holding removed by another family member can sit
+# unnoticed across a holiday, which is exactly the case this exists for, so
+# retention is a TIME window now and the count is only a floor under it
+# (2026-09-16, after 000630.SZ left the Gordon book unnoticed for two days).
 KEEP = 50
+KEEP_DAYS = 180
+CHANGE_LOG = "changes.log"
 log = logging.getLogger("ttw-backup")
 
 
@@ -65,9 +74,68 @@ def drop_alert(prev_data: dict | None, new_data: dict | None) -> str:
     return ""
 
 
-def prune(names: list[str], keep: int = KEEP) -> list[str]:
-    """Which copies to delete: everything beyond the newest `keep`."""
-    return sorted(names)[:-keep] if len(names) > keep else []
+def _holdings(doc: dict | None) -> dict:
+    """{portfolio label: {symbol: shares}} — the shape a human reads."""
+    out: dict[str, dict] = {}
+    for book in (doc or {}).get("portfolios") or []:
+        label = book.get("name") or book.get("id") or "?"
+        rows: dict[str, float] = {}
+        for h in book.get("holdings") or []:
+            sym = h.get("symbol") or h.get("ticker") or "?"
+            rows[sym] = h.get("shares") or h.get("qty") or 0
+        out[label] = rows
+    return out
+
+
+def describe_change(prev_data: dict | None, new_data: dict | None) -> list[str]:
+    """One line per added/removed/resized holding, and per added/removed book.
+
+    The counts in the alert say something shrank; these say WHAT, so a restore
+    does not start with diffing two 39 KB JSON files by hand.
+    """
+    if prev_data is None:
+        return []
+    before, after = _holdings(prev_data), _holdings(new_data)
+    lines = []
+    for label in sorted(set(before) | set(after)):
+        if label not in after:
+            lines.append(f"portfolio removed: {label} ({len(before[label])} holdings)")
+            continue
+        if label not in before:
+            lines.append(f"portfolio added: {label} ({len(after[label])} holdings)")
+            continue
+        a, b = before[label], after[label]
+        for sym in sorted(set(a) - set(b)):
+            lines.append(f"{label}: removed {sym} ({a[sym]:g} shares)")
+        for sym in sorted(set(b) - set(a)):
+            lines.append(f"{label}: added {sym} ({b[sym]:g} shares)")
+        for sym in sorted(set(a) & set(b)):
+            if a[sym] != b[sym]:
+                lines.append(f"{label}: {sym} {a[sym]:g} -> {b[sym]:g} shares")
+    return lines
+
+
+def _stamp_of(name: str) -> str:
+    """The YYYYMMDD prefix of a copy's filename, or '' if it is not one."""
+    return name[:8] if len(name) > 8 and name[:8].isdigit() else ""
+
+
+def prune(names: list[str], keep: int = KEEP, keep_days: int = KEEP_DAYS,
+          today: str | None = None) -> list[str]:
+    """Which copies to delete: older than `keep_days`, but never the newest
+    `keep`. The count is a floor so a quiet month cannot empty the directory,
+    and the window is what actually decides -- a delete nobody noticed for a
+    season is still restorable.
+    """
+    ordered = sorted(names)
+    if len(ordered) <= keep:
+        return []
+    today = today or time.strftime("%Y%m%d", time.gmtime())
+    cutoff = (datetime.datetime.strptime(today, "%Y%m%d")
+              - datetime.timedelta(days=keep_days)).strftime("%Y%m%d")
+    protected = set(ordered[-keep:])
+    return [n for n in ordered
+            if n not in protected and _stamp_of(n) and _stamp_of(n) < cutoff]
 
 
 # ── io ────────────────────────────────────────────────────────────────────
@@ -154,6 +222,30 @@ def secure_runtime(directory: Path) -> None:
             path.chmod(0o600)
 
 
+def append_changes(directory: Path, stamp: str, rev: int, lines: list[str]) -> None:
+    """Append this pull's changes to changes.log, 0600 like the copies.
+
+    It names symbols and share counts, so it is as sensitive as the books and
+    is created with the same mode rather than whatever umask happens to be.
+    """
+    if not lines:
+        return
+    path = directory / CHANGE_LOG
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+    try:
+        with os.fdopen(fd, "a", encoding="utf-8") as handle:
+            for line in lines:
+                handle.write(f"{stamp} rev{rev} {line}\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+    finally:
+        # A pre-existing log from a looser umask is tightened on every append.
+        try:
+            path.chmod(0o600)
+        except OSError:
+            pass
+
+
 def private_atomic_write(path: Path, text: str) -> None:
     """Create mode-0600 bytes before rename; never expose a permissive temp."""
     fd, temporary = tempfile.mkstemp(prefix=".tmp-", dir=path.parent)
@@ -199,6 +291,10 @@ def run(url: str, directory: Path) -> int:
     if should_write(prev, data):
         stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
         path = directory / f"{stamp}-rev{rev}.json"
+        # Append BEFORE the copy lands: if the write fails, the log still says
+        # what the pull saw, and a log line with no copy is a louder signal
+        # than a copy with no explanation.
+        append_changes(directory, stamp, rev, describe_change(prev, data))
         private_atomic_write(
             path,
             json.dumps({"rev": rev, "pulled": stamp, "counts": counts(data), "data": data},
@@ -224,8 +320,30 @@ def selftest() -> int:
     assert drop_alert(book(2, 3), book(1, 3)) == "portfolios 2 → 1"
     assert drop_alert(book(1, 5), book(1, 4)) == "holdings 5 → 4"
     assert drop_alert(book(1, 5), None) == "portfolios 1 → 0"
-    assert prune([f"{i:03}" for i in range(52)]) == ["000", "001"]
+    # Retention is a window with a count as its floor. Names that are not
+    # stamped copies are never proposed for deletion.
+    stamped = lambda day, n: f"2026{day:04}T120000Z-rev{n}.json"
+    old = [stamped(101 + i, i) for i in range(60)]          # 2026-01-01 onward
+    assert prune(old, today="20260901") == old[:10]         # all but the newest 50
+    assert prune(old, today="20260301") == []               # inside the window
+    assert prune([f"{i:03}" for i in range(52)]) == []      # unstamped: left alone
     assert prune(["a", "b"]) == []
+    fresh = [stamped(901 + i, i) for i in range(60)]
+    assert prune(fresh, today="20260916") == []             # recent, nothing due
+
+    # describe_change names the holding, which is the whole point of the log.
+    one = {"portfolios": [{"id": "p1", "name": "Gordon", "holdings": [
+        {"symbol": "AAPL", "shares": 10}, {"symbol": "MSFT", "shares": 5}]}]}
+    gone = {"portfolios": [{"id": "p1", "name": "Gordon", "holdings": [
+        {"symbol": "AAPL", "shares": 10}]}]}
+    grew = {"portfolios": [{"id": "p1", "name": "Gordon", "holdings": [
+        {"symbol": "AAPL", "shares": 12}, {"symbol": "MSFT", "shares": 5}]}]}
+    assert describe_change(None, one) == []
+    assert describe_change(one, one) == []
+    assert describe_change(one, gone) == ["Gordon: removed MSFT (5 shares)"]
+    assert describe_change(gone, one) == ["Gordon: added MSFT (5 shares)"]
+    assert describe_change(one, grew) == ["Gordon: AAPL 10 -> 12 shares"]
+    assert describe_change(one, {"portfolios": []}) == ["portfolio removed: Gordon (2 holdings)"]
     with tempfile.TemporaryDirectory() as root:
         directory = Path(root) / "backups" / "portfolios"
         old_umask = os.umask(0)
@@ -233,11 +351,23 @@ def selftest() -> int:
             secure_runtime(directory)
             output = directory / "sample.json"
             private_atomic_write(output, '{"private":true}')
+            # Written under umask 0 on purpose: the log must get 0600 from the
+            # open mode, not from a umask that happens to be tight.
+            append_changes(directory, "20260916T120000Z", 9,
+                           ["Gordon: removed MSFT (5 shares)"])
+            append_changes(directory, "20260916T130000Z", 10, [])
         finally:
             os.umask(old_umask)
         assert stat.S_IMODE(directory.stat().st_mode) == 0o700
         assert stat.S_IMODE(output.stat().st_mode) == 0o600
         assert not list(directory.glob(".tmp-*"))
+        changes = directory / CHANGE_LOG
+        assert stat.S_IMODE(changes.stat().st_mode) == 0o600
+        # The empty append wrote nothing; one change is one line.
+        assert changes.read_text().splitlines() == [
+            "20260916T120000Z rev9 Gordon: removed MSFT (5 shares)"]
+        # The log is not a copy and must survive pruning.
+        assert prune([p.name for p in directory.glob("*.json")], today="20270101") == []
     print("selftest ok")
     return 0
 
