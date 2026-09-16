@@ -754,7 +754,7 @@ function SummaryStrip({ portfolio, quotes, rates, ccys, fxLive, bench }) {
                       <span key={v} class="inline-flex items-center gap-1 whitespace-nowrap">
                         <span class={`inline-block h-1.5 w-1.5 rounded-full ${ss.state === 'open' ? 'bg-up' : ss.state === 'closed' ? 'bg-muted/50' : 'bg-accent'}`} />
                         <span class="text-ink-2">{tl(VENUE_SHORT[v])}</span>
-                        <span class={sessionTone[ss.state]}>{tl(`market ${ss.state}`)}{ss.opensAt ? ` ${ss.opensAt}` : ''}</span>
+                        <span class={sessionTone[ss.state]}>{tl(ss.state === 'closed' ? 'closed' : `market ${ss.state}`)}{ss.opensAt ? ` ${ss.opensAt}` : ''}</span>
                       </span>
                     )
                   })}
