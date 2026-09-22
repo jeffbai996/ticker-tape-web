@@ -89,6 +89,7 @@
    controls, so the page reads as part of the terminal rather than a form
    dropped into it (Jeff 2026-09-22). */
 .settings-panel { break-inside: avoid; margin-bottom: 12px; }
+.wire-article-window::backdrop { background: rgba(0, 0, 0, .7); }
 .settings-row {
   display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
   min-height: 26px; padding: 3px 12px; border-bottom: 1px solid var(--color-line);

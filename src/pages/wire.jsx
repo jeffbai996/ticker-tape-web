@@ -145,7 +145,11 @@ const TIER_EDGE = {
  *  the fetching/extraction server-side (fast=1: text now, no summarizer).
  *  Only fires on wire events that have a URL but shipped no body. */
 function ReadBody({ ev }) {
-  const [attempt, setAttempt] = useState(0)
+  const [attempt, setAttempt] = useState(() => {
+    let host = ''
+    try { host = new URL(ev.url).hostname } catch { /* no readable URL */ }
+    return /(^|\.)(bloomberg\.com|reuters\.com)$/.test(host) ? 0 : 1
+  })
   const [state, setState] = useState({ status: 'loading', paras: [] })
   useEffect(() => {
     if (!attempt) return
@@ -157,7 +161,7 @@ function ReadBody({ ev }) {
     // extractor behind it. Fall straight to the "open the page" line instead
     // of burning a request on a 404.
     if (isMirrorBase(base)) { setState({ status: 'empty', paras: [] }); return }
-    fetch(`${base.replace(/\/$/, '')}/api/read?id=${ev.id}&body=1${attempt > 1 ? '&refresh=1' : ''}`,
+    fetch(`${base.replace(/\/$/, '')}/api/read?id=${ev.id}&body=1&fast=1${attempt > 1 ? '&refresh=1' : ''}`,
       { signal: AbortSignal.timeout(20_000) })
       .then((r) => r.json())
       .then((out) => {
@@ -244,7 +248,34 @@ function CredPips({ ev, hot }) {
   )
 }
 
+function ArticleWindow({ ev, onClose }) {
+  const ref = useRef(null)
+  useEffect(() => {
+    ref.current?.showModal()
+  }, [])
+  const zh = getLocale() === 'zh'
+  return <dialog ref={ref} onCancel={(e) => { e.preventDefault(); onClose() }} onClick={(e) => e.stopPropagation()}
+    aria-label={evHeadline(ev, getLocale())}
+    class="wire-article-window fixed m-auto w-[min(900px,calc(100vw-24px))] max-h-[85dvh] p-0 border border-accent/60 bg-black text-ink">
+    <header class="sticky top-0 flex items-center justify-between gap-3 border-b border-accent/40 bg-surface-2 px-3 py-2 font-mono text-[11px]">
+      <span class="text-accent">FRAGWIRE · {zh ? '文章' : 'ARTICLE'}</span>
+      <button autoFocus onClick={onClose} aria-label={zh ? '关闭文章' : 'Close article'} class="border border-line-2 px-2 py-1 text-ink">×</button>
+    </header>
+    <article class="p-4 sm:p-6 select-text">
+      <h2 class="font-anth text-[19px] font-semibold leading-snug mb-3">{evHeadline(ev, getLocale())}</h2>
+      <div class="font-mono text-[11px] text-muted border-b border-line pb-3 mb-4 flex flex-wrap gap-3">
+        <span>{pubDisplayName(ev)}</span>
+        <span>{new Date(ev.ts_event * 1000).toLocaleString()}</span>
+        {ev.url && <a href={ev.url} target="_blank" rel="noopener" class="text-accent">{zh ? '打开来源' : 'Open source'} ↗</a>}
+      </div>
+      {evBody(ev, getLocale()) && <div class="font-anth text-[13px] leading-relaxed"><MdLite text={evBody(ev, getLocale())} /></div>}
+      {!ev.demo && ev.url && <ReadBody ev={ev} />}
+    </article>
+  </dialog>
+}
+
 function Row({ ev, hot, open, onToggle, tier = 0 }) {
+  const [readerOpen, setReaderOpen] = useState(false)
   const lat = ev.ts_seen - ev.ts_event
   const latTxt = lat > 0.5 && lat < 600 ? `+${lat.toFixed(1)}s` : ''
   const loc = getLocale()
@@ -258,7 +289,6 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
         hot ? 'duration-1000 bg-accent text-black border-l-transparent'
           : `duration-100 ${TIER_EDGE[tier] || 'border-l-transparent'} ${open ? 'bg-surface-1' : ''}`
       }`}
-      onClick={onToggle}
     >
       {/* Phone width: meta on line 1, headline unclipped on line 2 — a 10-char
           truncated headline defeats the point of a wire. */}
@@ -266,7 +296,7 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
             the widest string in view and sat hard against the right edge with
             the 1fr headline pushing it there, so it read as a wide empty column
             (Jeff 2026-08-07). 58px fits "+3m 11s" with a hair either side. */}
-      <div class="grid grid-cols-[64px_56px_36px_1fr_58px] max-sm:grid-cols-[64px_auto_auto_1fr] gap-x-2.5 items-baseline px-2.5 py-[3px] text-[12px] leading-[1.55]">
+      <div onClick={onToggle} class="grid grid-cols-[64px_56px_36px_1fr_58px] max-sm:grid-cols-[64px_auto_auto_1fr] gap-x-2.5 items-baseline px-2.5 py-[3px] text-[12px] leading-[1.55]">
         <span class={hot ? '' : 'text-muted'}>{rowTime(effectiveEventTime(ev))}</span>
         {(ev.symbols || []).length ? (
           <span class={`truncate ${hot ? 'font-semibold' : 'text-accent font-medium'}`}>
@@ -328,6 +358,7 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
       )}
       {open && !ev.live_call && (
         <div class="px-2.5 pb-2 mx-auto w-full max-w-[78ch]">
+          <button onClick={() => setReaderOpen(true)} class="my-2 border border-accent/40 px-2 py-1 font-mono text-[11px] text-accent">{loc === 'zh' ? '打开文章' : 'Open article'} ↗</button>
           <h3 class="font-anth font-semibold text-[15px] leading-snug text-ink pt-1.5 pb-1">{hl}</h3>
           {/* the byline: everything that used to hide in the footer, at the
               top where a reader decides whether to read — source spelled as a
@@ -370,6 +401,7 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
           {!ev.demo && ev.url && <ReadBody ev={ev} />}
         </div>
       )}
+      {readerOpen && <ArticleWindow ev={ev} onClose={() => setReaderOpen(false)} />}
     </div>
   )
 }
