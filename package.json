@@ -19,6 +19,7 @@
     "@tailwindcss/vite": "^4.2.2",
     "flag-icons": "^7.5.0",
     "lightweight-charts": "^5.1.0",
+    "linkedom": "^0.18.13",
     "preact": "^10.29.4",
     "tailwindcss": "^4.2.2",
     "vite": "^8.0.5"

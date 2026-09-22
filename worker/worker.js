@@ -9,6 +9,8 @@
 import { handleWatchlists } from './watchlists.js'
 import { handlePortfolios } from './portfolios.js'
 import { handleWire } from './wire.js'
+import { handleReader } from './reader.js'
+export { ReaderQuota } from './reader.js'
 import { handleFamilyView, withFamilyDocumentLog } from './security_log.js'
 export { CapDocCoordinator } from './capdoc.js'
 
@@ -49,6 +51,7 @@ export default {
     async fetch(request, env, ctx) {
         const url = new URL(request.url);
         const path = url.pathname;
+        if (path === '/wire/api/read') return handleReader(request, env);
 
         // Paid AI lives only behind the private tailnet service. The public
         // market-data Worker must never grow a second, unauthenticated route.

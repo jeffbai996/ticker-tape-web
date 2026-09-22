@@ -45,12 +45,18 @@ release_prepare "$ROOT" "$SOURCE_SHA"
 release="$ROOT/dist-family-releases/$SOURCE_SHA-$(date +%Y%m%d-%H%M%S)-$$"
 mkdir -p "$release"
 chmod 0700 "$ROOT/dist-family-releases" "$release"
+reader_token=""
+if [[ -f "$HOME/.config/ttw/reader_token" ]]; then
+  read -r reader_token < "$HOME/.config/ttw/reader_token"
+fi
 VITE_FAMILY_BUILD=1 \
 VITE_SYNC_CAPABILITY="$sync_token" \
+VITE_READER_CAPABILITY="$reader_token" \
 TTW_BASE=/tape-fmnco7yjx6/ \
 TTW_OUT_DIR="$release" \
   npm run build
 unset sync_token
+unset reader_token
 
 install -d -m 0700 "$release/fonts"
 install -m 0600 "$FONT_FILE" "$release/fonts/AnthropicSansVariable-TextRegular.woff2"
