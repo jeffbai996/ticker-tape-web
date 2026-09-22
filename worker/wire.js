@@ -4,7 +4,8 @@
 // headlines with their source links, nothing more.
 //
 // Everything stored arrives through validateWireSnapshot, which keeps only the
-// seven contract fields per event and drops anything else the pusher sends, so
+// seven required contract fields plus an optional allowlisted language tag;
+// anything else the pusher sends is dropped, so
 // no private field can leak into a public response by accident.
 
 export const WIRE_KEY = 'wire:public'
@@ -46,7 +47,8 @@ function cleanEvent(row) {
   if (!tag(row.headline, MAX_HEADLINE_CHARS) || !row.headline.trim()) return null
   if (!tag(row.url, MAX_URL_CHARS)) return null
   if (row.url && !/^https?:\/\//i.test(row.url)) return null
-  return {
+  if (row.language != null && !['en', 'zh'].includes(row.language)) return null
+  const clean = {
     id: row.id,
     ts: row.ts,
     ts_seen: row.ts_seen,
@@ -55,6 +57,8 @@ function cleanEvent(row) {
     headline: row.headline,
     url: row.url,
   }
+  if (row.language) clean.language = row.language
+  return clean
 }
 
 export function validateWireSnapshot(payload) {

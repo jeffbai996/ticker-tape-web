@@ -65,6 +65,14 @@ describe('wire snapshot validation', () => {
       .toEqual(['headline', 'id', 'source', 'ts', 'ts_seen', 'type', 'url'])
   })
 
+  it('keeps only the allowlisted source-language tag', () => {
+    const zh = validateWireSnapshot({ generated_at: 1, events: [ev(1, { language: 'zh' })] })
+    expect(zh.ok).toBe(true)
+    expect(zh.value.events[0].language).toBe('zh')
+    expect(validateWireSnapshot({ generated_at: 1, events: [ev(1, { language: 'fr' })] }).ok)
+      .toBe(false)
+  })
+
   it('rejects anything that is not the documented shape', () => {
     expect(validateWireSnapshot(null).ok).toBe(false)
     expect(validateWireSnapshot({ generated_at: 1, events: {} }).ok).toBe(false)
