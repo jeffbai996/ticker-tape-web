@@ -4,7 +4,7 @@ import {
   demoBackfill, demoEvent, demoToday, DEMO_SESSION_ROWS, rankEvents, collapseSessions, clusterStories,
   srcCred, evHeadline, evBody, matchesWireQuery, matchesWireRelevance,
   pubDisplayName, readMinutes, sortWireLatest, tierOfEvent, effectiveEventTime,
-  toggleWireArticle, isMirrorBase, mirrorAgeMinutes,
+  toggleWireArticle, isMirrorBase, mirrorAgeMinutes, eventLanguage,
 } from '../lib/wire.js'
 import { IS_FAMILY_BUILD, IS_PRIVATE_BUILD } from '../lib/nav.js'
 import { prefetchSymbol } from '../lib/history.js'
@@ -540,6 +540,7 @@ export function Wire({ route }) {
   const [tierFilters, setTierFiltersRaw] = useState(savedTierFilters)
   const [thesisOnly, setThesisOnlyRaw] = useState(() => localStorage.getItem('tape-wire-thesis-only') === '1')
   const [primeOnly, setPrimeOnlyRaw] = useState(() => localStorage.getItem('tape-wire-prime-only') === '1')
+  const [showZhSources, setShowZhSourcesRaw] = useState(() => localStorage.getItem('tape-wire-zh-sources') === '1')
   // rail off = full-width reading; sticky, it's a layout preference
   const [rail, setRail] = useState(() => localStorage.getItem('tape-wire-rail') !== '0')
   const [state, setState] = useState('demo')   // demo | connecting | live | mirror | error
@@ -593,6 +594,10 @@ export function Wire({ route }) {
   const setPrimeOnly = (on) => {
     setPrimeOnlyRaw(on)
     localStorage.setItem('tape-wire-prime-only', on ? '1' : '0')
+  }
+  const setShowZhSources = (on) => {
+    setShowZhSourcesRaw(on)
+    localStorage.setItem('tape-wire-zh-sources', on ? '1' : '0')
   }
 
   useEscape(() => setOpenIds(new Set()), openIds.size > 0)
@@ -794,6 +799,7 @@ export function Wire({ route }) {
   // a session card answers for its audio contents on the type filter
   const typeOf = (ev) => (ev.type === 'live_call' ? 'digest' : ev.type)
   const filtered = clusterStories(collapseSessions(events, now), now)
+    .filter((ev) => showZhSources || eventLanguage(ev) !== 'zh')
     .filter((ev) => !wanted || wanted.includes(typeOf(ev)) || wanted.includes(ev.type))
     .filter((ev) => matchesWireQuery(ev, query, getLocale()))
     .filter((ev) => matchesWireRelevance(ev, watchset, {
@@ -838,6 +844,7 @@ export function Wire({ route }) {
       setTierFiltersRaw(new Set())
       setThesisOnly(false)
       setPrimeOnly(false)
+      if (eventLanguage(events.find((ev) => ev.id === targetId)) === 'zh') setShowZhSources(true)
       localStorage.setItem('tape-wire-tier-filters', '[]')
       setMode('wire')
       localStorage.setItem('tape-wire-mode', 'wire')
@@ -986,6 +993,13 @@ export function Wire({ route }) {
             {tl(f.label)}
           </button>
         ))}
+        <button data-zh-sources-filter onClick={() => setShowZhSources(!showZhSources)}
+          title={tl('show official Chinese-language sources')}
+          class={`border rounded-md px-2.5 py-0.5 text-[11px] font-semibold transition-colors ${
+            showZhSources
+              ? 'bg-accent border-accent text-black'
+              : 'border-line text-ink-2 hover:text-ink'
+          }`}>中文源</button>
         <span aria-hidden="true" class="h-4 w-px bg-line mx-0.5" />
         {[1, 2, 3].map((tier) => (
           <button key={tier} data-tier-filter={tier}

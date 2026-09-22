@@ -70,6 +70,12 @@ describe('wire workbench sizing', () => {
     expect(src).toContain('{!IS_PRIVATE_BUILD && !IS_FAMILY_BUILD && (')
   })
 
+  it('offers an opt-in official Chinese-source filter', () => {
+    expect(src).toContain('data-zh-sources-filter')
+    expect(src).toContain("localStorage.setItem('tape-wire-zh-sources'")
+    expect(src).toContain("showZhSources || eventLanguage(ev) !== 'zh'")
+  })
+
   it('renders generated event bodies instead of leaking markdown markers', () => {
     expect(src).toContain("import { MdLite } from '../components/AiReport.jsx'")
     expect(src).toContain('data-wire-rich-body')

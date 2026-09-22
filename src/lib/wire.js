@@ -499,6 +499,12 @@ export function evBody(ev, locale) {
   return (ev.meta || {}).body_zh || ev.body
 }
 
+/** Source language is explicit when Fragwire knows it. The public mirror
+ *  carries the same allowlisted tag at top level instead of exposing meta. */
+export function eventLanguage(ev) {
+  return String(ev?.language || ev?.meta?.language || '').toLowerCase()
+}
+
 export const TYPE_WEIGHT = {
   earnings_release: 100, macro_print: 85, fed_headline: 75, fed_speech: 70,
   live_call: 90, digest: 60, filing: 55, headline: 40, transcript_chunk: 12,

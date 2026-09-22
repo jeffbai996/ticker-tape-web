@@ -763,6 +763,7 @@ const LABELS = {
   top: '精选', wire: '时间线', 'demo wire — synthetic events': '模拟快讯 — 合成事件', 'your wire URL (optional)': '你的 wire 地址（可选）', connecting: '连接中', error: '错误',
   priority: '优先', latest: '最新', thesis: '逻辑', prime: '权威源',
   'only thesis-tagged stories': '仅显示逻辑相关事件', 'top-tier sources only': '仅显示权威来源',
+  'show official Chinese-language sources': '显示中文官方来源',
   'push watchlist → wire': '同步自选股 → 快讯', connect: '连接', all: '全部',
   'exported ✓': '已导出 ✓', 'export failed': '导出失败', rename: '重命名',
   rail: '侧栏', 'rail ⨯': '侧栏 ⨯', 'wire connection': '快讯连接',
