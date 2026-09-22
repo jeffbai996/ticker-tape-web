@@ -527,18 +527,25 @@ export function effectiveEventTime(ev, now = Date.now() / 1000) {
 
 export function sortWireLatest(events, now = Date.now() / 1000) {
   return events.slice().sort((a, b) =>
-    (b.is_live ? 1 : 0) - (a.is_live ? 1 : 0)
-    || effectiveEventTime(b, now) - effectiveEventTime(a, now)
+    effectiveEventTime(b, now) - effectiveEventTime(a, now)
     || b.id - a.id)
+}
+
+// Versioned preference: the former implicit Priority default must not carry
+// forward as though the reader explicitly chose a ranked feed.
+export const WIRE_ORDER_KEY = 'tape-wire-order-v2'
+export function loadWireOrder() {
+  try { return localStorage.getItem(WIRE_ORDER_KEY) === 'top' ? 'top' : 'wire' }
+  catch { return 'wire' }
+}
+export function saveWireOrder(value) {
+  try { localStorage.setItem(WIRE_ORDER_KEY, value === 'top' ? 'top' : 'wire') } catch { /* preference only */ }
 }
 
 export function tierOfEvent(ev, watchset) {
   // The public/family mirror intentionally omits Fragwire's private symbols
-  // and thesis metadata. Give those sanitized rows a useful starter tier
-  // without reconstructing or exporting the private relevance model: every
-  // headline is T1, first-rate sources are T2, and an exact ticker mention
-  // from the viewer's own watchlist is T3. A future family profile can replace
-  // this heuristic without changing the mirror contract.
+  // and thesis metadata. Only an exact watchlist ticker mention establishes
+  // relevance here. Source credibility is displayed separately by the bars.
   const minimalMirror = !Object.prototype.hasOwnProperty.call(ev, 'meta')
     && !Object.prototype.hasOwnProperty.call(ev, 'symbols')
   if (minimalMirror) {
@@ -549,7 +556,7 @@ export function tierOfEvent(ev, watchset) {
       const escaped = symbol.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
       if (new RegExp(`(^|[^A-Z0-9])${escaped}(?=$|[^A-Z0-9])`).test(headline)) return 3
     }
-    return srcCred(ev) >= 1.25 ? 2 : 1
+    return 0
   }
   const thesis = (ev.meta || {}).thesis || 0
   const onBook = (ev.symbols || []).some((symbol) => watchset.has(symbol))

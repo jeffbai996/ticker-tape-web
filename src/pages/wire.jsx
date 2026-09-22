@@ -4,7 +4,7 @@ import {
   demoBackfill, demoEvent, demoToday, DEMO_SESSION_ROWS, rankEvents, collapseSessions, clusterStories,
   srcCred, evHeadline, evBody, matchesWireQuery, matchesWireRelevance,
   pubDisplayName, readMinutes, sortWireLatest, tierOfEvent, effectiveEventTime,
-  toggleWireArticle, isMirrorBase, mirrorAgeMinutes, eventLanguage,
+  toggleWireArticle, isMirrorBase, mirrorAgeMinutes, eventLanguage, loadWireOrder, saveWireOrder,
 } from '../lib/wire.js'
 import { IS_FAMILY_BUILD, IS_PRIVATE_BUILD } from '../lib/nav.js'
 import { prefetchSymbol } from '../lib/history.js'
@@ -534,7 +534,7 @@ export function Wire({ route }) {
   const [openIds, setOpenIdsRaw] = useState(() => new Set(openStore))
   const [filter, setFilterRaw] = useState(() => localStorage.getItem('tape-wire-filter') || '')
   const [query, setQueryRaw] = useState(() => localStorage.getItem('tape-wire-filter-text') || '')
-  const [mode, setMode] = useState(() => localStorage.getItem('tape-wire-mode') || 'top')
+  const [mode, setMode] = useState(loadWireOrder)
   const [tierFilters, setTierFiltersRaw] = useState(savedTierFilters)
   const [thesisOnly, setThesisOnlyRaw] = useState(() => !IS_FAMILY_BUILD && localStorage.getItem('tape-wire-thesis-only') === '1')
   const [primeOnly, setPrimeOnlyRaw] = useState(() => localStorage.getItem('tape-wire-prime-only') === '1')
@@ -845,7 +845,7 @@ export function Wire({ route }) {
       if (eventLanguage(events.find((ev) => ev.id === targetId)) === 'zh') setShowZhSources(true)
       localStorage.setItem('tape-wire-tier-filters', '[]')
       setMode('wire')
-      localStorage.setItem('tape-wire-mode', 'wire')
+      saveWireOrder('wire')
       setOpenIds(new Set([targetId]))
       requestAnimationFrame(() => {
         document.getElementById(`ev-${targetId}`)
@@ -873,7 +873,7 @@ export function Wire({ route }) {
 
   const setModePersist = (m) => {
     setMode(m)
-    localStorage.setItem('tape-wire-mode', m)
+    saveWireOrder(m)
   }
 
   const stateTone = { demo: 'text-muted', connecting: 'text-muted', live: 'text-accent', error: 'text-down' }
@@ -915,14 +915,16 @@ export function Wire({ route }) {
           <span class="font-sans font-bold text-[14px] tracking-[-0.02em] text-ink group-hover/brand:text-accent transition-colors">fragwire</span>
         </a>
         <nav class="inline-flex border border-line rounded-lg overflow-hidden shrink-0">
-          {[['top', 'priority'], ['wire', 'latest']].map(([m, label]) => (
+          {[['wire', 'latest'], ['top', 'priority']].map(([m, label]) => (
             <button
               key={m}
+              aria-pressed={mode === m}
+              title={m === 'wire' ? (getLocale() === 'zh' ? '按时间排序 · 最新在前' : 'Time order · newest first') : (getLocale() === 'zh' ? '按重要性排序' : 'Ranked by importance')}
               class={`px-2.5 py-0.5 font-sans font-semibold text-[11px] whitespace-nowrap transition-colors ${
                 mode === m
                   ? m === 'wire' ? 'bg-[#30d158] text-black' : 'bg-accent text-black'
                   : 'text-ink-2 hover:text-ink'
-              } ${m === 'wire' ? 'border-l border-line' : ''}`}
+              } ${m === 'top' ? 'border-l border-line' : ''}`}
               onClick={() => setModePersist(m)}
             >
               {tl(label)}
