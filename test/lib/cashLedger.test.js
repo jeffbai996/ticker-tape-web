@@ -154,3 +154,36 @@ describe('legacy cash migration', () => {
     })
   })
 })
+
+
+describe('cash migration invariants across currencies and balances', () => {
+  for (const ccy of ['USD', 'CAD', 'HKD']) {
+    for (const amount of [0, -250.25, 12_345.67]) {
+      it(`preserves ${ccy} ${amount} through repeated migration and persistence`, () => {
+        localStorage.setItem('my_portfolios_v1', JSON.stringify([{
+          id: 'p1', name: 'Legacy', ccy, holdings: [],
+          cash: [{ ccy, amount }],
+          txns: [{ id: 'old', d: '2025-01-02', sym: 'AAPL', side: 'buy', qty: 100, px: 250, ccy }],
+        }]))
+        for (let retry = 0; retry < 10; retry++) {
+          const loaded = loadPortfolios()
+          expect(loaded[0].cash).toEqual([{ ccy, amount }])
+          expect(loaded[0].txns[0].affectsCash).toBeUndefined()
+          replacePortfolios(loaded)
+        }
+      })
+    }
+    it(`isolates trade settlement to its own book and ${ccy} cash account`, () => {
+      const first = createPortfolio('First', ccy)
+      const second = createPortfolio('Second', ccy)
+      setCash(first.id, ccy, 1000)
+      setCash(second.id, ccy, 1000)
+      const trade = addTxn(first.id, { d: '2026-08-23', sym: 'AAPL', side: 'buy', qty: 2, px: 100, fee: 1, ccy })
+      expect(balance(first.id, ccy)).toBe(799)
+      expect(balance(second.id, ccy)).toBe(1000)
+      removeTxn(first.id, trade.id)
+      expect(balance(first.id, ccy)).toBe(1000)
+      expect(balance(second.id, ccy)).toBe(1000)
+    })
+  }
+})

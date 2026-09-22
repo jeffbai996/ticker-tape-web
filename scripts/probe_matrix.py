@@ -204,7 +204,10 @@ def probe_view(browser, base: str, route: str, view: tuple[str, int, int],
     origin = origin_of(base)
     deadline = time.monotonic() + timeout
     started = time.monotonic()
-    page = browser.new_page(viewport={"width": w, "height": h})
+    # Page routing cannot intercept service-worker-owned requests. Private
+    # offline release checks must not send their capability to live services.
+    page = browser.new_page(viewport={"width": w, "height": h},
+                            service_workers="block" if offline else "allow")
     errors: list[dict] = []
     page.on("pageerror", lambda e: errors.append(
         {"kind": "pageerror", "text": str(e)[:200], "url": ""}))
@@ -214,7 +217,7 @@ def probe_view(browser, base: str, route: str, view: tuple[str, int, int],
     if offline:
         # Proves the gate survives a dead data provider: everything that is
         # not the build under test is refused.
-        page.route("**/*", lambda r: r.continue_() if r.request.url.startswith(origin)
+        page.route("**/*", lambda r: r.continue_() if origin_of(r.request.url) == origin
                    else r.abort())
     page.set_default_timeout(max(2000, int(min(20.0, timeout) * 1000)))
     record: dict = {"route": route, "view": name, "width": w, "height": h}

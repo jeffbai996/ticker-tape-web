@@ -11,14 +11,15 @@ operating guide for the current application, not a build roadmap.
 **This repo is PUBLIC. No real account data, real positions, real NLV/margin
 numbers, thesis names, or the owner's actual held tickers may ever appear in
 source, tests, fixtures, committed JSON, code comments, or runtime API responses
-— even transiently, even as an example.** Portfolio-shaped features run only on
+— even transiently, even as an example.** Public portfolio-shaped features run only on
 synthetic demo data and must remain clearly labeled "DEMO — NOT REAL POSITIONS"
 in the UI. Public market data on generic tickers such as AAPL, MSFT, GOOGL,
 AMZN, TSLA, SPY, and QQQ is fine.
 
 Corollaries:
 
-- No broker calls or broker credentials, client-side or Worker-side.
+- No broker calls or broker credentials in the public build or public Worker.
+  Private builds may render read-only broker data through the private service.
 - No trade-execution UI, including decorative controls.
 - API keys never enter browser storage or browser-served build variables. The
   public build does not issue AI requests; private AI stays behind Fragwire.
@@ -193,17 +194,17 @@ chat streams, and report generation from Fragwire; stale saved selections fall
 back to the first live registry entry. Browser-side tools remain read-only and
 no route exposes trading capabilities.
 
-The public family build uses `VITE_FAMILY_BUILD=1` as a presentation flag AND
-bakes the family bearer into the bundle via `VITE_SYNC_CAPABILITY` (CI secret).
-**This is an explicit owner decision (Jeff, 2026-08-21): zero-setup persistence
-on any family device outweighs keeping the bearer out of a public bundle for a
-family-grade book. Do not "fix" this again without his sign-off.** The value
-never appears in source — CI secret + household vault (`ttw.family_sync_token`)
-only. Transport stays hardened: Authorization bearer to the exact `/watchlists`
-and `/portfolios` routes, never in a URL; each document is coordinated by a
-Durable Object so revision check-and-write is serialized; KV is
-migration/write-through backup. The Worker accepts only the off-Git
-`FAMILY_SYNC_TOKEN` secret and returns 503 when it is not provisioned.
+Public Pages builds contain neither a family capability nor the family sync
+module. Family builds are separate artifacts on a separate origin; only that
+build reads the local capability secret. Never add secret-bearing build
+variables to the Pages workflow. The public origin purges legacy family
+portfolio residue before application initialization. Private broker views and
+family/manual books must remain isolated from the public demo. Architecture,
+residue, sync, and private-font tests enforce these boundaries.
+
+Capability transport uses an Authorization header to the exact allowlisted
+sync routes, never a URL. The Worker requires its separately provisioned secret
+and serializes revision checks and writes through a Durable Object.
 
 ## Commands and Deployment
 

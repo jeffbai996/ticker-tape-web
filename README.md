@@ -34,7 +34,7 @@ Personal project. See [LICENSE](LICENSE).
 - **Alerts** — price + technical (RSI / SMA cross / volume) alerts evaluated in-browser, with browser notifications
 - **Watchlists** — named lists next to the main one, with opt-in cloud sync: the browser pulls, merges locally, and pushes against the revision it read, so two devices reconcile without the server arbitrating
 - **AI surfaces** — public and private builds ship the same navigation. Publicly the **Briefing** / report controls and the multi-model chat workspace render as inert `PREVIEW` surfaces that never call a model; the private tailnet build activates them through its server-side router
-- **Demo portfolio** — clearly-marked synthetic positions exercising the account / sizing / carry / cockpit / what-if / thesis / timeline / backtest views
+- **Portfolios** — public synthetic demo views; separate private broker/account views and family/manual books with a FIFO trade ledger, cash journal, multi-currency valuation, and session-aware day P&L
 - **Wire** — a news-and-events board scored by event type × watched name × freshness, running on a synthetic public session, on the **public mirror** (a sanitized headline snapshot pushed to the Worker's `/wire/*` routes and read back read-only, with the snapshot age on screen), or on a user-supplied Fragwire-compatible endpoint
 - **Mobile** — bottom tab bar, spotlight-style inline search, and the `ticker>` console promoted to its own phone page (desktop keeps the floating drop-up)
 - **i18n** — EN / 中文 toggle, PWA-installable
@@ -53,7 +53,7 @@ Cloudflare Worker (worker/)
                         (single-flight refresh, survives 401 stampedes)
   /watchlists            Capability-authenticated family watchlist document
   /portfolios            Capability-authenticated family portfolio document
-                        (bearer stays in browser storage; never a URL/build value;
+                        (bearer is confined to the separate family artifact; never a URL;
                         per-document Durable Object serializes revisions)
   /wire/*               Public wire mirror: a sanitized headline snapshot is
                         PUSHed in and served back read-only. Every event is
@@ -129,9 +129,19 @@ also includes HTML-only fetches such as WeChat previews. Neither device IDs nor
 Origin headers are authentication; the bearer remains the machine credential.
 
 Build the separately hosted family bundle with
-`scripts/deploy_family.sh --build-only`. Publish it with `--deploy`; the script
+`scripts/deploy_family.sh --build-only FULL_SOURCE_SHA`. Publish it with
+`--deploy FULL_SOURCE_SHA`; the script
 reads the capability from `~/.config/ttw/sync_token`, validates it without
 printing it, and preserves the existing `ttw-family` Assets Worker routes.
+Both private release scripts require the full current HEAD SHA and a clean
+checkout, export only committed files, and run `npm ci`, full Vitest, production
+build, then the offline served responsive probe before publishing. Ignored
+`.env` files are excluded; the family capability is supplied only to the build.
+Each output carries `release.json` with its source SHA and an asset hash manifest.
+Use `npm run build:tailnet -- --build-only FULL_SOURCE_SHA` to validate a tailnet
+release, or `--deploy FULL_SOURCE_SHA` to swap its symlink after all gates pass.
+Build-only is the default; both commands still require the SHA argument. The previous
+tailnet releases retain the existing three-release rollback window.
 
 ## Constraints
 
