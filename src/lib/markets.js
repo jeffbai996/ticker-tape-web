@@ -236,12 +236,12 @@ export const SECTORS = [
  *  use, which is what keeps the zh side complete.
  */
 export const MARKET_DECK = [
-  { symbol: '^GSPC', label: 'S&P 500' },
-  { symbol: '^NDX', label: 'Nasdaq 100' },
-  { symbol: '^DJI', label: 'Dow Jones' },
-  { symbol: '^RUT', label: 'Russell 2000' },
-  { symbol: '^STOXX50E', label: 'Euro Stoxx 50' },
-  { symbol: '^N225', label: 'Nikkei 225' },
+  { symbol: '^GSPC', label: 'S&P 500', equityIndex: true },
+  { symbol: '^NDX', label: 'Nasdaq 100', equityIndex: true },
+  { symbol: '^DJI', label: 'Dow Jones', equityIndex: true },
+  { symbol: '^RUT', label: 'Russell 2000', equityIndex: true },
+  { symbol: '^STOXX50E', label: 'Euro Stoxx 50', equityIndex: true },
+  { symbol: '^N225', label: 'Nikkei 225', equityIndex: true },
   { symbol: '^VIX', label: 'VIX' },
   { symbol: 'HYG', label: 'US high yield' },
   { symbol: '^IRX', label: '3M Bill' },
