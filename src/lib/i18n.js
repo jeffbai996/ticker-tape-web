@@ -320,6 +320,7 @@ const STRINGS = {
 
 // Short labels keyed by English text. Absent key → English passthrough.
 const LABELS = {
+  Settings: '设置',
   // Archive row controls
   'download .md': '下载 .md',
   Both: '共同',

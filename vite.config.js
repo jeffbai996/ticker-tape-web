@@ -35,7 +35,7 @@ export function privateFontHtml(enabled) {
   font-display: swap;
   src: url("./fonts/AnthropicSansVariable-TextRegular.woff2") format("woff2");
 }
-:root { --font-sans: "Anthropic Sans", "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+:root { --font-sans: "Anthropic Sans", "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", system-ui, sans-serif; }
 </style>`
 }
 
