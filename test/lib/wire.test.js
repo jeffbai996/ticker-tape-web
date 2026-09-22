@@ -136,6 +136,20 @@ describe('wire ordering and relevance controls', () => {
     })
     expect(tierOfEvent(row, new Set(['AAPL']))).toBe(2)
   })
+
+  it('gives sanitized mirror rows useful tiers without private metadata', () => {
+    const mirror = (headline, url) => ({ type: 'headline', headline, url })
+    expect(tierOfEvent(mirror('Broad market update', 'https://example.com/a'),
+      new Set(['AAPL']))).toBe(1)
+    expect(tierOfEvent(mirror('Broad market update', 'https://reuters.com/a'),
+      new Set(['AAPL']))).toBe(2)
+    expect(tierOfEvent(mirror('AAPL supplier outlook improves', 'https://example.com/a'),
+      new Set(['AAPL']))).toBe(3)
+    expect(tierOfEvent(mirror('Pineapple demand improves', 'https://example.com/a'),
+      new Set(['AAPL']))).toBe(1)
+    expect(tierOfEvent(mirror('0700.HK publishes results', 'https://example.com/a'),
+      new Set(['0700.HK']))).toBe(3)
+  })
 })
 
 describe('demo rail data', () => {
