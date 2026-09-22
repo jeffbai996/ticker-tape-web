@@ -50,7 +50,7 @@ describe('wire workbench sizing', () => {
   })
 
   it('labels priority versus chronological ordering and exposes relevance filters', () => {
-    expect(src).toContain("[['top', 'priority'], ['wire', 'latest']]")
+    expect(src).toContain("[['wire', 'latest'], ['top', 'priority']]")
     expect(src).toContain('[1, 2, 3].map((tier) =>')
     expect(src).toContain('data-tier-filter={tier}')
     expect(src).toContain('data-thesis-filter')
@@ -59,7 +59,7 @@ describe('wire workbench sizing', () => {
     expect(src).toContain('w-[28px] h-[22px] shrink-0')
     expect(src).toContain('px-[6px] py-0')
     expect(src).toContain('<SourceSignal tier={1.25}')
-    expect(src).toContain("localStorage.setItem('tape-wire-mode', 'wire')")
+    expect(src).toContain("saveWireOrder('wire')")
   })
 
   it('keeps the family mirror inside tt-web', () => {

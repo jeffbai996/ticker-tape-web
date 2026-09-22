@@ -5,6 +5,7 @@ import { useNamedWatchlists } from '../hooks.js'
 import { pinnedDashboardLanding, pinDashboardLanding } from '../lib/dashboardLanding.js'
 import { BOOK_CARDS, hiddenCards, onCardsChange, resetCards, toggleCard } from '../lib/bookCards.js'
 import { getMarketColorOrder, saveMarketColorOrder, defaultMarketColorOrder } from '../lib/marketColors.js'
+import { loadWireOrder, saveWireOrder } from '../lib/wire.js'
 
 export function Settings() {
   const [locale, language] = useState(getLocale)
@@ -13,7 +14,7 @@ export function Settings() {
   const [landing, setLanding] = useState(() => pinnedDashboardLanding() || '')
   const [hidden, setHidden] = useState(hiddenCards)
   useEffect(() => onCardsChange(() => setHidden(hiddenCards())), [])
-  const [mode, setMode] = useState(() => localStorage.getItem('tape-wire-mode') || 'top')
+  const [mode, setMode] = useState(loadWireOrder)
   const [rail, setRail] = useState(() => localStorage.getItem('tape-wire-rail') !== '0')
   const [colors, color] = useState(getMarketColorOrder)
   const [chinese, sources] = useState(() => localStorage.getItem('tape-wire-zh-sources') === '1')
@@ -28,7 +29,7 @@ export function Settings() {
     changeSources(false)
     pinDashboardLanding(undefined); setLanding('')
     resetCards()
-    localStorage.removeItem('tape-wire-mode'); setMode('top')
+    saveWireOrder('wire'); setMode('wire')
     localStorage.removeItem('tape-wire-rail'); setRail(true)
   }
   const control = 'rounded-md border border-line-2 bg-surface-2 px-3 py-1.5 text-ink text-[12px] hover:border-accent/60 focus:border-accent outline-none'
@@ -63,7 +64,7 @@ export function Settings() {
     <h2 class={heading}>{label('Wire', '快讯')}</h2>
     <div class="flex items-center justify-between gap-4 py-4 border-b border-line">
       <label for="settings-wire-mode">{label('Feed order', '快讯排序')}</label>
-      <select id="settings-wire-mode" class={control} value={mode} onChange={(e) => { setMode(e.currentTarget.value); localStorage.setItem('tape-wire-mode', e.currentTarget.value) }}>
+      <select id="settings-wire-mode" class={control} value={mode} onChange={(e) => { setMode(e.currentTarget.value); saveWireOrder(e.currentTarget.value) }}>
         <option value="top">{label('Priority', '优先')}</option><option value="wire">{label('Latest', '最新')}</option>
       </select>
     </div>

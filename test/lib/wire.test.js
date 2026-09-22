@@ -115,6 +115,13 @@ describe('wire ordering and relevance controls', () => {
     expect(effectiveEventTime(future, now)).toBe(now - 30)
   })
 
+  it('keeps older live calls behind newer headlines in Latest', () => {
+    const rows = sortWireLatest([
+      event(1, now - 600, { is_live: true }), event(2, now - 10),
+    ], now)
+    expect(rows.map((row) => row.id)).toEqual([2, 1])
+  })
+
   it('combines exact tier selections and thesis/source gates', () => {
     const watchset = new Set(['AAPL'])
     const t1 = event(1, now, { meta: { thesis: 1 }, url: 'https://reuters.com/a' })
@@ -137,16 +144,16 @@ describe('wire ordering and relevance controls', () => {
     expect(tierOfEvent(row, new Set(['AAPL']))).toBe(2)
   })
 
-  it('gives sanitized mirror rows useful tiers without private metadata', () => {
+  it('does not confuse mirror source credibility with relevance tiers', () => {
     const mirror = (headline, url) => ({ type: 'headline', headline, url })
     expect(tierOfEvent(mirror('Broad market update', 'https://example.com/a'),
-      new Set(['AAPL']))).toBe(1)
+      new Set(['AAPL']))).toBe(0)
     expect(tierOfEvent(mirror('Broad market update', 'https://reuters.com/a'),
-      new Set(['AAPL']))).toBe(2)
+      new Set(['AAPL']))).toBe(0)
     expect(tierOfEvent(mirror('AAPL supplier outlook improves', 'https://example.com/a'),
       new Set(['AAPL']))).toBe(3)
     expect(tierOfEvent(mirror('Pineapple demand improves', 'https://example.com/a'),
-      new Set(['AAPL']))).toBe(1)
+      new Set(['AAPL']))).toBe(0)
     expect(tierOfEvent(mirror('0700.HK publishes results', 'https://example.com/a'),
       new Set(['0700.HK']))).toBe(3)
   })
