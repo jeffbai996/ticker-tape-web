@@ -326,7 +326,10 @@ export function Holdings({ portfolio, quotes, rates }) {
   const groups = !sorted ? venueGroups(holdRows) : null
   const groupLabel = { hk: tl('HK stocks'), cn: tl('A-shares'), other: tl('US & other') }
   const familySecondary = IS_FAMILY_BUILD ? 'text-[#aebccc]' : 'text-muted'
-  const familyValue = IS_FAMILY_BUILD ? 'text-[#dc8cff]' : 'text-ink'
+  // Market value / 金额 stays white in both profiles. It is the row's anchor;
+  // the family brokerage palette belongs on quantities, weights and movement,
+  // not on the actual money figure.
+  const valueTone = 'text-ink'
   const familyWeight = IS_FAMILY_BUILD ? 'text-[#63d6db]' : 'text-ink-2'
   const [collapsedByBook, setCollapsedByBook] = useState(() => {
     try { return JSON.parse(localStorage.getItem('my_portfolio_venue_collapse_v1')) || {} } catch { return {} }
@@ -377,7 +380,7 @@ export function Holdings({ portfolio, quotes, rates }) {
           ? <>{signed(r.dayPnlDisplay, ccy)} <span class="text-[10px] font-normal">({fmtPct(r.dayPct)})</span></>
           : r.dayPct != null ? fmtPct(r.dayPct) : '—'}
       </td>
-      <td class={`px-1.5 py-[2px] text-right font-semibold text-[12px] ${familyValue}`}>
+      <td class={`px-1.5 py-[2px] text-right font-semibold text-[12px] ${valueTone}`}>
         {r.valueDisplay != null ? fmtCcy(r.valueDisplay, ccy) : '—'}
       </td>
       <td class={`px-1.5 py-[2px] text-right font-medium ${familyWeight}`}>
@@ -432,7 +435,7 @@ export function Holdings({ portfolio, quotes, rates }) {
             ? <>{signed(displayed.dayPnl, subtotalCcy)} {subtotal.dayPct != null && <span class="text-[10px] font-normal">({fmtPct(subtotal.dayPct)})</span>}</>
             : '—'}
         </td>
-        <td class={`px-1.5 py-[4px] text-right font-semibold text-[12px] ${familyValue}`}>
+        <td class={`px-1.5 py-[4px] text-right font-semibold text-[12px] ${valueTone}`}>
           {displayed.value != null ? fmtCcy(displayed.value, subtotalCcy) : '—'}
         </td>
         <td class={`px-1.5 py-[4px] text-right ${familyWeight}`}>
@@ -463,7 +466,7 @@ export function Holdings({ portfolio, quotes, rates }) {
             {th('cost', tl('Avg cost'), 'pl-1.5 pr-2.5 py-1.5 text-right')}
             {th('price', tl('Price'), 'px-1.5 py-1.5 text-right')}
             {th('day', tl('Day'), 'px-1.5 py-1.5 text-right')}
-            {th('value', `${tl('Value')} (${ccy})`, 'px-1.5 py-1.5 text-right')}
+            {th('value', `${tl('Value')} (${ccy})`, 'px-1.5 py-1.5 text-right text-ink')}
             {th('weight', tl('Weight'), 'px-1.5 py-1.5 text-right')}
             {th('unreal', tl('Unreal P&L'), 'px-1.5 py-1.5 text-right')}
             <th class="px-1.5 py-1.5" aria-hidden="true" />
@@ -508,7 +511,7 @@ export function Holdings({ portfolio, quotes, rates }) {
               <td class="px-1.5 py-[2px] text-right text-muted">—</td>
               <td class="px-1.5 py-[2px] text-right text-muted">—</td>
               <td class="px-1.5 py-[2px] text-right text-muted">—</td>
-              <td class={`px-1.5 py-[2px] text-right font-semibold text-[12px] ${familyValue}`}>
+              <td class={`px-1.5 py-[2px] text-right font-semibold text-[12px] ${valueTone}`}>
                 {r.valueDisplay != null ? fmtCcy(r.valueDisplay, ccy) : '—'}
               </td>
               <td class={`px-1.5 py-[2px] text-right font-medium ${familyWeight}`}>
@@ -533,7 +536,7 @@ export function Holdings({ portfolio, quotes, rates }) {
               <td class={`px-1.5 py-[5px] text-right ${pnlCls(total.dayPnl)}`}>
                 {total.dayPnl != null ? signed(total.dayPnl, ccy) : '—'}
               </td>
-              <td class={`px-1.5 py-[5px] text-right text-[12.5px] ${familyValue}`}>{fmtCcy(total.value, ccy)}</td>
+              <td class={`px-1.5 py-[5px] text-right text-[12.5px] ${valueTone}`}>{fmtCcy(total.value, ccy)}</td>
               <td class={`px-1.5 py-[5px] text-right ${familyWeight}`}>{total.value != null ? '100%' : '—'}</td>
               <td class={`px-1.5 py-[5px] text-right text-[12.5px] ${pnlCls(total.unrealPnl)}`}>
                 {total.unrealPnl != null ? signed(total.unrealPnl, ccy) : '—'}
