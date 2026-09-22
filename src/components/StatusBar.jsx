@@ -11,6 +11,7 @@ import { FeedIndicator } from './FeedIndicator.jsx'
 import { feedFrozen } from '../lib/feed.js'
 import { useTapeMotion } from './Tape.jsx'
 import { tl, getLocale, setLocale } from '../lib/i18n.js'
+import { getMarketColorOrder, oppositeMarketColorOrder, saveMarketColorOrder } from '../lib/marketColors.js'
 
 // Session-state chip styling mirrors the extended-quote grammar: blue PM and
 // purple AH. Green/red remain reserved for open/closed state.
@@ -142,6 +143,10 @@ function StripCell({ symbol, label, q }) {
 export function StatusBar() {
   const [now, setNow] = useState(() => new Date())
   const online = useOnline()
+  const [colorOrder, setColorOrder] = useState(() => getMarketColorOrder())
+  const toggleColorOrder = () => setColorOrder((current) => (
+    saveMarketColorOrder(oppositeMarketColorOrder(current))
+  ))
   // edge-scroll (creep toward the hovered side) removed outright — on touch a
   // tap triggered it and it fought the native swipe (Jeff 2026-08-06); the
   // ref it needed went with it
@@ -340,10 +345,19 @@ export function StatusBar() {
       <FeedIndicator />
       <span class="flex items-center gap-1.5 shrink-0 md:-ml-1">
         <RollingClock />
-        <span
-          class={`-ml-1 inline-block w-1.5 h-1.5 rounded-full ${online ? 'bg-up' : 'bg-down'}`}
-          title={online ? tl('online') : tl('offline')}
-        />
+        <button type="button"
+          data-market-color-toggle
+          aria-pressed={colorOrder === 'cn'}
+          aria-label={tl('Switch gain and loss colors')}
+          onClick={toggleColorOrder}
+          title={`${online ? tl('online') : tl('offline')} · ${
+            colorOrder === 'cn' ? tl('red up, green down') : tl('green up, red down')
+          } · ${tl('tap to switch')}`}
+          class="-ml-1 grid h-5 w-3.5 cursor-pointer place-items-center rounded focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-line-2">
+          {/* Connectivity must stay literal green/red; semantic P&L colors
+              flip underneath it, but an online dot cannot become red. */}
+          <span class={`inline-block h-1.5 w-1.5 rounded-full ${online ? 'bg-[#3fb950]' : 'bg-[#f85149]'}`} />
+        </button>
         <button
           onClick={() => setLocale(getLocale() === 'en' ? 'zh' : 'en')}
           title="EN / 中文"

@@ -797,6 +797,8 @@ const LABELS = {
   'pre-market opens in {t}': '距盘前开始 {t}', 'session opens in {t}': '距开盘 {t}',
   'session closes in {t}': '距收盘 {t}', 'after-hours ends in {t}': '距盘后结束 {t}',
   'next session monday': '下个交易日为周一', online: '在线', offline: '离线',
+  'Switch gain and loss colors': '切换涨跌颜色', 'red up, green down': '红涨绿跌',
+  'green up, red down': '绿涨红跌', 'tap to switch': '点按切换',
   symbol: '代码', Label: '说明', 'what happens that day': '当天发生什么',
   'date must be YYYY-MM-DD': '日期格式须为 YYYY-MM-DD', 'label required': '请填写说明',
   product: '产品', conf: '会议', policy: '政策', capex: '资本开支', other: '其他',
