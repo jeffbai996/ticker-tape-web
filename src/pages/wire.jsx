@@ -160,20 +160,21 @@ function ReadBody({ ev }) {
     // The public mirror carries headlines and source links only — there is no
     // extractor behind it. Fall straight to the "open the page" line instead
     // of burning a request on a 404.
-    if (isMirrorBase(base)) { setState({ status: 'empty', paras: [] }); return }
+    const readerToken = import.meta.env.VITE_READER_CAPABILITY || ''
+    if (isMirrorBase(base) && !readerToken) { setState({ status: 'empty', paras: [] }); return }
     fetch(`${base.replace(/\/$/, '')}/api/read?id=${ev.id}&body=1&fast=1${attempt > 1 ? '&refresh=1' : ''}`,
-      { signal: AbortSignal.timeout(20_000) })
+      { signal: AbortSignal.timeout(20_000), headers: isMirrorBase(base) ? { Authorization: `Bearer ${readerToken}` } : {} })
       .then((r) => r.json())
       .then((out) => {
         if (dead) return
         const text = out.ok ? (out.text || out.summary || '') : ''
         const paras = String(text).split(/\n{2,}/).map((x) => x.trim()).filter(Boolean)
-        setState({ status: paras.length ? 'ok' : 'empty', paras })
+        setState({ status: paras.length ? 'ok' : 'empty', paras, truncated: out.truncated, error: out.error })
       })
       .catch(() => !dead && setState({ status: 'empty', paras: [] }))
     return () => { dead = true }
   }, [ev.id, attempt])
-  if (isMirrorBase(wireUrl())) return <a href={ev.url} target="_blank" rel="noopener" class="inline-flex mt-2 rounded border border-line px-2 py-1 text-accent text-[11px]">{tl('open the page ↗')}</a>
+  if (isMirrorBase(wireUrl()) && !import.meta.env.VITE_READER_CAPABILITY) return <a href={ev.url} target="_blank" rel="noopener" class="inline-flex mt-2 rounded border border-line px-2 py-1 text-accent text-[11px]">{tl('open the page ↗')}</a>
   if (!attempt) return <button class="mt-2 rounded border border-accent/40 px-2 py-1 text-accent text-[11px]" onClick={() => setAttempt(1)}>{getLocale() === 'zh' ? '加载全文' : 'Load article'}</button>
   if (state.status === 'off') return null
   if (state.status === 'loading') {
@@ -182,7 +183,7 @@ function ReadBody({ ev }) {
   if (state.status === 'empty') {
     return (
       <p class="text-[10.5px] font-mono text-muted pt-1">
-        {tl("source wouldn't give up its text —")}{' '}
+        {state.error === 'reader limit reached' ? (getLocale() === 'zh' ? '阅读请求已达限额。' : 'Reader request limit reached.') : tl("source wouldn't give up its text —")}{' '}
         <button class="text-accent mr-2" onClick={() => setAttempt((n) => n + 1)}>{tl('retry')}</button>
         <a href={ev.url} target="_blank" rel="noopener"
            class="text-accent hover:underline" onClick={(e) => e.stopPropagation()}>
@@ -193,6 +194,7 @@ function ReadBody({ ev }) {
   }
   return (
     <div class="flex flex-col gap-1.5 pt-1 max-w-[74ch]">
+      {state.truncated && <p class="text-[11px] text-accent">{getLocale() === 'zh' ? '来源仅提供部分正文。' : 'The source provided partial text.'}</p>}
       {state.paras.map((para, i) => (
         <p key={i} class="text-[11.5px] leading-relaxed text-ink-2 font-anth">{para}</p>
       ))}

@@ -92,7 +92,7 @@ describe('wire page mirror mode', () => {
   it('keeps the headline and the source link when /api/read is absent', () => {
     expect(page).toContain('isMirrorBase(base)')
     // status 'empty' is the branch that renders "open the page ↗"
-    expect(page).toContain("setState({ status: 'empty', paras: [] }); return")
+    expect(page).toContain("isMirrorBase(base) && !readerToken")
   })
 
   // The explanatory footnote under the feed was cut (Jeff 2026-08-21) — it

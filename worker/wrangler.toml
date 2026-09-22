@@ -26,3 +26,11 @@ class_name = "CapDocCoordinator"
 [[migrations]]
 tag = "v1-cap-doc-coordinator"
 new_sqlite_classes = ["CapDocCoordinator"]
+
+[[durable_objects.bindings]]
+name = "READER_QUOTA"
+class_name = "ReaderQuota"
+
+[[migrations]]
+tag = "v2-reader-quota"
+new_sqlite_classes = ["ReaderQuota"]
