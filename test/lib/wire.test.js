@@ -1,4 +1,14 @@
 import { describe, expect, it, beforeEach } from 'vitest'
+import { matchesWireQuery } from '../../src/lib/wire.js'
+
+describe('wire source filter', () => {
+  it('matches the exact publisher hostname, normalizing www', () => {
+    expect(matchesWireQuery({ url: 'https://www.example.com/story' }, 'source:example.com')).toBe(true)
+    expect(matchesWireQuery({ url: 'https://other.example.com/story' }, 'source:example.com')).toBe(false)
+    expect(matchesWireQuery({ url: 'https://not-example.com/story', headline: 'example.com' }, 'source:example.com')).toBe(false)
+    expect(matchesWireQuery({}, 'source:example.com')).toBe(false)
+  })
+})
 import { mirrorBase, setWireUrl, wireUrl, calendarSubscriptionUrl, demoBackfill, demoEvent, demoToday, demoQuotes, rankEvents, collapseSessions, clusterStories, toggleWireArticle, TYPE_CODE, pubDisplayName, readMinutes, effectiveEventTime, sortWireLatest, tierOfEvent, matchesWireRelevance } from '../../src/lib/wire.js'
 
 describe('wire article accordion', () => {

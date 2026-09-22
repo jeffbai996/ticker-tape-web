@@ -604,6 +604,9 @@ export function rankEvents(events, watchset, now = Date.now() / 1000) {
 export function matchesWireQuery(ev, query, locale) {
   const q = String(query || '').trim().toLowerCase()
   if (!q) return true
+  if (q.startsWith('source:')) {
+    try { return new URL(ev.url).hostname.replace(/^www\./, '') === q.slice(7).trim() } catch { return false }
+  }
   if ((ev.symbols || []).some((s) => String(s).toLowerCase() === q)) return true
   const hay = [ev.headline]
   if (locale && locale !== 'en') hay.push(evHeadline(ev, locale), evBody(ev, locale))

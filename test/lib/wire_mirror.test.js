@@ -82,9 +82,11 @@ describe('wire page mirror mode', () => {
     expect(page).toContain('data-wire-mirror-age')
   })
 
-  it('degrades to the labeled demo when the mirror is empty or down', () => {
+  it('keeps demo fallback out of the family feed and failed calendar requests', () => {
     expect(page).toContain('const startDemo = () =>')
-    expect(page).toContain('if (first && !rows.length) { startDemo(); return }')
+    expect(page).toContain('if (first && !rows.length && !IS_FAMILY_BUILD) { startDemo(); return }')
+    expect(page).toContain("if (IS_FAMILY_BUILD) setState('error'); else startDemo()")
+    expect(page).toContain('.catch(() => !cancelled && setToday(null))')
   })
 
   it('keeps the headline and the source link when /api/read is absent', () => {

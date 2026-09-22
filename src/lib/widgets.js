@@ -52,14 +52,19 @@ export function getWidgets() {
   return load()
 }
 
+export function resetWidgets() {
+  save(DEFAULT_WIDGETS.map((w) => ({ ...w })))
+}
+
 export function addWidget(type, symbol) {
   if (!WIDGET_TYPES.includes(type)) return null
-  const w = { id: Date.now(), type }
+  const current = load()
+  const w = { id: Math.max(Date.now(), ...current.map((w) => Number(w.id) + 1)), type }
   if (type === 'chart') {
     if (!symbol || !SYMBOL_ANY_CASE_RE.test(symbol.trim())) return null
     w.symbol = symbol.trim().toUpperCase()
   }
-  const widgets = [...load(), w]
+  const widgets = [...current, w]
   save(widgets)
   return w
 }
