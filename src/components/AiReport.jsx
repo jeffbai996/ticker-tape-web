@@ -261,13 +261,13 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
 
   return (
     <section data-ai-service-state={serviceAvailable ? 'ready' : 'disabled'}
-      class="bg-surface-1 border border-line rounded-xl overflow-hidden">
+      class="bg-surface-1 border border-line rounded-xl">
       {/* one wrapping row of two control units: wide surfaces get a single
           line; the narrow rail breaks into exactly two — model+effort, then
           copy/dials/generate. justify-end right-aligns overflow rows,
           mr-auto keeps the title left (Jeff 2026-08-09: "model picker and
           effort on same row; the others on the row below") */}
-      <header class="flex flex-wrap items-center justify-end gap-x-1.5 gap-y-1.5 px-3 py-2 border-b border-line-2 bg-surface-2">
+      <header class="flex flex-wrap items-center justify-end gap-x-1.5 gap-y-1.5 px-3 py-2 border-b border-line-2 bg-surface-2 rounded-t-xl">
         <div class="min-w-0 mr-auto flex items-center gap-2">
           <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase flex items-center gap-1.5 whitespace-nowrap shrink-0"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3m0 12v3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1M3 12h3m12 0h3M5.6 18.4l2.1-2.1m8.6-8.6 2.1-2.1"/><circle cx="12" cy="12" r="3.5"/></svg>{tl(label)}</h2>
           {hint && <span class="font-mono text-[9.5px] text-muted normal-case tracking-normal truncate min-w-0 max-sm:hidden">{hint}</span>}
