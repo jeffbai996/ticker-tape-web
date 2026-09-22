@@ -76,13 +76,23 @@
   unicode-range: U+00A5, U+FFE5;
 }
 
-/* Settings uses the same compact control scale as the dashboard. */
+/* Settings is a set of rail panels: the dashboard's header band, its row
+   density (26px, hairline-separated, mono values on the right) and its
+   controls, so the page reads as part of the terminal rather than a form
+   dropped into it (Jeff 2026-09-22). */
 .settings-panel { break-inside: avoid; margin-bottom: 12px; }
-.settings-panel > div:not(.grid), .settings-panel > label, .settings-panel > dl { padding-left: 12px; padding-right: 12px; }
-.settings-panel > div:not(.grid), .settings-panel > label { padding-top: 12px; padding-bottom: 12px; }
-.settings-page select { font: inherit; max-width: 60%; }
+.settings-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+  min-height: 26px; padding: 3px 12px; border-bottom: 1px solid var(--color-line);
+  font-family: var(--font-sans);   /* names in the sans face, values in mono, as on the rail */
+}
+.settings-row:last-child { border-bottom: 0; }
+.settings-panel > .grid .settings-row { padding-left: 0; padding-right: 0; }
+.settings-row select, .settings-row dd { font-family: var(--font-mono); }
+.settings-page select { max-width: 60%; }
+.settings-page select:hover, .settings-page select:focus { border-color: var(--color-accent); }
 @media (hover: hover) and (pointer: fine) {
-  .settings-panel button:hover, .settings-panel select:hover { border-color: var(--color-accent); }
+  .settings-row:hover { background-color: var(--color-surface-3); }
   .terminal-navigation a:hover,
   .tui-row:hover,
   .rail-row:hover {
