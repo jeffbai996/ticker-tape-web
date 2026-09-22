@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
+import { activityColor } from '../lib/contrast.js'
 import {
   wireUrl, setWireUrl, fragwireHome, calendarSubscriptionUrl, armAudioCapture, fetchEvents, fetchUpdates, fetchToday, fetchMeta,
   demoBackfill, demoEvent, demoToday, DEMO_SESSION_ROWS, rankEvents, collapseSessions, clusterStories,
@@ -435,15 +436,20 @@ function Rail({ today, now, events, watchset, onHide, onSource }) {
             <div class="text-[8.5px] uppercase tracking-wider text-muted">{tl('buffered')}</div></div>
           <div><div class="text-[15px] font-semibold text-accent">{lastHour.length}</div>
             <div class="text-[8.5px] uppercase tracking-wider text-muted">{tl('last hour')}</div></div>
-          <div><div class="text-[15px] font-semibold text-[#00e5e5]">{srcCount.size}</div>
+          <div><div class="text-[15px] font-semibold text-ink">{srcCount.size}</div>
             <div class="text-[8.5px] uppercase tracking-wider text-muted">{label('sources', '来源')}</div></div>
         </div>
       </Panel>
       <Panel title={label('Last hour · 5 min intervals', '过去一小时 · 每5分钟')}>
         <div class="flex items-end gap-1 h-14 py-1" role="img" aria-label={label('Headline activity', '快讯数量')}>
-          {activity.map((n, i) => <div key={i} class="flex-1 bg-[#00e5e5] rounded-t-sm" style={{ height: `${Math.max(3, n / peak * 100)}%`, opacity: n ? 1 : .15 }} title={`${(12 - i) * 5}–${(11 - i) * 5} ${label('min ago', '分钟前')}: ${n}`} />)}
+          {activity.map((n, i) => <div key={i} class="flex-1 rounded-t-sm" style={{ background: activityColor(n, peak), height: `${Math.max(3, n / peak * 100)}%` }} title={`${(12 - i) * 5}–${(11 - i) * 5} ${label('min ago', '分钟前')}: ${n}`} />)}
         </div>
         <div class="flex justify-between text-[9px] font-mono text-muted"><span>−60m</span><span>{label('Now', '现在')}</span></div>
+        <div class="flex justify-between mt-1 text-[9px] font-mono" title={label('Relative to the busiest interval', '相对于最繁忙时段')}>
+          <span style={{ color: activityColor(1, 10) }}>{label('Low', '低')}</span>
+          <span style={{ color: activityColor(5, 10) }}>{label('Medium', '中')}</span>
+          <span style={{ color: activityColor(10, 10) }}>{label('High', '高')}</span>
+        </div>
       </Panel>
       <Panel title={label('Source quality', '来源质量')}>
         <div class="flex h-1.5 rounded overflow-hidden my-1">{quality.map(([name, color, n]) => <span key={name} style={{ background: color, width: `${events.length ? n / events.length * 100 : 0}%` }} />)}</div>
