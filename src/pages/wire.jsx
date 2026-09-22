@@ -453,7 +453,7 @@ function Rail({ today, now, events, watchset, onHide, onSource }) {
       </Panel>
       <Panel title={label('Source quality', '来源质量')}>
         <div class="flex h-1.5 rounded overflow-hidden my-1">{quality.map(([name, color, n]) => <span key={name} style={{ background: color, width: `${events.length ? n / events.length * 100 : 0}%` }} />)}</div>
-        {quality.map(([name, color, n]) => <div key={name} class="flex justify-between py-1 text-[11px]"><span style={{ color }}>{name}</span><span class="font-mono text-ink">{n} <span class="text-muted">· {events.length ? Math.round(n / events.length * 100) : 0}%</span></span></div>)}
+        {quality.map(([name, color, n], i) => <div key={name} class="flex justify-between py-1 text-[11px]"><span class="inline-flex items-center gap-2" style={{ color }}><SourceSignal tier={[1.25, 1, .5][i]} />{name}</span><span class="font-mono text-ink">{n} <span class="text-muted">· {events.length ? Math.round(n / events.length * 100) : 0}%</span></span></div>)}
       </Panel>
       {hotSyms.length > 0 && (
         <Panel title={tl('most mentioned')}>
@@ -524,8 +524,8 @@ function Rail({ today, now, events, watchset, onHide, onSource }) {
         <Panel title={tl('loudest sources')}>
           {topSrc.map(([h, n]) => (
             <button key={h} onClick={() => onSource(h)} class="block w-full py-1.5 text-left hover:bg-surface-2">
-              <span class="flex justify-between gap-2 font-mono text-[10.5px]"><span class="text-ink-2 truncate">{h}</span><span class="text-[#d24dff]">{n}</span></span>
-              <span class="block h-0.5 mt-1 bg-[#d24dff]" style={{ width: `${n / Math.max(1, events.length) * 100}%` }} />
+              <span class="flex justify-between gap-2 font-mono text-[10.5px]"><span class="text-ink-2 truncate">{h}</span><span style={{ color: activityColor(n, topSrc[0][1]) }}>{n}</span></span>
+              <span class="block h-0.5 mt-1" style={{ background: activityColor(n, topSrc[0][1]), width: `${n / Math.max(1, events.length) * 100}%` }} />
             </button>
           ))}
         </Panel>
