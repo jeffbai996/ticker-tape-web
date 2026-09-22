@@ -6,6 +6,7 @@ import { lazyPage } from '../components/LazyPage.jsx'
 // The dashboard is the landing route: it stays in the entry chunk so first
 // paint costs one request. Everything else is fetched on first visit.
 import { Dashboard } from './dashboard.jsx'
+const Settings = lazyPage(() => import('./settings.jsx').then((m) => m.Settings))
 
 const WatchlistsPage = lazyPage(() => import('./watchlists.jsx').then((m) => m.WatchlistsPage))
 const Markets = lazyPage(() => import('./markets.jsx').then((m) => m.Markets))
@@ -51,6 +52,7 @@ function LandingDashboard() {
 }
 
 export function Page({ route }) {
+  if (route.section === 'settings') return <Settings />
   if (route.section === 'dashboard') {
     return <LandingDashboard />
   }

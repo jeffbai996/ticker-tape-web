@@ -73,6 +73,7 @@ export const NAV = [
   { id: 'alerts', label: 'Alerts', subs: [] },
   { id: 'wire', label: 'Wire', badge: 'DEMO', subs: [] },
   CHAT_SECTION,
+  { id: 'settings', label: 'Settings', subs: [] },
   // phone-only: the console as its own page in the chin (desktop has the
   // floating panel). Sidebar/desktop nav skips `phoneOnly` entries.
   { id: 'console', label: '>_', subs: [], phoneOnly: true }
@@ -94,6 +95,7 @@ if (PRIVATE_BUILD) {
 }
 if (FAMILY_BUILD) NAV.splice(NAV.findIndex((s) => s.id === 'brief'), 1)
 if (FAMILY_BUILD) {
+  delete NAV.find((s) => s.id === 'wire').badge
   // no brokerage will ever be wired here — the broker-book tabs (account,
   // sizing, carry, cockpit…) would all render a synthetic book that only
   // confuses (Jeff 2026-08-20)

@@ -197,6 +197,7 @@ export function Sidebar({ route, width, onWidthCommit }) {
                   : 'text-ink-2 hover:bg-accent-soft hover:text-ink'
               }`}
             >
+              {section.id === 'settings' && <span aria-hidden="true">⚙</span>}
               {tl(section.label)}
               {section.badge && (
                 <span class="text-[8px] font-mono font-bold px-1 py-px rounded border border-line-2 text-muted">
