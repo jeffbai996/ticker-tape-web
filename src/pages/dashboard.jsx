@@ -600,6 +600,16 @@ function PulseRow({ label, value, cls = 'text-ink' }) {
   )
 }
 
+function BreadthPair({ advancing, declining }) {
+  return (
+    <span class="inline-flex items-baseline tabular-nums">
+      <span class="text-up">{advancing}</span>
+      <span class="px-1 text-ink">/</span>
+      <span class="text-down">{declining}</span>
+    </span>
+  )
+}
+
 function PulsePanel({ quotes }) {
   const s = pulseStats(quotes)
   // collapsed = header only; the two headline stats ride the header so a
@@ -619,7 +629,7 @@ function PulsePanel({ quotes }) {
         <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{tl('Pulse')}</h2>
         {min && (
           <span class="font-mono text-[10px]">
-            <span class={s.adv >= s.dec ? 'text-up' : 'text-down'}>{s.adv}/{s.dec}</span>
+            <BreadthPair advancing={s.adv} declining={s.dec} />
             {' '}
             <span class={tone(s.avg)}>{fmtPct(s.avg)}</span>
           </span>
@@ -633,14 +643,14 @@ function PulsePanel({ quotes }) {
       {!min && (
       <div class="overflow-y-auto min-h-0">
       <div class="py-1">
-        <PulseRow label={tl('A/D')} value={`${s.adv} / ${s.dec}`} cls={s.adv >= s.dec ? 'text-up' : 'text-down'} />
+        <PulseRow label={tl('A/D')} value={<BreadthPair advancing={s.adv} declining={s.dec} />} />
         <PulseRow label={tl('Avg')} value={fmtPct(s.avg)} cls={tone(s.avg)} />
         <PulseRow label={tl('Hi')} value={`${s.hi.symbol} ${fmtPct(s.hi.pct)}`} cls="text-up" />
         <PulseRow label={tl('Lo')} value={`${s.lo.symbol} ${fmtPct(s.lo.pct)}`} cls="text-down" />
         <PulseRow label={tl('Spd')} value={`${s.spread.toFixed(1)}pp`} />
         <PulseRow label={`⚠ ${tl('down >3%')}`} value={String(s.stress)} cls={s.stress ? 'text-down' : 'text-ink-2'} />
         {(s.extAdv > 0 || s.extDec > 0) && (
-          <PulseRow label={tl('ext A/D')} value={`${s.extAdv} / ${s.extDec}`} cls={s.extAdv >= s.extDec ? 'text-up' : 'text-down'} />
+          <PulseRow label={tl('ext A/D')} value={<BreadthPair advancing={s.extAdv} declining={s.extDec} />} />
         )}
         <PulseRow label={tl('Median')} value={fmtPct(s.median)} cls={tone(s.median)} />
         <PulseRow label={tl('Green')} value={`${Math.round(s.greenPct)}%`} cls={tone(s.greenPct - 50)} />
@@ -732,6 +742,11 @@ function MarketDeckPanel() {
                   hover/tap like every other clipped name on the board */}
               <Marquee text={tl(item.label)} title={tl(item.label)}
                 class="min-w-0 font-anth text-[10px] font-medium uppercase tracking-[0.08em] text-muted/80" />
+              {item.equityIndex && (
+                <span class="price-grouped hidden w-[4.6rem] shrink-0 text-right font-tick text-[10.5px] font-medium tabular-nums text-ink-2 @min-[300px]:inline">
+                  {q ? fmtPriceWide(q.price) : '—'}
+                </span>
+              )}
               <span class={`ml-auto shrink-0 font-tick text-[11px] font-semibold tabular-nums ${!q ? 'text-muted' : q.pct >= 0 ? 'text-up' : 'text-down'}`}>
                 {q ? fmtPct(q.pct) : '—'}
               </span>

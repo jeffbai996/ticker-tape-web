@@ -52,6 +52,13 @@ describe('the deck covers the macro complex', () => {
     for (const s of ['^STOXX50E', '^N225']) expect(has(s), s).toBe(true)
   })
 
+  it('marks every equity index so a wide rail can reveal its level', () => {
+    const equities = new Set(['^GSPC', '^NDX', '^DJI', '^RUT', '^STOXX50E', '^N225'])
+    for (const row of MARKET_DECK) {
+      expect(Boolean(row.equityIndex), row.symbol).toBe(equities.has(row.symbol))
+    }
+  })
+
   it('reads the curve, not just the 10-year', () => {
     // Yahoo's Treasury series are ^IRX (13-week bill), ^FVX (5Y), ^TNX (10Y)
     // and ^TYX (30Y) — there is no 2-year series to add, so the front end is
