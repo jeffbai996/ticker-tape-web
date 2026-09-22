@@ -76,6 +76,25 @@
   unicode-range: U+00A5, U+FFE5;
 }
 
+/* Settings uses the same compact control scale as the dashboard. */
+.settings-panel { break-inside: avoid; margin-bottom: 12px; }
+.settings-panel > div:not(.grid), .settings-panel > label, .settings-panel > dl { padding-left: 12px; padding-right: 12px; }
+.settings-panel > div:not(.grid), .settings-panel > label { padding-top: 12px; padding-bottom: 12px; }
+.settings-page select { font: inherit; max-width: 60%; }
+@media (hover: hover) and (pointer: fine) {
+  .settings-panel button:hover, .settings-panel select:hover { border-color: var(--color-accent); }
+  .terminal-navigation a:hover,
+  .tui-row:hover,
+  .rail-row:hover {
+    background-color: rgba(245,158,11,.20);
+    box-shadow: inset 3px 0 0 var(--color-accent);
+  }
+  .terminal-navigation a:hover { color: var(--color-accent); }
+}
+/* Terminal controls change state immediately. Price and tape motion are separate. */
+button, a, select, summary, [role="button"], .cursor-pointer,
+.tui-row, .wl-row, .rail-row, .book-card, .terminal-sidebar * { transition: none !important; }
+
 /* App chrome is not selectable; content areas opt back in per component. */
 body {
   -webkit-user-select: none;
@@ -122,7 +141,7 @@ button[data-prime-filter] .source-signal {
   [role="button"],
   summary,
   select:not(:disabled) {
-    transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+    transition: none;
   }
   /* Same argument as the hover rule, for the keyboard: the UA outline is
      invisible on pitch black, so tabbing through the shell showed nothing at

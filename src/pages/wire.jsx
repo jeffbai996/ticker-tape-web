@@ -389,7 +389,8 @@ function Panel({ title, children, action = null }) {
   )
 }
 
-function Rail({ today, now, events, watchset, onHide }) {
+function Rail({ today, now, events, watchset, onHide, onSource }) {
+  const label = (en, zh) => getLocale() === 'zh' ? zh : en
   const sessions = (today?.sessions || []).filter((s) => s.status !== 'failed')
   const live = sessions.filter((s) => ['armed', 'capturing'].includes(s.status))
 
@@ -410,6 +411,16 @@ function Rail({ today, now, events, watchset, onHide }) {
     } catch { /* bad url */ }
   }
   const topSrc = [...srcCount.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5)
+  const quality = [
+    [label('High', '高'), '#3fb950', events.filter((e) => srcCred(e) >= 1.25).length],
+    [label('Standard', '中'), '#ffe600', events.filter((e) => srcCred(e) >= 1 && srcCred(e) < 1.25).length],
+    [label('Low', '低'), '#f85149', events.filter((e) => srcCred(e) < 1).length],
+  ]
+  const activity = Array.from({ length: 12 }, (_, i) => events.filter((e) => {
+    const age = now - e.ts_event
+    return age >= (11 - i) * 300 && age < (12 - i) * 300
+  }).length)
+  const peak = Math.max(1, ...activity)
 
   return (
     <aside data-wire-rail class="flex flex-col gap-2 w-[clamp(260px,24vw,340px)] shrink-0 min-w-0 min-h-0 overflow-y-auto overscroll-contain max-lg:w-full max-lg:overflow-visible">
@@ -424,9 +435,19 @@ function Rail({ today, now, events, watchset, onHide }) {
             <div class="text-[8.5px] uppercase tracking-wider text-muted">{tl('buffered')}</div></div>
           <div><div class="text-[15px] font-semibold text-accent">{lastHour.length}</div>
             <div class="text-[8.5px] uppercase tracking-wider text-muted">{tl('last hour')}</div></div>
-          <div><div class="text-[15px] font-semibold text-ink">{symCount.size}</div>
-            <div class="text-[8.5px] uppercase tracking-wider text-muted">{tl('symbols')}</div></div>
+          <div><div class="text-[15px] font-semibold text-[#00e5e5]">{srcCount.size}</div>
+            <div class="text-[8.5px] uppercase tracking-wider text-muted">{label('sources', '来源')}</div></div>
         </div>
+      </Panel>
+      <Panel title={label('Last hour · 5 min intervals', '过去一小时 · 每5分钟')}>
+        <div class="flex items-end gap-1 h-14 py-1" role="img" aria-label={label('Headline activity', '快讯数量')}>
+          {activity.map((n, i) => <div key={i} class="flex-1 bg-[#00e5e5] rounded-t-sm" style={{ height: `${Math.max(3, n / peak * 100)}%`, opacity: n ? 1 : .15 }} title={`${(12 - i) * 5}–${(11 - i) * 5} ${label('min ago', '分钟前')}: ${n}`} />)}
+        </div>
+        <div class="flex justify-between text-[9px] font-mono text-muted"><span>−60m</span><span>{label('Now', '现在')}</span></div>
+      </Panel>
+      <Panel title={label('Source quality', '来源质量')}>
+        <div class="flex h-1.5 rounded overflow-hidden my-1">{quality.map(([name, color, n]) => <span key={name} style={{ background: color, width: `${events.length ? n / events.length * 100 : 0}%` }} />)}</div>
+        {quality.map(([name, color, n]) => <div key={name} class="flex justify-between py-1 text-[11px]"><span style={{ color }}>{name}</span><span class="font-mono text-ink">{n} <span class="text-muted">· {events.length ? Math.round(n / events.length * 100) : 0}%</span></span></div>)}
       </Panel>
       {hotSyms.length > 0 && (
         <Panel title={tl('most mentioned')}>
@@ -441,7 +462,7 @@ function Rail({ today, now, events, watchset, onHide }) {
           </div>
         </Panel>
       )}
-      <Panel title={tl('today')}>
+      {!!today?.calendar?.length && <Panel title={tl('today')}>
         {(today?.calendar || []).length === 0 && (
           <Empty label={tl('nothing on the sheet')} />
         )}
@@ -458,8 +479,8 @@ function Rail({ today, now, events, watchset, onHide }) {
             </div>
           </div>
         ))}
-      </Panel>
-      <Panel title={tl('coming up')}>
+      </Panel>}
+      {!!today?.upcoming?.length && <Panel title={tl('coming up')}>
         {(today?.upcoming || []).length === 0 && (
           <Empty label={tl('nothing on the horizon')} />
         )}
@@ -469,7 +490,7 @@ function Rail({ today, now, events, watchset, onHide }) {
             <span class="text-muted whitespace-nowrap">{countdown(row.ts - now)}</span>
           </div>
         ))}
-      </Panel>
+      </Panel>}
       {sessions.length > 0 && (
         <Panel title={`${tl('sessions')}${live.length ? ` · ${live.length} ${tl('live')}` : ''}`}>
           {sessions.slice(0, 6).map((s) => (
@@ -484,7 +505,7 @@ function Rail({ today, now, events, watchset, onHide }) {
           ))}
         </Panel>
       )}
-      <Panel title={tl('captured today')}>
+      {!!Object.keys(today?.captured || {}).length && <Panel title={tl('captured today')}>
         <div class="flex flex-wrap gap-1.5">
           {Object.entries(today?.captured || {}).sort((a, b) => b[1] - a[1]).map(([type, n]) => (
             <span key={type} class="border border-line rounded px-1.5 py-0.5 font-mono text-[10.5px] text-ink-2">
@@ -492,14 +513,14 @@ function Rail({ today, now, events, watchset, onHide }) {
             </span>
           ))}
         </div>
-      </Panel>
+      </Panel>}
       {topSrc.length > 0 && (
         <Panel title={tl('loudest sources')}>
           {topSrc.map(([h, n]) => (
-            <div key={h} class="flex justify-between gap-2 py-[2px] font-mono text-[10.5px]">
-              <span class="text-ink-2 truncate">{h}</span>
-              <span class="text-muted">{n}</span>
-            </div>
+            <button key={h} onClick={() => onSource(h)} class="block w-full py-1.5 text-left hover:bg-surface-2">
+              <span class="flex justify-between gap-2 font-mono text-[10.5px]"><span class="text-ink-2 truncate">{h}</span><span class="text-[#d24dff]">{n}</span></span>
+              <span class="block h-0.5 mt-1 bg-[#d24dff]" style={{ width: `${n / Math.max(1, events.length) * 100}%` }} />
+            </button>
           ))}
         </Panel>
       )}
@@ -561,6 +582,7 @@ export function Wire({ route }) {
   const missRef = useRef(null)
   const [missing, setMissing] = useState(null)
   const [armedSession, setArmedSession] = useState(null)
+  const [visibleRows, setVisibleRows] = useState(250)
 
   // Same shape as the raw setters (value or updater), so callers below read as
   // plain state — they just also write through to the store / localStorage.
@@ -682,9 +704,8 @@ export function Wire({ route }) {
     setError('')
     const pollRail = () => {
       fetchToday(endpoint).then((out) => !cancelled && setToday(out))
-        // the mirror has no calendar service — the written demo rail keeps
-        // the panel demonstrating itself instead of sitting empty
-        .catch(() => !cancelled && setToday(demoToday()))
+        // A failed live calendar request must never display synthetic events.
+        .catch(() => !cancelled && setToday(null))
     }
     const pollRevisions = () => {
       if (!revisionSince) return
@@ -746,7 +767,7 @@ export function Wire({ route }) {
     // times finer than the push cadence.
     const startMirror = () => {
       let seen = new Set()
-      const pull = (first) => fetchEvents(endpoint, { limit: 300, newest: true })
+      const pull = (first) => fetchEvents(endpoint, { limit: 500, newest: true })
         .then((out) => {
           if (cancelled) return
           const rows = out.events || []
@@ -1015,7 +1036,7 @@ export function Wire({ route }) {
             showZhSources
               ? 'bg-accent border-accent text-black'
               : 'border-line text-ink-2 hover:text-ink'
-          }`}>中文源</button>
+          }`}>中文源{showZhSources ? ` · ${events.filter((ev) => eventLanguage(ev) === 'zh').length}` : ''}</button>
         <span aria-hidden="true" class="h-4 w-px bg-line mx-0.5" />
         {[1, 2, 3].map((tier) => (
           <button key={tier} data-tier-filter={tier}
@@ -1067,7 +1088,7 @@ export function Wire({ route }) {
               {tl('capture armed — waiting for audio')} · #{armedSession.id}
             </div>
           )}
-          {shown.slice(0, 250).map((ev) => {
+          {shown.slice(0, visibleRows).map((ev) => {
             // a session card's identity must survive id churn as chunks land
             const key = ev.live_call ? `s${ev.live_call.sid}` : ev.id
             return (
@@ -1075,9 +1096,13 @@ export function Wire({ route }) {
                    open={openIds.has(key)} onToggle={() => toggleOpen(key)} />
             )
           })}
+          {shown.length > visibleRows && <button type="button" onClick={() => setVisibleRows((n) => n + 250)}
+            class="block w-full border-t border-line py-3 font-mono text-[11px] text-accent">
+            {getLocale() === 'zh' ? '加载更多' : 'Load more'} · {shown.length - visibleRows}
+          </button>}
         </div>
         {rail ? (
-          <Rail today={today} now={now} events={events} watchset={watchset}
+          <Rail today={today} now={now} events={events} watchset={watchset} onSource={(host) => setQuery(`source:${host}`)}
             onHide={() => { setRail(false); localStorage.setItem('tape-wire-rail', '0') }} />
         ) : (
           <button

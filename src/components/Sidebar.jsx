@@ -178,14 +178,14 @@ export function Sidebar({ route, width, onWidthCommit }) {
   }
 
   return (
-    <nav ref={railRef} style={{ width: `${width}px` }} class="relative shrink-0 bg-black border-r border-line flex flex-col max-md:hidden min-h-0">
+    <nav ref={railRef} style={{ width: `${width}px` }} class="terminal-sidebar relative shrink-0 bg-black border-r border-line flex flex-col max-md:hidden min-h-0">
       <div data-sidebar-resize role="separator" aria-orientation="vertical" aria-label={tl('resize sidebar')}
         onPointerDown={startResize}
         class="absolute -right-1 top-0 z-30 h-full w-2 cursor-col-resize touch-none group/rail-resize">
         <span class="absolute right-[3px] top-1/2 h-10 w-px -translate-y-1/2 bg-line opacity-0 transition-opacity group-hover/rail-resize:opacity-100 group-active/rail-resize:bg-accent group-active/rail-resize:opacity-100" />
       </div>
       <UpdatedLine />
-      <div class="pb-2">
+      <div class="terminal-navigation pb-2">
         {NAV.filter((s) => !s.phoneOnly).map((section) => (
           <div key={section.id}>
             <a

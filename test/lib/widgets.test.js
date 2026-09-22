@@ -1,11 +1,31 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import {
-  getWidgets, addWidget, removeWidget, moveWidget, DEFAULT_WIDGETS,
+  getWidgets, addWidget, removeWidget, moveWidget, resetWidgets, onWidgetsChange, DEFAULT_WIDGETS,
 } from '../../src/lib/widgets.js'
 
 beforeEach(() => localStorage.clear())
 
 describe('dashboard widgets store', () => {
+  it('resets the layout once with distinct default ids', () => {
+    addWidget('risk')
+    const listener = vi.fn()
+    const unsubscribe = onWidgetsChange(listener)
+    resetWidgets()
+    unsubscribe()
+    expect(getWidgets()).toEqual(DEFAULT_WIDGETS)
+    expect(listener).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps ids distinct when adding multiple widgets within one millisecond', () => {
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(1000)
+    try {
+      const a = addWidget('risk')
+      const b = addWidget('movers')
+      expect(a.id).not.toBe(b.id)
+      removeWidget(a.id)
+      expect(getWidgets().some((w) => w.id === b.id)).toBe(true)
+    } finally { clock.mockRestore() }
+  })
   it('returns defaults on first load', () => {
     expect(getWidgets().map((w) => w.type)).toEqual(DEFAULT_WIDGETS.map((w) => w.type))
   })
