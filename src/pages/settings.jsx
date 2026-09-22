@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'preact/hooks'
+import { getHighContrast, saveHighContrast } from '../lib/contrast.js'
 import { getLocale, setLocale, onLocaleChange, tl } from '../lib/i18n.js'
 import { IS_FAMILY_BUILD, IS_PRIVATE_BUILD } from '../lib/nav.js'
 import { useNamedWatchlists } from '../hooks.js'
@@ -25,6 +26,7 @@ function Switch({ checked, onChange, label }) {
 
 export function Settings() {
   const [locale, language] = useState(getLocale)
+  const [contrast, setContrast] = useState(getHighContrast)
   useEffect(() => onLocaleChange(() => language(getLocale())), [])
   const lists = useNamedWatchlists()
   const [, refreshTape] = useState(0)
@@ -44,6 +46,7 @@ export function Settings() {
   const changeColors = (value) => { saveMarketColorOrder(value); color(value) }
   const changeSources = (value) => { localStorage.setItem('tape-wire-zh-sources', value ? '1' : '0'); sources(value) }
   const reset = () => {
+    saveHighContrast(false); setContrast(false)
     changeLanguage(IS_FAMILY_BUILD ? 'zh' : 'en')
     changeColors(defaultMarketColorOrder())
     changeSources(false)
@@ -79,6 +82,12 @@ export function Settings() {
         <option value="cn">{label('Red up · Green down', '红涨 · 绿跌')}</option>
       </select>
     </div>
+    <label class="flex items-center justify-between gap-4 py-4 border-b border-line">
+      {label('Higher contrast', '高对比度')}
+      <Switch label={label('Higher contrast', '高对比度')} checked={contrast} onChange={() => {
+        saveHighContrast(!contrast); setContrast(!contrast)
+      }} />
+    </label>
     <h2 class={heading}>{label('Dashboard', '仪表盘')}</h2>
     <div class="settings-row">
       <label for="settings-landing">{label('Opening watchlist', '默认显示自选股')}</label>

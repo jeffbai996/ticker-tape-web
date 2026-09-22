@@ -55,6 +55,14 @@
   --color-down: #f85149;
 }
 
+:root[data-contrast="high"] {
+  --color-ink: #ffffff;
+  --color-ink-2: #dce2e9;
+  --color-muted: #b5bec9;
+  --color-line: rgba(231, 236, 243, .30);
+  --color-line-2: rgba(231, 236, 243, .42);
+}
+
 /* Explicit CJK sans fallback keeps table labels legible on every platform. */
 [data-family-holdings="true"] {
   --font-anth: "Anthropic Sans", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
