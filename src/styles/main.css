@@ -47,8 +47,8 @@
    family build starts here; either build can switch conventions from the
    online-status dot without rewriting component classes piecemeal. */
 :root[data-market-colors="cn"] {
-  --color-up: #f04f5f;
-  --color-down: #24c77a;
+  --color-up: #f85149;
+  --color-down: #3fb950;
 }
 :root[data-market-colors="global"] {
   --color-up: #3fb950;
