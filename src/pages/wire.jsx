@@ -752,21 +752,21 @@ export function Wire({ route }) {
         .then((out) => {
           if (cancelled) return
           const rows = out.events || []
-          if (first && !rows.length) { startDemo(); return }
+          if (first && !rows.length && !IS_FAMILY_BUILD) { startDemo(); return }
           if (!first) rows.filter((ev) => !seen.has(ev.id)).forEach((ev) => markHot(ev.id))
           seen = new Set(rows.map((ev) => ev.id))
           // Real mirrored headlines alone exercise one lane of the UI. The
           // written demo session rides alongside (Jeff 2026-08-21: "allow the
           // user to see the full functionality") — every synthetic row keeps
           // its demo badge, so the stream stays honestly labeled per row.
-          const demoRows = demoBackfill(DEMO_SESSION_ROWS, Date.now() / 1000)
+          const demoRows = IS_FAMILY_BUILD ? [] : demoBackfill(DEMO_SESSION_ROWS, Date.now() / 1000)
           setEvents([...rows, ...demoRows]
             .sort((a, b) => (a.ts_event ?? 0) - (b.ts_event ?? 0)))
           setGeneratedAt(out.generated_at ?? null)
           revisionSince = out.server_ts || revisionSince || Date.now() / 1000
           setState('mirror')
         })
-        .catch(() => { if (!cancelled && first) startDemo() })
+        .catch(() => { if (!cancelled && first) { if (IS_FAMILY_BUILD) setState('error'); else startDemo() } })
       pollRail()
       pull(true).then(() => {
         if (cancelled || demoStop) return
