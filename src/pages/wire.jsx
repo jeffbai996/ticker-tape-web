@@ -885,6 +885,11 @@ export function Wire({ route }) {
     && (ev.meta?.breaking === true || /^breaking\b/i.test(ev.headline || '')))
     .sort((a, b) => b.ts_event - a.ts_event)[0]
   const brandHref = embeddedWire ? '#/wire' : (wireHome || '#/wire')
+  const snapshotAge = mirrorAgeMinutes(generatedAt, now)
+  const snapshotFresh = snapshotAge != null && snapshotAge < 15
+  const snapshotLabel = getLocale() === 'zh'
+    ? (snapshotFresh ? '已更新' : '等待更新')
+    : (snapshotFresh ? 'Up to date' : 'Awaiting update')
 
   const connState = state === 'live' ? 'live' : state === 'error' ? 'down'
     : state === 'mirror' ? 'mirror'
@@ -896,10 +901,10 @@ export function Wire({ route }) {
   // Solid dots, no glow (Jeff 2026-08-07). The colour already carries the
   // state; a halo on top of a 6px dot just reads as a smudge at this size.
   const CONN_DOT = {
-    live: 'bg-up',
-    mirror: 'bg-accent',
+    live: 'bg-[#3fb950]',
+    mirror: snapshotFresh ? 'bg-[#3fb950]' : 'bg-accent',
     connecting: 'bg-accent',
-    down: 'bg-down',
+    down: 'bg-[#f85149]',
     demo: 'bg-muted',
   }
 
@@ -932,13 +937,14 @@ export function Wire({ route }) {
           ))}
         </nav>
         <span class={`inline-flex items-center gap-1.5 shrink-0 font-sans font-semibold text-[10.5px] uppercase tracking-[.1em] ${CONN_TONE[connState]}`}
-              title={tl('wire connection')}>
+              title={state === 'mirror' ? snapshotLabel : tl('wire connection')}
+              aria-label={state === 'mirror' ? snapshotLabel : tl(state)}>
           <i class={`w-1.5 h-1.5 rounded-full ${CONN_DOT[connState]}`} />
-          {tl(state === 'demo' ? 'demo' : state)}
+          {state !== 'mirror' && tl(state)}
         </span>
         {state === 'mirror' && (
           <span data-wire-mirror-age class="shrink-0 font-mono text-[10px] text-muted"
-                title={tl('a public copy of the wire, pushed every 5 minutes')}>
+                title={snapshotLabel}>
             {mirrorAgeMinutes(generatedAt, now) == null
               ? tl('≤5 min')
               : tt('wire.mirror_age', { n: mirrorAgeMinutes(generatedAt, now) })}
