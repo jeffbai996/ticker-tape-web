@@ -144,8 +144,11 @@ const TIER_EDGE = {
  *  the fetching/extraction server-side (fast=1: text now, no summarizer).
  *  Only fires on wire events that have a URL but shipped no body. */
 function ReadBody({ ev }) {
+  const [attempt, setAttempt] = useState(0)
   const [state, setState] = useState({ status: 'loading', paras: [] })
   useEffect(() => {
+    if (!attempt) return
+    setState({ status: 'loading', paras: [] })
     let dead = false
     const base = wireUrl()
     if (!base || ev.demo) { setState({ status: 'off', paras: [] }); return }
@@ -153,7 +156,7 @@ function ReadBody({ ev }) {
     // extractor behind it. Fall straight to the "open the page" line instead
     // of burning a request on a 404.
     if (isMirrorBase(base)) { setState({ status: 'empty', paras: [] }); return }
-    fetch(`${base.replace(/\/$/, '')}/api/read?id=${ev.id}&fast=1`,
+    fetch(`${base.replace(/\/$/, '')}/api/read?id=${ev.id}&body=1${attempt > 1 ? '&refresh=1' : ''}`,
       { signal: AbortSignal.timeout(20_000) })
       .then((r) => r.json())
       .then((out) => {
@@ -164,7 +167,9 @@ function ReadBody({ ev }) {
       })
       .catch(() => !dead && setState({ status: 'empty', paras: [] }))
     return () => { dead = true }
-  }, [ev.id])
+  }, [ev.id, attempt])
+  if (isMirrorBase(wireUrl())) return <a href={ev.url} target="_blank" rel="noopener" class="inline-flex mt-2 rounded border border-line px-2 py-1 text-accent text-[11px]">{tl('open the page ↗')}</a>
+  if (!attempt) return <button class="mt-2 rounded border border-accent/40 px-2 py-1 text-accent text-[11px]" onClick={() => setAttempt(1)}>{getLocale() === 'zh' ? '加载全文' : 'Load article'}</button>
   if (state.status === 'off') return null
   if (state.status === 'loading') {
     return <Loading label={tl('pulling the story…')} />
@@ -173,6 +178,7 @@ function ReadBody({ ev }) {
     return (
       <p class="text-[10.5px] font-mono text-muted pt-1">
         {tl("source wouldn't give up its text —")}{' '}
+        <button class="text-accent mr-2" onClick={() => setAttempt((n) => n + 1)}>{tl('retry')}</button>
         <a href={ev.url} target="_blank" rel="noopener"
            class="text-accent hover:underline" onClick={(e) => e.stopPropagation()}>
           {tl('open the page ↗')}
@@ -182,18 +188,9 @@ function ReadBody({ ev }) {
   }
   return (
     <div class="flex flex-col gap-1.5 pt-1 max-w-[74ch]">
-      {state.paras.slice(0, 14).map((para, i) => (
+      {state.paras.map((para, i) => (
         <p key={i} class="text-[11.5px] leading-relaxed text-ink-2 font-anth">{para}</p>
       ))}
-      {state.paras.length > 14 && (
-        <p class="text-[10px] font-mono text-muted">
-          …{' '}
-          <a href={ev.url} target="_blank" rel="noopener"
-             class="text-accent hover:underline" onClick={(e) => e.stopPropagation()}>
-            {tl('full text at the source ↗')}
-          </a>
-        </p>
-      )}
     </div>
   )
 }
@@ -237,7 +234,7 @@ function CredPips({ ev, hot }) {
   return (
     <span
       class={`inline-flex items-center align-middle mr-1.5 ${
-        hot ? 'text-black/60' : c >= 1.25 ? 'text-up' : c < 1 ? 'text-down opacity-75' : 'text-accent'}`}
+        hot ? 'text-black/60' : c >= 1.25 ? 'text-[#3fb950]' : c < 1 ? 'text-[#f85149] opacity-75' : 'text-accent'}`}
       title={tl(c >= 1.25 ? 'source: top tier (wires/majors)'
         : c < 1 ? 'source: low tier (SEO/content mill)' : 'source: standard')}
     >
@@ -369,7 +366,7 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
               <MdLite text={body} />
             </div>
           )}
-          {!ev.body && !ev.story_cluster && ev.url && <ReadBody ev={ev} />}
+          {!ev.demo && ev.url && <ReadBody ev={ev} />}
         </div>
       )}
     </div>
@@ -532,6 +529,7 @@ export function Wire({ route }) {
   const [endpoint, setEndpoint] = useState(() => wireUrl())
   const [draft, setDraft] = useState(() => wireUrl())
   const [events, setEvents] = useState([])
+  const [dismissedBreaking, setDismissedBreaking] = useState(new Set())
   const [hotIds, setHotIds] = useState(new Set())
   const [openIds, setOpenIdsRaw] = useState(() => new Set(openStore))
   const [filter, setFilterRaw] = useState(() => localStorage.getItem('tape-wire-filter') || '')
@@ -882,6 +880,10 @@ export function Wire({ route }) {
   const wireHome = fragwireHome()      // re-reads on endpoint change via `endpoint` state
   const calendarUrl = calendarSubscriptionUrl()
   const embeddedWire = IS_FAMILY_BUILD || isMirrorBase(endpoint)
+  const breaking = events.filter((ev) => !ev.demo && !dismissedBreaking.has(ev.id)
+    && now - ev.ts_event >= 0 && now - ev.ts_event < 3600
+    && (ev.meta?.breaking === true || /^breaking\b/i.test(ev.headline || '')))
+    .sort((a, b) => b.ts_event - a.ts_event)[0]
   const brandHref = embeddedWire ? '#/wire' : (wireHome || '#/wire')
 
   const connState = state === 'live' ? 'live' : state === 'error' ? 'down'
@@ -979,6 +981,12 @@ export function Wire({ route }) {
           </form>
         )}
       </div>
+      {breaking && <div data-wire-breaking class="flex items-center gap-2 border-y border-accent/30 bg-accent/5 px-2 py-1.5 min-w-0">
+        <span class="text-accent font-mono text-[9px] font-bold shrink-0">{getLocale() === 'zh' ? '突发' : 'BREAKING'}</span>
+        <a href={`#/wire/${breaking.id}`} class="min-w-0 flex-1 truncate text-[12px] text-ink hover:text-accent" title={evHeadline(breaking, getLocale())}>{evHeadline(breaking, getLocale())}</a>
+        <span class="hidden sm:inline text-muted font-mono text-[9px] shrink-0">{pubDisplayName(breaking)} · {rowTime(breaking.ts_event)}</span>
+        <button aria-label={getLocale() === 'zh' ? '关闭' : 'Dismiss'} class="text-muted hover:text-ink px-1" onClick={() => setDismissedBreaking((prev) => new Set([...prev, breaking.id]))}>×</button>
+      </div>}
       <div class="flex gap-1.5 flex-wrap items-center">
         {FILTERS.map((f) => (
           <button
