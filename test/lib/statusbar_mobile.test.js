@@ -35,6 +35,12 @@ describe('status bar responsive labels', () => {
     expect(source).toMatch(/data-status-locale\s+class="h-5/)
   })
 
+  it('hides the gain/loss convention switch inside the connectivity dot', () => {
+    expect(source).toContain('data-market-color-toggle')
+    expect(source).toContain("online ? 'bg-[#3fb950]' : 'bg-[#f85149]'")
+    expect(source).toContain("saveMarketColorOrder(oppositeMarketColorOrder(current))")
+  })
+
   it('subtly lifts the clock on hover and keyboard focus', () => {
     expect(source).toContain('hover:border-line-2')
     expect(source).toContain('hover:bg-white/[0.045]')

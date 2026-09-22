@@ -43,6 +43,18 @@
   --font-mono: "Yuan Mark", "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
+/* One semantic palette powers every price, sparkline and P&L surface. The
+   family build starts here; either build can switch conventions from the
+   online-status dot without rewriting component classes piecemeal. */
+:root[data-market-colors="cn"] {
+  --color-up: #f04f5f;
+  --color-down: #24c77a;
+}
+:root[data-market-colors="global"] {
+  --color-up: #3fb950;
+  --color-down: #f85149;
+}
+
 @font-face {
   font-family: "Yuan Mark";
   src: local("Helvetica Neue"), local("HelveticaNeue"), local("Arial"), local("Roboto");
