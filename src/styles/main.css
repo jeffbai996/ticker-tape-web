@@ -55,6 +55,20 @@
   --color-down: #f85149;
 }
 
+/* Explicit CJK sans fallback keeps table labels legible on every platform. */
+[data-family-holdings="true"] {
+  --font-anth: "Anthropic Sans", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+}
+[data-family-holdings="true"] .font-anth,
+[data-family-holdings="true"] th {
+  font-family: var(--font-anth);
+}
+[data-family-holdings="true"] th { font-size: 10px; }
+[data-family-holdings="true"] td:first-child .font-anth { font-size: 10px; color: #e7ecf3; }
+[data-family-holdings="true"] [class*="text-[#f1cf67]"] { color: #ffe600; }
+[data-family-holdings="true"] [class*="text-[#63d6db]"] { color: #00e5e5; }
+[data-family-holdings="true"] [class*="text-[#dc8cff]"] { color: #d24dff; }
+
 @font-face {
   font-family: "Yuan Mark";
   src: local("Helvetica Neue"), local("HelveticaNeue"), local("Arial"), local("Roboto");

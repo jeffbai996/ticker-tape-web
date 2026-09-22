@@ -362,7 +362,7 @@ export function Holdings({ portfolio, quotes, rates }) {
     <tr key={r.symbol} class="border-t border-line hover:bg-surface-3 whitespace-nowrap">
       <td class="px-2.5 py-[2px] cursor-pointer"
         onClick={() => (location.hash = `#/research/${r.symbol.toLowerCase()}`)}>
-        <span class={`font-bold ${IS_FAMILY_BUILD ? 'text-[#dfe7f1]' : 'text-accent'}`}>{r.symbol}</span>
+        <span class="font-bold text-accent">{r.symbol}</span>
         {holdingName(r.symbol, quotes) && (
           <span class={`block max-w-[9rem] truncate font-anth text-[9px] font-medium leading-[1.15] ${familySecondary}`}>
             {holdingName(r.symbol, quotes)}
