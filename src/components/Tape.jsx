@@ -92,9 +92,13 @@ export function useTapeMotion() {
     }))
     sync()
     document.addEventListener('visibilitychange', sync)
+    window.addEventListener('pageshow', sync)
+    window.addEventListener('focus', sync)
     mq?.addEventListener?.('change', sync)
     return () => {
       document.removeEventListener('visibilitychange', sync)
+      window.removeEventListener('pageshow', sync)
+      window.removeEventListener('focus', sync)
       mq?.removeEventListener?.('change', sync)
     }
   }, [])
@@ -189,7 +193,21 @@ export function Tape() {
     const observer = new ResizeObserver(measure)
     observer.observe(viewport)
     observer.observe(cycle)
+    const resume = () => {
+      measure()
+      if (tapePlayState({ hidden: document.hidden,
+        reducedMotion: !!globalThis.matchMedia?.(REDUCED_MOTION)?.matches }) !== 'running') return
+      for (const animation of belt.current?.getAnimations?.() || []) {
+        if (animation.playState !== 'running') animation.play()
+      }
+    }
+    window.addEventListener('pageshow', resume)
+    window.addEventListener('focus', resume)
+    document.addEventListener('visibilitychange', resume)
     return () => {
+      window.removeEventListener('pageshow', resume)
+      window.removeEventListener('focus', resume)
+      document.removeEventListener('visibilitychange', resume)
       observer.disconnect()
       cancelAnimationFrame(restoreFrame)
     }
