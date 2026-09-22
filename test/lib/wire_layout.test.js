@@ -62,6 +62,14 @@ describe('wire workbench sizing', () => {
     expect(src).toContain("localStorage.setItem('tape-wire-mode', 'wire')")
   })
 
+  it('keeps the family mirror inside tt-web', () => {
+    expect(src).toContain("import { IS_FAMILY_BUILD, IS_PRIVATE_BUILD } from '../lib/nav.js'")
+    expect(src).toContain('const embeddedWire = IS_FAMILY_BUILD || isMirrorBase(endpoint)')
+    expect(src).toContain("const brandHref = embeddedWire ? '#/wire'")
+    expect(src).toContain('{wireHome && !embeddedWire && (')
+    expect(src).toContain('{!IS_PRIVATE_BUILD && !IS_FAMILY_BUILD && (')
+  })
+
   it('renders generated event bodies instead of leaking markdown markers', () => {
     expect(src).toContain("import { MdLite } from '../components/AiReport.jsx'")
     expect(src).toContain('data-wire-rich-body')

@@ -6,7 +6,7 @@ import {
   pubDisplayName, readMinutes, sortWireLatest, tierOfEvent, effectiveEventTime,
   toggleWireArticle, isMirrorBase, mirrorAgeMinutes,
 } from '../lib/wire.js'
-import { IS_PRIVATE_BUILD } from '../lib/nav.js'
+import { IS_FAMILY_BUILD, IS_PRIVATE_BUILD } from '../lib/nav.js'
 import { prefetchSymbol } from '../lib/history.js'
 import { useEscape } from '../hooks.js'
 import { startVisibleClock } from '../lib/idleClock.js'
@@ -874,6 +874,8 @@ export function Wire({ route }) {
   const stateTone = { demo: 'text-muted', connecting: 'text-muted', live: 'text-accent', error: 'text-down' }
   const wireHome = fragwireHome()      // re-reads on endpoint change via `endpoint` state
   const calendarUrl = calendarSubscriptionUrl()
+  const embeddedWire = IS_FAMILY_BUILD || isMirrorBase(endpoint)
+  const brandHref = embeddedWire ? '#/wire' : (wireHome || '#/wire')
 
   const connState = state === 'live' ? 'live' : state === 'error' ? 'down'
     : state === 'mirror' ? 'mirror'
@@ -897,7 +899,8 @@ export function Wire({ route }) {
       {/* fragwire's own brow, ported: brand, segmented top|wire, conn dot,
           board links — one bar, not a row of floating chips (Jeff 2026-08-05) */}
       <div class="flex items-center gap-3 h-9 shrink-0 -mx-3 px-3 border-b border-line bg-surface-1 min-w-0 overflow-x-auto no-scrollbar">
-        <a href={wireHome || '#/wire'} target={wireHome ? '_blank' : undefined} rel="noopener"
+        <a href={brandHref} target={!embeddedWire && wireHome ? '_blank' : undefined}
+           rel={!embeddedWire && wireHome ? 'noopener' : undefined}
            class="inline-flex items-center gap-2.5 shrink-0 hover:no-underline group/brand">
           <FragwireLogo />
           <span class="font-sans font-bold text-[14px] tracking-[-0.02em] text-ink group-hover/brand:text-accent transition-colors">fragwire</span>
@@ -930,7 +933,7 @@ export function Wire({ route }) {
               : tt('wire.mirror_age', { n: mirrorAgeMinutes(generatedAt, now) })}
           </span>
         )}
-        {wireHome && (
+        {wireHome && !embeddedWire && (
           <nav class="inline-flex gap-1 shrink-0">
             {[['board', ''], ['calendar', '/today'], ['week', '/week'], ['stats', '/stats']].map(([label, path]) => (
               <a key={label} href={`${wireHome}${path}`} target="_blank" rel="noopener"
@@ -953,9 +956,9 @@ export function Wire({ route }) {
           </button>
         )}
         <span class="ml-auto" />
-        {/* Private build has exactly one wire and it's auto-configured —
-            the connect affordance only exists for public demo viewers. */}
-        {!IS_PRIVATE_BUILD && (
+        {/* Private and family builds have a fixed wire source. Only the public
+            viewer can supply a different endpoint. */}
+        {!IS_PRIVATE_BUILD && !IS_FAMILY_BUILD && (
           <form class="flex gap-2 ml-auto" onSubmit={applyEndpoint}>
             <input
               class="bg-surface-2 border border-line rounded-md px-2 py-1 font-mono text-[11.5px] text-ink outline-none focus:border-accent w-64"
