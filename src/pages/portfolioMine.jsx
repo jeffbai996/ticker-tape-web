@@ -6,6 +6,8 @@
  *  the site is static and nothing entered here leaves the browser.
  */
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
+import hkFlag from 'flag-icons/flags/4x3/hk.svg'
+import cnFlag from 'flag-icons/flags/4x3/cn.svg'
 import { useQuotes } from '../hooks.js'
 import { SymbolSuggest } from '../components/SymbolSuggest.jsx'
 import { sizeForWeight } from '../lib/demo.js'
@@ -480,6 +482,7 @@ export function Holdings({ portfolio, quotes, rates }) {
                   onClick={() => toggleVenue(g.key)}
                   class="group flex w-full items-center gap-2 px-2.5 py-1.5 text-left font-anth transition-colors hover:bg-surface-3 focus-visible:bg-surface-3 focus-visible:outline-none">
                   <span class="h-3.5 w-0.5 rounded-full bg-accent/70" aria-hidden="true" />
+                  {['hk', 'cn'].includes(g.key) && <img src={g.key === 'hk' ? hkFlag : cnFlag} alt="" class="w-4 h-3 shrink-0" />}
                   <span class="text-[10px] font-semibold uppercase tracking-[.13em] text-ink-2 group-hover:text-ink">
                     {groupLabel[g.key]}
                   </span>

@@ -538,7 +538,7 @@ export function Wire({ route }) {
   const [query, setQueryRaw] = useState(() => localStorage.getItem('tape-wire-filter-text') || '')
   const [mode, setMode] = useState(() => localStorage.getItem('tape-wire-mode') || 'top')
   const [tierFilters, setTierFiltersRaw] = useState(savedTierFilters)
-  const [thesisOnly, setThesisOnlyRaw] = useState(() => localStorage.getItem('tape-wire-thesis-only') === '1')
+  const [thesisOnly, setThesisOnlyRaw] = useState(() => !IS_FAMILY_BUILD && localStorage.getItem('tape-wire-thesis-only') === '1')
   const [primeOnly, setPrimeOnlyRaw] = useState(() => localStorage.getItem('tape-wire-prime-only') === '1')
   const [showZhSources, setShowZhSourcesRaw] = useState(() => localStorage.getItem('tape-wire-zh-sources') === '1')
   // rail off = full-width reading; sticky, it's a layout preference
@@ -1016,16 +1016,16 @@ export function Wire({ route }) {
                     : 'border-[#f85149]/40 text-[#f85149] hover:bg-[#f85149]/10'
             }`}>T{tier}</button>
         ))}
-        <button data-thesis-filter onClick={() => setThesisOnly(!thesisOnly)}
+        {!IS_FAMILY_BUILD && <button data-thesis-filter onClick={() => setThesisOnly(!thesisOnly)}
           title={tl('only thesis-tagged stories')}
           class={`border rounded-md px-2.5 py-0.5 text-[11px] font-semibold transition-colors ${
             thesisOnly ? 'bg-up border-up text-black' : 'bg-up/5 border-up/25 text-up/70 hover:text-up hover:border-up/50'
-          }`}>{tl('thesis')}</button>
+          }`}>{tl('thesis')}</button>}
         <button data-prime-filter onClick={() => setPrimeOnly(!primeOnly)}
           title={tl('top-tier sources only')} aria-label={tl('top-tier sources only')}
           class={`box-border inline-flex items-center justify-center w-[28px] h-[22px] shrink-0 border rounded-md px-[6px] py-0 leading-none text-up transition-colors ${
-            primeOnly ? 'bg-up border-up text-black' : 'border-up/40 hover:bg-up/10 hover:border-up'
-          }`}><SourceSignal tier={1.25} className={primeOnly ? 'text-black' : 'text-up'} /></button>
+            primeOnly ? 'bg-[#3fb950] border-[#3fb950] text-black' : 'border-[#3fb950]/40 hover:bg-[#3fb950]/10 hover:border-[#3fb950]'
+          }`}><SourceSignal tier={1.25} className={primeOnly ? 'text-black' : 'text-[#3fb950]'} /></button>
         <input
           data-wire-query
           class="bg-surface-2 border border-line rounded-md px-2 py-0.5 font-mono text-[11px] text-ink outline-none focus:border-accent w-36"
