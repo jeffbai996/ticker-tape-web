@@ -1,0 +1,9 @@
+# Matches the public-marker scan may skip in this repository. One "label path"
+# per line; the path is a glob on the repository-relative path.
+#
+# portfolio_tickers: this is a public market terminal, and a generic
+# semiconductor universe list or a test fixture naturally names tickers the
+# owner also happens to hold. The lists here carry no position, size or cost.
+portfolio_tickers src/lib/symbols.js
+portfolio_tickers src/pages/chat.jsx
+portfolio_tickers test/**
