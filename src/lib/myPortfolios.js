@@ -17,9 +17,10 @@ import {
 } from './cashLedger.js'
 
 import { declareDeleteIntent } from './syncIntent.js'
+import { demoStorageKey, IS_PUBLIC_DEMO, PUBLIC_DEMO_PORTFOLIOS } from './publicDemo.js'
 
-const KEY = 'my_portfolios_v1'
-const TRASH_KEY = 'my_portfolios_trash_v1'
+const KEY = demoStorageKey('my_portfolios_v1')
+const TRASH_KEY = demoStorageKey('my_portfolios_trash_v1')
 /** Deleted books wait this long locally before they are gone for good. */
 export const TRASH_DAYS = 30
 export const MAX_MY_PORTFOLIOS = 20
@@ -155,7 +156,7 @@ function sanitize(raw) {
 export function loadPortfolios() {
   try {
     const raw = localStorage.getItem(KEY)
-    if (raw == null) return []
+    if (raw == null) return IS_PUBLIC_DEMO ? sanitize(PUBLIC_DEMO_PORTFOLIOS) : []
     return sanitize(JSON.parse(raw)).filter((p) => !isOldSeed(p))
   } catch { return [] }
 }

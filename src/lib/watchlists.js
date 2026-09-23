@@ -4,8 +4,9 @@
 
 import { moveInList } from './watchorder.js'
 import { SYMBOL_RE } from './symbols.js'
+import { demoStorageKey, IS_PUBLIC_DEMO, PUBLIC_DEMO_WATCHLISTS } from './publicDemo.js'
 
-const KEY = 'named_watchlists_v1'
+const KEY = demoStorageKey('named_watchlists_v1')
 const MAX_SYMBOLS = 60
 export const MAX_WATCHLIST_SYMBOLS = MAX_SYMBOLS
 const MAX_NAME = 32
@@ -31,7 +32,8 @@ function slugify(name) {
 
 export function loadWatchlists() {
   try {
-    const raw = JSON.parse(localStorage.getItem(KEY))
+    const stored = localStorage.getItem(KEY)
+    const raw = stored == null && IS_PUBLIC_DEMO ? PUBLIC_DEMO_WATCHLISTS : JSON.parse(stored)
     if (!Array.isArray(raw)) return []
     const ids = new Set()
     return raw.flatMap((item) => {
@@ -135,4 +137,3 @@ export function removeWatchlistSymbol(id, value) {
   if (!item || !item.symbols.includes(symbol)) return null
   return updateSymbols(id, (symbols) => symbols.filter((s) => s !== symbol))
 }
-
