@@ -7,6 +7,7 @@ import { tl } from '../../lib/i18n.js'
 import { emaSeries, macdSeries, trimToWindow, warmedBars } from '../../lib/chartmath.js'
 import { boundedTimeScale, marketTimeLabel } from '../../lib/chartview.js'
 import { memoWindow, overlayAutoscale } from '../../lib/chartScale.js'
+import { attachVisiblePeak } from '../../lib/visiblePeak.js'
 
 const OV_KEY = 'tape-chart-ov'
 const SMA_COLORS = { 20: '#f59e0b', 50: '#22d3ee', 200: '#c084fc' }
@@ -143,7 +144,7 @@ export function Candles({ bars, warmPad, intraday, timeAxis, ticks, tick, onTick
         `<span style="color:#79828d">C</span> <span style="color:${up ? '#3fb950' : '#f85149'}">${b.close.toFixed(2)} ${fmtPct(pct)}</span>` +
         (b.volume ? ` <span style="color:#79828d">V</span> ${fmtVol(b.volume)}` : '')
     })
-    return () => chart.remove()
+    return () => { chartRef.current?.detachPeak?.(); chart.remove() }
   }, [timeAxis, ctype])
 
   useEffect(() => {
@@ -174,6 +175,8 @@ export function Candles({ bars, warmPad, intraday, timeAxis, ticks, tick, onTick
         : { color: up ? '#3fb950' : '#f85149' })
       c.series.setData(bars.map((b) => ({ time: b.time, value: b.close })))
     }
+    c.detachPeak?.()
+    c.detachPeak = attachVisiblePeak(c.chart, c.series, el.current, bars)
     c.chart.priceScale('right').applyOptions({ mode: ov.log ? 1 : 0 })
     c.extra.forEach((sr) => { try { c.chart.removeSeries(sr) } catch { /* gone */ } })
     c.extra = []
@@ -363,7 +366,7 @@ export function Candles({ bars, warmPad, intraday, timeAxis, ticks, tick, onTick
       </div>
       <div class="relative">
         <div ref={legendRef} class="absolute left-2 top-1 z-10 font-mono text-[10.5px] text-ink pointer-events-none" style="display:none" />
-        <div ref={el} class="h-[352px] w-full touch-pan-y" />
+        <div ref={el} class="relative h-[352px] w-full touch-pan-y" />
       </div>
     </div>
   )

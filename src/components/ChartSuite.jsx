@@ -17,6 +17,7 @@ import { boundedTimeScale, marketTimeLabel, trendlinePrimitive, projectSegment }
 import { nearestDrawing } from '../lib/chartmath.js'
 import { loadDrawings, addDrawing, removeDrawing, clearDrawings } from '../lib/chartDrawings.js'
 import { fmtPrice } from '../lib/format.js'
+import { attachVisiblePeak } from '../lib/visiblePeak.js'
 import { tl } from '../lib/i18n.js'
 
 const KEY = 'tape-chartsuite-v1'
@@ -305,12 +306,14 @@ export function ChartSuite({ symbol }) {
       paint(b || bars[bars.length - 1])
     })
     chart.timeScale().fitContent()
+    const detachPeak = comparing ? null : attachVisiblePeak(chart, priceSeries, el.current, bars)
     // Drawings hang off the MAIN price series only. In compare mode that
     // series holds % change, not price, so there is nothing honest to anchor
     // to — leave it null and the annotation effects sit out entirely.
     seriesRef.current = comparing ? null : priceSeries
     setEpoch((e) => e + 1)
     return () => {
+      detachPeak?.()
       if (chartRef.current === chart) chartRef.current = null
       if (seriesRef.current === priceSeries) seriesRef.current = null
       chart.remove()
@@ -600,7 +603,7 @@ export function ChartSuite({ symbol }) {
           on the chart with no way to scroll the page. pan-y keeps the page
           scrolling vertically and hands pinch + horizontal drag to the chart. */}
       <div ref={el}
-           class={`w-full touch-pan-y ${mode ? 'cursor-crosshair' : ''}`}
+           class={`relative w-full touch-pan-y ${mode ? 'cursor-crosshair' : ''}`}
            style={{ height: state === 'ok' ? `${fillH}px` : 0 }} />
     </div>
   )
