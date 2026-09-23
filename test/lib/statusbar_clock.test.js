@@ -103,12 +103,12 @@ describe('the timezone clock stays aligned and quiet', () => {
   let cls = null
   beforeEach(async () => { cls = (await clock()).classList })
 
-  it('rests borderless and reveals the border on hover (Jeff 2026-08-20: the affordance animates in, it does not sit there)', () => {
+  it('rests borderless and reveals a clear border on hover', () => {
     expect(cls.contains('board-control')).toBe(false)
     expect(cls.contains('border')).toBe(true)
     expect(cls.contains('border-transparent')).toBe(true)   // invisible at rest
-    expect(cls.contains('hover:border-line-2')).toBe(true)  // visible under the pointer
-    expect(cls.contains('transition-colors')).toBe(true)    // and it animates in
+    expect(cls.contains('hover:border-accent/50')).toBe(true)
+    expect(cls.contains('hover:bg-accent-soft')).toBe(true)
     expect(cls.contains('rounded')).toBe(true)
     expect(cls.contains('cursor-pointer')).toBe(true)
   })
@@ -121,14 +121,13 @@ describe('the timezone clock stays aligned and quiet', () => {
   it('changes nothing but colour on hover — no box growing under the pointer', () => {
     // an outline or a hover-only border used to be the shortcut here; both
     // move the row (or, with outline, paint outside it) on a 32px header
-    expect(cls.contains('transition-colors')).toBe(true)
+    expect(cls.contains('hover:bg-accent-soft')).toBe(true)
     expect(cls.contains('hover:border-2')).toBe(false)
     expect([...cls].filter((c) => /^hover:(outline|p|m|text-\[)/.test(c))).toEqual([])
   })
 
   it('keeps the accent amber and never borrows the market colours', () => {
-    expect(cls.contains('hover:border-line-2')).toBe(true)
-    expect(cls.contains('hover:border-accent/50')).toBe(false)
+    expect(cls.contains('hover:border-accent/50')).toBe(true)
     expect(cls.contains('text-up')).toBe(false)
     expect(cls.contains('text-down')).toBe(false)
   })
