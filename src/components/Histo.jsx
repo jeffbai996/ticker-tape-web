@@ -49,7 +49,7 @@ function renderHisto(bars, width, height, cls) {
             y={height - bh}
             width={Math.max(1, bw - 0.9)}
             height={bh}
-            fill={b.up ? '#3fb950' : '#f85149'}
+            fill={b.up ? 'var(--color-up)' : 'var(--color-down)'}
             opacity="0.85"
           />
         )

@@ -13,8 +13,8 @@ import {
   DEFAULT_WINDOW, MAX_DRAWN_BARS,
 } from '../lib/sparks.js'
 
-const UP = '#3fb950'
-const DOWN = '#f85149'
+const UP = 'var(--color-up)'
+const DOWN = 'var(--color-down)'
 
 function Frame({ width, height, class: cls = '', children }) {
   return (
