@@ -529,22 +529,22 @@ function HeatTiles({ tiles }) {
 
 function MoverTable({ title, rows, activity = false }) {
   return (
-    <section class="min-w-0 overflow-hidden rounded-xl border border-line bg-surface-1">
+    <section class="@container min-w-0 overflow-hidden rounded-xl border border-line bg-surface-1">
       <header class="flex items-baseline gap-2 border-b border-line-2 bg-surface-2 px-3 py-1.5">
         <h2 class="font-anth text-[11px] font-bold uppercase tracking-wider text-accent">{title}</h2>
         <span class="ml-auto font-mono text-[9px] tabular-nums text-muted">{rows.length}</span>
       </header>
-      <table class="w-full border-collapse font-mono text-[11px]">
+      <table class="w-full table-fixed border-collapse font-mono text-[11px]">
         <thead>
           <tr class="text-[8.5px] uppercase tracking-wider text-muted">
             <th class="px-3 py-1 text-left">{tl('sym')}</th>
-            <th class="px-2 py-1 text-right max-sm:hidden">{tl('px')}</th>
-            <th class="px-2 py-1 text-right">%</th>
-            <th class="px-2 py-1 text-right max-2xl:hidden">{tl('ext')}</th>
-            <th class="px-2 py-1 text-right max-xl:hidden" title={tl('volume / average')}>
+            <th class="w-[76px] px-2 py-1 text-right">{tl('px')}</th>
+            <th class="w-[67px] px-2 py-1 text-right">%</th>
+            <th class="hidden w-[65px] px-2 py-1 text-right @[350px]:table-cell">{tl('ext')}</th>
+            <th class="hidden w-[70px] px-2 py-1 text-right @[430px]:table-cell" title={tl('volume / average')}>
               {activity ? 'VOL/AVG' : tl('chg')}
             </th>
-            <th class="px-2 py-1 max-[1180px]:hidden">{tl('day')}</th>
+            <th class="hidden w-[104px] px-2 py-1 @[550px]:table-cell">{tl('day')}</th>
           </tr>
         </thead>
         <tbody>
@@ -556,18 +556,18 @@ function MoverTable({ title, rows, activity = false }) {
                 onClick={() => (location.hash = `#/research/${symbol.toLowerCase()}`)}>
                 <td class="min-w-0 px-3 py-[4px]">
                   <div class="font-tick font-[650] leading-none text-ink">{symbol}</div>
-                  {name && <div class="mt-1 max-w-[14rem] truncate font-anth text-[8.5px] leading-none text-muted" title={name}>{name}</div>}
+                  {name && <div class="mt-1 truncate font-anth text-[8.5px] leading-none text-muted" title={name}>{name}</div>}
                 </td>
-                <td class="px-2 py-[3px] text-right font-semibold text-ink max-sm:hidden">{fmtPrice(q?.price)}</td>
+                <td class="px-2 py-[3px] text-right font-semibold text-ink">{fmtPrice(q?.price)}</td>
                 <td class={`px-2 py-[3px] text-right font-semibold ${up ? 'text-up' : 'text-down'}`}>{fmtPct(q?.pct)}</td>
-                <td class={`px-2 py-[3px] text-right text-[10.5px] max-2xl:hidden ${q?.extPct != null ? (extUp ? 'text-up' : 'text-down') : 'text-muted'}`}>
+                <td class={`hidden px-2 py-[3px] text-right text-[10.5px] @[350px]:table-cell ${q?.extPct != null ? (extUp ? 'text-up' : 'text-down') : 'text-muted'}`}>
                   {q?.extPct != null ? fmtPct(q.extPct) : ''}
                 </td>
-                <td class={`px-2 py-[3px] text-right text-[10.5px] max-xl:hidden ${activity && volRatio != null && volRatio >= 1.5 ? 'text-accent' : 'text-ink-2'}`}
+                <td class={`hidden px-2 py-[3px] text-right text-[10.5px] @[430px]:table-cell ${activity && volRatio != null && volRatio >= 1.5 ? 'text-accent' : 'text-ink-2'}`}
                     title={activity && q?.volume != null ? `${tl('vol')} ${fmtVol(q.volume)}${q.avgVolume ? ` · ${tl('avg volume')} ${fmtVol(q.avgVolume)}` : ''}` : ''}>
                   {activity ? (volRatio != null ? `${volRatio.toFixed(1)}×` : (q?.volume != null ? fmtVol(q.volume) : '')) : fmtChange(q?.change)}
                 </td>
-                <td class="px-2 py-[3px] max-[1180px]:hidden"><DayMeter q={q} /></td>
+                <td class="hidden px-2 py-[3px] @[550px]:table-cell"><DayMeter q={q} /></td>
               </tr>
             )
           })}
@@ -654,7 +654,7 @@ function Movers() {
           </div>
         </div>
       </section>
-      <div class="grid gap-2 lg:grid-cols-3">
+      <div class="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 290px), 1fr))' }}>
         <MoverTable title={tl('Gainers')} rows={gainers} />
         <MoverTable title={tl('Losers')} rows={losers} />
         <MoverTable title={tl('Most active')} rows={active} activity />
