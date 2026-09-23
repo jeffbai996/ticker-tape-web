@@ -225,6 +225,7 @@ html, body {
   width: 100%;
   max-width: 100%;
   height: 100%;
+  background: #000;
   overflow: hidden;
   overscroll-behavior: none;
   /* Keep one-finger app panning, but never hand a two-finger gesture to the
@@ -241,9 +242,10 @@ html, body {
 }
 
 /* Desktop density at 100% browser zoom approximates the former 110% view.
-   Compensate the shell dimensions so the fixed viewport layout still fits. */
+   CSS zoom already sizes the element's box in the viewport: reducing its
+   width/height to 1/1.1 left a visible strip on the right and bottom. */
 @media (min-width: 1024px) {
-  #app { zoom: 1.1; width: 90.909%; height: 90.909%; }
+  #app { zoom: 1.1; }
   #app > .h-dvh { height: 100%; }
 }
 
