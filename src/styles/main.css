@@ -240,6 +240,13 @@ html, body {
   overflow: hidden;
 }
 
+/* Desktop density at 100% browser zoom approximates the former 110% view.
+   Compensate the shell dimensions so the fixed viewport layout still fits. */
+@media (min-width: 1024px) {
+  #app { zoom: 1.1; width: 90.909%; height: 90.909%; }
+  #app > .h-dvh { height: 100%; }
+}
+
 /* Terminal-dark scrollbars everywhere. */
 * {
   scrollbar-width: thin;

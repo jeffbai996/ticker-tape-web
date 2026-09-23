@@ -109,7 +109,12 @@ export function App() {
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [paletteSeed, setPaletteSeed] = useState('')
   const [sidebarWidth, setSidebarWidth] = useState(() => storedRailWidth('ttw-sidebar-width', 208, RAIL_LIMITS.left))
+  const lastSidebarWidth = useRef(storedRailWidth('ttw-sidebar-last-width', sidebarWidth > 0 ? sidebarWidth : 208, RAIL_LIMITS.left) || 208)
   const commitSidebarWidth = (width) => {
+    if (width > 0) {
+      lastSidebarWidth.current = width
+      saveRailWidth('ttw-sidebar-last-width', width)
+    }
     saveRailWidth('ttw-sidebar-width', width)
     setSidebarWidth(width)
   }
@@ -151,9 +156,10 @@ export function App() {
       <SubTabs route={route} />
       <div class="flex-1 flex min-h-0">
         {sidebarWidth > 0 ? (
-          <Sidebar route={route} width={sidebarWidth} onWidthCommit={commitSidebarWidth} />
+          <Sidebar route={route} width={sidebarWidth} onWidthCommit={commitSidebarWidth}
+            onCollapse={() => commitSidebarWidth(0)} />
         ) : (
-          <button type="button" data-sidebar-show onClick={() => commitSidebarWidth(208)}
+          <button type="button" data-sidebar-show onClick={() => commitSidebarWidth(lastSidebarWidth.current)}
             class="hidden w-6 shrink-0 items-center justify-center border-r border-line bg-surface-1 font-mono text-[15px] text-muted transition-colors hover:bg-surface-2 hover:text-accent md:flex"
             title={tl('show sidebar')} aria-label={tl('show sidebar')}
           >

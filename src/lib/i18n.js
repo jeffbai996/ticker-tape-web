@@ -445,7 +445,7 @@ const LABELS = {
   'collapse all': '全部折叠', 'reset order': '恢复排序',
   'Market workspace': '市场工作区',
   'Global markets': '全球市场', 'Open markets': '打开市场', 'Market groups': '市场分组',
-  'resize sidebar': '调整侧栏宽度', 'show sidebar': '显示侧栏',
+  'resize sidebar': '调整侧栏宽度', 'show sidebar': '显示侧栏', 'hide sidebar': '收起侧栏',
   'resize dashboard rail': '调整信息栏宽度', 'show dashboard rail': '显示信息栏',
   'hide dashboard rail': '隐藏信息栏',
   'Jump to': '快速跳转', 'Relative signals': '相对强弱', 'leadership and risk appetite': '领涨结构与风险偏好',
