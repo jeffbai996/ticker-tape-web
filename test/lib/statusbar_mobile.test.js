@@ -41,11 +41,11 @@ describe('status bar responsive labels', () => {
     expect(source).toContain("saveMarketColorOrder(oppositeMarketColorOrder(current))")
   })
 
-  it('subtly lifts the clock on hover and keyboard focus', () => {
-    expect(source).toContain('hover:border-line-2')
-    expect(source).toContain('hover:bg-white/[0.045]')
-    expect(source).toContain('focus-visible:border-line-2')
-    expect(source).toContain('focus-visible:bg-white/[0.045]')
+  it('highlights the clock on hover and keyboard focus', () => {
+    expect(source).toContain('hover:border-accent/50')
+    expect(source).toContain('hover:bg-accent-soft')
+    expect(source).toContain('focus-visible:border-accent/50')
+    expect(source).toContain('focus-visible:bg-accent-soft')
   })
 
   it('gives the clickable market-session chip an explicit subtle hover state', () => {
