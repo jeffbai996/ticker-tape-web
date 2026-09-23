@@ -70,6 +70,12 @@ CHECKS_JS = """() => {
   const out = {};
   const de = document.documentElement;
   out.hscroll = de.scrollWidth - de.clientWidth;
+  const shell = document.querySelector('#app > .h-dvh');
+  if (shell) {
+    const box = shell.getBoundingClientRect();
+    out.shellRightGap = Math.round(innerWidth - box.right);
+    out.shellBottomGap = Math.round(innerHeight - box.bottom);
+  }
   out.nodes = document.querySelectorAll('*').length;
   const ctl = document.querySelector('.dashboard-controls');
   if (ctl) {
@@ -170,6 +176,8 @@ def _grade(r: dict, width: int) -> tuple[list[str], list[str]]:
     failures, skipped = [], []
     if r.get("hscroll", 0) > 0:
         failures.append(f"horizontal scroll {r['hscroll']}px")
+    if abs(r.get("shellRightGap", 0)) > 2 or abs(r.get("shellBottomGap", 0)) > 2:
+        failures.append(f"shell misses viewport by {r.get('shellRightGap', 0)}px right / {r.get('shellBottomGap', 0)}px bottom")
     if r.get("nodes", 0) < MIN_NODES:
         failures.append(f"route painted {r.get('nodes', 0)} elements (< {MIN_NODES})")
     if r.get("toolbarRows", 1) > 1:
