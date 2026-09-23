@@ -36,6 +36,8 @@ jobs:
       # its own host, and the capability is built there, from a local secret.
       # test_architecture.test.js fails the build if either reappears here.
       - run: npm run build
+        env:
+          VITE_PUBLIC_DEMO: '1'
       # The responsive matrix runs against the bytes that are about to ship,
       # served the way Pages serves them (base path, real origin), and blocks
       # the deploy on a regression. Playwright is installed with pip rather

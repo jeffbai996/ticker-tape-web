@@ -4,8 +4,9 @@
 
 import { WATCHLIST as DEFAULT_WATCHLIST, SYMBOL_RE } from './symbols.js'
 import { moveInList } from './watchorder.js'
+import { demoStorageKey } from './publicDemo.js'
 
-const KEY = 'watchlist_v1'
+const KEY = demoStorageKey('watchlist_v1')
 const MAX = 60
 export const MAX_WATCHLIST = MAX
 
