@@ -74,6 +74,10 @@ export function zhName(symbol, { traditional = false } = {}) {
   // same listing, so the lookup tries both spellings (Jeff 2026-08-22)
   const row = TABLE?.[key] || TABLE?.[key.replace(/-([A-Z])$/, '.$1')] || TABLE?.[key.replace(/\.([A-Z])$/, '-$1')]
   if (!row) return null
+  // The generated directory also contains untranslated English names from
+  // Sina and HKEX. Older builds stripped their spaces. Treat those as missing
+  // translations so callers use the provider's properly spaced name instead.
+  if (!CJK.test(row[0])) return null
   return traditional ? (row[1] || row[0]) : row[0]
 }
 

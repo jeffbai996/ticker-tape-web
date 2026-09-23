@@ -77,8 +77,11 @@ def xlsx_rows(blob: bytes) -> list[list[str]]:
 
 
 def clean(name: str) -> str:
-    # "万  科Ａ" → "万科A": exchanges pad short names and use full-width letters
-    name = re.sub(r'\s+', '', name or '')
+    # "万  科Ａ" → "万科A": exchanges pad Chinese short names. Latin-only
+    # company names are words, though: never turn "Palantir Technologies"
+    # into "PalantirTechnologies" when regenerating the table.
+    name = name or ''
+    name = re.sub(r'\s+', '' if re.search(r'[㐀-鿿]', name) else ' ', name).strip()
     # full-width Latin/digits (ＸＬ, Ａ) → ASCII, so a typed "A" matches 万科A
     return ''.join(chr(ord(ch) - 0xFEE0) if 0xFF01 <= ord(ch) <= 0xFF5E else ch for ch in name)
 

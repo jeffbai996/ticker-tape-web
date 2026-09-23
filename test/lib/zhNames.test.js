@@ -3,7 +3,8 @@
  *  name needs a local table consulted before the provider. The table is
  *  generated from the exchanges (scripts/gen_zh_names.py) and lazy-loaded. */
 import { beforeAll, describe, expect, it, vi } from 'vitest'
-import { hasCjk, loadMissingZhName, loadZhTable, onZhTable, zhAliasHits, zhKnownSymbols, zhName } from '../../src/lib/zhNames.js'
+import { hasCjk, loadMissingZhName, loadZhTable, localName, onZhTable, zhAliasHits, zhKnownSymbols, zhName } from '../../src/lib/zhNames.js'
+import { setLocale } from '../../src/lib/i18n.js'
 
 beforeAll(async () => { await loadZhTable() })
 
@@ -70,6 +71,19 @@ describe('zhName', () => {
 
   it('keeps Alphabet attached to its Chinese name', () => {
     expect(zhName('GOOGL')).toBe('谷歌')
+  })
+
+  it('uses spaced provider names when a generated entry is English-only', () => {
+    expect(zhName('PLTR')).toBeNull()
+    expect(zhName('0033.HK')).toBeNull()
+    setLocale('zh')
+    try {
+      expect(localName('PLTR', 'Palantir Technologies Inc.')).toBe('Palantir Technologies Inc.')
+      expect(localName('0033.HK', 'International Genius Company')).toBe('International Genius Company')
+      expect(localName('CRM', 'Salesforce, Inc.')).toBe('赛富时公司')
+    } finally {
+      setLocale('en')
+    }
   })
 
   it('fills a missing US translation from the bounded remote fallback', async () => {
