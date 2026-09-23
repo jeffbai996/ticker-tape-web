@@ -103,7 +103,7 @@ function RollingClock() {
           feed is healthy. */
       title={tl('cycle timezone')}
       data-status-clock
-      class="h-5 group flex cursor-pointer items-center gap-1 whitespace-nowrap font-anth px-1 py-0 rounded border border-transparent transition-colors duration-200 hover:border-line-2 hover:bg-white/[0.045] focus-visible:border-line-2 focus-visible:bg-white/[0.045] focus-visible:outline-none"
+      class="h-5 group flex cursor-pointer items-center gap-1 whitespace-nowrap font-anth px-1 py-0 rounded border border-transparent hover:border-accent/50 hover:bg-accent-soft focus-visible:border-accent/50 focus-visible:bg-accent-soft focus-visible:outline-none"
     >
       {/* Jakarta digits. This said the licensing-gated face "never ships" on
           the public build — it did: the woff2 was committed to this public
@@ -362,7 +362,7 @@ export function StatusBar() {
           onClick={() => setLocale(getLocale() === 'en' ? 'zh' : 'en')}
           title="EN / 中文"
           data-status-locale
-          class="h-5 inline-flex items-center px-1 py-0 rounded border border-line text-muted hover:text-ink hover:border-line-2"
+          class="h-5 inline-flex items-center px-1 py-0 rounded border border-line text-muted hover:text-accent hover:border-accent/50 hover:bg-accent-soft focus-visible:border-accent/50 focus-visible:bg-accent-soft"
         >
           {getLocale() === 'en' ? '中' : 'EN'}
         </button>

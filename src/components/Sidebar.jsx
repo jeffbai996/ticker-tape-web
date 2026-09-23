@@ -66,7 +66,7 @@ function AddSymbol({ onAdd, isFull, cap }) {
 }
 
 /** Feed freshness, in the TUI's own words: amber italic, ET, stale warning. */
-function UpdatedLine() {
+function UpdatedLine({ onCollapse }) {
   const [, tick] = useState(0)
   useEffect(() => {
     const t = setInterval(() => tick((n) => n + 1), 10_000)
@@ -79,8 +79,11 @@ function UpdatedLine() {
     : null
   return (
     <div class="px-3 pt-2 pb-1 font-mono text-[10px] leading-tight">
-      <div class="text-accent italic">
-        {ts ? `${tl('updated')} ${ts} ET` : '…'}
+      <div class="flex items-center justify-between gap-1">
+        <span class="text-accent italic truncate">{ts ? `${tl('updated')} ${ts} ET` : '…'}</span>
+        <button type="button" onClick={onCollapse} data-sidebar-hide
+          title={tl('hide sidebar')} aria-label={tl('hide sidebar')}
+          class="shrink-0 rounded border border-transparent px-1 text-ink-2 hover:border-line-2 hover:bg-surface-3 hover:text-accent focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent">‹</button>
       </div>
       {staleMin >= 5 && (
         <div class="text-down font-bold not-italic pt-0.5">
@@ -108,7 +111,7 @@ function SortHead({ label, col, sort, onSort, align = 'left' }) {
   )
 }
 
-export function Sidebar({ route, width, onWidthCommit }) {
+export function Sidebar({ route, width, onWidthCommit, onCollapse }) {
   const railRef = useRef(null)
   const mainWatchlist = useWatchlist()
   const namedWatchlists = useNamedWatchlists()
@@ -184,7 +187,7 @@ export function Sidebar({ route, width, onWidthCommit }) {
         class="absolute -right-1 top-0 z-30 h-full w-2 cursor-col-resize touch-none group/rail-resize">
         <span class="absolute right-[3px] top-1/2 h-10 w-px -translate-y-1/2 bg-line opacity-0 transition-opacity group-hover/rail-resize:opacity-100 group-active/rail-resize:bg-accent group-active/rail-resize:opacity-100" />
       </div>
-      <UpdatedLine />
+      <UpdatedLine onCollapse={onCollapse} />
       <div class="terminal-navigation pb-2">
         {NAV.filter((s) => !s.phoneOnly).map((section) => (
           <div key={section.id}>
