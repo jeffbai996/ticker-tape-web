@@ -1338,7 +1338,7 @@ function SectorLayoutPanel({ names, head, onDone }) {
     ['↺', tl('reset order'), () => resetGroupOrder()],
   ]
   return (
-    <section class="board-menu-section min-w-0 pb-2">
+    <section class="board-menu-section min-w-0 flex-1 pb-2">
       {head(tl('Sectors'))}
       <div class="px-1 pb-0.5">
         {actions.map(([icon, label, run]) => (
@@ -1406,7 +1406,7 @@ function BoardMenu({ sort, setSort, setViewMode, spark, setSpark, sparkWin, setS
                 {lists.map((l) => item(l.name, listId === l.id,
                   () => { setOpen(false); location.hash = `#/watchlists/${l.id}` }))}
               </section>
-              <section class="board-menu-section">
+              <section class="board-menu-section flex-1">
                 {head(tl('Sort'))}
                 {SORTS.map(([v, label]) => item(label, sort === v, () => {
                   setOpen(false)
