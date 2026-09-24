@@ -637,9 +637,6 @@ html[data-pointer-hover] .market-deck-row:hover {
   opacity: 1;
   transform: translateX(0);
 }
-@media (prefers-reduced-motion: reduce) {
-  .brand-word { transition: none !important; }
-}
 
 /* Board-menu burger: the middle line tucks in on hover so the icon reads as
    "this opens something" instead of static furniture (Jeff 2026-08-06). */
@@ -717,9 +714,6 @@ html[data-pointer-hover] .tape-hot *:not(.text-up):not(.text-down) {
 .time-wheel-new { transform: translateY(100%); }
 .time-wheel-digit.rolling .time-wheel-old { transform: translateY(-100%); }
 .time-wheel-digit.rolling .time-wheel-new { transform: translateY(0); }
-@media (prefers-reduced-motion: reduce) {
-  .time-wheel-face, .time-wheel-old, .time-wheel-new { transition: none !important; }
-}
 /* Rolodex restored 2026-08-11 (it was collateral of a wrong shimmer theory):
    with the digit boxes now FIXED-width, the roll is a transform inside an
    overflow:hidden box — compositor-only, physically unable to touch layout.
