@@ -9,6 +9,7 @@ import { useAlertEngine } from './hooks.js'
 import { StatusBar } from './components/StatusBar.jsx'
 import { Tape } from './components/Tape.jsx'
 import { Sidebar } from './components/Sidebar.jsx'
+import { RailChevron } from './components/RailChevron.jsx'
 import { BottomNav, SubTabs } from './components/BottomNav.jsx'
 import { CommandBar } from './components/CommandBar.jsx'
 import { Palette } from './components/Palette.jsx'
@@ -159,12 +160,12 @@ export function App() {
           <Sidebar route={route} width={sidebarWidth} onWidthCommit={commitSidebarWidth}
             onCollapse={() => commitSidebarWidth(0)} />
         ) : (
-          <button type="button" data-sidebar-show onClick={() => commitSidebarWidth(lastSidebarWidth.current)}
-            class="hidden w-6 shrink-0 items-center justify-center border-r border-line bg-surface-1 font-mono text-[15px] text-muted transition-colors hover:bg-surface-2 hover:text-accent md:flex"
-            title={tl('show sidebar')} aria-label={tl('show sidebar')}
-          >
-            ›
-          </button>
+          <div class="hidden w-6 shrink-0 justify-center border-r border-line bg-surface-1 pt-2 md:flex">
+            <button type="button" data-sidebar-show onClick={() => commitSidebarWidth(lastSidebarWidth.current)}
+              class="rail-toggle grid h-5 w-5 place-items-center"
+              title={tl('show sidebar')} aria-label={tl('show sidebar')}
+            ><RailChevron direction="right" /></button>
+          </div>
         )}
         <main ref={mainRef} class="flex-1 flex min-w-0 min-h-0 overflow-y-auto max-md:pb-12">
           <Page route={route} />

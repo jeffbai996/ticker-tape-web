@@ -36,6 +36,7 @@ import {
   fmtPrice, fmtPriceBare, fmtPriceWide, fmtPct, fmtPctPlain, fmtChange, fmtVol, fmtFracPct, rangePos,
 } from '../lib/format.js'
 import { Histo } from '../components/Histo.jsx'
+import { RailChevron } from '../components/RailChevron.jsx'
 import { Spark } from '../components/Spark.jsx'
 import { SPARK_TYPES, DEFAULT_SPARK, isSparkType,
   SPARK_WINDOWS, DEFAULT_WINDOW, isSparkWindow, normalizeSparkWindow,
@@ -2012,25 +2013,21 @@ export function Dashboard({ listId = null }) {
           <AddSymbolRow onAdd={addSymbol} isPresent={isPresent} isFull={listFull} cap={listCap} />
           {railWidth === 0 && (
             <button type="button" data-dashboard-rail-show onClick={toggleRail}
-              class="absolute right-2 top-2 z-20 hidden h-6 w-6 items-center justify-center rounded border border-line bg-surface-1 font-mono text-[14px] text-muted transition-colors hover:border-accent/60 hover:text-accent min-[960px]:inline-flex"
+              class="rail-toggle absolute right-2 top-[2px] z-20 hidden h-5 w-5 items-center justify-center min-[960px]:inline-flex"
               title={tl('show dashboard rail')} aria-label={tl('show dashboard rail')}
-            >
-              ‹
-            </button>
+            ><RailChevron direction="left" /></button>
           )}
         </section>
         {railWidth > 0 && (
           <aside class="rail @container relative flex flex-col gap-3 min-w-0">
             <button type="button" data-dashboard-rail-hide onClick={toggleRail}
-              class="absolute -left-2 top-2 z-40 hidden h-6 w-5 -translate-x-full items-center justify-center rounded-l border border-line bg-surface-1 font-mono text-[15px] text-muted shadow-sm transition-colors hover:border-accent/60 hover:bg-accent-soft hover:text-accent focus-visible:border-accent focus-visible:text-accent focus-visible:outline-none min-[960px]:inline-flex"
+              class="rail-toggle absolute left-0 top-[2px] z-40 hidden h-5 w-5 -translate-x-1/2 items-center justify-center min-[960px]:inline-flex"
               title={tl('hide dashboard rail')} aria-label={tl('hide dashboard rail')}
-            >
-              ›
-            </button>
+            ><RailChevron direction="right" /></button>
             <div data-dashboard-rail-resize role="separator" aria-orientation="vertical" aria-label={tl('resize dashboard rail')}
               onPointerDown={startRailResize}
-              class="absolute -left-1 top-0 z-30 hidden h-full w-2 cursor-col-resize touch-none group/rail-resize min-[960px]:block">
-              <span class="absolute left-[3px] top-1/2 h-10 w-px -translate-y-1/2 bg-line opacity-0 transition-opacity group-hover/rail-resize:opacity-100 group-active/rail-resize:bg-accent group-active/rail-resize:opacity-100" />
+              class="absolute left-0 top-0 z-30 hidden h-full w-3 -translate-x-1/2 cursor-col-resize touch-none min-[960px]:block">
+              <span class="absolute left-1/2 top-1/2 h-12 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-line-2" />
             </div>
             {widgets.map((w) => (
               <WidgetFrame key={w.id} id={w.id}>
