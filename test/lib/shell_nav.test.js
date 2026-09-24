@@ -105,9 +105,10 @@ describe('compact mobile status bar', () => {
   // quotes stay the same size and more of them fit before the scroll.
   it('keeps both quote strips readable, not jammed', () => {
     expect(status).toContain('class="w-full flex items-baseline gap-[5px]')
-    expect(status).toContain('gap-1.5 whitespace-nowrap leading-5 px-0.5')
+    expect(status).toContain('tape-item hl-row flex items-baseline gap-1.5 whitespace-nowrap')
     expect(tape).toContain('class="tape-cycle flex items-center h-full gap-1.5 pr-3"')
-    expect(tape).toContain('gap-1.5 whitespace-nowrap hover:no-underline px-1 py-0.5')
+    expect(tape).toContain('tape-item flex items-baseline gap-1.5 whitespace-nowrap')
+    expect(source('src/styles/main.css')).toContain('.tape-item { line-height: 14px; padding: 1px 2px; }')
     expect(tape).toContain('gap-1.5 text-[10px] pl-[3px]')
     // …but the fixed-width quote columns stay gone: they padded every row to
     // the widest print and left holes mid-tape
