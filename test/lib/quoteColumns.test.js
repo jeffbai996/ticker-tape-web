@@ -27,8 +27,10 @@ describe('board-wide quote columns', () => {
     // shape would pin every board to a 4-digit ext print)
     const src = readFileSync(resolve(process.cwd(), 'src/pages/dashboard.jsx'), 'utf8')
     expect(src).toContain('min-w-(--col-price)')
-    expect(src).toContain('@min-[545px]:min-w-(--col-change)')
-    expect((src.match(/@min-\[545px\]:min-w-\(--col-ext\)/g) || []).length).toBe(2)
+    // Root-scale zoom makes a 545px container breakpoint effectively 600px;
+    // at a 1024px viewport the board is narrower but still needs aligned quotes.
+    expect(src).toContain('@min-[490px]:min-w-(--col-change)')
+    expect((src.match(/@min-\[490px\]:min-w-\(--col-ext\)/g) || []).length).toBe(2)
     expect((src.match(/data-col="price"/g) || []).length).toBe(1)
     expect((src.match(/data-col="change"/g) || []).length).toBe(1)
     expect((src.match(/data-col="ext"/g) || []).length).toBe(1)
