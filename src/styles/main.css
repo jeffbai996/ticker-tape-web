@@ -566,7 +566,6 @@ html[data-pointer-hover] .market-deck-row:hover {
 /* At the narrow desktop band the price cluster fills the right edge. Keep
    the remove action beside the ticker instead of covering an ON/AH print. */
 @container (min-width: 490px) and (max-width: 599px) {
-  .tui-row-remove { right: auto; left: 78px; }
 }
 /* Parked at the board's top edge and moved by translateY alone, so a drop
    target 30 rows down costs one composited transform, not a relayout. */

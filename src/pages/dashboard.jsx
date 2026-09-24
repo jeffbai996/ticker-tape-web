@@ -280,7 +280,7 @@ function CompactDayRange({ lo, hi, v, cls = '', label = 'DAY', band = 'hidden @m
 // Exported so a result grammar outside the board (screenBoard.jsx's ranked
 // signal results) can render the identical row rather than forking it —
 // same badges, same layout, same truth about what the feed knows.
-export function TuiRow({ symbol, data, earnDays, onRemove = () => {}, selecting, selected, onToggleSelect,
+export function TuiRow({ symbol, data, earnDays, selecting, selected, onToggleSelect,
                    spark = DEFAULT_SPARK, sparkWin = DEFAULT_WINDOW,
                    intradayBars = null, revealed = false, onReveal,
                    dragScope = null, dragging = false, drag = null }) {
@@ -359,15 +359,6 @@ export function TuiRow({ symbol, data, earnDays, onRemove = () => {}, selecting,
           ✓
         </span>
       )}
-      {/* favorites are managed where they live: hover a row, tap the star
-          (Jeff 2026-08-05). Filled = on the board; a tap lifts it off. */}
-      {!selecting && <button
-        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(symbol) }}
-        title={tl('unwatch %s').replace('%s', symbol)}
-        class="tui-row-remove absolute right-1.5 top-1/2 -translate-y-1/2 z-10 w-6 h-6 grid place-items-center rounded-md text-accent opacity-0 pointer-events-none group-hover/row:opacity-100 group-hover/row:pointer-events-auto hover:bg-surface-2 hover:text-down transition-opacity"
-      >
-        ★
-      </button>}
       {/* the meters column needs air off the quote cluster — at mid widths
           VOL was landing flush against the extended-hours percentage */}
       <div class="flex gap-4 max-sm:gap-2 min-w-0">
@@ -1982,7 +1973,7 @@ export function Dashboard({ listId = null }) {
                 </div>
                 {!folded && g.symbols.map((s) => (
                   <TuiRow key={s} symbol={s} data={quotes[s]} earnDays={earnDays[s]}
-                    onRemove={removeSymbol} selecting={selecting} spark={spark} sparkWin={sparkWin}
+                    selecting={selecting} spark={spark} sparkWin={sparkWin}
                     intradayBars={intradaySparks[s]}
                     revealed={revealedSym === s} onReveal={revealName}
                     dragScope={dragScopeFor(g.name)} dragging={dragSym === s} drag={rowDrag}
@@ -1992,7 +1983,7 @@ export function Dashboard({ listId = null }) {
             )
           }) : flatRows.map(({ symbol }) => (
             <TuiRow key={symbol} symbol={symbol} data={quotes[symbol]} earnDays={earnDays[symbol]}
-              onRemove={removeSymbol} selecting={selecting} spark={spark} sparkWin={sparkWin}
+              selecting={selecting} spark={spark} sparkWin={sparkWin}
               intradayBars={intradaySparks[symbol]}
               revealed={revealedSym === symbol} onReveal={revealName}
               dragScope={dragScopeFor('flat')} dragging={dragSym === symbol} drag={rowDrag}

@@ -107,14 +107,12 @@ describe('dashboard ticker row', () => {
     expect(row.querySelector('button[title^="unwatch"]')).toBeNull()
   })
 
-  it('removes from the watchlist without opening research', () => {
-    const onRemove = vi.fn()
-    const row = mount({ onRemove })
-    const button = row.querySelector('button[title^="unwatch"]')
-    const event = cancellableClick(button)
-
-    expect(event.defaultPrevented).toBe(true)
-    expect(onRemove).toHaveBeenCalledWith('ACME')
+  it('does not expose a one-click removal star on a normal row', () => {
+    const row = mount()
+    expect(row.querySelector('.tui-row-remove')).toBeNull()
+    expect(row.querySelector('button[title^="unwatch"]')).toBeNull()
+    expect(row.textContent).not.toContain('★')
+    expect(row.getAttribute('href')).toContain('research')
   })
 
   it('holds the extended-hours quote slot until a print arrives', () => {
