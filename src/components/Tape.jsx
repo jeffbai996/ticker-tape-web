@@ -148,6 +148,14 @@ export function Tape() {
   const [marquee, setMarquee] = useState({ copies: 2, width: 0 })
   const play = useTapeMotion()
   usePointerHighlight(wrap, play === 'running')
+  useEffect(() => {
+    // A direct Web Animations play() call overrides the CSS pause flag.
+    // Keep that control plane in sync after recovery and visibility changes.
+    for (const animation of belt.current?.getAnimations?.() || []) {
+      if (play === 'running') animation.play()
+      else animation.pause()
+    }
+  }, [play, marquee.width])
 
   useEffect(() => {
     const viewport = wrap.current
@@ -204,7 +212,32 @@ export function Tape() {
     window.addEventListener('pageshow', resume)
     window.addEventListener('focus', resume)
     document.addEventListener('visibilitychange', resume)
+    // Some restored browser pages retain a paused compositor animation even
+    // though the CSS play state is running. Check the animation clock while
+    // visible so recovery does not depend on another focus event.
+    let lastAnimation = null
+    let lastTime = null
+    const stopRecovery = startVisibleClock(2000, () => {
+      if (tapePlayState({ hidden: document.hidden,
+        reducedMotion: !!globalThis.matchMedia?.(REDUCED_MOTION)?.matches }) !== 'running') {
+        lastTime = null
+        return
+      }
+      const animation = belt.current?.getAnimations?.()[0]
+      if (!animation) { measure(); return }
+      const time = animation.currentTime
+      if (animation.playState === 'paused' || animation.playState === 'finished') {
+        animation.play()
+      } else if (animation === lastAnimation && typeof time === 'number' && time === lastTime) {
+        animation.cancel()
+        animation.play()
+        animation.currentTime = time
+      }
+      lastAnimation = animation
+      lastTime = time
+    })
     return () => {
+      stopRecovery()
       window.removeEventListener('pageshow', resume)
       window.removeEventListener('focus', resume)
       document.removeEventListener('visibilitychange', resume)
