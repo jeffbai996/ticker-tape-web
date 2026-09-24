@@ -100,6 +100,15 @@
 .settings-row select, .settings-row dd { font-family: var(--font-mono); }
 .settings-page select { max-width: 60%; }
 .settings-page select:hover, .settings-page select:focus { border-color: var(--color-accent); }
+.ai-report-head { display: grid; grid-template-columns: minmax(0, 1fr); }
+.ai-report-head > :nth-child(n + 2) { justify-self: end; }
+@container (min-width: 460px) {
+  .ai-report-head {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .ai-report-head > :first-child { grid-row: span 2; align-self: center; }
+  .ai-report-head > :nth-child(n + 2) { grid-column: 2; justify-self: end; }
+}
 .rail-toggle {
   border: 1px solid var(--color-line-2);
   border-radius: 6px;
@@ -107,28 +116,27 @@
   color: var(--color-ink-2);
 }
 .rail-toggle:focus-visible { outline: 1px solid var(--color-accent); outline-offset: 2px; }
-@media (hover: hover) and (pointer: fine) {
-  .rail-toggle:hover { background: var(--color-surface-3); color: var(--color-ink); }
-  .settings-row:hover { background-color: var(--color-surface-3); }
-  .terminal-navigation a:hover,
-  .tui-row:hover,
-  .rail-row:hover {
-    /* Overlay the resting/selected fill instead of replacing it. */
-    background-image: linear-gradient(rgba(231,236,243,.07), rgba(231,236,243,.07));
-    box-shadow: inset 2px 0 0 rgba(231,236,243,.32);
-  }
-  [data-status-session]:hover,
-  [data-status-clock]:hover,
-  [data-status-locale]:hover {
-    background-image: linear-gradient(rgba(231,236,243,.10), rgba(231,236,243,.10));
-    box-shadow: inset 0 0 0 1px rgba(231,236,243,.22);
-  }
-  [data-sidebar-resize]:is(:hover, :active) > span,
-  [data-dashboard-rail-resize]:is(:hover, :active) > span {
-    width: 4px;
-    background-color: var(--color-accent);
-  }
+html[data-pointer-hover] .rail-toggle:hover { background: var(--color-surface-3); color: var(--color-ink); }
+html[data-pointer-hover] .settings-row:hover { background-color: var(--color-surface-3); }
+html[data-pointer-hover] .terminal-navigation a:hover,
+html[data-pointer-hover] .tui-row:hover,
+html[data-pointer-hover] .rail-row:hover {
+  /* Overlay the resting/selected fill instead of replacing it. */
+  background-image: linear-gradient(rgba(231,236,243,.07), rgba(231,236,243,.07));
+  box-shadow: inset 2px 0 0 rgba(231,236,243,.32);
 }
+html[data-pointer-hover] [data-status-session]:hover,
+html[data-pointer-hover] [data-status-clock]:hover,
+html[data-pointer-hover] [data-status-locale]:hover {
+  background-image: linear-gradient(rgba(231,236,243,.10), rgba(231,236,243,.10));
+  box-shadow: inset 0 0 0 1px rgba(231,236,243,.22);
+}
+html[data-pointer-hover] [data-sidebar-resize]:is(:hover, :active) > span,
+html[data-pointer-hover] .rail-grab:is(:hover, :active) > span {
+  width: 4px;
+  background-color: var(--color-accent);
+}
+.rail-grab:focus-visible > span { width: 4px; background-color: var(--color-accent); }
 /* Terminal controls change state immediately. Price and tape motion are separate. */
 button, a, select, summary, [role="button"], .cursor-pointer,
 .tui-row, .wl-row, .rail-row, .book-card, .terminal-sidebar * { transition: none !important; }
@@ -198,19 +206,18 @@ button[data-prime-filter] .source-signal {
   /* One pseudo-class of specificity beats a resting background by source
      order; explicit hover:bg-* utilities (two classes) still win. Tint from
      currentColor keeps selected amber and semantic red/green controls legible.
-     Pointer-capable devices only, so touch taps never leave a stuck wash. */
-  @media (hover: hover) and (pointer: fine) {
-    :where(a[href], button, [role="button"], summary, select, .cursor-pointer):not(:where(:disabled, [aria-disabled="true"], [inert], [inert] *, .text-black, .text-surface-0)):hover {
-      background-color: color-mix(in srgb, currentColor 8%, var(--color-surface-2));
-    }
-    /* Solid semantic fills carry dark text: keep the fill and its contrast. */
-    :where(a[href], button, [role="button"], summary, select, .cursor-pointer):where(.text-black, .text-surface-0):not(:where(:disabled, [aria-disabled="true"], [inert], [inert] *)):hover {
-      filter: brightness(1.1);
-    }
-    :where(a[href]):not(:where([class])):hover {
-      background-color: transparent;
-      text-decoration: underline;
-    }
+     Actual mouse/pen input enables the wash, so a touch-first device with a
+     mouse still works while touch taps do not leave it stuck. */
+  :where(html[data-pointer-hover]) :where(a[href], button, [role="button"], summary, select, .cursor-pointer):not(:where(:disabled, [aria-disabled="true"], [inert], [inert] *, .text-black, .text-surface-0)):hover {
+    background-color: color-mix(in srgb, currentColor 8%, var(--color-surface-2));
+  }
+  /* Solid semantic fills carry dark text: keep the fill and its contrast. */
+  :where(html[data-pointer-hover]) :where(a[href], button, [role="button"], summary, select, .cursor-pointer):where(.text-black, .text-surface-0):not(:where(:disabled, [aria-disabled="true"], [inert], [inert] *)):hover {
+    filter: brightness(1.1);
+  }
+  :where(html[data-pointer-hover]) :where(a[href]):not(:where([class])):hover {
+    background-color: transparent;
+    text-decoration: underline;
   }
 }
 
@@ -386,6 +393,35 @@ html, body {
    visible gap, identical on every platform. */
 .price-grouped {
   word-spacing: -0.625ch;
+}
+.market-deck-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 3.5rem;
+  grid-template-areas: "name change" "level change";
+  align-items: baseline;
+  column-gap: 6px;
+  row-gap: 1px;
+  padding: 3px 10px;
+}
+.market-deck-row.market-deck-divider {
+  border-top: 1px solid var(--color-line);
+  margin-top: 4px;
+  padding-top: 6px;
+}
+.market-deck-name { grid-area: name; }
+.market-deck-level { grid-area: level; text-align: left; }
+.market-deck-change { grid-area: change; align-self: center; }
+@container (min-width: 220px) {
+  .market-deck-row {
+    grid-template-columns: minmax(0, 1fr) 4.6rem 3.5rem;
+    grid-template-areas: "name level change";
+    column-gap: 6px;
+  }
+  .market-deck-level { text-align: right; }
+}
+html[data-pointer-hover] .market-deck-row:hover {
+  background: var(--color-surface-3);
+  box-shadow: inset 2px 0 0 rgba(231,236,243,.32);
 }
 
 .board-menu-section {
@@ -636,18 +672,16 @@ button:hover .burger path:nth-child(2) { transform: scaleX(.55); }
    re-runs hit testing on pointer events, so a CSS hover on a scrolling belt
    sticks to whichever item happened to be under the cursor at the last
    mousemove and then slides away with it. */
-@media (hover: hover) and (pointer: fine) {
-  .wl-row:hover {
-    background: rgba(231, 236, 243, .07);
-    box-shadow: inset 2px 0 0 rgba(231, 236, 243, .32);
-  }
-  .wl-row:hover a { background: transparent; }
-  .hl-row:hover,
-  .tape-hot {
-    background: rgba(231, 236, 243, .08);
-    box-shadow: inset 0 0 0 1px rgba(231, 236, 243, .22);
-    border-radius: 3px;
-  }
+html[data-pointer-hover] .wl-row:hover {
+  background: rgba(231, 236, 243, .07);
+  box-shadow: inset 2px 0 0 rgba(231, 236, 243, .32);
+}
+html[data-pointer-hover] .wl-row:hover a { background: transparent; }
+html[data-pointer-hover] .hl-row:hover,
+html[data-pointer-hover] .tape-hot {
+  background: rgba(231, 236, 243, .08);
+  box-shadow: inset 0 0 0 1px rgba(231, 236, 243, .22);
+  border-radius: 3px;
 }
 @keyframes tape-scroll {
   from { transform: translate3d(0, 0, 0); }

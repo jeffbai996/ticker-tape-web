@@ -36,7 +36,6 @@ import {
   fmtPrice, fmtPriceBare, fmtPriceWide, fmtPct, fmtPctPlain, fmtChange, fmtVol, fmtFracPct, rangePos,
 } from '../lib/format.js'
 import { Histo } from '../components/Histo.jsx'
-import { RailChevron } from '../components/RailChevron.jsx'
 import { Spark } from '../components/Spark.jsx'
 import { SPARK_TYPES, DEFAULT_SPARK, isSparkType,
   SPARK_WINDOWS, DEFAULT_WINDOW, isSparkWindow, normalizeSparkWindow,
@@ -730,25 +729,17 @@ function MarketDeckPanel() {
         <a href="#/markets" aria-label={tl('Open markets')} class="ml-auto text-[12px] leading-none text-muted hover:text-accent hover:no-underline">→</a>
       </header>
       <div class="py-1">
-        {MARKET_DECK.map((item) => {
+        {MARKET_DECK.map((item, index) => {
           const q = quotes[item.symbol]?.quote
           return (
             <a key={item.symbol} href={`#/research/${item.symbol.toLowerCase()}`}
-              class="min-w-0 flex items-baseline gap-1.5 px-2.5 py-[2.5px] hover:bg-surface-3 hover:no-underline">
-              {/* label ≠ value: micro-caps label in the quiet shade, tabular
-                  number carrying the color — they used to blur into one line
-                  (Jeff 2026-08-06: "something visually unsatisfying") */}
-              {/* 20 instruments in a 230px rail: a hard truncate ate half the
-                  labels ("WTI Crude Oil", "Nasdaq 100"), so the name sweeps on
-                  hover/tap like every other clipped name on the board */}
+              class={`market-deck-row min-w-0 hover:no-underline ${[6, 8, 11, 14, 19].includes(index) ? 'market-deck-divider' : ''}`}>
               <Marquee text={tl(item.label)} title={tl(item.label)}
-                class="min-w-0 font-anth text-[10px] font-medium uppercase tracking-[0.08em] text-muted/80" />
-              {item.equityIndex && (
-                <span class="price-grouped hidden w-[4.6rem] shrink-0 text-right font-tick text-[10.5px] font-medium tabular-nums text-ink-2 @min-[220px]:inline">
-                  {q ? fmtPriceWide(q.price) : '—'}
-                </span>
-              )}
-              <span class={`ml-auto shrink-0 font-tick text-[11px] font-semibold tabular-nums ${!q ? 'text-muted' : q.pct >= 0 ? 'text-up' : 'text-down'}`}>
+                class="market-deck-name min-w-0 font-anth text-[10px] font-medium uppercase tracking-[0.045em] text-ink-2" />
+              <span class="market-deck-level price-grouped text-right font-tick text-[10.5px] font-medium tabular-nums text-ink-2">
+                {q ? fmtPriceWide(q.price) : '—'}
+              </span>
+              <span class={`market-deck-change text-right font-tick text-[11px] font-semibold tabular-nums ${!q ? 'text-muted' : q.pct >= 0 ? 'text-up' : 'text-down'}`}>
                 {q ? fmtPct(q.pct) : '—'}
               </span>
             </a>
@@ -2013,21 +2004,28 @@ export function Dashboard({ listId = null }) {
           <AddSymbolRow onAdd={addSymbol} isPresent={isPresent} isFull={listFull} cap={listCap} />
           {railWidth === 0 && (
             <button type="button" data-dashboard-rail-show onClick={toggleRail}
-              class="rail-toggle absolute right-2 top-[2px] z-20 hidden h-5 w-5 items-center justify-center min-[960px]:inline-flex"
+              class="rail-grab absolute right-0 top-2 z-20 hidden h-14 w-4 items-center justify-center min-[960px]:inline-flex"
               title={tl('show dashboard rail')} aria-label={tl('show dashboard rail')}
-            ><RailChevron direction="left" /></button>
+            ><span class="h-12 w-[3px] rounded-full bg-line-2" /></button>
           )}
         </section>
         {railWidth > 0 && (
           <aside class="rail @container relative flex flex-col gap-3 min-w-0">
-            <button type="button" data-dashboard-rail-hide onClick={toggleRail}
-              class="rail-toggle absolute left-0 top-[2px] z-40 hidden h-5 w-5 -translate-x-1/2 items-center justify-center min-[960px]:inline-flex"
-              title={tl('hide dashboard rail')} aria-label={tl('hide dashboard rail')}
-            ><RailChevron direction="right" /></button>
             <div data-dashboard-rail-resize role="separator" aria-orientation="vertical" aria-label={tl('resize dashboard rail')}
-              onPointerDown={startRailResize}
-              class="absolute left-0 top-0 z-30 hidden h-full w-3 -translate-x-1/2 cursor-col-resize touch-none min-[960px]:block">
-              <span class="absolute left-1/2 top-1/2 h-12 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-line-2" />
+              aria-valuemin="0" aria-valuemax={RAIL_LIMITS.right.max} aria-valuenow={railWidth} tabIndex={0}
+              onPointerDown={startRailResize} onDoubleClick={() => commitRailWidth(0)}
+              onKeyDown={(event) => {
+                const delta = event.key === 'ArrowLeft' ? 20 : event.key === 'ArrowRight' ? -20 : 0
+                if (delta || event.key === 'Home' || event.key === 'End') {
+                  event.preventDefault()
+                  commitRailWidth(event.key === 'Home' ? 0
+                    : event.key === 'End' ? RAIL_LIMITS.right.max
+                      : railWidthAtDrag(railWidth, delta, RAIL_LIMITS.right))
+                }
+              }}
+              title={tl('resize dashboard rail')}
+              class="rail-grab absolute left-0 top-0 z-30 hidden h-full w-3 -translate-x-1/2 cursor-col-resize touch-none min-[960px]:block">
+              <span class="sticky top-[calc(50dvh-7.75rem)] mx-auto block h-12 w-[3px] rounded-full bg-[#737b86]" />
             </div>
             {widgets.map((w) => (
               <WidgetFrame key={w.id} id={w.id}>
