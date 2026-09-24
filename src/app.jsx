@@ -104,6 +104,24 @@ function useHashRoute() {
 }
 
 export function App() {
+  useEffect(() => {
+    // Primary-pointer media queries report "touch" on hybrid machines even
+    // while the user is moving a mouse. Follow the actual input instead.
+    const root = document.documentElement
+    const onMove = (event) => {
+      if (event.pointerType === 'mouse' || event.pointerType === 'pen') root.dataset.pointerHover = 'true'
+    }
+    const onDown = (event) => {
+      if (event.pointerType === 'touch') delete root.dataset.pointerHover
+    }
+    addEventListener('pointermove', onMove, { passive: true })
+    addEventListener('pointerdown', onDown, { passive: true })
+    return () => {
+      removeEventListener('pointermove', onMove)
+      removeEventListener('pointerdown', onDown)
+      delete root.dataset.pointerHover
+    }
+  }, [])
   const route = useHashRoute()
   const { toasts, dismiss } = useAlertEngine()
   useLocale() // locale toggle re-renders the whole shell
