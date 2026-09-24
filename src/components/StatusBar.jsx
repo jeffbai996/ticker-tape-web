@@ -9,7 +9,7 @@ import { fmtPrice, fmtPct } from '../lib/format.js'
 import { FlashPrice } from './Fig.jsx'
 import { FeedIndicator } from './FeedIndicator.jsx'
 import { feedFrozen } from '../lib/feed.js'
-import { useTapeMotion } from './Tape.jsx'
+import { usePointerHighlight, useTapeMotion } from './Tape.jsx'
 import { tl, getLocale, setLocale } from '../lib/i18n.js'
 import { getMarketColorOrder, oppositeMarketColorOrder, saveMarketColorOrder } from '../lib/marketColors.js'
 
@@ -122,7 +122,8 @@ function StripCell({ symbol, label, q }) {
   const isVix = symbol === '^VIX'
   return (
     <a href={hrefFor('research', symbol.toLowerCase())}
-       class="hl-row flex items-baseline gap-1.5 whitespace-nowrap leading-5 px-0.5 hover:no-underline">
+       data-tape-item
+       class="tape-item hl-row flex items-baseline gap-1.5 whitespace-nowrap hover:no-underline">
       <span class="text-muted/60 font-tick text-[10px]">
         {label === 'S&P 500' ? (
           <><span class="md:hidden">S&P</span><span class="max-md:hidden">{tl(label)}</span></>
@@ -171,6 +172,7 @@ export function StatusBar() {
     try { return localStorage.getItem('strip_drift_v1') === '1' ? 'on' : 'off' } catch { return 'off' }
   })
   const beltRef = useRef(null)
+  const stripRef = useRef(null)
   const toggleDrift = () => {
     if (drift === 'on') {
       try { localStorage.setItem('strip_drift_v1', '0') } catch { /* best-effort */ }
@@ -210,6 +212,7 @@ export function StatusBar() {
     setDrift('on')
   }
   const driftPlay = useTapeMotion()
+  usePointerHighlight(stripRef, drift !== 'off' && driftPlay === 'running')
   const cycleRef = useRef(null)
   const [cycleW, setCycleW] = useState(0)
   useEffect(() => {
@@ -268,7 +271,7 @@ export function StatusBar() {
         type="button"
         data-status-session
         onClick={toggleDrift}
-        class={`px-1.5 max-md:px-0 py-px max-md:w-5 max-md:h-5 max-md:grid max-md:place-items-center rounded border text-[10px] font-anth font-bold tracking-wider max-md:tracking-normal whitespace-nowrap cursor-pointer transition-colors duration-150 hover:border-accent/70 hover:bg-accent/[0.10] focus-visible:border-accent/70 focus-visible:bg-accent/[0.10] focus-visible:outline-none ${STATE_CHIP[holiday ? 'closed' : state]}`}
+        class={`px-1.5 max-md:px-0 py-px max-md:w-5 max-md:h-5 max-md:grid max-md:place-items-center rounded border text-[10px] font-anth font-bold tracking-wider max-md:tracking-normal whitespace-nowrap cursor-pointer ${STATE_CHIP[holiday ? 'closed' : state]}`}
         title={`${chipTitle} · ${tl(drift === 'on' ? 'tap: stop the index drift' : 'tap: drift the index strip')}`}
       >
         <span class="max-md:hidden">{tl(chipLabel)}</span>
@@ -277,7 +280,7 @@ export function StatusBar() {
 
       {/* one scrollable line, centred in the bar so it lines up with the
           wordmark: swipe it, drag it, or hover an edge to creep along. */}
-      <div class="flex-1 min-w-0 flex items-center overflow-hidden">
+      <div ref={stripRef} class="flex-1 min-w-0 flex items-center overflow-hidden">
         {drift !== 'off' ? (
           // Keyed so the belt and the resting strip can never share a DOM
           // node. Stopping writes `animation`, `transition` and a translate
@@ -349,7 +352,7 @@ export function StatusBar() {
           onClick={() => setLocale(getLocale() === 'en' ? 'zh' : 'en')}
           title="EN / 中文"
           data-status-locale
-          class="h-5 inline-flex items-center px-1 py-0 rounded border border-line text-muted hover:text-accent hover:border-accent/50 hover:bg-accent-soft focus-visible:border-accent/50 focus-visible:bg-accent-soft"
+          class="h-5 inline-flex items-center px-1 py-0 rounded border border-line text-muted"
         >
           {getLocale() === 'en' ? '中' : 'EN'}
         </button>

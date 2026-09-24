@@ -26,7 +26,7 @@ import { prefetchSymbol } from '../lib/history.js'
 // parked in a hidden tab — the item under the cursor can
 // only change when the cursor does, so the loop is dropped and the same work
 // happens on mousemove instead. Same highlight, none of the idle frames.
-function usePointerHighlight(ref, moving) {
+export function usePointerHighlight(ref, moving) {
   useEffect(() => {
     const wrap = ref.current
     if (!wrap) return
@@ -264,7 +264,7 @@ export function Tape() {
                     // the story itself, not the symbol's page and not the top
                     // of the wire (Jeff 2026-08-05)
                     href={`#/wire/${e.id}`}
-                    class="flex items-baseline gap-2 whitespace-nowrap hover:no-underline px-1 py-0.5"
+                    class="tape-item flex items-baseline gap-2 whitespace-nowrap hover:no-underline"
                     title={evHeadline(e, getLocale())}
                   >
                     <span class={`text-[9px] font-bold tracking-wider px-1 rounded-sm ${tapeBadge(e, watchset).cls}`}>
@@ -286,7 +286,7 @@ export function Tape() {
                   data-tape-item
                   href={hrefFor('research', symbol.toLowerCase())}
                   onMouseEnter={() => prefetchSymbol(symbol)}
-                  class="flex items-baseline gap-1.5 whitespace-nowrap hover:no-underline px-1 py-0.5"
+                  class="tape-item flex items-baseline gap-1.5 whitespace-nowrap hover:no-underline"
                 >
                   {/* Flash restored 2026-08-11: the belt was de-flashed as a
                       shimmer suspect, but the real culprit was the dither

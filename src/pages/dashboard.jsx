@@ -1368,7 +1368,7 @@ function BoardMenu({ sort, setSort, setViewMode, spark, setSpark, sparkWin, setS
     <div class="px-2.5 pt-1.5 pb-0.5 font-mono text-[8.5px] uppercase tracking-wider text-muted">{label}</div>
   )
   const item = (label, active, onClick) => (
-    <button onClick={onClick}
+    <button onClick={onClick} aria-pressed={active}
       class={`w-full flex items-center gap-2 px-2.5 py-1 text-left font-anth text-[11px] hover:bg-accent-soft ${
         active ? 'text-accent' : 'text-ink-2'}`}>
       <span class={`w-3 shrink-0 text-[10px] ${active ? '' : 'invisible'}`}>✓</span>
@@ -1421,7 +1421,7 @@ function BoardMenu({ sort, setSort, setViewMode, spark, setSpark, sparkWin, setS
                     {head(tl('Window'))}
                     <div class="grid grid-cols-5 gap-1 px-2.5 pb-2">
                       {SPARK_WINDOWS.map((w) => (
-                        <button key={w.id} onClick={() => setSparkWin(w.id)}
+                        <button key={w.id} onClick={() => setSparkWin(w.id)} aria-pressed={sparkWin === w.id}
                           class={`rounded border px-1 py-1 font-mono text-[9px] ${
                             sparkWin === w.id
                               ? 'border-accent/60 bg-accent-soft text-accent'
