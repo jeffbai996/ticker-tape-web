@@ -108,6 +108,7 @@ CHECKS_JS = """() => {
   }
   out.floor = Math.round(floor);
   let clipped = 0, unpainted = 0, priced = 0, clusters = 0;
+  const rowGeometry = [];
   const priceX = new Set();
   for (const row of rows) {
     const rr = row.getBoundingClientRect();
@@ -116,8 +117,15 @@ CHECKS_JS = """() => {
     clusters++;
     const kids = [...cl.children];
     const price = kids[0];
+    const geometry = {symbol: row.dataset.rowSymbol, rowWidth: Math.round(rr.width),
+      clusterX: Math.round(cl.getBoundingClientRect().left - rr.left),
+      clusterWidth: Math.round(cl.getBoundingClientRect().width),
+      cells: kids.map(k => Math.round(k.getBoundingClientRect().width)),
+      extMin: getComputedStyle(kids[kids.length - 1]).minWidth,
+      colExt: row.closest('[data-watchlist-board]')?.style.getPropertyValue('--col-ext')};
     if (price) {
       priceX.add(Math.round(price.getBoundingClientRect().left - rr.left));
+      geometry.priceX = Math.round(price.getBoundingClientRect().left - rr.left);
       // a quote that arrived prints digits; an empty board prints an em dash
       if (/[0-9]/.test(price.textContent || '')) priced++;
     }
@@ -127,15 +135,18 @@ CHECKS_JS = """() => {
     const ext = kids[kids.length - 1];
     if (ext && ext.getAttribute('aria-hidden') !== 'true') {
       const r = ext.getBoundingClientRect();
+      geometry.extWidth = Math.round(r.width);
       if (r.bottom <= floor) {
         const hit = document.elementFromPoint(r.right - 2, r.top + r.height / 2);
-        if (!(hit && ext.contains(hit))) unpainted++;
+        if (!(hit && ext.contains(hit))) { unpainted++; geometry.extHit = hit?.className || hit?.tagName || null; }
       }
     }
+    rowGeometry.push(geometry);
   }
   out.clippedRows = clipped; out.unpaintedExt = unpainted;
   out.clusters = clusters; out.pricedRows = priced;
   out.priceXValues = [...priceX].sort((a, b) => a - b);
+  out.rowGeometry = rowGeometry;
   const nav = document.querySelector('nav[aria-label], .bottom-nav, [data-bottom-nav]');
   const add = [...document.querySelectorAll('button, a')].find(e => /add symbol/i.test(e.textContent || ''));
   if (nav && add) {
@@ -259,6 +270,8 @@ def probe_view(browser, base: str, route: str, view: tuple[str, int, int],
             failures, skipped = _grade(record, w)
         record["failures"] = failures
         record["skipped"] = skipped
+        if not failures:
+            record.pop("rowGeometry", None)
     except Exception as exc:  # playwright timeouts, target crashes
         record["probeError"] = f"{type(exc).__name__}: {exc}".replace("\n", " ")[:200]
         record.setdefault("failures", [])

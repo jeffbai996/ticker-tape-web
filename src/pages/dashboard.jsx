@@ -364,7 +364,7 @@ export function TuiRow({ symbol, data, earnDays, onRemove = () => {}, selecting,
       {!selecting && <button
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(symbol) }}
         title={tl('unwatch %s').replace('%s', symbol)}
-        class="absolute right-1.5 top-1/2 -translate-y-1/2 z-10 w-6 h-6 grid place-items-center rounded-md text-accent opacity-0 group-hover/row:opacity-100 hover:bg-surface-2 hover:text-down transition-opacity"
+        class="tui-row-remove absolute right-1.5 top-1/2 -translate-y-1/2 z-10 w-6 h-6 grid place-items-center rounded-md text-accent opacity-0 pointer-events-none group-hover/row:opacity-100 group-hover/row:pointer-events-auto hover:bg-surface-2 hover:text-down transition-opacity"
       >
         ★
       </button>}
@@ -422,13 +422,13 @@ export function TuiRow({ symbol, data, earnDays, onRemove = () => {}, selecting,
                   "the company names r cut off") — under that the columns size
                   to content and hand the slack to the name gutter.
                   Since 2026-08-18 the floor is the board's MEASURED widest
-                  print (--col-change, quoteColumns.js), from 545px up: fixed
+                  print (--col-change, quoteColumns.js), from 490px up: fixed
                   floors either jittered (7.7rem let ▲ 11.03 grow the column —
                   NAURA sat 15px left of its neighbours) or wasted the width a
                   crash-day print needs on every calm day. Phones stay
                   content-sized. */}
               {q ? (
-                <span class={`${up ? 'text-up' : 'text-down'} whitespace-nowrap @min-[545px]:min-w-(--col-change) shrink-0`}>
+                <span class={`${up ? 'text-up' : 'text-down'} whitespace-nowrap @min-[490px]:min-w-(--col-change) shrink-0`}>
                   <span data-col="change" class="inline-block whitespace-nowrap price-grouped">
                     {up ? '▲' : '▼'} <FlashMetric value={q.change} fmt={fmtAbsChange} kind="change" />{' '}
                     <span class="font-normal text-[11px] max-sm:text-[10px]">
@@ -442,7 +442,7 @@ export function TuiRow({ symbol, data, earnDays, onRemove = () => {}, selecting,
                    not slide right by one column while the feed catches up —
                    the probe gate caught exactly that on a slow-feed night
                    (2026-08-22) */
-                <span aria-hidden="true" class="@min-[545px]:min-w-(--col-change) shrink-0" />
+                <span aria-hidden="true" class="@min-[490px]:min-w-(--col-change) shrink-0" />
               )}
               {/* extended hours reads a tier below the regular quote — on a
                   phone it was the same size as the print and clipped off the
@@ -452,7 +452,7 @@ export function TuiRow({ symbol, data, earnDays, onRemove = () => {}, selecting,
                   (Jeff 2026-08-18). The slot grows to its content; the
                   identity gutter is what yields. */}
               {q?.extLabel && q.extPrice != null ? (
-                <span class="whitespace-nowrap text-[11px] max-sm:text-[10px] shrink-0 max-sm:ml-auto max-sm:min-w-[6.2rem] @min-[545px]:min-w-(--col-ext) @min-[545px]:text-right">
+                <span class="whitespace-nowrap text-[11px] max-sm:text-[10px] shrink-0 max-sm:ml-auto max-sm:min-w-[6.2rem] @min-[490px]:min-w-(--col-ext) @min-[490px]:text-right">
                   <span data-col="ext" class="inline-block whitespace-nowrap" title={extTitle} aria-label={extTitle}>
                   {/* only the PERCENT drops a weight tier (Jeff 2026-08-06);
                       the extended price keeps its weight and runs a size
@@ -475,7 +475,7 @@ export function TuiRow({ symbol, data, earnDays, onRemove = () => {}, selecting,
               ) : (
                 /* Ghost slot at every session and width: a temporarily absent
                    extended print must not move the regular quote. */
-                <span class="whitespace-nowrap text-[11px] max-sm:text-[10px] shrink-0 invisible max-sm:min-w-[6.2rem] @min-[545px]:min-w-(--col-ext) @min-[545px]:text-right" aria-hidden="true">
+                <span class="whitespace-nowrap text-[11px] max-sm:text-[10px] shrink-0 invisible max-sm:min-w-[6.2rem] @min-[490px]:min-w-(--col-ext) @min-[490px]:text-right" aria-hidden="true">
                   {/* mirrors the real print part for part — a typical shape,
                       not the widest: the board's measured --col-ext carries
                       the real column width, so the ghost never dictates it
