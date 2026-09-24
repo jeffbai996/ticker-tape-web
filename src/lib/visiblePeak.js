@@ -15,11 +15,11 @@ export function peakInRange(bars, range) {
 // The label lives over the chart canvas so it never changes the price scale.
 export function attachVisiblePeak(chart, series, host, bars) {
   const marker = document.createElement('div')
-  marker.className = 'pointer-events-none absolute z-10 font-mono text-[9px] text-ink tabular-nums whitespace-nowrap'
+  marker.className = 'pointer-events-none absolute z-10 font-mono text-[8px] text-ink-2 tabular-nums whitespace-nowrap'
   marker.style.cssText = 'display:none;transform:translate(-100%,-50%);text-shadow:0 1px 4px #000,0 1px 4px #000'
   const dot = document.createElement('span')
-  dot.className = 'pointer-events-none absolute z-10 rounded-full bg-accent-2'
-  dot.style.cssText = 'display:none;width:4px;height:4px;transform:translate(-50%,-50%)'
+  dot.className = 'pointer-events-none absolute z-10 rounded-full bg-accent-2/70'
+  dot.style.cssText = 'display:none;width:3px;height:3px;transform:translate(-50%,-50%)'
   host.append(marker, dot)
   let shown = null
   const update = () => {

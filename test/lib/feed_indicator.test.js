@@ -12,41 +12,40 @@ const dashboard = read('src/pages/dashboard.jsx')
 const css = read('src/styles/main.css')
 
 describe('shell feed indicator', () => {
-  it('says nothing at all while the feed is healthy', () => {
-    // Jeff 2026-08-18: "remove the word LIVE here" — a status row that
-    // announces the normal case is noise; only trouble earns a word.
-    expect(indicator).toContain("if (health.state === 'live') return null")
-    expect(indicator).not.toMatch(/live:\s*'text-/)
+  it('uses one literal-color dot for every feed state', () => {
+    expect(indicator).toContain("live: 'bg-[#3fb950]'")
+    expect(indicator).toContain("recovering: 'bg-[#fbbf24]'")
+    expect(indicator).toContain("delayed: 'bg-[#f85149]'")
+    expect(indicator).toContain("offline: 'bg-[#f85149]'")
+    expect(indicator).toContain("const state = online ? health.state : 'offline'")
+    expect(indicator).toContain('DOT_CLASS[state]')
   })
 
-  it('renders the abnormal states from the pure health module', () => {
+  it('reads state from the pure health module', () => {
     expect(indicator).toContain("from '../lib/feedHealth.js'")
     expect(indicator).toContain("from '../lib/feed.js'")
     expect(indicator).toContain('feedStatus()')
     expect(indicator).toContain('feedHealth(')
-    expect(indicator).toContain('data-feed-state={health.state}')
+    expect(indicator).toContain('data-feed-state={state}')
     // no state maths in the component — it only paints what feedHealth said
     expect(indicator).not.toMatch(/lastSnapshotTs\s*[<>]/)
   })
 
-  it('keeps the label amber and leaves red/green to market direction', () => {
-    expect(indicator).toContain('text-accent')
-    expect(indicator).not.toContain('text-up')
-    expect(indicator).not.toContain('text-down')
-  })
-
-  it('stays a tiny single-line chip inside the existing status row', () => {
-    expect(indicator).toContain('font-mono')
-    expect(indicator).toMatch(/text-\[10(\.5)?px\]/)
-    expect(indicator).toContain('whitespace-nowrap')
-    expect(indicator).toContain('shrink-0')
-    expect(statusbar).toContain('<FeedIndicator />')
+  it('replaces the online dot without adding text to the status row', () => {
+    expect(indicator).toContain('h-1.5 w-1.5 rounded-full')
+    expect(indicator).not.toContain('health.ageLabel')
+    expect(indicator).not.toContain("tl(health.state.toUpperCase())")
+    expect(statusbar).toContain('<FeedIndicator online={online} colorOrder={colorOrder} onToggle={toggleColorOrder} />')
+    expect(statusbar).not.toMatch(/online \? 'bg-\[#3fb950\]'/)
     expect(statusbar).toContain("import { FeedIndicator } from './FeedIndicator.jsx'")
   })
 
-  it('repaints the reconnect age on the same one-second cadence as its label', () => {
-    expect(indicator).toContain('health.ageLabel')
+  it('updates the dot on a visible-only clock and keeps the reason accessible', () => {
     expect(indicator).toContain('startVisibleClock(1000')
+    expect(indicator).toContain("health.state === 'live'")
+    expect(indicator).toContain("tt(health.titleKey, health.titleParams)")
+    expect(indicator).toContain("aria-label={`${tl('Switch gain and loss colors')} · ${detail}`}")
+    expect(indicator).toContain('data-market-color-toggle')
   })
 })
 

@@ -4,42 +4,36 @@ import { feedHealth } from '../lib/feedHealth.js'
 import { tl, t as tt } from '../lib/i18n.js'
 import { startVisibleClock } from '../lib/idleClock.js'
 
-// Amber carries feed state; up/down green and red stay reserved for market
-// direction, so a limping feed can never be mistaken for a falling tape.
-const STATE_CLASS = {
-  recovering: 'text-accent',
-  delayed: 'text-accent font-bold',
+// Literal connection colors never follow the red-up/green-down preference.
+const DOT_CLASS = {
+  live: 'bg-[#3fb950]',
+  recovering: 'bg-[#fbbf24]',
+  delayed: 'bg-[#f85149]',
+  offline: 'bg-[#f85149]',
 }
 
 /**
- * Shell feed health — RECOVERING / DELAYED and the age of the newest data.
- *
- * A healthy feed says NOTHING. The chip shipped with a LIVE state and Jeff
- * pulled it the same day ("remove the word LIVE here, not sure how it made
- * it"): a status row that announces the normal case is noise, and the prices
- * ticking are already the proof. Only the abnormal states earn a word. State
- * logic stays in feedHealth.js — this only paints, on its own 1s tick so the
- * rest of the bar doesn't repaint.
+ * One shell dot for browser connectivity and feed freshness. The surrounding
+ * button still switches the gain/loss color convention; its tooltip carries
+ * the detailed state without adding visible status copy beside the clock.
  */
-export function FeedIndicator() {
+export function FeedIndicator({ online = true, colorOrder, onToggle }) {
   const [, tick] = useState(0)
-  // a buried tab has nothing to re-render for; the clock resumes with a
-  // catch-up tick so the age is current before it can be read (idleClock.js)
   useEffect(() => startVisibleClock(1000, () => tick((n) => n + 1)), [])
   const health = feedHealth(feedStatus())
-  if (health.state === 'live') return null
+  const state = online ? health.state : 'offline'
+  const detail = !online ? tl('offline') : health.state === 'live'
+    ? tl('online') : tt(health.titleKey, health.titleParams)
   return (
-    <span
-      data-feed-state={health.state}
-      title={tt(health.titleKey, health.titleParams)}
-      class={`inline-flex items-baseline gap-1 shrink-0 whitespace-nowrap font-mono text-[10px] tracking-wider ${STATE_CLASS[health.state]}`}
-    >
-      {tl(health.state.toUpperCase())}
-      {/* the age is the first thing to go on a phone header — the word alone
-          still says the feed is not live */}
-      {health.ageLabel && (
-        <span class="max-sm:hidden text-muted">{health.ageLabel}</span>
-      )}
-    </span>
+    <button type="button"
+      data-market-color-toggle
+      aria-pressed={colorOrder === 'cn'}
+      aria-label={`${tl('Switch gain and loss colors')} · ${detail}`}
+      onClick={onToggle}
+      title={`${detail} · ${colorOrder === 'cn' ? tl('red up, green down') : tl('green up, red down')} · ${tl('tap to switch')}`}
+      class="-ml-1 grid h-5 w-3.5 cursor-pointer place-items-center rounded focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-line-2">
+      <span data-feed-state={state} aria-hidden="true"
+        class={`inline-block h-1.5 w-1.5 rounded-full ${DOT_CLASS[state]}`} />
+    </button>
   )
 }

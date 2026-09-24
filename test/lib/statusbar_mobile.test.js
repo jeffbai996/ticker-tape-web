@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { INDICES } from '../../src/lib/symbols.js'
 
 const source = readFileSync('src/components/StatusBar.jsx', 'utf8')
+const indicator = readFileSync('src/components/FeedIndicator.jsx', 'utf8')
 
 describe('status bar responsive labels', () => {
   it('covers the major cross-asset macro gauges', () => {
@@ -36,8 +37,11 @@ describe('status bar responsive labels', () => {
   })
 
   it('hides the gain/loss convention switch inside the connectivity dot', () => {
-    expect(source).toContain('data-market-color-toggle')
-    expect(source).toContain("online ? 'bg-[#3fb950]' : 'bg-[#f85149]'")
+    expect(indicator).toContain('data-market-color-toggle')
+    expect(source).toContain('<FeedIndicator online={online} colorOrder={colorOrder} onToggle={toggleColorOrder} />')
+    expect(indicator).toContain("live: 'bg-[#3fb950]'")
+    expect(indicator).toContain("recovering: 'bg-[#fbbf24]'")
+    expect(indicator).toContain("offline: 'bg-[#f85149]'")
     expect(source).toContain("saveMarketColorOrder(oppositeMarketColorOrder(current))")
   })
 
