@@ -116,6 +116,13 @@ describe('compact mobile status bar', () => {
     expect(tape).not.toContain('min-w-[3.25rem]')
   })
 
+  it('preserves headline tier badge colors inside the tape hover highlight', () => {
+    expect(tape).toContain('<span data-tape-tier')
+    const css = source('src/styles/main.css')
+    expect(css).toContain('.tape-hot *:not(.text-up):not(.text-down):not([data-tape-tier])')
+    expect(css).toContain('.tape-item:focus-visible *:not(.text-up):not(.text-down):not([data-tape-tier])')
+  })
+
   it('links a tape headline at its own story, not the wire index', () => {
     expect(tape).toContain('href={`#/wire/${e.id}`}')
     const wire = readFileSync(resolve(process.cwd(), 'src/pages/wire.jsx'), 'utf8')

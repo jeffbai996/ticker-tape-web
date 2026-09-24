@@ -267,7 +267,7 @@ export function Tape() {
                     class="tape-item flex items-baseline gap-2 whitespace-nowrap hover:no-underline"
                     title={evHeadline(e, getLocale())}
                   >
-                    <span class={`text-[9px] font-bold tracking-wider px-1 rounded-sm ${tapeBadge(e, watchset).cls}`}>
+                    <span data-tape-tier class={`text-[9px] font-bold tracking-wider px-1 rounded-sm ${tapeBadge(e, watchset).cls}`}>
                       {tapeBadge(e, watchset).code}
                     </span>
                     {/* it's a SCROLLING tape — a longer headline costs nothing but scroll
