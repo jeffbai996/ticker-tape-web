@@ -17,7 +17,7 @@ const clientWidthDescriptor = Object.getOwnPropertyDescriptor(HTMLElement.protot
 
 beforeEach(() => {
   cycleWidth = 500
-  animation = { currentTime: 7_250, playState: 'paused' }
+  animation = { currentTime: 7_250, playState: 'paused', play: vi.fn(), pause: vi.fn(), cancel: vi.fn() }
   vi.stubGlobal('ResizeObserver', class {
     constructor(fn) { resize = fn }
     observe() {}
