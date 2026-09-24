@@ -696,8 +696,8 @@ html[data-pointer-hover] .tape-hot,
   box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.85);
   border-radius: 3px;
 }
-html[data-pointer-hover] .tape-hot *:not(.text-up):not(.text-down),
-.tape-item:focus-visible *:not(.text-up):not(.text-down) {
+html[data-pointer-hover] .tape-hot *:not(.text-up):not(.text-down):not([data-tape-tier]),
+.tape-item:focus-visible *:not(.text-up):not(.text-down):not([data-tape-tier]) {
   color: #fff !important;
 }
 @keyframes tape-scroll {
