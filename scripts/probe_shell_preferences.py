@@ -29,7 +29,7 @@ with sync_playwright() as p:
             target = page.locator(selector).first
             # Each belt clips its offscreen copies; use a point inside its viewport.
             box = target.bounding_box()
-            x = max(350, box['x'] + 8) if selector == '.hl-row' else 600
+            x = box['x'] + box['width'] / 2 if selector == '.hl-row' else 600
             page.mouse.move(x, box['y'] + box['height'] / 2)
             hot = page.locator('.tape-hot').first
             hot.wait_for()
@@ -43,6 +43,12 @@ with sync_playwright() as p:
         page.locator('.strip-drift').wait_for()
         page.mouse.move(500, session.bounding_box()['y'] + 8)
         page.wait_for_timeout(700)
+        page.wait_for_function("""() => {
+            const e = document.querySelector('.hl-row.tape-hot');
+            if (!e) return false;
+            const r = e.getBoundingClientRect();
+            return r.left <= 500 && r.right >= 500;
+        }""")
         hot = page.locator('.hl-row.tape-hot')
         hot.wait_for()
         box = hot.bounding_box()
