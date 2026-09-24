@@ -14,6 +14,7 @@ import { fmtPriceBare, fmtPct } from '../lib/format.js'
 import { lastGoodTs } from '../lib/feed.js'
 import { prefetchSymbol } from '../lib/history.js'
 import { RAIL_LIMITS, railWidthAtDrag } from '../lib/railResize.js'
+import { RailChevron } from './RailChevron.jsx'
 
 function WatchRow({ symbol, q, onRemove }) {
   const up = (q?.pct ?? 0) >= 0
@@ -83,7 +84,7 @@ function UpdatedLine({ onCollapse }) {
         <span class="text-accent italic truncate">{ts ? `${tl('updated')} ${ts} ET` : '…'}</span>
         <button type="button" onClick={onCollapse} data-sidebar-hide
           title={tl('hide sidebar')} aria-label={tl('hide sidebar')}
-          class="shrink-0 rounded border border-transparent px-1 text-ink-2 hover:border-line-2 hover:bg-surface-3 hover:text-accent focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent">‹</button>
+          class="rail-toggle grid h-5 w-5 shrink-0 place-items-center"><RailChevron direction="left" /></button>
       </div>
       {staleMin >= 5 && (
         <div class="text-down font-bold not-italic pt-0.5">
