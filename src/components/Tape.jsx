@@ -4,7 +4,7 @@ import { fmtPrice, fmtPct } from '../lib/format.js'
 import { FlashPrice } from './Fig.jsx'
 import { hrefFor } from '../lib/route.js'
 import { marqueeCopies, preservedMarqueeTime } from '../lib/marquee.js'
-import { REDUCED_MOTION, tapeBadge, tapeEntries, tapePlayState } from '../lib/tape.js'
+import { tapeBadge, tapeEntries, tapePlayState } from '../lib/tape.js'
 import { startVisibleClock } from '../lib/idleClock.js'
 import { tapeworthy, wireUrl, evHeadline } from '../lib/wire.js'
 import { getLocale } from '../lib/i18n.js'
@@ -23,7 +23,7 @@ import { prefetchSymbol } from '../lib/history.js'
 // the belt never has to stop (Jeff 2026-08-03).
 //
 // The per-frame hit test is only needed because the belt moves. When it is
-// parked — reduced motion, or a hidden tab — the item under the cursor can
+// parked in a hidden tab — the item under the cursor can
 // only change when the cursor does, so the loop is dropped and the same work
 // happens on mousemove instead. Same highlight, none of the idle frames.
 function usePointerHighlight(ref, moving) {
@@ -78,28 +78,23 @@ function usePointerHighlight(ref, moving) {
 }
 
 /**
- * `animation-play-state` for the belt, kept in sync with tab visibility and
- * the reduced-motion setting. Both are listened to rather than read once —
- * the reader can bury the tab or flip the OS setting at any point.
+ * Keep terminal motion running while visible, including with OS reduced
+ * motion enabled. Hidden tabs still suspend their animation work.
  */
 export function useTapeMotion() {
   const [play, setPlay] = useState('running')
   useEffect(() => {
-    const mq = globalThis.matchMedia?.(REDUCED_MOTION)
     const sync = () => setPlay(tapePlayState({
       hidden: document.hidden,
-      reducedMotion: !!mq?.matches,
     }))
     sync()
     document.addEventListener('visibilitychange', sync)
     window.addEventListener('pageshow', sync)
     window.addEventListener('focus', sync)
-    mq?.addEventListener?.('change', sync)
     return () => {
       document.removeEventListener('visibilitychange', sync)
       window.removeEventListener('pageshow', sync)
       window.removeEventListener('focus', sync)
-      mq?.removeEventListener?.('change', sync)
     }
   }, [])
   return play
@@ -203,8 +198,7 @@ export function Tape() {
     observer.observe(cycle)
     const resume = () => {
       measure()
-      if (tapePlayState({ hidden: document.hidden,
-        reducedMotion: !!globalThis.matchMedia?.(REDUCED_MOTION)?.matches }) !== 'running') return
+      if (tapePlayState({ hidden: document.hidden }) !== 'running') return
       for (const animation of belt.current?.getAnimations?.() || []) {
         if (animation.playState !== 'running') animation.play()
       }
@@ -218,8 +212,7 @@ export function Tape() {
     let lastAnimation = null
     let lastTime = null
     const stopRecovery = startVisibleClock(2000, () => {
-      if (tapePlayState({ hidden: document.hidden,
-        reducedMotion: !!globalThis.matchMedia?.(REDUCED_MOTION)?.matches }) !== 'running') {
+      if (tapePlayState({ hidden: document.hidden }) !== 'running') {
         lastTime = null
         return
       }

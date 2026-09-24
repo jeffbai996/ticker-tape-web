@@ -11,7 +11,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { REDUCED_MOTION, tapePlayState } from '../../src/lib/tape.js'
+import { tapePlayState } from '../../src/lib/tape.js'
 
 const src = (p) => readFileSync(resolve(process.cwd(), p), 'utf8')
 
@@ -27,7 +27,7 @@ const TIMED_SOURCES = [
 ]
 
 describe('tapePlayState', () => {
-  it('runs only when the tab is visible and motion is welcome', () => {
+  it('runs when the tab is visible', () => {
     expect(tapePlayState({ hidden: false, reducedMotion: false })).toBe('running')
     expect(tapePlayState()).toBe('running')
   })
@@ -36,14 +36,11 @@ describe('tapePlayState', () => {
     expect(tapePlayState({ hidden: true, reducedMotion: false })).toBe('paused')
   })
 
-  it('parks the belt for a reader who asked for reduced motion, visible or not', () => {
-    expect(tapePlayState({ hidden: false, reducedMotion: true })).toBe('paused')
+  it('keeps terminal motion independent of the OS setting but still parks hidden tabs', () => {
+    expect(tapePlayState({ hidden: false, reducedMotion: true })).toBe('running')
     expect(tapePlayState({ hidden: true, reducedMotion: true })).toBe('paused')
   })
 
-  it('names the media query the belt honours', () => {
-    expect(REDUCED_MOTION).toBe('(prefers-reduced-motion: reduce)')
-  })
 })
 
 describe('nothing repeats on a bare interval', () => {
@@ -62,12 +59,10 @@ describe('the tape belt', () => {
     expect(tape).toContain('usePointerHighlight(wrap, play === \'running\')')
   })
 
-  it('tracks both the tab and the reduced-motion setting, and unsubscribes from both', () => {
+  it('tracks tab visibility and does not gate terminal motion on an OS media query', () => {
     expect(tape).toContain("document.addEventListener('visibilitychange', sync)")
     expect(tape).toContain("document.removeEventListener('visibilitychange', sync)")
-    expect(tape).toContain("mq?.addEventListener?.('change', sync)")
-    expect(tape).toContain("mq?.removeEventListener?.('change', sync)")
-    expect(tape).toContain('globalThis.matchMedia?.(REDUCED_MOTION)')
+    expect(tape).not.toContain('matchMedia')
   })
 
   it('drops the per-frame hit test while the belt is parked', () => {
