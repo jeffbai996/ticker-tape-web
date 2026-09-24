@@ -52,9 +52,18 @@ describe('status bar responsive labels', () => {
     expect(source).toContain('focus-visible:bg-accent-soft')
   })
 
-  it('gives the clickable market-session chip an explicit subtle hover state', () => {
+  it('keeps session hover semantic and the language pill neutral', () => {
+    const css = readFileSync('src/styles/main.css', 'utf8')
     expect(source).toContain('data-status-session')
-    expect(source).toContain('hover:border-accent/70')
-    expect(source).toContain('hover:bg-accent/[0.10]')
+    expect(source).not.toContain('hover:border-accent/70')
+    expect(css).toContain('background: color-mix(in srgb, currentColor 22%, transparent)')
+    expect(css).toContain('[data-status-locale]:focus-visible')
+    expect(css).toContain('border-color: rgba(231,236,243,.45)')
+  })
+
+  it('tracks the pointer over the drifting index strip with the shared tight tape target', () => {
+    expect(source).toContain("usePointerHighlight(stripRef, drift !== 'off' && driftPlay === 'running')")
+    expect(source).toContain('data-tape-item')
+    expect(source).toContain('class="tape-item hl-row')
   })
 })

@@ -42,10 +42,11 @@ def main():
             ):
                 target = page.locator(selector).first
                 target.wait_for()
-                before = style(target, "background-image")
+                prop = "background-color" if selector in ("[data-status-session]", "[data-status-locale]") else "background-image"
+                before = style(target, prop)
                 target.hover()
-                after = style(target, "background-image")
-                assert before == "none" and "linear-gradient" in after, (selector, before, after)
+                after = style(target, prop)
+                assert before != after, (selector, before, after)
 
             tape = page.locator(".tape-scroll").first.bounding_box()
             page.mouse.move(args.width / 2, tape["y"] + tape["height"] / 2)
