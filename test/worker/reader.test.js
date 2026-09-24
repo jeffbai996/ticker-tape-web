@@ -20,7 +20,7 @@ describe('bounded family reader', () => {
   })
   it('only permits known HTTPS publishers, not arbitrary URLs', () => {
     expect(publicArticleUrl('https://news.rthk.hk/story')).toBeTruthy()
-    for (const url of ['http://www.reuters.com/a', 'https://reuters.com.evil.test/', 'https://127.0.0.1/', 'https://reuters.com:8080/a', 'https://me:secret@reuters.com/a', 'https://fragserv.tailab4af9.ts.net/']) expect(publicArticleUrl(url)).toBeNull()
+    for (const url of ['http://www.reuters.com/a', 'https://reuters.com.evil.test/', 'https://127.0.0.1/', 'https://reuters.com:8080/a', 'https://me:secret@reuters.com/a', 'https://private.example.test/']) expect(publicArticleUrl(url)).toBeNull()
   })
   it('extracts article paragraphs without navigation or scripts', () => {
     const result = extractArticle('<article><nav><p>Navigation content not wanted here</p></nav><p>The company reported revenue of 20 million dollars.</p><p>Guidance for next year was raised by ten percent.</p><script>alert(1)</script></article>')

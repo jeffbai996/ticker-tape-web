@@ -105,10 +105,20 @@
   .terminal-navigation a:hover,
   .tui-row:hover,
   .rail-row:hover {
-    background-color: rgba(245,158,11,.20);
-    box-shadow: inset 3px 0 0 var(--color-accent);
+    /* Overlay the resting/selected fill instead of replacing it. */
+    background-image: linear-gradient(rgba(231,236,243,.07), rgba(231,236,243,.07));
+    box-shadow: inset 2px 0 0 rgba(231,236,243,.32);
   }
-  .terminal-navigation a:hover { color: var(--color-accent); }
+  [data-status-session]:hover,
+  [data-status-clock]:hover,
+  [data-status-locale]:hover {
+    background-image: linear-gradient(rgba(231,236,243,.10), rgba(231,236,243,.10));
+    box-shadow: inset 0 0 0 1px rgba(231,236,243,.22);
+  }
+  [data-sidebar-resize]:is(:hover, :active) > span {
+    width: 4px;
+    background-color: var(--color-accent);
+  }
 }
 /* Terminal controls change state immediately. Price and tape motion are separate. */
 button, a, select, summary, [role="button"], .cursor-pointer,
@@ -613,33 +623,22 @@ button:hover .burger path:nth-child(2) { transform: scaleX(.55); }
   animation: tape-scroll var(--tape-cycle-duration) linear infinite;
 }
 .tape-cycle { flex: none; }
-/* Row highlight, loud enough to actually see. accent-soft (13% amber) computes
-   to #292010 on this background — a ~30-value delta that reads as nothing in
-   motion. This is the real affordance: bright wash, amber rule, lit text.
-   `.tape-hot` is applied by pointer tracking, not :hover — the browser only
+/* `.tape-hot` is applied by pointer tracking, not :hover — the browser only
    re-runs hit testing on pointer events, so a CSS hover on a scrolling belt
    sticks to whichever item happened to be under the cursor at the last
    mousemove and then slides away with it. */
-/* Watchlist row: one explicit rule rather than an arbitrary-opacity utility,
-   which Tailwind's generator handles inconsistently. The whole row lights,
-   with an amber edge marking it. */
-.wl-row:hover {
-  background: rgba(245, 158, 11, 0.20);
-  box-shadow: inset 3px 0 0 0 var(--color-accent);
-}
-.wl-row:hover a { background: transparent; }
-
-.hl-row:hover,
-.tape-hot {
-  background: rgba(245, 158, 11, 0.22);
-  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.85);
-  border-radius: 3px;
-}
-/* Lift the neutral text on hover but never the semantic colours — a green
-   number must stay green while highlighted (Jeff 2026-08-04). */
-.hl-row:hover *:not(.text-up):not(.text-down),
-.tape-hot *:not(.text-up):not(.text-down) {
-  color: #fff !important;
+@media (hover: hover) and (pointer: fine) {
+  .wl-row:hover {
+    background: rgba(231, 236, 243, .07);
+    box-shadow: inset 2px 0 0 rgba(231, 236, 243, .32);
+  }
+  .wl-row:hover a { background: transparent; }
+  .hl-row:hover,
+  .tape-hot {
+    background: rgba(231, 236, 243, .08);
+    box-shadow: inset 0 0 0 1px rgba(231, 236, 243, .22);
+    border-radius: 3px;
+  }
 }
 @keyframes tape-scroll {
   from { transform: translate3d(0, 0, 0); }

@@ -311,8 +311,8 @@ export function StatusBar() {
         )}
       </div>
 
-      {/* feed health sits with the other truth-about-the-connection chrome:
-          clock, feed state, browser online dot — one line, never a new row */}
+      {/* Keep diagnostic overrides visible, but fold ordinary feed state into
+          the single connection dot beside the clock. */}
       {feedFrozen() && (
         // ?freeze is the shimmer-debugging kill switch: it silences every
         // live update, which reads as "the app died" when it rides along in
@@ -342,22 +342,9 @@ export function StatusBar() {
           </button>
         )
       })()}
-      <FeedIndicator />
       <span class="flex items-center gap-1.5 shrink-0 md:-ml-1">
         <RollingClock />
-        <button type="button"
-          data-market-color-toggle
-          aria-pressed={colorOrder === 'cn'}
-          aria-label={tl('Switch gain and loss colors')}
-          onClick={toggleColorOrder}
-          title={`${online ? tl('online') : tl('offline')} · ${
-            colorOrder === 'cn' ? tl('red up, green down') : tl('green up, red down')
-          } · ${tl('tap to switch')}`}
-          class="-ml-1 grid h-5 w-3.5 cursor-pointer place-items-center rounded focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-line-2">
-          {/* Connectivity must stay literal green/red; semantic P&L colors
-              flip underneath it, but an online dot cannot become red. */}
-          <span class={`inline-block h-1.5 w-1.5 rounded-full ${online ? 'bg-[#3fb950]' : 'bg-[#f85149]'}`} />
-        </button>
+        <FeedIndicator online={online} colorOrder={colorOrder} onToggle={toggleColorOrder} />
         <button
           onClick={() => setLocale(getLocale() === 'en' ? 'zh' : 'en')}
           title="EN / 中文"

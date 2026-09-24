@@ -743,7 +743,7 @@ function MarketDeckPanel() {
               <Marquee text={tl(item.label)} title={tl(item.label)}
                 class="min-w-0 font-anth text-[10px] font-medium uppercase tracking-[0.08em] text-muted/80" />
               {item.equityIndex && (
-                <span class="price-grouped hidden w-[4.6rem] shrink-0 text-right font-tick text-[10.5px] font-medium tabular-nums text-ink-2 @min-[300px]:inline">
+                <span class="price-grouped hidden w-[4.6rem] shrink-0 text-right font-tick text-[10.5px] font-medium tabular-nums text-ink-2 @min-[220px]:inline">
                   {q ? fmtPriceWide(q.price) : '—'}
                 </span>
               )}

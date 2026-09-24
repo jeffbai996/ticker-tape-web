@@ -184,8 +184,8 @@ export function Sidebar({ route, width, onWidthCommit, onCollapse }) {
     <nav ref={railRef} style={{ width: `${width}px` }} class="terminal-sidebar relative shrink-0 bg-black border-r border-line flex flex-col max-md:hidden min-h-0">
       <div data-sidebar-resize role="separator" aria-orientation="vertical" aria-label={tl('resize sidebar')}
         onPointerDown={startResize}
-        class="absolute -right-1 top-0 z-30 h-full w-2 cursor-col-resize touch-none group/rail-resize">
-        <span class="absolute left-1/2 top-1/2 h-16 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#737b86] group-hover/rail-resize:bg-accent group-active/rail-resize:bg-accent" />
+        class="absolute left-full -translate-x-1/2 top-0 z-30 h-full w-3 cursor-col-resize touch-none">
+        <span class="absolute left-1/2 top-1/2 h-12 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#737b86]" />
       </div>
       <UpdatedLine onCollapse={onCollapse} />
       <div class="terminal-navigation pb-2">
