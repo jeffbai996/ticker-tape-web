@@ -12,7 +12,7 @@
 
 import { useEffect, useState } from 'preact/hooks'
 import { Loading } from './Loading.jsx'
-import { t as tt } from '../lib/i18n.js'
+import { t as tt, getLocale } from '../lib/i18n.js'
 
 /** Fills the routed area so the page does not jump when the chunk lands. */
 function PageFallback() {
@@ -27,7 +27,7 @@ function PageFallback() {
  * @param {() => Promise<Function>} load resolves to the page component
  * @returns {Function} a component that renders the fallback until it does
  */
-export function lazyPage(load) {
+export function lazyPage(load, timeoutMs = 12000) {
   let Comp = null
   let pending = null
   // A chunk fetch fails for one common reason: the tab has been open across a
@@ -37,7 +37,12 @@ export function lazyPage(load) {
   // the next visit is allowed to ask again.
   const preload = () => {
     if (!pending) {
-      pending = Promise.resolve().then(load).then(
+      let timer
+      const attempt = Promise.race([
+        Promise.resolve().then(load),
+        new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Page load timed out')), timeoutMs) }),
+      ])
+      pending = attempt.finally(() => clearTimeout(timer)).then(
         (c) => { Comp = c; return c },
         (err) => { pending = null; throw err },
       )
@@ -48,16 +53,31 @@ export function lazyPage(load) {
   function Lazy(props) {
     // Hook order stays fixed whether or not the chunk is already resolved.
     const [, bump] = useState(0)
+    const [error, setError] = useState(false)
+    const [attempt, retry] = useState(0)
     useEffect(() => {
       if (Comp) return undefined
       let alive = true
+      setError(false)
       preload().then(
         () => { if (alive) bump((n) => n + 1) },
-        () => { /* the fallback stays up; re-entering the route retries */ },
+        () => { if (alive) setError(true) },
       )
       return () => { alive = false }
-    }, [])
-    return Comp ? <Comp {...props} /> : <PageFallback />
+    }, [attempt])
+    if (Comp) return <Comp {...props} />
+    if (error) {
+      const zh = getLocale() === 'zh'
+      return <div role="alert" class="flex-1 min-w-0 px-5 py-12 font-mono text-[12px]">
+        <p class="text-ink">{zh ? '页面未能加载。' : 'Page could not load.'}</p>
+        <p class="mt-2 text-muted">{zh ? '请重试；更新后仍无法加载时，请刷新页面。' : 'Retry, or reload the page after an update.'}</p>
+        <div class="mt-3 flex gap-2">
+          <button class="rounded border border-line px-3 py-1 text-accent hover:bg-surface-3" onClick={() => retry(n => n+1)}>{zh ? '重试' : 'Retry'}</button>
+          <button class="rounded border border-line px-3 py-1 text-ink-2 hover:bg-surface-3" onClick={() => location.reload()}>{zh ? '刷新页面' : 'Reload page'}</button>
+        </div>
+      </div>
+    }
+    return <PageFallback />
   }
   Lazy.preload = preload
   return Lazy

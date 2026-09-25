@@ -68,6 +68,39 @@ describe('route-level code splitting', () => {
 })
 
 describe('lazyPage', () => {
+  it('shows a failed import and retries without leaving the page', async () => {
+    let calls = 0
+    const Page = lazyPage(async () => {
+      if (++calls === 1) throw Error('network unavailable')
+      return () => h('div', { class: 'ready' }, 'ready')
+    })
+    const host = document.createElement('div')
+    render(h(Page), host)
+    await waitFor(() => expect(host.querySelector('[role="alert"]')).not.toBeNull())
+    expect(host.textContent).toContain('Page could not load.')
+    host.querySelector('button').click()
+    await waitFor(() => expect(host.querySelector('.ready')).not.toBeNull())
+    expect(calls).toBe(2)
+    render(null, host)
+  })
+
+  it('bounds a stalled import and ignores its late resolution after retry', async () => {
+    let finish
+    let calls = 0
+    const Page = lazyPage(() => ++calls === 1
+      ? new Promise(resolve => { finish = resolve })
+      : Promise.resolve(() => h('div', { class: 'ready' }, 'new')), 30)
+    const host = document.createElement('div')
+    render(h(Page), host)
+    await waitFor(() => expect(host.querySelector('[role="alert"]')).not.toBeNull())
+    host.querySelector('button').click()
+    await waitFor(() => expect(host.querySelector('.ready')?.textContent).toBe('new'))
+    finish(() => h('div', null, 'old'))
+    await new Promise(resolve => setTimeout(resolve, 40))
+    expect(host.textContent).toBe('new')
+    render(null, host)
+  })
+
   it('shows a loading state, then the page, then renders it synchronously', async () => {
     let loads = 0
     const Page = lazyPage(async () => {
