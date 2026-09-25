@@ -12,6 +12,7 @@ import { prefetchSymbol } from '../lib/history.js'
 import { useEscape } from '../hooks.js'
 import { startVisibleClock } from '../lib/idleClock.js'
 import { Empty, Loading } from '../components/Loading.jsx'
+import { WireAudio } from '../components/WireAudio.jsx'
 import { MdLite } from '../components/AiReport.jsx'
 import { getLocale, t as tt, tl } from '../lib/i18n.js'
 
@@ -1116,7 +1117,7 @@ export function Wire({ route }) {
           {tt('wire.story_outside_buffer', { id: missing })}
         </p>
       )}
-      <div class="flex flex-1 min-h-0 gap-2 items-stretch max-lg:flex-col max-lg:flex-none">
+      {filter === 'transcript_chunk,digest' && endpoint && !isMirrorBase(endpoint) ? <WireAudio endpoint={endpoint} /> : <div class="flex flex-1 min-h-0 gap-2 items-stretch max-lg:flex-col max-lg:flex-none">
         <div data-wire-feed class="flex-1 min-w-0 min-h-0 border border-line rounded-lg overflow-y-auto overscroll-contain bg-surface max-lg:h-[55vh] max-lg:min-h-[360px] max-lg:flex-none">
           {shown.length === 0 && (
             filter === 'transcript_chunk,digest' && !isMirrorBase(endpoint)
@@ -1154,7 +1155,7 @@ export function Wire({ route }) {
             «
           </button>
         )}
-      </div>
+      </div>}
     </div>
   )
 }
