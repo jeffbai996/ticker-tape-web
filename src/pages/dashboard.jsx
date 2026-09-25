@@ -726,11 +726,11 @@ function MarketDeckPanel() {
             <a key={item.symbol} href={`#/research/${item.symbol.toLowerCase()}`}
               class={`market-deck-row min-w-0 hover:no-underline ${[6, 8, 11, 14, 19].includes(index) ? 'market-deck-divider' : ''}`}>
               <Marquee text={tl(item.label)} title={tl(item.label)}
-                class="market-deck-name min-w-0 font-anth text-[10px] font-medium uppercase tracking-[0.045em] text-ink-2" />
-              <span class="market-deck-level price-grouped text-right font-tick text-[10.5px] font-medium tabular-nums text-ink-2">
+                class="market-deck-name min-w-0 font-anth text-[9px] font-medium uppercase tracking-[0.045em] text-ink-2" />
+              <span class="market-deck-level price-grouped text-right font-tick text-[13px] font-semibold tabular-nums text-ink">
                 {q ? fmtPriceWide(q.price) : '—'}
               </span>
-              <span class={`market-deck-change text-right font-tick text-[11px] font-semibold tabular-nums ${!q ? 'text-muted' : q.pct >= 0 ? 'text-up' : 'text-down'}`}>
+              <span class={`market-deck-change text-right font-tick text-[10px] font-semibold tabular-nums ${!q ? 'text-muted' : q.pct >= 0 ? 'text-up' : 'text-down'}`}>
                 {q ? fmtPct(q.pct) : '—'}
               </span>
             </a>
