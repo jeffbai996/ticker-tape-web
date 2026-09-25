@@ -408,11 +408,11 @@ html, body {
 .market-deck-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 3.5rem;
-  grid-template-areas: "name change" "level change";
+  grid-template-areas: "name name" "level change";
   align-items: baseline;
   column-gap: 6px;
-  row-gap: 1px;
-  padding: 3px 10px;
+  row-gap: 3px;
+  padding: 5px 10px;
 }
 .market-deck-row.market-deck-divider {
   border-top: 1px solid var(--color-line);
@@ -420,11 +420,11 @@ html, body {
   padding-top: 6px;
 }
 .market-deck-name { grid-area: name; }
-.market-deck-level { grid-area: level; text-align: left; }
-.market-deck-change { grid-area: change; align-self: center; }
-@container (min-width: 220px) {
+.market-deck-level { grid-area: level; text-align: right; }
+.market-deck-change { grid-area: change; align-self: baseline; }
+@container (min-width: 300px) {
   .market-deck-row {
-    grid-template-columns: minmax(0, 1fr) 4.6rem 3.5rem;
+    grid-template-columns: minmax(0, 1fr) max-content 3.5rem;
     grid-template-areas: "name level change";
     column-gap: 6px;
   }
