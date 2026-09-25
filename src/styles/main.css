@@ -232,11 +232,15 @@ button[data-prime-filter] .source-signal {
   }
 }
 
-/* A wire headline is a clickable div rather than a link or button. Give the
-   full row a deliberately visible pointer and keyboard-interaction state. */
-[data-wire-row]:hover,
-[data-wire-row]:focus-within {
-  background-color: #29292f !important;
+/* Only the headline toggles the article. Keep the expanded reading surface
+   unchanged while hovering or selecting text; do not inherit the global
+   control wash. Incoming-event flashes retain their separate semantic fill. */
+[data-wire-headline] { background-color: transparent; transition: none; }
+html[data-pointer-hover] [data-wire-row]:not([data-wire-hot]) > [data-wire-headline]:hover {
+  background-color: rgba(231, 236, 243, .035);
+}
+[data-wire-row]:not([data-wire-hot]) > [data-wire-headline]:focus-visible {
+  background-color: rgba(231, 236, 243, .05);
 }
 
 /* The app is a fixed h-dvh shell; only inner containers scroll. Without this
