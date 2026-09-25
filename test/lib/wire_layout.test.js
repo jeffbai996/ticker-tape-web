@@ -22,12 +22,14 @@ describe('wire workbench sizing', () => {
     expect(src).toContain('<section class="shrink-0 border border-line rounded-lg bg-surface overflow-hidden">')
   })
 
-  it('gives closed headlines an unmistakable row hover state', () => {
-    expect(src).toContain('data-wire-row')
-    expect(src).not.toContain("open ? 'bg-surface-1' : 'hover:bg-surface-3'")
-    expect(css).toContain('[data-wire-row]:hover,')
-    expect(css).toContain('[data-wire-row]:focus-within')
-    expect(css).toContain('background-color: #29292f !important;')
+  it('limits the faint instant hover to the headline rather than the expanded article', () => {
+    expect(src).toContain('data-wire-headline role="button" tabIndex={0} aria-expanded={open}')
+    expect(src).not.toContain('font-mono transition-colors cursor-pointer')
+    expect(css).not.toContain('[data-wire-row]:hover')
+    expect(css).not.toContain('[data-wire-row]:focus-within')
+    expect(css).toContain('html[data-pointer-hover] [data-wire-row]:not([data-wire-hot]) > [data-wire-headline]:hover')
+    expect(css).toContain('background-color: rgba(231, 236, 243, .035);')
+    expect(css).toContain('[data-wire-headline] { background-color: transparent; transition: none; }')
   })
 
   it('grows fluidly and keeps the original LG stacking threshold', () => {

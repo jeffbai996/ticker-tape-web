@@ -287,8 +287,9 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
   return (
     <div
       data-wire-row
+      data-wire-hot={hot || undefined}
       id={`ev-${ev.id}`}
-      class={`border-b border-line/30 border-l-2 font-mono transition-colors cursor-pointer ${
+      class={`border-b border-line/30 border-l-2 font-mono transition-colors ${
         hot ? 'duration-1000 bg-accent text-black border-l-transparent'
           : `duration-100 ${TIER_EDGE[tier] || 'border-l-transparent'} ${open ? 'bg-surface-1' : ''}`
       }`}
@@ -299,7 +300,12 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
             the widest string in view and sat hard against the right edge with
             the 1fr headline pushing it there, so it read as a wide empty column
             (Jeff 2026-08-07). 58px fits "+3m 11s" with a hair either side. */}
-      <div onClick={onToggle} class="grid grid-cols-[64px_56px_36px_1fr_58px] max-sm:grid-cols-[64px_auto_auto_1fr] gap-x-2.5 items-baseline px-2.5 py-[3px] text-[12px] leading-[1.55]">
+      <div data-wire-headline role="button" tabIndex={0} aria-expanded={open}
+        onClick={onToggle} onKeyDown={(e) => {
+          if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault(); onToggle()
+          }
+        }} class="cursor-pointer grid grid-cols-[64px_56px_36px_1fr_58px] max-sm:grid-cols-[64px_auto_auto_1fr] gap-x-2.5 items-baseline px-2.5 py-[3px] text-[12px] leading-[1.55]">
         <span class={hot ? '' : 'text-muted'}>{rowTime(effectiveEventTime(ev))}</span>
         {(ev.symbols || []).length ? (
           <span class={`truncate ${hot ? 'font-semibold' : 'text-accent font-medium'}`}>
