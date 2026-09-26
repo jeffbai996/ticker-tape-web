@@ -28,6 +28,7 @@ import {
 } from '../lib/threads.js'
 import { wireServiceUrl } from '../lib/wire.js'
 import { plainTraceText } from '../lib/chatTrace.js'
+import { ChatFooter } from '../components/ChatFooter.jsx'
 
 // Base prompt stays generic in source. Whether the assistant has a real book
 // is decided at runtime by whether the viewer wired in their own fragwire —
@@ -343,32 +344,6 @@ function ThinkingPane({ text }) {
   return <div ref={ref} class="chat-think">{plainTraceText(text)}</div>
 }
 
-/** One complete provider/tool timeline. Live traces stay open; completed traces
- * fold into an Operator-style "Worked for" row without discarding the steps. */
-/** Compact token count — 36314 -> "36.3k". Whole numbers under 1k, one
- *  decimal above, because the counter updates live and a jittering third
- *  significant digit is noise, not information. */
-function fmtTok(n) {
-  if (!n) return '0'
-  if (n < 1000) return String(n)
-  if (n < 100000) return `${(n / 1000).toFixed(1)}k`
-  return `${Math.round(n / 1000)}k`
-}
-
-/** Live in/out token counter, the way the CLI reports it: an up arrow for
- *  what was sent and a down arrow for what came back. Deliberately not
- *  animated — the numbers already move on their own as the stream lands, and
- *  a transition on top of that reads as lag (Jeff 2026-08-07). */
-function TokenCount({ usage }) {
-  if (!usage || (!usage.in && !usage.out)) return null
-  return (
-    <span class="font-mono text-[9px] tabular-nums text-muted/80 flex items-center gap-1.5"
-          title={`${usage.in || 0} tokens in · ${usage.out || 0} out`}>
-      <span class="flex items-center gap-0.5"><span class="text-muted/60">↑</span>{fmtTok(usage.in)}</span>
-      <span class="flex items-center gap-0.5"><span class="text-muted/60">↓</span>{fmtTok(usage.out)}</span>
-    </span>
-  )
-}
 
 /** Per-step glyph. Grey, 12px, stroked — the label already says what happened,
  *  so the icon is a scanning aid, not decoration, and it stays monochrome so a
@@ -439,7 +414,6 @@ function ActivityTrace({ steps, busy = false, startedAt, usage = null }) {
         </span>
         <span class="chat-trace-title">{title}{busy ? <Ellipsis /> : ` ${elapsed}`}</span>
         {busy && <span class="font-mono text-[9px] tabular-nums text-muted">{elapsed}</span>}
-        <TokenCount usage={usage} />
         {liveDepth && !liveThinking && (
           <span class="font-mono text-[9px] tabular-nums text-muted/80">{liveDepth}</span>
         )}
@@ -774,6 +748,7 @@ export function Chat() {
   const historyRef = useRef(history)
   const activityRef = useRef([])
   const turnStartedRef = useRef(0)
+  const turnModelRef = useRef({})
   const queuedRef = useRef([])
   const busyRef = useRef(false)
 
@@ -965,6 +940,7 @@ export function Chat() {
     setUsage(null)
     usageRef.current = null
     turnStartedRef.current = Date.now()
+    turnModelRef.current = { model: runModel, label: models.find((m) => m.key === runModel)?.label || runModel, effort: runEffort }
     // context assembly is table stakes, not a trace step worth narrating
     // (Jeff 2026-08-06: "it says read live market context every single time")
     replaceActivity([{
@@ -1099,6 +1075,7 @@ export function Chat() {
           // cost 50k and then never see what it cost again.
           ...stamped[finalIndex], trace, traceStartedAt: turnStartedRef.current,
           traceUsage: usageRef.current,
+          traceEndedAt: completedAt, modelLabel: turnModelRef.current.label, effort: runEffort,
         }
       }
       if (notes.length) {
@@ -1662,6 +1639,9 @@ export function Chat() {
                       </button>
                     </div>
                 </div>
+                <ChatFooter model={m.modelLabel || models.find((item) => item.key === m.model)?.label || m.model}
+                  effort={m.effort} usage={m.traceUsage} startedAt={m.traceStartedAt}
+                  endedAt={m.traceEndedAt || (m.trace?.length ? Math.max(...m.trace.map((s) => s.endedAt || s.startedAt || 0)) : m.ts)} />
               </div>
             )
           }
@@ -1679,6 +1659,9 @@ export function Chat() {
             <MdLite text={liveAnswer} />
           </div>
         )}
+        {activity.length > 0 && <ChatFooter model={turnModelRef.current.label}
+          effort={turnModelRef.current.effort} usage={usage} startedAt={turnStartedRef.current}
+          busy={busy} endedAt={busy ? undefined : Math.max(...activity.map((s) => s.endedAt || s.startedAt || 0))} />}
         {queued.map((item, i) => (
           <div key={`${item.ts}-${i}`} class="self-end max-w-[85%] flex flex-col items-end gap-0.5">
             <div class="rounded-2xl px-3.5 py-2.5 text-[1em] leading-relaxed whitespace-pre-wrap bg-accent-soft/60 border border-accent/25 text-ink font-anth">
