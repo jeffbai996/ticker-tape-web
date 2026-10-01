@@ -23,7 +23,7 @@ describe('private portfolio account switching', () => {
   })
 
   it('uses the live margin summary in the account view', () => {
-    expect(page).toContain('function Account({ priceMap, positions, margin, account })')
+    expect(page).toContain('function Account({ priceMap, positions, margin, account, book, broker })')
     expect(page).toContain("margin?.equity")
     expect(page).toContain("margin?.above_maintenance")
   })
