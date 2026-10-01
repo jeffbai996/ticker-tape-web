@@ -1,0 +1,332 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "name": "complete_cad",
+      "margins": {
+        "account-a": "# Margin Summary: account-a\n**Equity**: $1000 CAD\n**Maintenance Margin Req**: $250 CAD\n**Above Maintenance Margin**: $750 CAD\n**Cushion**: +75.00%\n",
+        "account-b": "# Margin Summary: account-b\n**Equity**: $1000 CAD\n**Maintenance Margin Req**: $250 CAD\n**Above Maintenance Margin**: $750 CAD\n**Cushion**: +75.00%\n"
+      },
+      "summaries": {
+        "account-a": "**Net Liquidation Value**: $1,000 CAD\n",
+        "account-b": "**Net Liquidation Value**: $1,000 CAD\n"
+      },
+      "positions": {
+        "account-a": [
+          {
+            "symbol": "FIXTURE",
+            "shares": 1,
+            "currency": "CAD",
+            "market_value": 100,
+            "base_currency": "CAD",
+            "market_value_base": 100,
+            "weight_pct": 100,
+            "estimated": false
+          }
+        ],
+        "account-b": [
+          {
+            "symbol": "FIXTURE",
+            "shares": 2,
+            "currency": "CAD",
+            "market_value": 200,
+            "base_currency": "CAD",
+            "market_value_base": 200,
+            "weight_pct": 100,
+            "estimated": false
+          }
+        ]
+      },
+      "expected": {
+        "account": "all",
+        "account_label": "Both",
+        "account_summaries": [
+          {
+            "account": "account-a",
+            "account_label": "Primary",
+            "currency": "CAD",
+            "currency_unavailable": false,
+            "margin": {
+              "above_maintenance": 750.0,
+              "currency": "CAD",
+              "cushion_pct": 75.0,
+              "equity": 1000.0,
+              "maintenance": 250.0,
+              "nlv": 1000.0
+            },
+            "margin_complete": true,
+            "margin_warning": null
+          },
+          {
+            "account": "account-b",
+            "account_label": "Secondary",
+            "currency": "CAD",
+            "currency_unavailable": false,
+            "margin": {
+              "above_maintenance": 750.0,
+              "currency": "CAD",
+              "cushion_pct": 75.0,
+              "equity": 1000.0,
+              "maintenance": 250.0,
+              "nlv": 1000.0
+            },
+            "margin_complete": true,
+            "margin_warning": null
+          }
+        ],
+        "currency": "CAD",
+        "currency_unavailable": false,
+        "incomplete_accounts": [],
+        "margin": {
+          "above_maintenance": 1500.0,
+          "cushion_pct": 75.0,
+          "equity": 2000.0,
+          "maintenance": 500.0
+        },
+        "margin_complete": true,
+        "margin_warning": null,
+        "mixed_currency": false,
+        "ok": true,
+        "positions": [
+          {
+            "account": "account-a",
+            "account_label": "Primary",
+            "base_currency": "CAD",
+            "currency": "CAD",
+            "estimated": false,
+            "market_value": 100,
+            "market_value_base": 100,
+            "shares": 1,
+            "symbol": "FIXTURE",
+            "weight_pct": 100
+          },
+          {
+            "account": "account-b",
+            "account_label": "Secondary",
+            "base_currency": "CAD",
+            "currency": "CAD",
+            "estimated": false,
+            "market_value": 200,
+            "market_value_base": 200,
+            "shares": 2,
+            "symbol": "FIXTURE",
+            "weight_pct": 100
+          }
+        ]
+      }
+    },
+    {
+      "name": "unknown_second_book",
+      "margins": {
+        "account-a": "# Margin Summary: account-a\n**Equity**: $1000 CAD\n**Maintenance Margin Req**: $250 CAD\n**Above Maintenance Margin**: $750 CAD\n**Cushion**: +75.00%\n",
+        "account-b": "Base currency unavailable: calculations unavailable."
+      },
+      "summaries": {
+        "account-a": "**Net Liquidation Value**: $1,000 CAD\n",
+        "account-b": ""
+      },
+      "positions": {
+        "account-a": [
+          {
+            "symbol": "FIXTURE",
+            "shares": 1,
+            "currency": "CAD",
+            "market_value": 100,
+            "base_currency": "CAD",
+            "market_value_base": 100,
+            "weight_pct": 100,
+            "estimated": false
+          }
+        ],
+        "account-b": [
+          {
+            "symbol": "FIXTURE",
+            "shares": 2,
+            "currency": "CAD",
+            "market_value": 200,
+            "base_currency": null,
+            "market_value_base": null,
+            "weight_pct": null,
+            "estimated": true
+          }
+        ]
+      },
+      "expected": {
+        "account": "all",
+        "account_label": "Both",
+        "account_summaries": [
+          {
+            "account": "account-a",
+            "account_label": "Primary",
+            "currency": "CAD",
+            "currency_unavailable": false,
+            "margin": {
+              "above_maintenance": 750.0,
+              "currency": "CAD",
+              "cushion_pct": 75.0,
+              "equity": 1000.0,
+              "maintenance": 250.0,
+              "nlv": 1000.0
+            },
+            "margin_complete": true,
+            "margin_warning": null
+          },
+          {
+            "account": "account-b",
+            "account_label": "Secondary",
+            "currency": null,
+            "currency_unavailable": true,
+            "margin": null,
+            "margin_complete": false,
+            "margin_warning": "Base currency unavailable. Account monetary totals are unavailable."
+          }
+        ],
+        "currency": null,
+        "currency_unavailable": true,
+        "incomplete_accounts": [
+          "account-b"
+        ],
+        "margin": null,
+        "margin_complete": false,
+        "margin_warning": "Combined margin unavailable: one or more account reports are incomplete or have unavailable currency.",
+        "mixed_currency": false,
+        "ok": true,
+        "positions": [
+          {
+            "account": "account-a",
+            "account_label": "Primary",
+            "base_currency": "CAD",
+            "currency": "CAD",
+            "estimated": false,
+            "market_value": 100,
+            "market_value_base": 100,
+            "shares": 1,
+            "symbol": "FIXTURE",
+            "weight_pct": 100
+          },
+          {
+            "account": "account-b",
+            "account_label": "Secondary",
+            "base_currency": null,
+            "currency": "CAD",
+            "estimated": true,
+            "market_value": 200,
+            "market_value_base": null,
+            "shares": 2,
+            "symbol": "FIXTURE",
+            "weight_pct": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "mixed_cad_usd",
+      "margins": {
+        "account-a": "# Margin Summary: account-a\n**Equity**: $1000 CAD\n**Maintenance Margin Req**: $250 CAD\n**Above Maintenance Margin**: $750 CAD\n**Cushion**: +75.00%\n",
+        "account-b": "# Margin Summary: account-b\n**Equity**: $1000 USD\n**Maintenance Margin Req**: $250 USD\n**Above Maintenance Margin**: $750 USD\n**Cushion**: +75.00%\n"
+      },
+      "summaries": {
+        "account-a": "**Net Liquidation Value**: $1,000 CAD\n",
+        "account-b": "**Net Liquidation Value**: $1,000 USD\n"
+      },
+      "positions": {
+        "account-a": [
+          {
+            "symbol": "FIXTURE",
+            "shares": 1,
+            "currency": "CAD",
+            "market_value": 100,
+            "base_currency": "CAD",
+            "market_value_base": 100,
+            "weight_pct": 100,
+            "estimated": false
+          }
+        ],
+        "account-b": [
+          {
+            "symbol": "FIXTURE",
+            "shares": 2,
+            "currency": "USD",
+            "market_value": 200,
+            "base_currency": "USD",
+            "market_value_base": 200,
+            "weight_pct": 100,
+            "estimated": false
+          }
+        ]
+      },
+      "expected": {
+        "account": "all",
+        "account_label": "Both",
+        "account_summaries": [
+          {
+            "account": "account-a",
+            "account_label": "Primary",
+            "currency": "CAD",
+            "currency_unavailable": false,
+            "margin": {
+              "above_maintenance": 750.0,
+              "currency": "CAD",
+              "cushion_pct": 75.0,
+              "equity": 1000.0,
+              "maintenance": 250.0,
+              "nlv": 1000.0
+            },
+            "margin_complete": true,
+            "margin_warning": null
+          },
+          {
+            "account": "account-b",
+            "account_label": "Secondary",
+            "currency": "USD",
+            "currency_unavailable": false,
+            "margin": {
+              "above_maintenance": 750.0,
+              "currency": "USD",
+              "cushion_pct": 75.0,
+              "equity": 1000.0,
+              "maintenance": 250.0,
+              "nlv": 1000.0
+            },
+            "margin_complete": true,
+            "margin_warning": null
+          }
+        ],
+        "currency": null,
+        "currency_unavailable": false,
+        "incomplete_accounts": [],
+        "margin": null,
+        "margin_complete": false,
+        "margin_warning": "Combined margin unavailable: account currencies differ.",
+        "mixed_currency": true,
+        "ok": true,
+        "positions": [
+          {
+            "account": "account-a",
+            "account_label": "Primary",
+            "base_currency": "CAD",
+            "currency": "CAD",
+            "estimated": false,
+            "market_value": 100,
+            "market_value_base": 100,
+            "shares": 1,
+            "symbol": "FIXTURE",
+            "weight_pct": 100
+          },
+          {
+            "account": "account-b",
+            "account_label": "Secondary",
+            "base_currency": "USD",
+            "currency": "USD",
+            "estimated": false,
+            "market_value": 200,
+            "market_value_base": 200,
+            "shares": 2,
+            "symbol": "FIXTURE",
+            "weight_pct": 100
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -309,6 +309,8 @@ const STRINGS = {
   'portfolio.gateway_empty': { en: 'nothing to show', zh: '暂无数据' },
   'portfolio.account_switcher': { en: 'Portfolio account', zh: '投资账户' },
   'portfolio.live_book': { en: 'Live broker book', zh: '实时券商持仓' },
+  'portfolio.sizing_unavailable': { en: 'Sizing unavailable: account value and matching price currency are required.', zh: '仓位计算不可用：需要账户净值以及币种相同的价格。' },
+  'portfolio.carry_assumption': { en: 'Hypothetical carry at {rate}% APR.', zh: '按 {rate}% 年利率估算的假设融资成本。' },
   'portfolio.margin_preview': { en: 'margin impact from the gateway — nothing is placed', zh: '由网关估算保证金影响 — 不会提交订单' },
   'portfolio.watcher_loading': { en: 'reading the watcher…', zh: '正在读取监控器…' },
   'portfolio.watcher_unavailable': { en: 'breaker watcher unavailable on this box', zh: '此设备无法使用逻辑破坏条件监控' },
