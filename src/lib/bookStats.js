@@ -96,14 +96,14 @@ export function brokerBookStats(rows) {
     unrealDisplay: r.unrealPnl,
   }))
   const marked = normalized.filter((r) => r.valueDisplay != null)
-  const completeCost = marked.length > 0 && marked.every((r) => (
+  const completeCost = marked.length > 0 && marked.length === normalized.length && marked.every((r) => (
     r.unrealDisplay != null && r.costBasis > 0
   ))
   const rawUnrealized = unrealizedStats(normalized)
   return {
     rows: normalized,
     breadth: breadth(normalized),
-    contribution: dayContribution(normalized),
+    contribution: marked.length === normalized.length ? dayContribution(normalized) : [],
     // A partial total looks precise but is not. Keep the coverage count so
     // the card can say why the aggregate is withheld.
     unrealized: completeCost ? rawUnrealized : { ...rawUnrealized, pnl: null, pct: null },

@@ -49,7 +49,13 @@ export function mergeLegs(positions) {
       avgCost: shares ? (cur.avgCost * cur.shares + p.avgCost * p.shares) / shares : cur.avgCost,
       livePrice: cur.livePrice ?? p.livePrice,
       liveValue: addOpt(cur.liveValue, p.liveValue),
-      liveBase: addOpt(cur.liveBase, p.liveBase),
+      liveBase: cur.broker || p.broker
+        ? Number.isFinite(cur.liveBase) && Number.isFinite(p.liveBase) ? cur.liveBase + p.liveBase : null
+        : addOpt(cur.liveBase, p.liveBase),
+      ...(cur.broker || p.broker ? {
+        baseAvailable: cur.baseAvailable && p.baseAvailable,
+        weightAvailable: cur.weightAvailable && p.weightAvailable,
+      } : {}),
       liveUnreal: addOpt(cur.liveUnreal, p.liveUnreal),
       accountLabel: cur.accountLabel && p.accountLabel && cur.accountLabel !== p.accountLabel
         ? `${cur.accountLabel} + ${p.accountLabel}` : (cur.accountLabel || p.accountLabel),
@@ -62,6 +68,29 @@ export function mergeLegs(positions) {
 export function positionRows(positions, priceMap) {
   const rows = positions.map((p) => {
     const q = priceMap[p.symbol]
+    if (p.broker) {
+      const finite = Number.isFinite
+      const nativeValue = finite(p.liveValue) ? p.liveValue
+        : finite(p.livePrice) && finite(p.shares) ? p.livePrice * p.shares : null
+      const nativeUnreal = finite(p.liveUnreal) ? p.liveUnreal : null
+      const mktValue = p.baseAvailable && finite(p.liveBase) ? p.liveBase : null
+      const fx = mktValue != null && p.currency && nativeValue
+        ? mktValue / Math.abs(nativeValue)
+        : mktValue != null && p.currency === p.baseCurrency ? 1 : null
+      const costBasis = fx != null && finite(p.avgCost) && finite(p.shares)
+        ? p.avgCost * p.shares * fx : null
+      const signedValue = nativeValue != null && fx != null ? nativeValue * fx : null
+      const unrealPnl = nativeUnreal != null && fx != null ? nativeUnreal * fx
+        : signedValue != null && costBasis != null ? signedValue - costBasis : null
+      const dayPct = sessionDayPct(q)
+      return { ...p, nativeValue, nativeUnreal,
+        price: finite(p.livePrice) ? p.livePrice
+          : nativeValue != null && p.shares ? Math.abs(nativeValue / p.shares) : null,
+        mktValue, costBasis, unrealPnl, dayPct,
+        dayPnl: signedValue != null ? dayPnlFromValue(signedValue, dayPct) : null,
+        unrealPct: costBasis && unrealPnl != null ? (unrealPnl / Math.abs(costBasis)) * 100 : null,
+        weight: null }
+    }
     // Live rows carry the broker's own marks. A CDR (or any non-US listing)
     // shares a ticker with the US line but trades in another currency — the
     // yahoo quote for that ticker is the WRONG instrument, so IBKR's price/
@@ -119,9 +148,10 @@ export function positionRows(positions, priceMap) {
       weight: null, // filled below once gross is known
     }
   })
+  const completeBase = !positions.some((p) => p.broker) || rows.every((r) => Number.isFinite(r.mktValue))
   const gross = rows.reduce((s, r) => s + (r.mktValue ?? 0), 0)
   for (const r of rows) {
-    if (r.mktValue != null && gross > 0) r.weight = (r.mktValue / gross) * 100
+    if (completeBase && (!r.broker || r.weightAvailable) && r.mktValue != null && gross > 0) r.weight = (r.mktValue / gross) * 100
   }
   return rows
 }
@@ -131,15 +161,16 @@ export function accountSummary(positions, priceMap, cash = DEMO_CASH) {
   const rows = positionRows(positions, priceMap)
   const complete = rows.every((r) => r.mktValue != null)
   const gross = rows.reduce((s, r) => s + (r.mktValue ?? 0), 0)
-  const nlv = complete ? cash + gross : null
+  const broker = positions.some((p) => p.broker)
+  const nlv = complete && !broker ? cash + gross : null
   const maintenance = gross * MAINTENANCE_PCT
   return {
     accountId: DEMO_ACCOUNT_ID,
-    cash,
+    cash: broker ? null : cash,
     gross: complete ? gross : null,
     nlv,
     leverage: nlv ? gross / nlv : null,
-    maintenance: complete ? maintenance : null,
+    maintenance: complete && !broker ? maintenance : null,
     excessLiq: nlv != null ? nlv - maintenance : null,
     cushionPct: nlv ? ((nlv - maintenance) / nlv) * 100 : null,
     dayPnl: complete ? rows.reduce((s, r) => s + (r.dayPnl ?? 0), 0) : null,
@@ -170,7 +201,9 @@ export function carryAt({ nlv, targetLeverage, ratePct = DEMO_MARGIN_RATE }) {
 /** Beta-weighted P&L for a set of market shocks (in %). */
 export function stressGrid(positions, priceMap, betas = DEMO_BETAS, moves = [-20, -10, -5, 5, 10]) {
   const rows = positionRows(positions, priceMap)
+  const incomplete = positions.some((p) => p.broker) && rows.some((r) => !Number.isFinite(r.mktValue))
   return moves.map((move) => {
+    if (incomplete) return { move, pnl: null }
     const pnl = rows.reduce((s, r) => {
       if (r.mktValue == null) return s
       return s + r.mktValue * (move / 100) * (betas[r.symbol] ?? 1)
