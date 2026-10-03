@@ -3,9 +3,11 @@
   "contract": "positions-base-gross-v1",
   "semantics": {
     "market_value": "signed native currency",
-    "market_value_base": "absolute gross exposure in account base currency",
-    "weight_pct": "percent of account gross base exposure",
-    "estimated": "true when FX is missing or uses fallback",
+    "market_value_base": "absolute gross exposure in account base currency; null when base currency is unavailable",
+    "weight_pct": "percent of account gross base exposure; null when base currency is unavailable",
+    "base_currency": "account base currency or null when unavailable; never inferred from position currency",
+    "currency_warning": "explanation when base currency is unavailable; null for known currency",
+    "estimated": "true when currency or FX is missing or uses fallback",
     "account": "opaque account identifier; retain per-row attribution"
   },
   "accounts": [
@@ -51,6 +53,23 @@
           "market_value": 500,
           "expected_market_value_base": 1000,
           "expected_weight_pct": 100.0
+        }
+      ]
+    },
+    {
+      "account": "account-unknown",
+      "base_currency": null,
+      "fx_to_base": {},
+      "expected_estimated": true,
+      "positions": [
+        {
+          "symbol": "RY",
+          "currency": "CAD",
+          "shares": 10,
+          "market_price": 100,
+          "market_value": 1000,
+          "expected_market_value_base": null,
+          "expected_weight_pct": null
         }
       ]
     }
