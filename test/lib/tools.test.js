@@ -36,7 +36,7 @@ describe('toolLabel', () => {
   it('humanizes the verb and shows the most relevant arg', () => {
     expect(toolLabel({ name: 'get_quotes', args: { symbols: ['NVDA', 'AMD'] } })).toBe('quotes NVDA, AMD')
     expect(toolLabel({ name: 'get_technicals', args: { symbol: 'MU' } })).toBe('technicals MU')
-    expect(toolLabel({ name: 'get_earnings', args: { symbol: 'AVGO' } })).toBe('AVGO earnings')
+    expect(toolLabel({ name: 'get_earnings', args: { symbol: 'AAPL' } })).toBe('AAPL earnings')
     expect(toolLabel({ name: 'navigate', args: { view: 'heatmap' } })).toBe('open heatmap')
     expect(toolLabel({ name: 'get_watchlist', args: {} })).toBe('watchlist')
     expect(toolLabel({ name: 'future_tool', args: {} })).toBe('future_tool')
@@ -45,8 +45,8 @@ describe('toolLabel', () => {
 
 describe('toolRunLabel', () => {
   it('phrases earnings lookups as a readable activity', () => {
-    expect(toolRunLabel({ name: 'get_earnings', args: { symbol: 'AVGO' } }))
-      .toBe('Checking AVGO earnings')
+    expect(toolRunLabel({ name: 'get_earnings', args: { symbol: 'AAPL' } }))
+      .toBe('Checking AAPL earnings')
   })
 })
 

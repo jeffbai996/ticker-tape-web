@@ -36,8 +36,8 @@ export const BUCKETS = [
     // Designers, IDMs, foundries, memory, equipment, materials, and test.
     // This is intentionally broader than the default watchlist: membership is
     // our no-round-trip fallback when a user adds a new name to the board.
-    'NVDA', 'AMD', 'AVGO', 'INTC', 'TSM', 'MSFT', 'QCOM', 'MU', 'AMAT', 'GOOGL',
-    'ASML', 'LRCX', 'KLAC', 'MRVL', 'ARM', 'TXN', 'ADI', 'NXPI', 'ON', 'MCHP',
+    'NVDA', 'AMD', 'AAPL', 'INTC', 'TSM', 'MSFT', 'QCOM', 'MU', 'AMAT', 'GOOGL',
+    'ASML', 'AMZN', 'KLAC', 'MRVL', 'ARM', 'TXN', 'ADI', 'NXPI', 'ON', 'MCHP',
     'MPWR', 'QRVO', 'SWKS', 'MTSI', 'ALAB', 'CRDO',
     'GFS', 'UMC', 'STM', 'TSEM', 'WOLF', 'SNDK', 'SKHY', '000660.KS',
     'TER', 'ACLS', 'CAMT', 'ONTO', 'ENTG', 'MKSI', 'AMKR', 'ASX', 'SMCI',
