@@ -34,6 +34,7 @@ import { BookNews } from './portfolioNews.jsx'
 import { BookEvents } from './portfolioEvents.jsx'
 import { loadPortfolios, onPortfoliosChange } from '../lib/myPortfolios.js'
 import { onHeaderActions } from '../lib/headerSlot.js'
+import { IS_PUBLIC_DEMO } from '../lib/publicDemo.js'
 
 const SYMBOLS = DEMO_POSITIONS.map((p) => p.symbol)
 const BOTH_ACCOUNTS = 'all'
@@ -1828,7 +1829,7 @@ function AccountSwitcher({ accounts, account, onChange }) {
   )
 }
 
-function PortfolioHeader({ accounts, account, onChange, book, wired }) {
+export function PortfolioHeader({ accounts, account, onChange, book, wired }) {
   const live = !!book
   // the account ID + broker, not a nickname + margin readout (Jeff 2026-08-10)
   const label = book?.account || book?.accountLabel || (account === BOTH_ACCOUNTS ? tl('Both') : '')
@@ -1852,7 +1853,8 @@ function PortfolioHeader({ accounts, account, onChange, book, wired }) {
         </div>
       </div>
       <AccountSwitcher accounts={accounts} account={account} onChange={onChange} />
-      {actions && <div class="flex shrink-0 items-center gap-1.5 max-sm:gap-1">{actions}</div>}
+      {/* the public demo never offered the book actions in the heading */}
+      {!IS_PUBLIC_DEMO && actions && <div class="flex shrink-0 items-center gap-1.5 max-sm:gap-1">{actions}</div>}
     </header>
   )
 }

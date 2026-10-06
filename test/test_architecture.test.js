@@ -1,4 +1,5 @@
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
@@ -157,5 +158,86 @@ describe('research rail scroll container', () => {
     if (wrapper.includes('max-h-') || wrapper.includes('overflow-y-auto')) {
       expect(wrapper).toContain('shrink-0')
     }
+  })
+})
+
+// A private ticker list once lived in a test here. It is retired, and only a
+// digest of its sorted contents is kept, so this file cannot be what leaks it.
+// A run of RETIRED_SIZE consecutive HK / Shanghai / Shenzhen tickers in any
+// source file, in any order, whose sorted contents hash to RETIRED_SHA256
+// fails the suite. The failure names the file, never the tickers.
+const RETIRED_SIZE = 20
+const RETIRED_SHA256 = 'd0971e8f60388babdf533c473c44473e3a788629ff53a2fad494ddf3b0e2248f'
+
+const TICKER = /\b\d{4,6}\.(?:HK|SS|SZ)\b/gi
+const SCAN_ROOTS = ['src', 'test', 'scripts', 'docs', 'worker', 'public', 'README.md', 'CLAUDE.md']
+const SKIP_DIRS = new Set(['node_modules', 'dist', '.git'])
+const TEXT_FILE = /\.(?:js|jsx|mjs|cjs|json|md|py|sh|txt|csv|html|css|toml|ya?ml)$/i
+const MAX_SCAN_BYTES = 8 * 1024 * 1024
+
+// brokers print Hong Kong codes zero-padded to five digits ("00700.HK")
+const canonicalTicker = (raw) => {
+  const s = raw.toUpperCase()
+  return s.endsWith('.HK') ? s.replace(/^0+(?=\d{4}\.)/, '') : s
+}
+
+const tickerDigest = (tickers) => createHash('sha256').update([...tickers].sort().join(',')).digest('hex')
+
+/** Does `text` hold `size` consecutive tickers whose sorted list hashes to `sha`? */
+function holdsTickerSet(text, sha, size) {
+  const found = (text.match(TICKER) || []).map(canonicalTicker)
+  for (let i = 0; i + size <= found.length; i += 1) {
+    if (tickerDigest(found.slice(i, i + size)) === sha) return true
+  }
+  return false
+}
+
+function* scanFiles(path) {
+  let info
+  try { info = statSync(path) } catch { return }
+  if (info.isDirectory()) {
+    for (const name of readdirSync(path)) {
+      if (!SKIP_DIRS.has(name)) yield* scanFiles(join(path, name))
+    }
+  } else if (TEXT_FILE.test(path) && info.size <= MAX_SCAN_BYTES) {
+    yield path
+  }
+}
+
+describe('retired private ticker list', () => {
+  const sample = ['0005.HK', '600519.SS', '000001.SZ']
+
+  it('stores a well-formed digest, not a ticker list', () => {
+    expect(RETIRED_SHA256).toMatch(/^[0-9a-f]{64}$/)
+    expect(RETIRED_SIZE).toBeGreaterThan(1)
+  })
+
+  it('finds a listed set in any order, with other text around it', () => {
+    const text = "// noise 9988.HK\nconst a = ['000001.SZ', '0005.HK', '600519.SS']\n// 300750.SZ"
+    expect(holdsTickerSet(text, tickerDigest(sample), 3)).toBe(true)
+  })
+
+  it('reads a broker-padded or lower-case code as the same ticker', () => {
+    expect(holdsTickerSet("['00005.HK', '600519.SS', '000001.sz']", tickerDigest(sample), 3)).toBe(true)
+  })
+
+  it('ignores a near miss and a partial set', () => {
+    expect(holdsTickerSet("['0005.HK', '600519.SS', '9988.HK']", tickerDigest(sample), 3)).toBe(false)
+    expect(holdsTickerSet("['0005.HK', '600519.SS']", tickerDigest(sample), 3)).toBe(false)
+  })
+
+  it('keeps the retired list out of every source file', () => {
+    const offenders = []
+    let scanned = 0
+    for (const root of SCAN_ROOTS) {
+      for (const file of scanFiles(join(process.cwd(), root))) {
+        scanned += 1
+        if (holdsTickerSet(readFileSync(file, 'utf8'), RETIRED_SHA256, RETIRED_SIZE)) {
+          offenders.push(relative(process.cwd(), file))
+        }
+      }
+    }
+    expect(scanned).toBeGreaterThan(100)   // the scan really walked the tree
+    expect(offenders).toEqual([])
   })
 })

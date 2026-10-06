@@ -1,8 +1,8 @@
 /** Board code → the symbol the data feed actually knows.
  *
- *  Jeff 2026-08-21: his stepdad entered his Hong Kong and mainland book the
- *  way a Chinese broker screen shows it — "02628", "600489" — and every row
- *  sat priceless and silently filed as USD. No venue Yahoo carries lists a
+ *  2026-08-21: a Hong Kong and mainland book entered the way a Chinese
+ *  broker screen shows it — "02628", "600489" — left every row priceless
+ *  and silently filed as USD. No venue Yahoo carries lists a
  *  bare number (`symbolExists` refuses digits-only for exactly this reason),
  *  so a digits-only holding is ALWAYS broken: rewriting it can only improve
  *  the book, never damage a working one.

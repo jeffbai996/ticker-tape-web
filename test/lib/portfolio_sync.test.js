@@ -1,5 +1,5 @@
-/** Portfolio cloud sync (Jeff 2026-08-20: stepdad's book must survive an
- *  iOS localStorage eviction and follow him across devices).
+/** Portfolio cloud sync (2026-08-20: a hand-built book must survive an
+ *  iOS localStorage eviction and follow its owner across devices).
  *
  *  One sync code covers watchlists AND portfolios, but each document has its
  *  own endpoint and its own merge — a stale client that only knows one
