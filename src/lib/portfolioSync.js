@@ -1,7 +1,6 @@
-/** Cloud sync for the hand-built portfolios (Jeff 2026-08-20: "its kinda for
- *  me stepdad now so i want the custom portfolio he puts on there to be
- *  saved" — localStorage alone evaporates when iOS evicts a site it hasn't
- *  seen for a week).
+/** Cloud sync for the hand-built portfolios (2026-08-20): localStorage alone
+ *  evaporates when iOS evicts a site it hasn't seen for a week, so a book
+ *  built by hand needs somewhere to be saved that survives that.
  *
  *  Rides the private build's wire save documents, with its own document and
  *  endpoint, so a stale client that only knows watchlists can never stomp a

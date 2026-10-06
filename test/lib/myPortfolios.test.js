@@ -162,23 +162,23 @@ describe('portfolioValues — the live math', () => {
   })
 })
 
-/** Jeff 2026-08-21: his stepdad entered a Hong Kong/mainland book as broker
- *  board codes. Nothing priced and every row filed itself as USD. */
+/** 2026-08-21: a Hong Kong/mainland book entered as broker board codes.
+ *  Nothing priced and every row filed itself as USD. */
 describe('board codes entered without a venue', () => {
   it('repairs them on the way into the store', () => {
     const p = createPortfolio('HK book', 'HKD')
-    expect(setHolding(p.id, '02628', 270_000, 28.06)).toMatchObject({ symbol: '2628.HK' })
-    expect(setHolding(p.id, '600489', 140_000)).toMatchObject({ symbol: '600489.SS' })
-    expect(setHolding(p.id, '000630', 200_000)).toMatchObject({ symbol: '000630.SZ' })
+    expect(setHolding(p.id, '02628', 1_000, 25)).toMatchObject({ symbol: '2628.HK' })
+    expect(setHolding(p.id, '600489', 500)).toMatchObject({ symbol: '600489.SS' })
+    expect(setHolding(p.id, '000630', 800)).toMatchObject({ symbol: '000630.SZ' })
   })
 
   it('repairs a book already sitting in storage, shares and cost untouched', () => {
     localStorage.setItem('my_portfolios_v1', JSON.stringify([{
-      id: 'p1', name: 'Gordon', ccy: 'CNY',
-      holdings: [{ symbol: '02628', shares: 270000, cost: 28.06 }],
+      id: 'p1', name: 'Sample book', ccy: 'CNY',
+      holdings: [{ symbol: '02628', shares: 1000, cost: 25 }],
     }]))
     expect(loadPortfolios()[0].holdings).toEqual([
-      { symbol: '2628.HK', shares: 270000, cost: 28.06 },
+      { symbol: '2628.HK', shares: 1000, cost: 25 },
     ])
   })
 })

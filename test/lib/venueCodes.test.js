@@ -1,5 +1,5 @@
-/** Bare exchange codes are not tickers (Jeff 2026-08-21: his stepdad typed
- *  "02628" and the book valued it as a USD nothing). Yahoo has no bare
+/** Bare exchange codes are not tickers (2026-08-21: a book entry typed as
+ *  "02628" was valued as a USD nothing). Yahoo has no bare
  *  numeric symbol on any venue, so a digits-only string is always broken —
  *  which makes rewriting it strictly an improvement, never a regression.
  */
@@ -11,13 +11,13 @@ describe('normalizeVenueCode — a board code to the symbol the feed knows', () 
     expect(normalizeVenueCode('02628')).toBe('2628.HK')     // China Life
     expect(normalizeVenueCode('00700')).toBe('0700.HK')     // Tencent
     expect(normalizeVenueCode('700')).toBe('0700.HK')
-    expect(normalizeVenueCode('07709')).toBe('7709.HK')     // 5-digit derivative line
+    expect(normalizeVenueCode('09988')).toBe('9988.HK')     // Alibaba, a 5-digit code
     expect(normalizeVenueCode('03330')).toBe('3330.HK')
   })
 
   it('routes six-digit mainland codes to their own exchange', () => {
     expect(normalizeVenueCode('600036')).toBe('600036.SS')  // Shanghai main board
-    expect(normalizeVenueCode('688008')).toBe('688008.SS')  // STAR market
+    expect(normalizeVenueCode('688981')).toBe('688981.SS')  // STAR market
     expect(normalizeVenueCode('513050')).toBe('513050.SS')  // Shanghai-listed ETF
     expect(normalizeVenueCode('000630')).toBe('000630.SZ')  // Shenzhen main board
     expect(normalizeVenueCode('300308')).toBe('300308.SZ')  // ChiNext

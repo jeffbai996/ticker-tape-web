@@ -188,7 +188,7 @@ function ConfirmRemove({ label, onConfirm }) {
 
 function SharesCell({ portfolio, row }) {
   // restating shares is the most common edit — it happens in place, no
-  // separate form round-trip (Jeff 2026-08-20: stepdad-proof the flow)
+  // separate form round-trip (Jeff 2026-08-20: keep the flow forgiving)
   const commit = (e) => {
     const v = Number(e.currentTarget.value)
     if (Number.isFinite(v) && v > 0 && v !== row.shares) setHolding(portfolio.id, row.symbol, v, row.cost)
