@@ -100,22 +100,24 @@ describe('test architecture', () => {
     expect(commands).toContain('pull_request:')
   })
 
-  it('capability sync starts only in builds that have a capability', () => {
+  it('cloud sync starts only in the private build and is not bundled into the public one', () => {
     const main = readFileSync(resolve(process.cwd(), 'src/main.jsx'), 'utf8')
-    // gated behind the build flags AND dynamically imported, so the portfolio
-    // sync module is absent from the public bundle rather than merely inert
-    expect(main).toMatch(/VITE_FAMILY_BUILD === '1' \|\| import\.meta\.env\.VITE_PRIVATE === '1'/)
+    // gated behind the build flag AND dynamically imported, so the sync
+    // modules are absent from the public bundle rather than merely inert
+    expect(main).toMatch(/if \(import\.meta\.env\.VITE_PRIVATE === '1'\)/)
     expect(main).toMatch(/import\('\.\/lib\/portfolioSync\.js'\)/)
     expect(main).not.toMatch(/^import .*portfolioSync\.js'/m)
   })
 
-  it('the capability still rides the header transport and is never a literal', () => {
-    const sync = readFileSync(resolve(process.cwd(), 'src/lib/watchlistSync.js'), 'utf8')
-    expect(sync).toContain('import.meta.env.VITE_SYNC_CAPABILITY')
-    expect(sync).not.toMatch(/[a-f0-9]{32}/)          // never a literal value
-    // capability never in a URL — it would land in access logs and history
-    expect(sync).toContain('Bearer ')
-    expect(sync).not.toMatch(/watchlists\/\$\{/)
+  it('family sync is gone: no build flag, capability, or worker route remains', () => {
+    // Removed 2026-10-06. The public build must never carry private data.
+    for (const file of ['src/main.jsx', 'src/lib/nav.js', 'src/lib/cloudsave.js', 'src/lib/portfolioSync.js', 'vite.config.js', 'worker/worker.js']) {
+      const source = readFileSync(resolve(process.cwd(), file), 'utf8')
+      expect(source, file).not.toMatch(/VITE_FAMILY_BUILD|VITE_SYNC_CAPABILITY|FAMILY_SYNC_TOKEN|Bearer /)
+    }
+    for (const file of ['src/lib/watchlistSync.js', 'worker/capdoc.js', 'worker/portfolios.js', 'worker/watchlists.js', 'scripts/deploy_family.sh', 'scripts/backup_portfolios.py']) {
+      expect(existsSync(resolve(process.cwd(), file)), file).toBe(false)
+    }
   })
 
   it('this public repo does not redistribute a proprietary font', () => {
