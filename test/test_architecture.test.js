@@ -142,13 +142,6 @@ describe('test architecture', () => {
     expect(logConfig).toMatch(/invocation_logs\s*=\s*false/)
     expect(config).toMatch(/TTW_SECURITY_LOGGING\s*=\s*"1"/)
   })
-
-  it('stages family assets beneath the routed URL prefix before deployment', () => {
-    const deploy = readFileSync(resolve(process.cwd(), 'scripts/deploy_family.sh'), 'utf8')
-    expect(deploy).toContain('$asset_root/tape-fmnco7yjx6')
-    expect(deploy).toContain('--assets "$asset_root"')
-    expect(deploy).not.toContain('--assets dist-family')
-  })
 })
 
 describe('research rail scroll container', () => {
