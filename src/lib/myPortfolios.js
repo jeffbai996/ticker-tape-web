@@ -508,7 +508,7 @@ function rederive(p, prevTxns) {
 
 /** The ledger owns the holdings row for any traded symbol — but a person
  *  who hand-typed 1000 shares and then records a 200-share buy means 1200,
- *  not 200 (Gordon 2026-08-23). So the FIRST trade touching a hand-typed
+ *  not 200 (2026-08-23). So the FIRST trade touching a hand-typed
  *  row files that row into the ledger as an opening buy (at its recorded
  *  cost, or this trade's price when no cost was ever typed) before the new
  *  trade lands. The opening is a visible, deletable ledger row. */

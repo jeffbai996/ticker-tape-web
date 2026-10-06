@@ -1,4 +1,4 @@
-/** The arithmetic behind the trade ticket (Gordon 2026-08-23: the entry
+/** The arithmetic behind the trade ticket (2026-08-23: the entry
  *  form read as a bare row of boxes; a broker ticket shows what the trade
  *  costs and what the position becomes BEFORE the tap). Pure — the form
  *  renders these, tests pin them.

@@ -1,5 +1,5 @@
-/** The trade ticket promises Gordon two numbers before he commits: what the
- *  trade costs, and what his position becomes. Wrong numbers here are worse
+/** The trade ticket promises the user two numbers before committing: what the
+ *  trade costs, and what the position becomes. Wrong numbers here are worse
  *  than none.
  */
 import { describe, expect, it } from 'vitest'

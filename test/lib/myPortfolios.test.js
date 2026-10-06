@@ -250,7 +250,7 @@ import { createPortfolio as mkBook, loadPortfolios as loadBooks, previousSnapsho
 
 describe('daily value marks (snapshots)', () => {
   it('files one mark per date, refreshes the same date, ignores a no-change write', () => {
-    const p = mkBook('Gordon', 'CNY')
+    const p = mkBook('Demo', 'CNY')
     expect(recordSnapshot(p.id, 1000.004, 'CNY', '2026-08-21')).toEqual({ d: '2026-08-21', v: 1000, c: 'CNY' })
     expect(recordSnapshot(p.id, 1000.001, 'CNY', '2026-08-21')).toBeNull()      // same cent
     expect(recordSnapshot(p.id, 1010, 'CNY', '2026-08-21')).toEqual({ d: '2026-08-21', v: 1010, c: 'CNY' })
@@ -286,7 +286,7 @@ import { addTxn, importTxns, removeTxn } from '../../src/lib/myPortfolios.js'
 
 describe('trades (the ledger) drive holdings', () => {
   it('adding a trade derives the holding; selling to zero removes it', () => {
-    const p = mkBook('Gordon', 'CNY')
+    const p = mkBook('Demo', 'CNY')
     expect(addTxn(p.id, { d: '2026-08-20', sym: 'HK.00700'.replace('HK.', ''), side: 'buy', qty: 100, px: 450, fee: 10, ccy: 'HKD' })).toMatchObject({ sym: '0700.HK', side: 'buy', qty: 100 })
     let book = loadBooks()[0]
     expect(book.holdings).toEqual([{ symbol: '0700.HK', shares: 100, cost: 450.1 }])
