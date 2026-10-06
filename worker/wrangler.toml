@@ -2,15 +2,11 @@ name = "yf-proxy"
 main = "worker.js"
 compatibility_date = "2024-12-01"
 
-[vars]
-TTW_SECURITY_LOGGING = "1"
-
 [observability]
 enabled = true
 
-# The shared Worker also carries high-volume market-data reads. Keep the
-# privacy-bounded ttw_security objects and uncaught errors, not a duplicate
-# access log for every quote/chart request.
+# The shared Worker also carries high-volume market-data reads. Keep uncaught
+# errors, not an access log for every quote/chart request.
 [observability.logs]
 invocation_logs = false
 head_sampling_rate = 1
@@ -19,10 +15,8 @@ head_sampling_rate = 1
 binding = "SPEND"
 id = "bf70e74407934939bb511990611cb9e7"
 
-[[durable_objects.bindings]]
-name = "CAP_DOCS"
-class_name = "CapDocCoordinator"
-
+# Retained history: the family documents live in this namespace and are kept
+# on purpose (see retired_capdoc.js). Never add deleted_classes for it.
 [[migrations]]
 tag = "v1-cap-doc-coordinator"
 new_sqlite_classes = ["CapDocCoordinator"]
