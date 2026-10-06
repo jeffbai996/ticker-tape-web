@@ -18,11 +18,10 @@ describe('public Worker route boundaries', () => {
     expect(upstream).not.toHaveBeenCalled()
   })
 
-  it('dispatches only bearer-authenticated family document routes', async () => {
-    const env = {}
-    expect((await worker.fetch(new Request('https://worker.test/watchlists'), env)).status).toBe(401)
-    expect((await worker.fetch(new Request('https://worker.test/portfolios'), env)).status).toBe(401)
-    expect((await worker.fetch(new Request(`https://worker.test/watchlists/${'0'.repeat(32)}`), env)).status).toBe(404)
+  it('serves no document-sync routes', async () => {
+    for (const path of ['/watchlists', '/portfolios', `/watchlists/${'0'.repeat(32)}`, '/telemetry/family-view']) {
+      expect((await worker.fetch(new Request(`https://worker.test${path}`), {})).status).toBe(404)
+    }
   })
 
   it('allows only the market-data routes the client actually uses', () => {
