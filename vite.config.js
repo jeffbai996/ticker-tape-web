@@ -24,7 +24,7 @@ function swBuildId() {
 // The public document and bundle never contain the licensed UI face. Private
 // builds opt in at build time; their deploy scripts copy the local asset beside
 // index.html after Vite has finished. A document-relative URL works for both
-// the tailnet root and the family host subpath.
+// the tailnet root and a host subpath.
 export function privateFontHtml(enabled) {
   if (!enabled) return ''
   return `<style data-ttw-private-font>
@@ -40,7 +40,7 @@ export function privateFontHtml(enabled) {
 }
 
 function privateFont() {
-  const enabled = process.env.VITE_PRIVATE === '1' || process.env.VITE_FAMILY_BUILD === '1'
+  const enabled = process.env.VITE_PRIVATE === '1'
   const html = privateFontHtml(enabled)
   return {
     name: 'ttw-private-font',
@@ -53,7 +53,7 @@ function privateFont() {
 export default defineConfig({
   plugins: [preact(), tailwindcss(), privateFont(), swBuildId()],
   // Where the bundle will be served from. The public GitHub Pages deploy keeps
-  // the repo-name base; the family build is hosted elsewhere at its own path,
+  // the repo-name base; private builds are hosted elsewhere at their own path,
   // so both are env-driven rather than forked configs (Jeff 2026-08-25).
   base: process.env.TTW_BASE || '/ticker-tape-web/',
   build: {

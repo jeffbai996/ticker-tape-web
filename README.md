@@ -32,9 +32,9 @@ Personal project. See [LICENSE](LICENSE).
 - **Signal boards** — saved screen definitions (field · operator · value over the technicals the feed already computes, with a rank field) rendered as a ranked board that shares the dashboard's row grammar, plus `open as watchlist` and `alert when entered`
 - **Saved workspaces** — a handful of named layouts (`opening`, `research`, `event day`): active watchlist, grouping, spark shape/window, rail widgets, market subview. Switchable from the toolbar or the `ws` console verb, with versioned export/import of layout preferences. Layout only — never quotes, positions, tokens, or endpoints
 - **Alerts** — price + technical (RSI / SMA cross / volume) alerts evaluated in-browser, with browser notifications
-- **Watchlists** — named lists next to the main one, with opt-in cloud sync: the browser pulls, merges locally, and pushes against the revision it read, so two devices reconcile without the server arbitrating
+- **Watchlists** — named lists next to the main one, with cloud sync on the private build: the browser pulls, merges locally, and pushes against the revision it read, so two devices reconcile without the server arbitrating
 - **AI surfaces** — public and private builds ship the same navigation. Publicly the **Briefing** / report controls and the multi-model chat workspace render as inert `PREVIEW` surfaces that never call a model; the private tailnet build activates them through its server-side router
-- **Portfolios** — public synthetic demo views; separate private broker/account views and family/manual books with a FIFO trade ledger, cash journal, multi-currency valuation, and session-aware day P&L
+- **Portfolios** — public synthetic demo views; separate private broker/account views and manual books with a FIFO trade ledger, cash journal, multi-currency valuation, and session-aware day P&L
 - **Wire** — a news-and-events board scored by event type × watched name × freshness, running on a synthetic public session, on the **public mirror** (a sanitized headline snapshot pushed to the Worker's `/wire/*` routes and read back read-only, with the snapshot age on screen), or on a user-supplied Fragwire-compatible endpoint
 - **Mobile** — bottom tab bar, spotlight-style inline search, and the `ticker>` console promoted to its own phone page (desktop keeps the floating drop-up)
 - **i18n** — EN / 中文 toggle, PWA-installable
@@ -51,23 +51,13 @@ Browser (GitHub Pages, static)
 Cloudflare Worker (worker/)
   selected Yahoo routes   Yahoo Finance proxy; handles the cookie+crumb dance
                         (single-flight refresh, survives 401 stampedes)
-  /watchlists            Capability-authenticated family watchlist document
-  /portfolios            Capability-authenticated family portfolio document
-                        (bearer is confined to the separate family artifact; never a URL;
-                        per-document Durable Object serializes revisions)
   /wire/*               Public wire mirror: a sanitized headline snapshot is
                         PUSHed in and served back read-only. Every event is
                         re-validated against a seven-field contract on write.
 ```
 
 The public Worker has no AI route. Paid/model-backed actions exist only through
-the private tailnet service. Family sync deliberately favors zero-setup family
-use: its separately hosted build receives the 128-bit capability from the
-off-git deploy secret, and the Worker accepts only the matching
-`FAMILY_SYNC_TOKEN`. The ordinary GitHub Pages build carries neither the family
-flag nor the capability. Anyone who obtains the family bundle can recover its
-shared capability; the unindexed path limits discovery, logging detects use,
-and rotation is the recovery boundary.
+the private tailnet service.
 
 ## Tech Stack
 
@@ -100,43 +90,10 @@ the only eager chunks. `scripts/probe_matrix.py` runs the responsive matrix
 against a served build (Playwright + chromium).
 
 Worker: `cd worker && npx wrangler deploy` (needs Cloudflare credentials).
-Provision or rotate family sync separately with
-`npx wrangler secret put FAMILY_SYNC_TOKEN`; the separately hosted family build
-must use the matching value from its off-git deploy configuration. Never pass
-it on the command line or commit it.
-
-The family build also emits privacy-bounded `ttw_security` objects to
-Cloudflare Workers Logs. Provision `TTW_AUDIT_KEY` as a separate strong Worker
-secret before deploy; it HMAC-pseudonymizes device and network identifiers.
-The event never contains the family bearer, raw IP, document body, symbol,
-portfolio name, full URL, referer, or full user agent. Generic invocation logs
-are disabled because the same Worker carries ordinary market-data traffic.
-Cloudflare is still the edge provider and can attach its own request metadata
-to invocation and real-time-tail views; the privacy bound applies to the
-application's `ttw_security` object.
-
-View the events in **Cloudflare → Workers & Pages → yf-proxy → Observability →
-Query Builder** with `event = ttw_security`. Useful saved views are:
-
-- `TTW — all security events`: `event = ttw_security`
-- `TTW — writes and restores`: add `operation IN (write, restore)`
-- `TTW — failures`: add `status >= 400`
-- `TTW — unfamiliar clients`: group by `device`, `country`, and `asn`
-
-The `kind = browser` / `operation = view` event means the family JavaScript
-actually executed. Cloudflare zone Traffic Analytics for the exact family path
-also includes HTML-only fetches such as WeChat previews. Neither device IDs nor
-Origin headers are authentication; the bearer remains the machine credential.
-
-Build the separately hosted family bundle with
-`scripts/deploy_family.sh --build-only FULL_SOURCE_SHA`. Publish it with
-`--deploy FULL_SOURCE_SHA`; the script
-reads the capability from `~/.config/ttw/sync_token`, validates it without
-printing it, and preserves the existing `ttw-family` Assets Worker routes.
-Both private release scripts require the full current HEAD SHA and a clean
-checkout, export only committed files, and run `npm ci`, full Vitest, production
+The private release script requires the full current HEAD SHA and a clean
+checkout, exports only committed files, and runs `npm ci`, full Vitest, production
 build, then the offline served responsive probe before publishing. Ignored
-`.env` files are excluded; the family capability is supplied only to the build.
+`.env` files are excluded.
 Each output carries `release.json` with its source SHA and an asset hash manifest.
 Use `npm run build:tailnet -- --build-only FULL_SOURCE_SHA` to validate a tailnet
 release, or `--deploy FULL_SOURCE_SHA` to swap its symlink after all gates pass.
@@ -145,9 +102,8 @@ tailnet releases retain the existing three-release rollback window.
 
 ## Constraints
 
-- **No personal data in the public repository or ordinary Pages assets.** Source and fixtures contain no real positions, accounts, or portfolio symbols. The separately deployed family bundle contains its shared capability by design; a browser holding it can access the private Worker document.
+- **No personal data in the public repository or ordinary Pages assets.** Source and fixtures contain no real positions, accounts, or portfolio symbols.
 - API keys never touch the browser. Public AI controls are previews only; the private build calls its server-side router.
-- The family capability is a shared bearer embedded only in the separately hosted family bundle. Treat the page path as capability-adjacent, keep it unindexed, and rotate the bearer if either is broadly disclosed.
 - Yahoo data quirks are handled explicitly (crumb auth, ^TNX change fields, patchy earnings-calendar coverage) rather than papered over.
 
 ## Repo Layout
@@ -155,7 +111,7 @@ tailnet releases retain the existing three-release rollback window.
 ```
 ticker-tape-web/
 ├── .github/workflows/deploy.yml
-├── worker/              # Cloudflare Worker: bounded Yahoo proxy, family sync, public wire mirror
+├── worker/              # Cloudflare Worker: bounded Yahoo proxy, public wire mirror
 ├── src/
 │   ├── app.jsx          # shell: status bar, tape, sidebar, command bar
 │   ├── pages/           # dashboard, watchlists, brief, markets, screen, portfolio, alerts, wire, chat, console

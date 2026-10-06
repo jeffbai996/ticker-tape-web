@@ -1,12 +1,9 @@
 // Watchlist cloud sync. Private builds use the wire's shared save document;
-// public builds opt into a capability-scoped document on the data worker.
-// Both backends use optimistic concurrency: pull, merge, then push against the
-// revision we read. The server never merges — this file owns it.
+// builds without a wire have no sync backend. Optimistic concurrency: pull,
+// merge, then push against the revision we read. The server never merges —
+// this file owns it.
 
 import { wireServiceUrl } from './wire.js'
-import {
-  watchlistSyncEndpoint, watchlistSyncHeaders,
-} from './watchlistSync.js'
 
 export const SAVE_KEY = 'ttw-watchlists'
 const META_KEY = 'cloudsave_meta_v1'   // {rev, touched:{main|list-id: ts}, deleted:{id: ts}}
@@ -94,9 +91,8 @@ export function mergeDocs(local, remote) {
 async function api(path, init) {
   const target = saveEndpoint()
   if (!target) throw new Error('no watchlist sync endpoint')
-  const capabilityHeaders = wireServiceUrl() ? {} : watchlistSyncHeaders()
   const resp = await fetch(target, {
-    headers: { 'Content-Type': 'application/json', ...capabilityHeaders },
+    headers: { 'Content-Type': 'application/json' },
     signal: AbortSignal.timeout(10_000),
     ...init,
   })
@@ -155,8 +151,7 @@ let started = false
 
 function saveEndpoint() {
   const wire = wireServiceUrl()
-  if (wire) return `${wire.replace(/\/$/, '')}/api/saves/${SAVE_KEY}`
-  return watchlistSyncEndpoint()
+  return wire ? `${wire.replace(/\/$/, '')}/api/saves/${SAVE_KEY}` : ''
 }
 
 function snapshot(meta) {

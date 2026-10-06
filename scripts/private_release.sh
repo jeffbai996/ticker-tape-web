@@ -16,7 +16,7 @@ release_prepare() {
   trap 'rm -rf -- "$SOURCE_DIR"' EXIT
   git -C "$root" archive "$SOURCE_SHA" | tar -x -C "$SOURCE_DIR"
   # Ignored .env files and inherited build flags are not release inputs.
-  unset VITE_SYNC_CAPABILITY VITE_FAMILY_BUILD VITE_PRIVATE TTW_BASE TTW_OUT_DIR
+  unset VITE_PRIVATE TTW_BASE TTW_OUT_DIR
   cd "$SOURCE_DIR"
   npm ci
   npm test
@@ -27,7 +27,7 @@ release_probe() {
   [[ -f "$release/index.html" ]] || {
     echo "release build has no index.html" >&2; return 1;
   }
-  # Family capabilities must never contact production from validation.
+  # Release validation must never contact production.
   "${TTW_PROBE_PYTHON:-python3}" scripts/probe_gate.py --dist "$release" \
     --offline --json-out "$release/probe-matrix.json"
   printf '{"source_sha":"%s","variant":"%s"}\n' "$SOURCE_SHA" "$variant" \

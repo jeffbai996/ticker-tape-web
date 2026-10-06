@@ -7,7 +7,7 @@ import {
   pubDisplayName, readMinutes, sortWireLatest, tierOfEvent, effectiveEventTime,
   toggleWireArticle, isMirrorBase, mirrorAgeMinutes, eventLanguage, loadWireOrder, saveWireOrder,
 } from '../lib/wire.js'
-import { IS_FAMILY_BUILD, IS_PRIVATE_BUILD } from '../lib/nav.js'
+import { IS_PRIVATE_BUILD } from '../lib/nav.js'
 import { prefetchSymbol } from '../lib/history.js'
 import { useEscape } from '../hooks.js'
 import { startVisibleClock } from '../lib/idleClock.js'
@@ -604,7 +604,7 @@ export function Wire({ route }) {
   const [query, setQueryRaw] = useState(() => localStorage.getItem('tape-wire-filter-text') || '')
   const [mode, setMode] = useState(loadWireOrder)
   const [tierFilters, setTierFiltersRaw] = useState(savedTierFilters)
-  const [thesisOnly, setThesisOnlyRaw] = useState(() => !IS_FAMILY_BUILD && localStorage.getItem('tape-wire-thesis-only') === '1')
+  const [thesisOnly, setThesisOnlyRaw] = useState(() => localStorage.getItem('tape-wire-thesis-only') === '1')
   const [primeOnly, setPrimeOnlyRaw] = useState(() => localStorage.getItem('tape-wire-prime-only') === '1')
   const [showZhSources, setShowZhSourcesRaw] = useState(() => localStorage.getItem('tape-wire-zh-sources') === '1')
   // rail off = full-width reading; sticky, it's a layout preference
@@ -818,21 +818,21 @@ export function Wire({ route }) {
         .then((out) => {
           if (cancelled) return
           const rows = out.events || []
-          if (first && !rows.length && !IS_FAMILY_BUILD) { startDemo(); return }
+          if (first && !rows.length) { startDemo(); return }
           if (!first) rows.filter((ev) => !seen.has(ev.id)).forEach((ev) => markHot(ev.id))
           seen = new Set(rows.map((ev) => ev.id))
           // Real mirrored headlines alone exercise one lane of the UI. The
           // written demo session rides alongside (Jeff 2026-08-21: "allow the
           // user to see the full functionality") — every synthetic row keeps
           // its demo badge, so the stream stays honestly labeled per row.
-          const demoRows = IS_FAMILY_BUILD ? [] : demoBackfill(DEMO_SESSION_ROWS, Date.now() / 1000)
+          const demoRows = demoBackfill(DEMO_SESSION_ROWS, Date.now() / 1000)
           setEvents([...rows, ...demoRows]
             .sort((a, b) => (a.ts_event ?? 0) - (b.ts_event ?? 0)))
           setGeneratedAt(out.generated_at ?? null)
           revisionSince = out.server_ts || revisionSince || Date.now() / 1000
           setState('mirror')
         })
-        .catch(() => { if (!cancelled && first) { if (IS_FAMILY_BUILD) setState('error'); else startDemo() } })
+        .catch(() => { if (!cancelled && first) startDemo() })
       pollRail()
       pull(true).then(() => {
         if (cancelled || demoStop) return
@@ -947,7 +947,7 @@ export function Wire({ route }) {
   const stateTone = { demo: 'text-muted', connecting: 'text-muted', live: 'text-accent', error: 'text-down' }
   const wireHome = fragwireHome()      // re-reads on endpoint change via `endpoint` state
   const calendarUrl = calendarSubscriptionUrl()
-  const embeddedWire = IS_FAMILY_BUILD || isMirrorBase(endpoint)
+  const embeddedWire = isMirrorBase(endpoint)
   const breaking = events.filter((ev) => !ev.demo && !dismissedBreaking.has(ev.id)
     && now - ev.ts_event >= 0 && now - ev.ts_event < 3600
     && (ev.meta?.breaking === true || /^breaking\b/i.test(ev.headline || '')))
@@ -1041,9 +1041,9 @@ export function Wire({ route }) {
           </button>
         )}
         <span class="ml-auto" />
-        {/* Private and family builds have a fixed wire source. Only the public
+        {/* The private build has a fixed wire source. Only the public
             viewer can supply a different endpoint. */}
-        {!IS_PRIVATE_BUILD && !IS_FAMILY_BUILD && (
+        {!IS_PRIVATE_BUILD && (
           <form class="flex gap-2 ml-auto" onSubmit={applyEndpoint}>
             <input
               class="bg-surface-2 border border-line rounded-md px-2 py-1 font-mono text-[11.5px] text-ink outline-none focus:border-accent w-64"
@@ -1100,11 +1100,11 @@ export function Wire({ route }) {
                     : 'border-[#f85149]/40 text-[#f85149] hover:bg-[#f85149]/10'
             }`}>T{tier}</button>
         ))}
-        {!IS_FAMILY_BUILD && <button data-thesis-filter onClick={() => setThesisOnly(!thesisOnly)}
+        <button data-thesis-filter onClick={() => setThesisOnly(!thesisOnly)}
           title={tl('only thesis-tagged stories')}
           class={`border rounded-md px-2.5 py-0.5 text-[11px] font-semibold transition-colors ${
             thesisOnly ? 'bg-up border-up text-black' : 'bg-up/5 border-up/25 text-up/70 hover:text-up hover:border-up/50'
-          }`}>{tl('thesis')}</button>}
+          }`}>{tl('thesis')}</button>
         <button data-prime-filter onClick={() => setPrimeOnly(!primeOnly)}
           title={tl('top-tier sources only')} aria-label={tl('top-tier sources only')}
           class={`box-border inline-flex items-center justify-center w-[28px] h-[22px] shrink-0 border rounded-md px-[6px] py-0 leading-none text-up transition-colors ${

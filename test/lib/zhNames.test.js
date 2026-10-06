@@ -97,14 +97,15 @@ describe('zhName', () => {
     off()
   })
 
-  it('covers the family book that motivated it — every row has a name', () => {
-    // the stepdad's 20 holdings as repaired 2026-08-22; the table exists for
-    // exactly this reader, so losing one of these is a regression
-    const book = ['2628.HK', '1378.HK', '0700.HK', '2899.HK', '0966.HK', '2099.HK',
-      '513090.SS', '600489.SS', '3330.HK', '2050.HK', '000630.SZ', '600036.SS',
-      '1818.HK', '7709.HK', '513050.SS', '000657.SZ', '300308.SZ', '688008.SS',
-      '6869.HK', '0981.HK']
-    for (const s of book) expect(zhName(s), s).not.toBeNull()
+  it('names well-known HK, Shanghai and Shenzhen listings — every row has a name', () => {
+    // large-cap and ETF examples across the HK main board, Shanghai main /
+    // STAR / ETF and Shenzhen main / ChiNext lines; the table exists for a
+    // Chinese-language reader, so losing one of these is a regression
+    const listings = ['0005.HK', '0388.HK', '0939.HK', '0941.HK', '1299.HK', '1398.HK',
+      '1810.HK', '2318.HK', '3690.HK', '9618.HK', '9988.HK', '0001.HK',
+      '600519.SS', '601318.SS', '510300.SS', '510050.SS', '688981.SS',
+      '000001.SZ', '000858.SZ', '300750.SZ']
+    for (const s of listings) expect(zhName(s), s).not.toBeNull()
     expect(zhKnownSymbols().length).toBeGreaterThan(8000)   // every listing, generated
   })
 })

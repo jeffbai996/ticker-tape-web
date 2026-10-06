@@ -6,13 +6,10 @@
  * Deploy: npx wrangler deploy
  */
 
-import { handleWatchlists } from './watchlists.js'
-import { handlePortfolios } from './portfolios.js'
 import { handleWire } from './wire.js'
 import { handleReader } from './reader.js'
 export { ReaderQuota } from './reader.js'
-import { handleFamilyView, withFamilyDocumentLog } from './security_log.js'
-export { CapDocCoordinator } from './capdoc.js'
+export { CapDocCoordinator } from './retired_capdoc.js'
 
 const CORS_HEADERS = {
     'Access-Control-Allow-Origin': '*',
@@ -57,22 +54,6 @@ export default {
         // market-data Worker must never grow a second, unauthenticated route.
         if (path === '/chat' || path.startsWith('/chat/')) {
             return jsonResp({ error: 'Not found' }, 404);
-        }
-
-        // Public watchlist sync is capability-scoped and intentionally does
-        // not proxy the private Fragwire API.
-        if (path === '/watchlists' || path.startsWith('/watchlists/')) {
-            return withFamilyDocumentLog(
-                request, env, path, ctx, () => handleWatchlists(request, env, path),
-            );
-        }
-        if (path === '/portfolios' || path.startsWith('/portfolios/')) {
-            return withFamilyDocumentLog(
-                request, env, path, ctx, () => handlePortfolios(request, env, path),
-            );
-        }
-        if (path === '/telemetry/family-view') {
-            return handleFamilyView(request, env, ctx);
         }
 
         // Public wire mirror: a pushed, sanitized headline snapshot read by
