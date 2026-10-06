@@ -268,7 +268,7 @@ function traceArgs(args) {
   if (!args || typeof args !== 'object' || !Object.keys(args).length) return ''
   const raw = Object.entries(args)
     // These are already printed in the step title by toolRunLabel. Repeating
-    // `symbol: AVGO` underneath `Checking AVGO earnings` is database chrome,
+    // `symbol: AAPL` underneath `Checking AAPL earnings` is database chrome,
     // not useful status.
     .filter(([key]) => !['symbols', 'symbol', 'view', 'label'].includes(key))
     .map(([key, value]) => `${key}: ${typeof value === 'string' ? value : JSON.stringify(value)}`)
