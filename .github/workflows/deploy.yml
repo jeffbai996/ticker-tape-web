@@ -28,13 +28,10 @@ jobs:
       - run: npm ci
       - name: Unit, component, and architecture gate
         run: npm test
-      # PUBLIC BUILD ONLY. This deploy must never carry VITE_FAMILY_BUILD or
-      # VITE_SYNC_CAPABILITY again (Jeff 2026-08-25). It did until then: the
-      # family bearer was inlined into this bundle, so the shared portfolio
-      # book was readable and writable by anyone who opened the JS served from
-      # this linked, indexed URL. The family build now ships separately from
-      # its own host, and the capability is built there, from a local secret.
-      # test_architecture.test.js fails the build if either reappears here.
+      # PUBLIC BUILD ONLY. Family sync was removed on 2026-10-06; before that
+      # (until 2026-08-25) this bundle carried a shared capability that exposed
+      # a private portfolio book. Never add secret-bearing build variables here.
+      # test_architecture.test.js fails the build if the old ones reappear.
       - run: npm run build
         env:
           VITE_PUBLIC_DEMO: '1'
