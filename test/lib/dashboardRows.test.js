@@ -7,8 +7,11 @@ beforeEach(() => localStorage.clear())
 
 describe('dashboard categories', () => {
   it('recognizes semiconductor designers, foundries, and equipment names', () => {
-    expect(groupDashboardRows(['AVGO', 'LRCX', 'SNDK', 'GFS', 'TER']))
-      .toEqual([{ name: 'Semis', symbols: ['AVGO', 'LRCX', 'SNDK', 'GFS', 'TER'] }])
+    expect(groupDashboardRows(['AAPL', 'AMZN', 'SNDK', 'GFS', 'TER']))
+      .toEqual([
+        { name: 'Megacaps', symbols: ['AAPL', 'AMZN'] },
+        { name: 'Semis', symbols: ['SNDK', 'GFS', 'TER'] },
+      ])
   })
 
   it('classifies ADM and both SK hynix listings instead of using General', () => {

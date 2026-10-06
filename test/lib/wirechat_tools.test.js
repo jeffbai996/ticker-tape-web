@@ -29,12 +29,12 @@ describe('toolProtocol', () => {
 
 describe('isPlanningStub', () => {
   it('recognises a narrated next lookup', () => {
-    expect(isPlanningStub('I need the current AVGO technical setup and latest wire before calling the print.')).toBe(true)
+    expect(isPlanningStub('I need the current AAPL technical setup and latest wire before calling the print.')).toBe(true)
     expect(isPlanningStub('Let me check the latest tape first.')).toBe(true)
   })
 
   it('does not second-guess a substantive answer', () => {
-    expect(isPlanningStub('AVGO is above its 50-day average; watch $402 support and the guide.')).toBe(false)
+    expect(isPlanningStub('AAPL is above its 50-day average; watch $402 support and the guide.')).toBe(false)
     expect(isPlanningStub('I need to flag one risk: custom silicon is pressuring the multiple.')).toBe(false)
   })
 })
