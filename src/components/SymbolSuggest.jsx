@@ -47,7 +47,7 @@ export function SymbolSuggest({
       // one and a dropdown that returns nothing is a dead end.
       // A Chinese name is answered from the local table — Yahoo's search
       // returns nothing for CJK queries, so the round-trip is a guaranteed
-      // empty dropdown (Gordon, 2026-08-22)
+      // empty dropdown (2026-08-22)
       const lookups = hasCjk(q)
         ? [loadZhTable().then(() => zhAliasHits(q))]
         : codeSearchQueries(q).map((query) => (

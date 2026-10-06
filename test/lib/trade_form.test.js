@@ -1,7 +1,7 @@
-/** The add-trade form is how Gordon records every buy and sell. It broke
+/** The add-trade form is how the user records every buy and sell. It broke
  *  invisibly once: SymbolSuggest hands its onInput the DOM event, the form
  *  stored the event as the symbol, and the first keystroke crashed the
- *  render — the form looked alive and did nothing (Gordon 2026-08-23:
+ *  render — the form looked alive and did nothing (2026-08-23:
  *  "我敲那个代码它没有反应"). This types into the real component.
  */
 import { h, render } from 'preact'
@@ -27,7 +27,7 @@ function type(input, text) {
 describe('AddTradeForm', () => {
   it('records a typed trade on the book it was given', async () => {
     const tick = () => new Promise((r) => setTimeout(r))
-    const p = createPortfolio('Gordon', 'CNY')
+    const p = createPortfolio('Demo', 'CNY')
     render(h(AddTradeForm, { portfolio: p }), host)
     const [sym] = host.querySelectorAll('input')
     type(sym, '600036.SS')

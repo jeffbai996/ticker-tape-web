@@ -10,7 +10,7 @@ const rows = [
 describe('sortRows', () => {
   it('rests in venue order without a key — venues grouped, codes ascending', () => {
     // suffix-less rows all land in the same venue group and keep a stable
-    // alphabetical order (Gordon 2026-08-23: 港股/A股 grouped, 由小到大)
+    // alphabetical order (2026-08-23: 港股/A股 grouped, 由小到大)
     expect(sortRows(rows, null, null).map((r) => r.symbol)).toEqual(['A', 'B', 'C'])
     expect(sortRows(rows, 'value', null).map((r) => r.symbol)).toEqual(['A', 'B', 'C'])
   })

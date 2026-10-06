@@ -102,7 +102,7 @@ export default {
         // Chinese-language market data for HK / mainland listings — Yahoo
         // carries none (its search ignores CJK, its profiles are English).
         // Three bounded GET routes against East Money, edge-cached; the
-        // upstream never sees a client header (Gordon, 2026-08-22).
+        // upstream never sees a client header (2026-08-22).
         if (path.startsWith('/cn/')) {
             return handleCn(path, url);
         }

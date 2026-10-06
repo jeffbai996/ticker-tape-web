@@ -16,7 +16,7 @@ beforeEach(() => localStorage.clear())
 
 describe('delete intent', () => {
   it('is declared by the two destructive user actions and nothing else', () => {
-    const p = createPortfolio('Gordon', 'CNY')
+    const p = createPortfolio('Demo', 'CNY')
     setHolding(p.id, '0700.HK', 100)
     expect(hasDeleteIntent()).toBe(false)
     removeHolding(p.id, '0700.HK')
@@ -36,7 +36,7 @@ describe('delete intent', () => {
 
 describe('trash', () => {
   it('a deleted book goes to the trash and can be restored whole', () => {
-    const p = createPortfolio('Gordon', 'CNY')
+    const p = createPortfolio('Demo', 'CNY')
     setHolding(p.id, '0700.HK', 100, 320)
     deletePortfolio(p.id)
     expect(loadPortfolios()).toEqual([])
@@ -60,7 +60,7 @@ describe('trash', () => {
 
 describe('a refused shrink', () => {
   it('adopts the server copy and reports blocked, rather than retrying the wipe', () => {
-    const remote = { portfolios: [{ id: 'p1', name: 'Gordon', ccy: 'CNY', holdings: [{ symbol: '0700.HK', shares: 100 }] }], touched: { p1: 1 }, deleted: {} }
+    const remote = { portfolios: [{ id: 'p1', name: 'Demo', ccy: 'CNY', holdings: [{ symbol: '0700.HK', shares: 100 }] }], touched: { p1: 1 }, deleted: {} }
     const out = applyPushOutcome({ status: 409, out: { ok: false, error: 'shrink', reason: 'fewer portfolios', rev: 7, data: remote } })
     expect(out).toEqual({ blocked: 'fewer portfolios', rev: 7 })
     expect(loadPortfolios().map((x) => x.id)).toEqual(['p1'])

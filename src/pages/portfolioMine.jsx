@@ -322,7 +322,7 @@ export function Holdings({ portfolio, quotes, rates }) {
   const holdRows = all.rows.filter((r) => r.kind !== 'cash')
   const rows = sortRows(holdRows, sort.key, sort.dir)
   // resting order shows its venue sections; an explicit header sort is one
-  // flat list again (Gordon 2026-08-23: "make the groups more apparent")
+  // flat list again (2026-08-23: "make the groups more apparent")
   const sorted = !!(sort.key && sort.dir)
   const groups = !sorted ? venueGroups(holdRows) : null
   const groupLabel = { hk: tl('HK stocks'), cn: tl('A-shares'), other: tl('US & other') }

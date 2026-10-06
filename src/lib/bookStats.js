@@ -193,7 +193,7 @@ export function venueSplit(rows) {
  *  takes rows and nothing else. The buckets only know US large-caps, so a
  *  Hong Kong / mainland book files ~85% of itself under Other; a card that
  *  says that says nothing, and the page hides it on `unmappedShare`
- *  (Gordon, 2026-08-22). */
+ *  (2026-08-22). */
 export function sectorSplit(rows, buckets) {
   const by = new Map()
   let unmapped = 0
@@ -230,7 +230,7 @@ export const SORTABLE = {
 }
 /** The resting order of a book: venues together (港股, then A股, then the
  *  rest), codes ascending inside each — how a HK/mainland statement reads
- *  (Gordon 2026-08-23: entry order mixed his venues together). Stable for
+ *  (2026-08-23: entry order mixed the venues together). Stable for
  *  rows that tie. */
 export function venueOrder(rows) {
   const venue = (sym) => (/\.HK$/.test(sym) ? 0 : /\.(SS|SZ)$/.test(sym) ? 1 : 2)

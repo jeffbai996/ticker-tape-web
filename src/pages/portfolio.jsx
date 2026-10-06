@@ -1864,8 +1864,8 @@ export function Portfolio({ route }) {
   const [account, setAccount] = useState(() => localStorage.getItem('portfolio_account_v1') || '')
   useEffect(() => {
     if (accounts?.length && account !== BOTH_ACCOUNTS && !accounts.some((a) => a.id === account)) {
-      // no stored pick yet: 蛋宝 reads this app in Chinese, so zh boots on
-      // her account (the second gateway); an explicit choice always wins
+      // no stored pick yet: Chinese-reading users are the second gateway's audience, so zh boots on
+      // that account; an explicit choice always wins
       const fallback = (getLocale() === 'zh' && accounts.length > 1)
         ? accounts[accounts.length - 1].id : accounts[0].id
       setAccount(fallback)

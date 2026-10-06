@@ -16,7 +16,7 @@ function fakeStore(initial = {}) {
 describe('family residue purge', () => {
   it('clears the orphaned family book the public origin used to serve', () => {
     const store = fakeStore({
-      my_portfolios_v1: '[{"name":"Gordon"}]',
+      my_portfolios_v1: '[{"name":"Demo"}]',
       my_portfolios_sync_meta_v1: '{"rev":1018}',
       unrelated_pref: 'keep me',
     })
