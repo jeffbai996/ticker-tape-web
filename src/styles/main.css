@@ -84,8 +84,11 @@
 .settings-row select, .settings-row dd { font-family: var(--font-mono); }
 .settings-page select { max-width: 60%; }
 .settings-page select:hover, .settings-page select:focus { border-color: var(--color-accent); }
-.ai-report-head { display: grid; grid-template-columns: minmax(0, 1fr); }
-.ai-report-head > :nth-child(n + 2) { justify-self: end; }
+.ai-report-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+/* Narrow: the title shares the model picker's row; the remaining controls take
+   the row below, right-aligned (Jeff 2026-10-07: the heading sat alone). */
+.ai-report-head > :nth-child(2) { grid-column: 2; justify-self: end; }
+.ai-report-head > :nth-child(n + 3) { grid-column: 1 / -1; justify-self: end; }
 @container (min-width: 460px) {
   .ai-report-head {
     grid-template-columns: minmax(0, 1fr) auto;

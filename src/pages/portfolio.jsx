@@ -93,7 +93,7 @@ function BookSummary({ rows, stats, margin, fallbackNlv, book, broker }) {
   )
   const chip = (v, pct) =>
     v == null ? null : (
-      <span class={`font-anth text-[12px] font-semibold px-2 py-0.5 rounded-md border ${
+      <span class={`font-anth text-[12px] font-semibold px-2 py-0.5 rounded-md border whitespace-nowrap ${
         v >= 0 ? 'text-up border-up/30 bg-up/10' : 'text-down border-down/30 bg-down/10'}`}>
         {signedMoney(v, units)}{pctSpan(pct, 'text-[10px] font-normal')}
       </span>
@@ -104,10 +104,12 @@ function BookSummary({ rows, stats, margin, fallbackNlv, book, broker }) {
         <div class="px-4 py-3 flex-1 min-w-[240px]">
           <div class="font-anth text-[9px] uppercase tracking-[.14em] text-muted">NLV</div>
           <div class="font-anth text-[30px] leading-tight font-semibold tracking-tight text-ink">{dollars(broker ? equity : equity ?? gross, units)}</div>
-          <div class="flex items-center gap-2 pt-1.5">
+          {/* Each figure stays on one line; when both do not fit, the open P&L
+              moves below the day chip whole (Jeff 2026-10-07). */}
+          <div class="flex flex-wrap items-center gap-x-2 gap-y-1 pt-1.5">
             {chip(dayPnl, dayPct)}
             {unreal != null && (
-              <span class="font-anth text-[10.5px] text-muted">{tl('unreal')}{' '}
+              <span class="font-anth text-[10.5px] text-muted whitespace-nowrap">{tl('unreal')}{' '}
                 <span class={`font-semibold ${pnlCls(unreal)}`}>{signedMoney(unreal, units)}{pctSpan(unrealPct, 'text-[9.5px] font-normal', costBase)}</span></span>
             )}
           </div>
