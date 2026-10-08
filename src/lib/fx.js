@@ -104,13 +104,20 @@ export function ccyMark(ccy) {
   return QUOTE_MARK[ccy === 'CNH' ? 'CNY' : ccy] || ''
 }
 
+/** fmtCcy in two pieces, so a headline can set the currency mark smaller and
+ *  grey than the figure (Jeff 2026-10-08). Joined, they are fmtCcy exactly. */
+export function fmtCcyParts(v, ccy, digits = 0) {
+  if (v == null || !Number.isFinite(v)) return { mark: '', figure: '—' }
+  return {
+    mark: CCY_MARK[ccy] || `${ccy} `,
+    figure: v.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits }),
+  }
+}
+
 /** Money the reader can tell apart at a glance across a mixed table. */
 export function fmtCcy(v, ccy, digits = 0) {
-  if (v == null || !Number.isFinite(v)) return '—'
-  const mark = CCY_MARK[ccy] || `${ccy} `
-  return `${mark}${v.toLocaleString('en-US', {
-    minimumFractionDigits: digits, maximumFractionDigits: digits,
-  })}`
+  const { mark, figure } = fmtCcyParts(v, ccy, digits)
+  return mark + figure
 }
 
 /** The Chinese reading of a big amount: 同花顺 / 东方财富 / 富途 all print

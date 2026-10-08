@@ -29,7 +29,7 @@ import { BookPerformance } from './portfolioPerformance.jsx'
 import { BookTrades } from './portfolioTrades.jsx'
 import { CashActivity } from './portfolioCash.jsx'
 import { BookEvents } from './portfolioEvents.jsx'
-import { PORTFOLIO_CCYS, cashAccountName, convertCcy, fmtCcy, fmtCcyZh, fxSymbolsFor, holdingCurrency, ratesFromQuotes } from '../lib/fx.js'
+import { PORTFOLIO_CCYS, cashAccountName, convertCcy, fmtCcy, fmtCcyZh, fxSymbolsFor, holdingCurrency, ratesFromQuotes, fmtCcyParts } from '../lib/fx.js'
 import { MAX_MY_HOLDINGS, createPortfolio, deletePortfolio, loadPortfolios, loadTrash, onPortfoliosChange, purgeTrash, restoreFromTrash, removeCash, removeHolding, renamePortfolio, setCash, setHolding, setPortfolioCcy, portfolioValues, recordSnapshot, previousSnapshot } from '../lib/myPortfolios.js'
 import { IS_FAMILY_BUILD } from '../lib/nav.js'
 
@@ -716,7 +716,9 @@ function SummaryStrip({ portfolio, quotes, rates, ccys, fxLive, bench }) {
               never inside one. */}
           <div>
             <div class="font-anth text-[9px] uppercase tracking-[.14em] text-muted">{tl('Value')} ({portfolio.ccy})</div>
-            <div class="font-anth text-[30px] leading-tight font-semibold tracking-tight text-ink tabular-nums">{money(total.value, portfolio.ccy)}</div>
+            <div class="font-anth text-[30px] leading-tight font-semibold tracking-tight text-ink tabular-nums">
+              <span class="mr-1 text-[0.55em] font-medium tracking-normal text-muted">{fmtCcyParts(total.value, portfolio.ccy).mark.trim()}</span>{fmtCcyParts(total.value, portfolio.ccy).figure}
+            </div>
             {/* one row always (Jeff 2026-08-23) — overflow scrolls rather
                 than wrapping the percent away from its number */}
             <div class="flex items-center gap-2 pt-1.5 overflow-x-auto no-scrollbar">
