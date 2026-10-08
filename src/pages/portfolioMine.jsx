@@ -656,7 +656,8 @@ function CapitalMix({ rows, className = '' }) {
           </div>
           <div class="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 font-mono text-[9px] leading-none text-muted">
             {parts.map((part) => (
-              <span key={part.key} class="whitespace-nowrap">
+              <span key={part.key} class="inline-flex items-center gap-1 whitespace-nowrap">
+                <span class={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${CAPITAL_MIX[part.key].cls}`} aria-hidden="true" />
                 <span class="text-ink-2">{tl(CAPITAL_MIX[part.key].short)}</span> {Math.round(part.pct)}%
               </span>
             ))}
