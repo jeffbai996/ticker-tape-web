@@ -152,6 +152,7 @@ describe('tape short names', () => {
     expect(tapeName('TSM')).toBe('台积电')
     expect(tapeName('AMD')).toBe('超威半导体')
     expect(tapeName('brk-b')).toBe('伯克希尔B')
+    expect(tapeName('PLTR')).toBe('帕兰提尔')
     setLocale('en')
   })
   it('leaves the full name everywhere else', () => {
