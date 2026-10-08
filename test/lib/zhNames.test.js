@@ -135,13 +135,32 @@ describe('tapeName', () => {
   })
   it('falls back to nothing when the name is too long for a tape or unknown', () => {
     setLocale('zh')
-    expect(zhName('TSM').length).toBeGreaterThan(6)
-    expect(tapeName('TSM')).toBeNull()
+    expect(tapeName('ASX')).toBeNull()
     expect(tapeName('ZZZZ9')).toBeNull()
     setLocale('en')
   })
   it('is nothing in English', () => {
     setLocale('en')
     expect(tapeName('0700.HK')).toBeNull()
+  })
+})
+
+
+describe('tape short names', () => {
+  it('uses the name Chinese tapes print where the directory name is long or missing', () => {
+    setLocale('zh')
+    expect(tapeName('TSM')).toBe('台积电')
+    expect(tapeName('AMD')).toBe('超威半导体')
+    expect(tapeName('brk-b')).toBe('伯克希尔B')
+    setLocale('en')
+  })
+  it('leaves the full name everywhere else', () => {
+    setLocale('zh')
+    expect(localName('TSM', 'x')).toBe('台湾积体电路制造公司')
+    setLocale('en')
+  })
+  it('stays a symbol in English', () => {
+    setLocale('en')
+    expect(tapeName('TSM')).toBeNull()
   })
 })

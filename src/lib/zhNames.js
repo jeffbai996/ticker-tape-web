@@ -13,7 +13,7 @@
  */
 
 import { getLocale } from './i18n.js'
-import { ZH_NAME_OVERRIDES } from './zhNames.overrides.js'
+import { ZH_NAME_OVERRIDES, ZH_SHORT_NAMES } from './zhNames.overrides.js'
 const CJK = /[㐀-鿿]/
 const US_SYMBOL = /^[A-Z][A-Z0-9-]{0,8}(?:\.[A-Z])?$/
 
@@ -74,6 +74,8 @@ export function localName(symbol, fallback = '') {
  *  so the caller shows the symbol instead. */
 export function tapeName(symbol) {
   if (getLocale() !== 'zh') return null
+  const fixed = ZH_SHORT_NAMES[String(symbol || '').toUpperCase()]
+  if (fixed) return fixed
   const name = zhName(symbol)
   if (!name) return null
   const short = name.replace(/(?:股份有限公司|有限公司|公司)$/, '')
