@@ -31,6 +31,7 @@ import { CashActivity } from './portfolioCash.jsx'
 import { BookEvents } from './portfolioEvents.jsx'
 import { PORTFOLIO_CCYS, cashAccountName, convertCcy, fmtCcy, fmtCcyZh, fxSymbolsFor, holdingCurrency, ratesFromQuotes } from '../lib/fx.js'
 import { MAX_MY_HOLDINGS, createPortfolio, deletePortfolio, loadPortfolios, loadTrash, onPortfoliosChange, purgeTrash, restoreFromTrash, removeCash, removeHolding, renamePortfolio, setCash, setHolding, setPortfolioCcy, portfolioValues, recordSnapshot, previousSnapshot } from '../lib/myPortfolios.js'
+import { IS_FAMILY_BUILD } from '../lib/nav.js'
 
 const pnlCls = (v) => (v == null ? 'text-muted' : v >= 0 ? 'text-up' : 'text-down')
 // Account totals read in full digits in any locale — 富途/同花顺 print
@@ -200,7 +201,7 @@ function SharesCell({ portfolio, row }) {
       onBlur={commit}
       onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() } }}
       style={{ width: `${Math.max(5, String(row.shares).length + 1.5)}ch` }}
-      class={`rounded border border-transparent bg-transparent px-1 py-0.5 text-right font-mono text-[11px] outline-none transition-colors hover:border-line-2 focus:border-accent/60 focus:bg-surface-2 text-ink-2`} />
+      class={`rounded border border-transparent bg-transparent px-1 py-0.5 text-right font-mono text-[11px] outline-none transition-colors hover:border-line-2 focus:border-accent/60 focus:bg-surface-2 ${IS_FAMILY_BUILD ? 'text-[#f1cf67]' : 'text-ink-2'}`} />
   )
 }
 
@@ -272,7 +273,7 @@ function CostCell({ portfolio, row }) {
       aria-label={`${tl('Avg cost')} ${row.symbol}`}
       onBlur={commit}
       onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() } }}
-      class={`w-16 rounded border border-transparent bg-transparent px-1 py-0.5 text-right font-mono text-[10.5px] outline-none transition-colors hover:border-line-2 focus:border-accent/60 focus:bg-surface-2 focus:text-ink text-muted`} />
+      class={`w-16 rounded border border-transparent bg-transparent px-1 py-0.5 text-right font-mono text-[10.5px] outline-none transition-colors hover:border-line-2 focus:border-accent/60 focus:bg-surface-2 focus:text-ink ${IS_FAMILY_BUILD ? 'text-[#f1cf67]' : 'text-muted'}`} />
   )
 }
 
@@ -297,7 +298,7 @@ function CashCell({ portfolio, row, rates }) {
       onBlur={commit}
       onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() } }}
       style={{ width: `${Math.max(6, String(row.amount).length + 1.5)}ch` }}
-      class={`rounded border border-transparent bg-transparent px-1 py-0.5 text-right font-mono text-[11px] outline-none transition-colors hover:border-line-2 focus:border-accent/60 focus:bg-surface-2 text-ink-2`} />
+      class={`rounded border border-transparent bg-transparent px-1 py-0.5 text-right font-mono text-[11px] outline-none transition-colors hover:border-line-2 focus:border-accent/60 focus:bg-surface-2 ${IS_FAMILY_BUILD ? 'text-[#f1cf67]' : 'text-ink-2'}`} />
   )
 }
 
@@ -326,8 +327,12 @@ export function Holdings({ portfolio, quotes, rates }) {
   const sorted = !!(sort.key && sort.dir)
   const groups = !sorted ? venueGroups(holdRows) : null
   const groupLabel = { hk: tl('HK stocks'), cn: tl('A-shares'), other: tl('US & other') }
-  // Market value / 金额 stays white: it is the row's anchor.
+  const familySecondary = IS_FAMILY_BUILD ? 'text-[#aebccc]' : 'text-muted'
+  // Market value / 金额 stays white in both profiles. It is the row's anchor;
+  // the family brokerage palette belongs on quantities, weights and movement,
+  // not on the actual money figure.
   const valueTone = 'text-ink'
+  const familyWeight = IS_FAMILY_BUILD ? 'text-[#63d6db]' : 'text-ink-2'
   const [collapsedByBook, setCollapsedByBook] = useState(() => {
     try { return JSON.parse(localStorage.getItem('my_portfolio_venue_collapse_v1')) || {} } catch { return {} }
   })
@@ -361,15 +366,15 @@ export function Holdings({ portfolio, quotes, rates }) {
         onClick={() => (location.hash = `#/research/${r.symbol.toLowerCase()}`)}>
         <span class="font-bold text-accent">{r.symbol}</span>
         {holdingName(r.symbol, quotes) && (
-          <span class={`block max-w-[9rem] truncate font-anth text-[9px] font-medium leading-[1.15] text-muted`}>
+          <span class={`block max-w-[9rem] truncate font-anth text-[9px] font-medium leading-[1.15] ${familySecondary}`}>
             {holdingName(r.symbol, quotes)}
           </span>
         )}
       </td>
-      <td class={`px-1.5 py-[2px] font-anth text-[10px] text-muted`}>{r.ccy}</td>
+      <td class={`px-1.5 py-[2px] font-anth text-[10px] ${familySecondary}`}>{r.ccy}</td>
       <td class="px-1.5 py-[2px] text-right"><SharesCell portfolio={portfolio} row={r} /></td>
       <td class="px-1.5 py-[2px] text-right"><CostCell portfolio={portfolio} row={r} /></td>
-      <td class={`px-1.5 py-[2px] text-right font-medium text-ink-2`}>
+      <td class={`px-1.5 py-[2px] text-right font-medium ${IS_FAMILY_BUILD ? (r.dayPct == null ? 'text-[#c4cfdb]' : pnlCls(r.dayPct)) : 'text-ink-2'}`}>
         {r.price != null ? <FlashPrice price={r.price} fmt={fmtPrice} /> : '—'}
       </td>
       <td class={`px-1.5 py-[2px] text-right font-medium ${pnlCls(r.dayPct)}`}>
@@ -380,7 +385,7 @@ export function Holdings({ portfolio, quotes, rates }) {
       <td class={`px-1.5 py-[2px] text-right font-semibold text-[12px] ${valueTone}`}>
         {r.valueDisplay != null ? fmtCcy(r.valueDisplay, ccy) : '—'}
       </td>
-      <td class={`px-1.5 py-[2px] text-right font-medium text-ink-2`}>
+      <td class={`px-1.5 py-[2px] text-right font-medium ${familyWeight}`}>
         {r.weightPct != null ? fmtPctPlain(r.weightPct) : '—'}
       </td>
       <td class={`px-1.5 py-[2px] text-right font-semibold ${pnlCls(r.unrealDisplay)}`}>
@@ -435,7 +440,7 @@ export function Holdings({ portfolio, quotes, rates }) {
         <td class={`px-1.5 py-[4px] text-right font-semibold text-[12px] ${valueTone}`}>
           {displayed.value != null ? fmtCcy(displayed.value, subtotalCcy) : '—'}
         </td>
-        <td class={`px-1.5 py-[4px] text-right text-ink-2`}>
+        <td class={`px-1.5 py-[4px] text-right ${familyWeight}`}>
           {subtotal.weightPct != null ? fmtPctPlain(subtotal.weightPct) : '—'}
         </td>
         <td class={`px-1.5 py-[4px] text-right font-semibold ${pnlCls(displayed.unrealPnl)}`}>
@@ -451,11 +456,11 @@ export function Holdings({ portfolio, quotes, rates }) {
     </th>
   )
   return (
-    <section class="bg-surface-1 border border-line rounded-xl overflow-x-auto">
+    <section data-family-holdings={IS_FAMILY_BUILD ? 'true' : undefined} class="bg-surface-1 border border-line rounded-xl overflow-x-auto">
       <table class="book-table w-full border-collapse font-mono text-[11px]">
         <thead>
           {/* nowrap: 股数 stacked into two lines on a phone (Jeff 2026-08-20) */}
-          <tr class={`bg-surface-2 text-[9px] uppercase tracking-wider whitespace-nowrap text-muted`}>
+          <tr class={`bg-surface-2 text-[9px] uppercase tracking-wider whitespace-nowrap ${familySecondary}`}>
             {th('symbol', tl('Sym'), 'px-2.5 py-1.5 text-left', 'asc')}
             {th('ccy', tl('Ccy'), 'px-1.5 py-1.5 text-left', 'asc')}
             {/* pr-2.5 = the cell's px-1.5 plus the editable input's own px-1 */}
@@ -502,9 +507,9 @@ export function Holdings({ portfolio, quotes, rates }) {
           {cashRows.map((r) => (
             <tr key={r.symbol} class="border-t border-line hover:bg-surface-3 whitespace-nowrap">
               <td class="px-2.5 py-[2px]">
-                <span class={`font-bold text-ink-2`}>{tl(cashAccountName(r.ccy))}</span>
+                <span class={`font-bold ${IS_FAMILY_BUILD ? 'text-[#dfe7f1]' : 'text-ink-2'}`}>{tl(cashAccountName(r.ccy))}</span>
               </td>
-              <td class={`px-1.5 py-[2px] font-anth text-[10px] text-muted`}>{r.ccy}</td>
+              <td class={`px-1.5 py-[2px] font-anth text-[10px] ${familySecondary}`}>{r.ccy}</td>
               <td class="px-1.5 py-[2px] text-right"><CashCell portfolio={portfolio} row={r} rates={rates} /></td>
               <td class="px-1.5 py-[2px] text-right text-muted">—</td>
               <td class="px-1.5 py-[2px] text-right text-muted">—</td>
@@ -512,7 +517,7 @@ export function Holdings({ portfolio, quotes, rates }) {
               <td class={`px-1.5 py-[2px] text-right font-semibold text-[12px] ${valueTone}`}>
                 {r.valueDisplay != null ? fmtCcy(r.valueDisplay, ccy) : '—'}
               </td>
-              <td class={`px-1.5 py-[2px] text-right font-medium text-ink-2`}>
+              <td class={`px-1.5 py-[2px] text-right font-medium ${familyWeight}`}>
                 {r.weightPct != null ? fmtPctPlain(r.weightPct) : '—'}
               </td>
               <td class="px-1.5 py-[2px] text-right text-muted">—</td>
@@ -535,7 +540,7 @@ export function Holdings({ portfolio, quotes, rates }) {
                 {total.dayPnl != null ? signed(total.dayPnl, ccy) : '—'}
               </td>
               <td class={`px-1.5 py-[5px] text-right text-[12.5px] ${valueTone}`}>{fmtCcy(total.value, ccy)}</td>
-              <td class={`px-1.5 py-[5px] text-right text-ink-2`}>{total.value != null ? '100%' : '—'}</td>
+              <td class={`px-1.5 py-[5px] text-right ${familyWeight}`}>{total.value != null ? '100%' : '—'}</td>
               <td class={`px-1.5 py-[5px] text-right text-[12.5px] ${pnlCls(total.unrealPnl)}`}>
                 {total.unrealPnl != null ? signed(total.unrealPnl, ccy) : '—'}
               </td>

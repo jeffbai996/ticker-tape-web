@@ -5,6 +5,10 @@
 // in the information architecture so it does not present a cut-down product.
 // Its route renders an inert preview and never calls the model service.
 const PRIVATE_BUILD = import.meta.env.VITE_PRIVATE === '1'
+// The family instance is a working tool for a person who
+// never asked for AI copy — the briefing section is dropped whole there
+// (Jeff 2026-08-20).
+const FAMILY_BUILD = import.meta.env.VITE_FAMILY_BUILD === '1'
 
 const CHAT_SECTION = {
   id: 'chat', label: 'AI Chat', subs: [],
@@ -89,8 +93,29 @@ if (PRIVATE_BUILD) {
   const manual = portfolio.subs.find((sub) => sub.id === 'mine')
   if (manual) manual.label = 'Manual'
 }
+if (FAMILY_BUILD) NAV.splice(NAV.findIndex((s) => s.id === 'brief'), 1)
+if (FAMILY_BUILD) {
+  delete NAV.find((s) => s.id === 'wire').badge
+  // no brokerage will ever be wired here — the broker-book tabs (account,
+  // sizing, carry, cockpit…) would all render a synthetic book that only
+  // confuses (Jeff 2026-08-20)
+  const portfolio = NAV.find((s) => s.id === 'portfolio')
+  // the hand-built books are the whole portfolio here, with supporting pages
+  // (Jeff 2026-08-22: "split the manual demo portfolio section into pages
+  // again, like a news page that grabs news relating to his tickers")
+  // the section landing IS the overview (nav adds the landing entry
+  // itself — a 'mine' sub here rendered a second "overview", Jeff 2026-08-22)
+  portfolio.subs = [
+    { id: 'ledger', label: 'Trades' },
+    { id: 'events', label: 'Events' },
+    { id: 'performance', label: 'Performance' },
+    { id: 'news', label: 'News' },
+  ]
+  delete portfolio.badge
+}
 
 export const IS_PRIVATE_BUILD = PRIVATE_BUILD
+export const IS_FAMILY_BUILD = FAMILY_BUILD
 
 export const DEFAULT_SECTION = 'dashboard'
 

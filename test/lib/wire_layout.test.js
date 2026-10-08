@@ -64,12 +64,12 @@ describe('wire workbench sizing', () => {
     expect(src).toContain("saveWireOrder('wire')")
   })
 
-  it('keeps the mirror inside tt-web', () => {
-    expect(src).toContain("import { IS_PRIVATE_BUILD } from '../lib/nav.js'")
-    expect(src).toContain('const embeddedWire = isMirrorBase(endpoint)')
+  it('keeps the family mirror inside tt-web', () => {
+    expect(src).toContain("import { IS_FAMILY_BUILD, IS_PRIVATE_BUILD } from '../lib/nav.js'")
+    expect(src).toContain('const embeddedWire = IS_FAMILY_BUILD || isMirrorBase(endpoint)')
     expect(src).toContain("const brandHref = embeddedWire ? '#/wire'")
     expect(src).toContain('{wireHome && !embeddedWire && (')
-    expect(src).toContain('{!IS_PRIVATE_BUILD && (')
+    expect(src).toContain('{!IS_PRIVATE_BUILD && !IS_FAMILY_BUILD && (')
   })
 
   it('offers an opt-in official Chinese-source filter', () => {

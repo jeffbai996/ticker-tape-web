@@ -7,18 +7,27 @@ import { initMarketColorOrder } from './lib/marketColors.js'
 import { getHighContrast, applyHighContrast } from './lib/contrast.js'
 import './styles/main.css'
 
-// Paint the preferred gain/loss convention before Preact mounts.
-initMarketColorOrder()
+// Paint the preferred gain/loss convention before Preact mounts so the
+// family build never flashes green-up on its way to the Chinese default.
+initMarketColorOrder({ family: import.meta.env.VITE_FAMILY_BUILD === '1' })
 applyHighContrast(getHighContrast())
 render(<App />, document.getElementById('app'))
-// Cloud sync rides the private build's wire save documents. The public deploy
-// has no sync backend, so the modules are not bundled into it; instead it clears
-// the orphaned book that an earlier public deploy once left in visitors'
-// browsers (one time only, see familyResidue.js).
-if (import.meta.env.VITE_PRIVATE === '1') {
+// Capability-scoped sync belongs only to builds that HAVE a capability: the
+// family build (its own host) and the private tailnet build. The public
+// deploy carries none, and until 2026-08-25 it carried one — the family
+// bearer was baked into the world-readable Pages bundle. Importing these
+// behind the flag means the portfolio-sync module is not merely inert in the
+// public build, it is not bundled into it.
+if (import.meta.env.VITE_FAMILY_BUILD === '1' || import.meta.env.VITE_PRIVATE === '1') {
   import('./lib/cloudsave.js').then((m) => m.startWatchlistSync())
   import('./lib/portfolioSync.js').then((m) => m.startMyPortfolioSync())
+  // One call per tab session distinguishes JavaScript execution from an edge
+  // HTML fetch by a link-preview bot. Failure is silent and never retries in a
+  // loop; observability cannot be allowed to impair the family page.
+  import('./lib/securityTelemetry.js').then((m) => m.recordFamilyView())
 } else {
+  // ...and on the public build, clear the family book this origin used to
+  // serve. One time only — see familyResidue.js.
   import('./lib/familyResidue.js').then((m) => m.purgeFamilyResidue(globalThis.localStorage))
 }
 startWireWatchlistSync()
