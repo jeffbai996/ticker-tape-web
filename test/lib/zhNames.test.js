@@ -3,7 +3,7 @@
  *  name needs a local table consulted before the provider. The table is
  *  generated from the exchanges (scripts/gen_zh_names.py) and lazy-loaded. */
 import { beforeAll, describe, expect, it, vi } from 'vitest'
-import { hasCjk, loadMissingZhName, loadZhTable, localName, onZhTable, zhAliasHits, zhKnownSymbols, zhName } from '../../src/lib/zhNames.js'
+import { hasCjk, loadMissingZhName, loadZhTable, localName, onZhTable, tapeName, zhAliasHits, zhKnownSymbols, zhName } from '../../src/lib/zhNames.js'
 import { setLocale } from '../../src/lib/i18n.js'
 
 beforeAll(async () => { await loadZhTable() })
@@ -118,5 +118,30 @@ describe('US share classes', () => {
     expect(_zh('BRK-B')).toBeTruthy()
     expect(_zh('BRK-B')).toBe(_zh('BRK.B'))
     expect(_zh('brk-b')).toBe(_zh('BRK.B'))
+  })
+})
+
+
+describe('tapeName', () => {
+  // Chinese tapes (同花顺, 东方财富, 富途) scroll the short name, not the code
+  // (Jeff 2026-10-08: "use a Chinese-format ticker tape on the Chinese version").
+  it('is the short Chinese name in zh, with the company suffix trimmed', () => {
+    setLocale('zh')
+    expect(tapeName('0700.HK')).toBe('腾讯控股')
+    expect(tapeName('600519.SS')).toBe('贵州茅台')
+    expect(tapeName('NVDA')).toBe('英伟达')
+    expect(tapeName('AAPL')).toBe('苹果')
+    setLocale('en')
+  })
+  it('falls back to nothing when the name is too long for a tape or unknown', () => {
+    setLocale('zh')
+    expect(zhName('TSM').length).toBeGreaterThan(6)
+    expect(tapeName('TSM')).toBeNull()
+    expect(tapeName('ZZZZ9')).toBeNull()
+    setLocale('en')
+  })
+  it('is nothing in English', () => {
+    setLocale('en')
+    expect(tapeName('0700.HK')).toBeNull()
   })
 })

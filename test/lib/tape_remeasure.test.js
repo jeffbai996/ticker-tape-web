@@ -5,6 +5,7 @@ vi.mock('../../src/hooks.js', () => ({
   useTapeSymbols: () => ['MU'],
   useQuotes: () => ({}),
   useWatchlist: () => ['MU'],
+  useZhNames: () => {},
 }))
 
 import { Tape } from '../../src/components/Tape.jsx'

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { useQuotes, useWatchlist, useTapeSymbols } from '../hooks.js'
+import { useQuotes, useWatchlist, useTapeSymbols, useZhNames } from '../hooks.js'
+import { tapeName } from '../lib/zhNames.js'
 import { fmtPrice, fmtPct } from '../lib/format.js'
 import { FlashPrice } from './Fig.jsx'
 import { hrefFor } from '../lib/route.js'
@@ -133,6 +134,7 @@ function useWireHeadlines() {
 export function Tape() {
   const watchlist = useTapeSymbols()
   const quotes = useQuotes(watchlist)
+  useZhNames(watchlist)
   const heads = useWireHeadlines()
   const watchset = new Set(watchlist)
   const items = watchlist.map((s) => ({ symbol: s, q: quotes[s]?.quote }))
@@ -292,7 +294,9 @@ export function Tape() {
                       shimmer suspect, but the real culprit was the dither
                       re-roll on .board-control (fixed via layer promotion) —
                       and a tape that never blinks reads dead. */}
-                  <span class="text-ink font-bold font-tick text-[10px]">{symbol}</span>
+                  {tapeName(symbol)
+                    ? <span class="text-ink font-bold font-anth text-[11px]" title={symbol}>{tapeName(symbol)}</span>
+                    : <span class="text-ink font-bold font-tick text-[10px]">{symbol}</span>}
                   <span class="text-[11px] text-ink-2 font-semibold">{q ? <FlashPrice price={q.price} fmt={fmtPrice} /> : '—'}</span>
                   <span class={`text-[10px] ${q ? (up ? 'text-up' : 'text-down') : 'text-muted'}`}>
                     {q ? fmtPct(q.pct) : '—'}
