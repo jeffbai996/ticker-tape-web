@@ -412,13 +412,14 @@ html, body {
 .price-grouped {
   word-spacing: -0.625ch;
 }
+/* One line per market at every rail width (Jeff 2026-10-08): the name gives
+   way first and scrolls in its marquee; the level and change keep their size. */
 .market-deck-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 3.5rem;
-  grid-template-areas: "name name" "level change";
+  grid-template-columns: minmax(0, 1fr) max-content 3.5rem;
+  grid-template-areas: "name level change";
   align-items: baseline;
   column-gap: 6px;
-  row-gap: 3px;
   padding: 5px 10px;
 }
 .market-deck-row.market-deck-divider {
@@ -429,13 +430,9 @@ html, body {
 .market-deck-name { grid-area: name; }
 .market-deck-level { grid-area: level; text-align: right; }
 .market-deck-change { grid-area: change; align-self: baseline; }
-@container (min-width: 300px) {
-  .market-deck-row {
-    grid-template-columns: minmax(0, 1fr) max-content 3.5rem;
-    grid-template-areas: "name level change";
-    column-gap: 6px;
-  }
-  .market-deck-level { text-align: right; }
+@container (max-width: 240px) {
+  .market-deck-row { column-gap: 4px; padding: 5px 8px; grid-template-columns: minmax(0, 1fr) max-content 3.1rem; }
+  .market-deck-level { font-size: 12px; }
 }
 html[data-pointer-hover] .market-deck-row:hover {
   background: var(--color-surface-3);
