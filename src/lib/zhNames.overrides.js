@@ -10,6 +10,7 @@ export const ZH_NAME_OVERRIDES = {
 // TSM AMD and whatever else"). Tape only; the portfolio keeps the full name.
 export const ZH_SHORT_NAMES = {
   TSM: '台积电',
+  PLTR: '帕兰提尔',
   AMD: '超威半导体',
   ADM: '阿彻丹尼尔斯',
   ADBE: '奥多比',

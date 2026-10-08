@@ -92,7 +92,7 @@ export function Settings() {
         <option value="cn">{label('Red up · Green down', '红涨 · 绿跌')}</option>
       </select>
     </div>
-    <label class="flex items-center justify-between gap-4 py-4 border-b border-line">
+    <label class="settings-row">
       {label('Higher contrast', '高对比度')}
       <Switch label={label('Higher contrast', '高对比度')} checked={contrast} onChange={() => {
         saveHighContrast(!contrast); setContrast(!contrast)
