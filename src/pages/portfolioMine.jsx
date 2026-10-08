@@ -717,7 +717,7 @@ function SummaryStrip({ portfolio, quotes, rates, ccys, fxLive, bench }) {
           <div>
             <div class="font-anth text-[9px] uppercase tracking-[.14em] text-muted">{tl('Value')} ({portfolio.ccy})</div>
             <div class="font-anth text-[30px] leading-tight font-semibold tracking-tight text-ink tabular-nums">
-              <span class="mr-1 text-[0.55em] font-medium tracking-normal text-muted">{fmtCcyParts(total.value, portfolio.ccy).mark.trim()}</span>{fmtCcyParts(total.value, portfolio.ccy).figure}
+              <span class="mr-0.5 text-[0.55em] font-medium tracking-normal text-muted">{fmtCcyParts(total.value, portfolio.ccy).mark.trim()}</span>{fmtCcyParts(total.value, portfolio.ccy).figure}
             </div>
             {/* one row always (Jeff 2026-08-23) — overflow scrolls rather
                 than wrapping the percent away from its number */}
