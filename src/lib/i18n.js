@@ -229,7 +229,7 @@ const STRINGS = {
     zh: '暂无股票。打开这组自选股即可添加。',
   },
   'watchlists.new': { en: 'New watchlist', zh: '新建自选股' },
-  'watchlists.open': { en: 'Open', zh: '打开' },
+  'watchlists.open': { en: 'open', zh: '打开' },
   'watchlists.subtitle': {
     en: 'Separate market lenses with the same live dashboard machinery.',
     zh: '用同一套实时看盘，分开追踪不同主题。',
