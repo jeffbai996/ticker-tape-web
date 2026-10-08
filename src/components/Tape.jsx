@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { useQuotes, useWatchlist, useTapeSymbols, useZhNames } from '../hooks.js'
-import { tapeName } from '../lib/zhNames.js'
+import { loadZhTable, onZhTable, tapeName } from '../lib/zhNames.js'
+import { onTapeLocaleChange, tapeLocale } from '../lib/tapeLocale.js'
+import { onLocaleChange } from '../lib/i18n.js'
 import { fmtPrice, fmtPct } from '../lib/format.js'
 import { FlashPrice } from './Fig.jsx'
 import { hrefFor } from '../lib/route.js'
@@ -8,7 +10,6 @@ import { marqueeCopies, preservedMarqueeTime } from '../lib/marquee.js'
 import { tapeBadge, tapeEntries, tapePlayState } from '../lib/tape.js'
 import { startVisibleClock } from '../lib/idleClock.js'
 import { tapeworthy, wireUrl, evHeadline } from '../lib/wire.js'
-import { getLocale } from '../lib/i18n.js'
 import { extendedLabelClass } from '../lib/extendedHours.js'
 import { prefetchSymbol } from '../lib/history.js'
 
@@ -131,10 +132,32 @@ function useWireHeadlines() {
 // The category, not a blanket WIRE stamp — an ERN pill and a FED pill read
 // differently at a glance (Jeff 2026-08-04).
 
+/** Re-render the tape when its language changes, and load the Chinese name
+ *  table when the tape reads Chinese in an English app. */
+function useTapeLanguage() {
+  const [, tick] = useState(0)
+  useEffect(() => {
+    let off = () => {}
+    const arm = () => {
+      off()
+      off = () => {}
+      if (tapeLocale() !== 'zh') return
+      off = onZhTable(() => tick((n) => n + 1))
+      void loadZhTable()
+    }
+    arm()
+    const rerender = () => { arm(); tick((n) => n + 1) }
+    const offTape = onTapeLocaleChange(rerender)
+    const offApp = onLocaleChange(rerender)
+    return () => { off(); offTape(); offApp() }
+  }, [])
+}
+
 export function Tape() {
   const watchlist = useTapeSymbols()
   const quotes = useQuotes(watchlist)
   useZhNames(watchlist)
+  useTapeLanguage()
   const heads = useWireHeadlines()
   const watchset = new Set(watchlist)
   const items = watchlist.map((s) => ({ symbol: s, q: quotes[s]?.quote }))
@@ -267,7 +290,7 @@ export function Tape() {
                     // of the wire (Jeff 2026-08-05)
                     href={`#/wire/${e.id}`}
                     class="tape-item flex items-baseline gap-2 whitespace-nowrap hover:no-underline"
-                    title={evHeadline(e, getLocale())}
+                    title={evHeadline(e, tapeLocale())}
                   >
                     <span data-tape-tier class={`text-[9px] font-bold tracking-wider px-1 rounded-sm ${tapeBadge(e, watchset).cls}`}>
                       {tapeBadge(e, watchset).code}
@@ -275,7 +298,7 @@ export function Tape() {
                     {/* it's a SCROLLING tape — a longer headline costs nothing but scroll
                         time, and 46ch cut stories off before the point landed (Jeff
                         2026-08-06: "cant really get the point sometimes") */}
-                    <span class="text-accent font-semibold max-w-[110ch] truncate">{evHeadline(e, getLocale())}</span>
+                    <span class="text-accent font-semibold max-w-[110ch] truncate">{evHeadline(e, tapeLocale())}</span>
                   </a>
                 )
               }

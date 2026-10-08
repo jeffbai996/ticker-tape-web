@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'preact/hooks'
 import { getHighContrast, saveHighContrast } from '../lib/contrast.js'
 import { getLocale, setLocale, onLocaleChange, tl } from '../lib/i18n.js'
+import { getTapeLocaleSetting, setTapeLocaleSetting } from '../lib/tapeLocale.js'
 import { IS_FAMILY_BUILD, IS_PRIVATE_BUILD } from '../lib/nav.js'
 import { useNamedWatchlists } from '../hooks.js'
 import { pinnedDashboardLanding, pinDashboardLanding } from '../lib/dashboardLanding.js'
@@ -39,16 +40,19 @@ export function Settings() {
   const [mode, setMode] = useState(loadWireOrder)
   const [rail, setRail] = useState(() => localStorage.getItem('tape-wire-rail') !== '0')
   const [colors, color] = useState(getMarketColorOrder)
+  const [tapeLanguage, setTapeLanguage] = useState(getTapeLocaleSetting)
   const [chinese, sources] = useState(() => localStorage.getItem('tape-wire-zh-sources') === '1')
   const zh = locale === 'zh'
   const label = (en, cn) => zh ? cn : en
   const changeLanguage = (value) => { setLocale(value); language(value) }
   const changeColors = (value) => { saveMarketColorOrder(value); color(value) }
+  const changeTapeLanguage = (value) => { setTapeLocaleSetting(value); setTapeLanguage(value) }
   const changeSources = (value) => { localStorage.setItem('tape-wire-zh-sources', value ? '1' : '0'); sources(value) }
   const reset = () => {
     saveHighContrast(false); setContrast(false)
     changeLanguage(IS_FAMILY_BUILD ? 'zh' : 'en')
     changeColors(defaultMarketColorOrder())
+    changeTapeLanguage('auto')
     changeSources(false)
     pinDashboardLanding(undefined); setLanding('')
     resetCards()
@@ -73,6 +77,12 @@ export function Settings() {
       <label for="settings-language">{label('Language', '语言')}</label>
       <select id="settings-language" class={control} value={locale} onChange={(e) => changeLanguage(e.currentTarget.value)}>
         <option value="en">English</option><option value="zh">简体中文</option>
+      </select>
+    </div>
+    <div class="settings-row">
+      <label for="settings-tape-language">{label('Tape language', '滚动行情语言')}</label>
+      <select id="settings-tape-language" class={control} value={tapeLanguage} onChange={(e) => changeTapeLanguage(e.currentTarget.value)}>
+        <option value="auto">{label('Same as app', '跟随界面')}</option><option value="en">English</option><option value="zh">简体中文</option>
       </select>
     </div>
     <div class="settings-row">

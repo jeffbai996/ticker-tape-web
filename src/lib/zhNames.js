@@ -13,6 +13,7 @@
  */
 
 import { getLocale } from './i18n.js'
+import { tapeLocale } from './tapeLocale.js'
 import { ZH_NAME_OVERRIDES, ZH_SHORT_NAMES } from './zhNames.overrides.js'
 const CJK = /[㐀-鿿]/
 const US_SYMBOL = /^[A-Z][A-Z0-9-]{0,8}(?:\.[A-Z])?$/
@@ -73,7 +74,7 @@ export function localName(symbol, fallback = '') {
  *  for an unknown symbol, or when the name is still too long for the belt,
  *  so the caller shows the symbol instead. */
 export function tapeName(symbol) {
-  if (getLocale() !== 'zh') return null
+  if (tapeLocale() !== 'zh') return null
   const fixed = ZH_SHORT_NAMES[String(symbol || '').toUpperCase()]
   if (fixed) return fixed
   const name = zhName(symbol)
