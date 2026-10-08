@@ -81,4 +81,6 @@ npx --yes wrangler@4.37.1 deploy \
   --compatibility-date 2026-01-24 \
   --assets "$asset_root" \
   --route 'jeffbai.com/tape-fmnco7yjx6' \
-  --route 'jeffbai.com/tape-fmnco7yjx6/*'
+  --route 'jeffbai.com/tape-fmnco7yjx6/*' \
+  --route 'www.jeffbai.com/tape-fmnco7yjx6' \
+  --route 'www.jeffbai.com/tape-fmnco7yjx6/*'
