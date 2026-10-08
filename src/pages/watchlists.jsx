@@ -265,16 +265,11 @@ function WatchlistCard({ item, quotes, earnDays, allLists, primary = false }) {
           row read as labels, not things to tap (Jeff 2026-08-22) */}
       <div class="flex flex-wrap items-center gap-1.5 border-t border-line pt-2.5 font-anth text-[11px] font-semibold">
         <a href={href} data-watchlist-open
-          class={`${ctl} border-accent/60 bg-accent-soft text-accent hover:bg-accent hover:text-black hover:no-underline`}>
+          class={`${ctl} border-up/50 bg-up/10 text-up hover:bg-up hover:text-black hover:no-underline`}>
           {tt('watchlists.open')}
         </a>
         <button onClick={() => setManaging((v) => !v)} class={managing ? ctlOn : ctlOff}>
           {managing ? tl('done') : tl('manage')}
-        </button>
-        <button onClick={() => { pinDashboardLanding(primary ? null : item.id); pinBump((n) => n + 1) }}
-          title={tl('opens first on a fresh load')} class={isDefault ? ctlOn : ctlOff}>
-          <span class="max-sm:hidden">{isDefault ? `★ ${tl('default')}` : `☆ ${tl('set default')}`}</span>
-          <span class="sm:hidden" aria-hidden="true">{isDefault ? '★' : '☆'}</span>
         </button>
         <button onClick={exportSymbols} disabled={exportState === 'syncing'} class={`${ctlOff} disabled:opacity-50`}>
           {exportState === 'syncing' ? '…'
@@ -282,14 +277,21 @@ function WatchlistCard({ item, quotes, earnDays, allLists, primary = false }) {
             : exportState === 'error' ? tl('export failed')
             : tl('export')}
         </button>
-        {!primary && (
-          <div class="ml-auto flex items-center gap-1.5">
-            <button onClick={() => { setName(item.name); setEditing((value) => !value) }} class={ctlOff}>{tl('rename')}</button>
-            <button onClick={() => {
-              if (confirm(tt('watchlists.delete_confirm', { name: item.name }))) removeWatchlist(item.id)
-            }} class={`${ctlOff} hover:border-down/50 hover:text-down`}>{tl('delete')}</button>
-          </div>
-        )}
+        <div class="ml-auto flex items-center gap-1.5">
+          <button onClick={() => { pinDashboardLanding(primary ? null : item.id); pinBump((n) => n + 1) }}
+            title={tl('opens first on a fresh load')} class={isDefault ? ctlOn : ctlOff}>
+            <span class="max-sm:hidden">{isDefault ? `★ ${tl('default')}` : `☆ ${tl('default')}`}</span>
+            <span class="sm:hidden" aria-hidden="true">{isDefault ? '★' : '☆'}</span>
+          </button>
+          {!primary && (
+            <>
+              <button onClick={() => { setName(item.name); setEditing((value) => !value) }} class={ctlOff}>{tl('rename')}</button>
+              <button onClick={() => {
+                if (confirm(tt('watchlists.delete_confirm', { name: item.name }))) removeWatchlist(item.id)
+              }} class={`${ctl} border-down/40 bg-down/10 text-down hover:bg-down hover:text-black`}>{tl('delete')}</button>
+            </>
+          )}
+        </div>
       </div>
     </article>
   )
