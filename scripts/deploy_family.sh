@@ -81,4 +81,6 @@ npx --yes wrangler@4.37.1 deploy \
   --compatibility-date 2026-01-24 \
   --assets "$asset_root" \
   --route 'example.com/example-private-entry' \
-  --route 'example.com/example-private-entry/*'
+  --route 'example.com/example-private-entry/*' \
+  --route 'www.example.com/example-private-entry' \
+  --route 'www.example.com/example-private-entry/*'
