@@ -16,14 +16,16 @@ function memory(seed = {}) {
 }
 
 describe('market gain/loss color convention', () => {
-  it('defaults to global colors', () => {
-    expect(defaultMarketColorOrder()).toBe('global')
-    expect(getMarketColorOrder(memory())).toBe('global')
+  it('defaults the family build to Chinese colors and the private build to global colors', () => {
+    expect(defaultMarketColorOrder(true)).toBe('cn')
+    expect(defaultMarketColorOrder(false)).toBe('global')
+    expect(getMarketColorOrder(memory(), true)).toBe('cn')
+    expect(getMarketColorOrder(memory(), false)).toBe('global')
   })
 
-  it('honors a saved override', () => {
-    expect(getMarketColorOrder(memory({ ttw_market_color_order_v1: 'cn' }))).toBe('cn')
-    expect(getMarketColorOrder(memory({ ttw_market_color_order_v1: 'global' }))).toBe('global')
+  it('honors a saved override in either build', () => {
+    expect(getMarketColorOrder(memory({ ttw_market_color_order_v1: 'global' }), true)).toBe('global')
+    expect(getMarketColorOrder(memory({ ttw_market_color_order_v1: 'cn' }), false)).toBe('cn')
   })
 
   it('persists and paints a switch as one operation', () => {

@@ -2,8 +2,10 @@
  *  evaporates when iOS evicts a site it hasn't seen for a week, so a book
  *  built by hand needs somewhere to be saved that survives that.
  *
- *  Rides the private build's wire save documents, with its own document and
- *  endpoint, so a stale client that only knows watchlists can never stomp a
+ *  Rides the SAME sync code as the watchlist sync — one code is "your data",
+ *  the person only manages one secret — but its own document and endpoint
+ *  (/portfolios with a bearer capability on the public worker, a wire save doc on the private
+ *  build), so a stale client that only knows watchlists can never stomp a
  *  portfolio book. Same optimistic concurrency: pull, merge per portfolio by
  *  newest touch (a newer deletion beats an edit), push against the revision
  *  read, retry on a lost race.
@@ -12,6 +14,10 @@
 import { loadPortfolios, onPortfoliosChange, replacePortfolios } from './myPortfolios.js'
 import { wireServiceUrl } from './wire.js'
 import { hasDeleteIntent, takeDeleteIntent } from './syncIntent.js'
+import {
+  getWatchlistCapability, watchlistSyncEndpoint,
+  watchlistSyncHeaders,
+} from './watchlistSync.js'
 
 const META_KEY = 'my_portfolios_sync_meta_v1'
 export const PORTFOLIO_SAVE_KEY = 'ttw-my-portfolios'
@@ -88,13 +94,17 @@ export function mergePortfolioDocs(local, remote) {
 
 function saveEndpoint() {
   const wire = wireServiceUrl()
-  return wire ? `${wire.replace(/\/$/, '')}/api/saves/${PORTFOLIO_SAVE_KEY}` : ''
+  if (wire) return `${wire.replace(/\/$/, '')}/api/saves/${PORTFOLIO_SAVE_KEY}`
+  const base = watchlistSyncEndpoint()
+  // same capability, its own document kind
+  return base ? base.replace(/\/watchlists$/, '/portfolios') : ''
 }
 
 async function api(init = {}) {
+  const capabilityHeaders = wireServiceUrl() ? {} : watchlistSyncHeaders()
   const { headers: extra = {}, ...rest } = init
   const resp = await fetch(saveEndpoint(), {
-    headers: { 'Content-Type': 'application/json', ...extra },
+    headers: { 'Content-Type': 'application/json', ...capabilityHeaders, ...extra },
     signal: AbortSignal.timeout(10_000),
     ...rest,
   })

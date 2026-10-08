@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'preact/hooks'
 import { getHighContrast, saveHighContrast } from '../lib/contrast.js'
 import { getLocale, setLocale, onLocaleChange, tl } from '../lib/i18n.js'
-import { IS_PRIVATE_BUILD } from '../lib/nav.js'
+import { IS_FAMILY_BUILD, IS_PRIVATE_BUILD } from '../lib/nav.js'
 import { useNamedWatchlists } from '../hooks.js'
 import { pinnedDashboardLanding, pinDashboardLanding } from '../lib/dashboardLanding.js'
 import { BOOK_CARDS, hiddenCards, onCardsChange, resetCards, toggleCard } from '../lib/bookCards.js'
@@ -47,7 +47,7 @@ export function Settings() {
   const changeSources = (value) => { localStorage.setItem('tape-wire-zh-sources', value ? '1' : '0'); sources(value) }
   const reset = () => {
     saveHighContrast(false); setContrast(false)
-    changeLanguage('en')
+    changeLanguage(IS_FAMILY_BUILD ? 'zh' : 'en')
     changeColors(defaultMarketColorOrder())
     changeSources(false)
     pinDashboardLanding(undefined); setLanding('')

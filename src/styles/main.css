@@ -44,7 +44,8 @@
 }
 
 /* One semantic palette powers every price, sparkline and P&L surface. The
-   build can switch conventions from the online-status dot without rewriting component classes piecemeal. */
+   family build starts here; either build can switch conventions from the
+   online-status dot without rewriting component classes piecemeal. */
 :root[data-market-colors="cn"] {
   --color-up: #f85149;
   --color-down: #3fb950;
@@ -61,6 +62,21 @@
   --color-line: rgba(231, 236, 243, .30);
   --color-line-2: rgba(231, 236, 243, .42);
 }
+
+/* Explicit CJK sans fallback keeps table labels legible on every platform. */
+[data-family-holdings="true"] {
+  --font-anth: "Anthropic Sans", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  --font-mono: "Yuan Mark", "IBM Plex Mono", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+}
+[data-family-holdings="true"] .font-anth,
+[data-family-holdings="true"] th {
+  font-family: var(--font-anth);
+}
+[data-family-holdings="true"] th { font-size: 10px; }
+[data-family-holdings="true"] td:first-child .font-anth { font-size: 10px; color: #e7ecf3; }
+[data-family-holdings="true"] [class*="text-[#f1cf67]"] { color: #ffe600; }
+[data-family-holdings="true"] [class*="text-[#63d6db]"] { color: #00e5e5; }
+[data-family-holdings="true"] [class*="text-[#dc8cff]"] { color: #d24dff; }
 
 @font-face {
   font-family: "Yuan Mark";

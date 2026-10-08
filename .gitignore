@@ -14,4 +14,6 @@ dist-tailnet
 dist-tailnet.pre-atomic/
 dist-tailnet-releases/
 private/
+dist-family/
+dist-family-releases/
 dist-tailnet.pre-atomic-*/

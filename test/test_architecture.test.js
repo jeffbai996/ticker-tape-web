@@ -101,24 +101,22 @@ describe('test architecture', () => {
     expect(commands).toContain('pull_request:')
   })
 
-  it('cloud sync starts only in the private build and is not bundled into the public one', () => {
+  it('capability sync starts only in builds that have a capability', () => {
     const main = readFileSync(resolve(process.cwd(), 'src/main.jsx'), 'utf8')
-    // gated behind the build flag AND dynamically imported, so the sync
-    // modules are absent from the public bundle rather than merely inert
-    expect(main).toMatch(/if \(import\.meta\.env\.VITE_PRIVATE === '1'\)/)
+    // gated behind the build flags AND dynamically imported, so the portfolio
+    // sync module is absent from the public bundle rather than merely inert
+    expect(main).toMatch(/VITE_FAMILY_BUILD === '1' \|\| import\.meta\.env\.VITE_PRIVATE === '1'/)
     expect(main).toMatch(/import\('\.\/lib\/portfolioSync\.js'\)/)
     expect(main).not.toMatch(/^import .*portfolioSync\.js'/m)
   })
 
-  it('family sync is gone: no build flag, capability, or worker route remains', () => {
-    // Removed 2026-10-06. The public build must never carry private data.
-    for (const file of ['src/main.jsx', 'src/lib/nav.js', 'src/lib/cloudsave.js', 'src/lib/portfolioSync.js', 'vite.config.js', 'worker/worker.js']) {
-      const source = readFileSync(resolve(process.cwd(), file), 'utf8')
-      expect(source, file).not.toMatch(/VITE_FAMILY_BUILD|VITE_SYNC_CAPABILITY|FAMILY_SYNC_TOKEN|Bearer /)
-    }
-    for (const file of ['src/lib/watchlistSync.js', 'worker/capdoc.js', 'worker/portfolios.js', 'worker/watchlists.js', 'scripts/deploy_family.sh', 'scripts/backup_portfolios.py']) {
-      expect(existsSync(resolve(process.cwd(), file)), file).toBe(false)
-    }
+  it('the capability still rides the header transport and is never a literal', () => {
+    const sync = readFileSync(resolve(process.cwd(), 'src/lib/watchlistSync.js'), 'utf8')
+    expect(sync).toContain('import.meta.env.VITE_SYNC_CAPABILITY')
+    expect(sync).not.toMatch(/[a-f0-9]{32}/)          // never a literal value
+    // capability never in a URL — it would land in access logs and history
+    expect(sync).toContain('Bearer ')
+    expect(sync).not.toMatch(/watchlists\/\$\{/)
   })
 
   it('this public repo does not redistribute a proprietary font', () => {
@@ -137,12 +135,20 @@ describe('test architecture', () => {
     expect(source).toContain("return jsonResp({ error: 'Not found' }, 404)")
   })
 
-  it('does not log every market-data invocation', () => {
+  it('collects only explicit custom Worker events, not every market-data invocation', () => {
     const config = readFileSync(resolve(process.cwd(), 'worker/wrangler.toml'), 'utf8')
     const logConfig = config.match(/\[observability\.logs\]([\s\S]*?)(?:\n\[|$)/)?.[1] || ''
     expect(config).toMatch(/\[observability\][\s\S]*enabled\s*=\s*true/)
     expect(logConfig).toMatch(/head_sampling_rate\s*=\s*1/)
     expect(logConfig).toMatch(/invocation_logs\s*=\s*false/)
+    expect(config).toMatch(/TTW_SECURITY_LOGGING\s*=\s*"1"/)
+  })
+
+  it('stages family assets beneath the routed URL prefix before deployment', () => {
+    const deploy = readFileSync(resolve(process.cwd(), 'scripts/deploy_family.sh'), 'utf8')
+    expect(deploy).toContain('$asset_root/tape-fmnco7yjx6')
+    expect(deploy).toContain('--assets "$asset_root"')
+    expect(deploy).not.toContain('--assets dist-family')
   })
 })
 

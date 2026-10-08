@@ -194,12 +194,17 @@ chat streams, and report generation from Fragwire; stale saved selections fall
 back to the first live registry entry. Browser-side tools remain read-only and
 no route exposes trading capabilities.
 
-Family sync was removed on 2026-10-06; the public build must never carry
-private data. Never add secret-bearing build variables to the Pages workflow.
-The public origin purges legacy portfolio residue before application
-initialization, and private broker views and manual books must remain isolated
-from the public demo. Architecture, residue, and private-font tests enforce
-these boundaries.
+Public Pages builds contain neither a family capability nor the family sync
+module. Family builds are separate artifacts on a separate origin; only that
+build reads the local capability secret. Never add secret-bearing build
+variables to the Pages workflow. The public origin purges legacy family
+portfolio residue before application initialization. Private broker views and
+family/manual books must remain isolated from the public demo. Architecture,
+residue, sync, and private-font tests enforce these boundaries.
+
+Capability transport uses an Authorization header to the exact allowlisted
+sync routes, never a URL. The Worker requires its separately provisioned secret
+and serializes revision checks and writes through a Durable Object.
 
 ## Commands and Deployment
 

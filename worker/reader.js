@@ -1,4 +1,5 @@
 import { parseHTML } from 'linkedom'
+import { constantTimeEqual } from './capdoc.js'
 import { WIRE_KEY } from './wire.js'
 
 // Only public publishers, never the private Fragwire server or a client URL.
@@ -11,15 +12,6 @@ const PUBLISHERS = ['reuters.com', 'bloomberg.com', 'ft.com', 'wsj.com', 'barron
   'tomshardware.com', 'theregister.com', 'semianalysis.com', 'nextplatform.com',
   'servethehome.com', 'wccftech.com', 'oilprice.com', 'datacenterdynamics.com',
   'scmp.com', 'cna.com.tw', 'nikkei.com', 'yicai.com', 'cninfo.com.cn']
-function constantTimeEqual(left, right) {
-  const a = new TextEncoder().encode(String(left))
-  const b = new TextEncoder().encode(String(right))
-  let different = a.length ^ b.length
-  for (let i = 0; i < Math.max(a.length, b.length); i += 1) {
-    different |= (a[i] || 0) ^ (b[i] || 0)
-  }
-  return different === 0
-}
 const MAX_BYTES = 1_500_000
 const MAX_TEXT = 80_000
 export function publicArticleUrl(value) {

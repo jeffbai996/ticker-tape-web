@@ -543,7 +543,7 @@ export function saveWireOrder(value) {
 }
 
 export function tierOfEvent(ev, watchset) {
-  // The public mirror intentionally omits Fragwire's private symbols
+  // The public/family mirror intentionally omits Fragwire's private symbols
   // and thesis metadata. Only an exact watchlist ticker mention establishes
   // relevance here. Source credibility is displayed separately by the bars.
   const minimalMirror = !Object.prototype.hasOwnProperty.call(ev, 'meta')

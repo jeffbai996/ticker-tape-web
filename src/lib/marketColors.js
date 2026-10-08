@@ -1,16 +1,19 @@
 const STORAGE_KEY = 'ttw_market_color_order_v1'
 const ORDERS = new Set(['global', 'cn'])
 
-export function defaultMarketColorOrder() {
-  return 'global'
+export function defaultMarketColorOrder(family = import.meta.env.VITE_FAMILY_BUILD === '1') {
+  return family ? 'cn' : 'global'
 }
 
-export function getMarketColorOrder(store = globalThis.localStorage) {
+export function getMarketColorOrder(
+  store = globalThis.localStorage,
+  family = import.meta.env.VITE_FAMILY_BUILD === '1',
+) {
   try {
     const saved = store?.getItem(STORAGE_KEY)
-    return ORDERS.has(saved) ? saved : defaultMarketColorOrder()
+    return ORDERS.has(saved) ? saved : defaultMarketColorOrder(family)
   } catch {
-    return defaultMarketColorOrder()
+    return defaultMarketColorOrder(family)
   }
 }
 
@@ -31,7 +34,7 @@ export function saveMarketColorOrder(
 }
 
 export function initMarketColorOrder(options = {}) {
-  const order = getMarketColorOrder(options.store)
+  const order = getMarketColorOrder(options.store, options.family)
   return applyMarketColorOrder(order, options.root)
 }
 

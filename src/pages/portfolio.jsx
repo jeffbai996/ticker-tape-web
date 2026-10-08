@@ -33,6 +33,7 @@ import { MyPortfolios, MyNews, MyPerformance, MyTrades, MyEvents } from './portf
 import { BookNews } from './portfolioNews.jsx'
 import { BookEvents } from './portfolioEvents.jsx'
 import { loadPortfolios, onPortfoliosChange } from '../lib/myPortfolios.js'
+import { IS_FAMILY_BUILD } from '../lib/nav.js'
 import { onHeaderActions } from '../lib/headerSlot.js'
 import { IS_PUBLIC_DEMO } from '../lib/publicDemo.js'
 
@@ -1835,9 +1836,11 @@ export function PortfolioHeader({ accounts, account, onChange, book, wired }) {
   const live = !!book
   // the account ID + broker, not a nickname + margin readout (Jeff 2026-08-10)
   const label = book?.account || book?.accountLabel || (account === BOTH_ACCOUNTS ? tl('Both') : '')
+  const family = IS_FAMILY_BUILD
   const [actions, setActions] = useState(null)
   useEffect(() => onHeaderActions((v) => setActions(() => v)), [])
-  const detail = live ? `${label} · ${tl('Interactive Brokers')}`
+  const detail = family ? tl('My Portfolios')
+    : live ? `${label} · ${tl('Interactive Brokers')}`
     : book === false ? tt('portfolio.link_down')
       : wired ? tt('portfolio.connecting') : tt('demo.banner')
   return (
@@ -1854,9 +1857,9 @@ export function PortfolioHeader({ accounts, account, onChange, book, wired }) {
           <div class="truncate font-anth text-[9.5px] text-muted">{detail}</div>
         </div>
       </div>
-      <AccountSwitcher accounts={accounts} account={account} onChange={onChange} />
+      {!family && <AccountSwitcher accounts={accounts} account={account} onChange={onChange} />}
       {/* the public demo never offered the book actions in the heading */}
-      {!IS_PUBLIC_DEMO && actions && <div class="flex shrink-0 items-center gap-1.5 max-sm:gap-1">{actions}</div>}
+      {(family || !IS_PUBLIC_DEMO) && actions && <div class="flex shrink-0 items-center gap-1.5 max-sm:gap-1">{actions}</div>}
     </header>
   )
 }
@@ -1896,7 +1899,10 @@ export function Portfolio({ route }) {
   // wired build still lands on the real broker book
   const [hasMine, setHasMine] = useState(() => loadPortfolios().length > 0)
   useEffect(() => onPortfoliosChange((items) => setHasMine(items.length > 0)), [])
-  const view = route.sub || (!wired && hasMine ? 'mine' : 'positions')
+  // the family build has no broker surface at all — every route lands on
+  // the hand-built books
+  const family = IS_FAMILY_BUILD
+  const view = family ? (route.sub || 'mine') : route.sub || (!wired && hasMine ? 'mine' : 'positions')
 
   // On a wired build with no hand-built book, the broker positions feed the
   // pages that are about "my names" rather than about the manual book
