@@ -5,10 +5,7 @@
  *  not six.
  */
 import { describe, expect, it } from 'vitest'
-import { cashAccountName, ccyMark, fmtCcyZh,
-  PORTFOLIO_CCYS, convertCcy, fxPairSymbol, fxSymbolsFor, holdingCurrency,
-  ratesFromQuotes, fmtCcy,
-} from '../../src/lib/fx.js'
+import { cashAccountName, ccyMark, fmtCcyZh, PORTFOLIO_CCYS, convertCcy, fxPairSymbol, fxSymbolsFor, holdingCurrency, ratesFromQuotes, fmtCcy, fmtCcyParts } from '../../src/lib/fx.js'
 
 describe('the supported set', () => {
   it('covers the household currencies', () => {
@@ -166,5 +163,23 @@ describe('fmtCcyZh — 万/亿 grouping for a Chinese reader', () => {
   it('keeps the sign in front of the mark and survives nothing', () => {
     expect(fmtCcyZh(-2500000, 'CNY')).toBe('-¥250.00万')
     expect(fmtCcyZh(null, 'CNY')).toBe('—')
+  })
+})
+
+
+describe('fmtCcyParts', () => {
+  it('splits the mark from the figure so the mark can be styled apart', () => {
+    expect(fmtCcyParts(241600, 'CNY')).toEqual({ mark: '¥', figure: '241,600' })
+    expect(fmtCcyParts(1234.5, 'HKD', 2)).toEqual({ mark: 'HK$', figure: '1,234.50' })
+    expect(fmtCcyParts(10, 'USD')).toEqual({ mark: '$', figure: '10' })
+  })
+  it('joins back to exactly what fmtCcy prints', () => {
+    for (const [v, c] of [[241600, 'CNY'], [-5, 'CAD'], [7, 'EUR']]) {
+      const { mark, figure } = fmtCcyParts(v, c)
+      expect(mark + figure).toBe(fmtCcy(v, c))
+    }
+  })
+  it('has no mark for a missing value', () => {
+    expect(fmtCcyParts(null, 'USD')).toEqual({ mark: '', figure: '—' })
   })
 })
