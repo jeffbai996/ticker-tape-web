@@ -543,6 +543,7 @@ const LABELS = {
   Timeline: '净值曲线', Backtest: '回测', Positions: '持仓',
   'Avg cost': '成本价', Weight: '权重', 'Day P&L': '日盈亏',
   'Unreal P&L': '浮动盈亏', Total: '合计', Cash: '现金', 'Gross exposure': '总敞口',
+  'held names first, then the tape — RSI, trend and volume extremes': '持仓优先，其次滚动行情：RSI、趋势与放量的极端信号', held: '持仓',
   Leverage: '杠杆', Maintenance: '维持保证金', 'Excess liquidity': '超额流动性',
   Cushion: '缓冲', 'Target weight': '目标权重', 'Target value': '目标市值',
   'Interactive Brokers': '盈透证券',

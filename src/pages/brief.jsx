@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'preact/hooks'
-import { useQuotes, useWatchlist } from '../hooks.js'
+import { useQuotes, useTapeSymbols, useWatchlist, useZhNames } from '../hooks.js'
+import { heldSymbols } from '../lib/heldSymbols.js'
+import { localName } from '../lib/zhNames.js'
 import { INDICES } from '../lib/symbols.js'
 import { ECON_EVENTS, upcomingEvents } from '../lib/markets.js'
 import { assembleBriefing, renderBriefing, briefingPrompt, BRIEFING_SYSTEM } from '../lib/briefing.js'
@@ -163,24 +165,32 @@ function BriefData({ s }) {
         )) : <Empty label={tl('flat tape')} />}
       </Card>
 
-      <Card title={tl('Technical flags')} sub={tl('stretched names on the board — the chip says what it means, the meter shows where RSI sits')}>
-        {s.techNotes.length ? s.techNotes.map((n) => (
-          <div key={n.symbol} class="flex items-center gap-2.5 px-3 py-2 border-b border-line/40 last:border-0">
-            <a href={`#/research/${n.symbol.toLowerCase()}`} class="w-14 shrink-0 font-[650] font-tick text-ink hover:no-underline">{n.symbol}</a>
-            <RsiMeter value={n.rsi} />
-            {n.pct != null && (
-              <span class={`w-14 shrink-0 text-right font-mono text-[10px] ${upDown(n.pct)}`}>{fmtPct(n.pct)}</span>
-            )}
-            <span class="ml-auto flex flex-wrap justify-end gap-1">
-              {n.notes.map((note) => (
-                <span key={note.text || note} class={`rounded border px-1.5 py-px font-mono text-[9.5px] ${
-                  TECH_NOTE_TONE[note.kind] || 'border-line text-ink-2'}`}>
-                  {formatBriefTechnicalNote(note)}
+      <Card title={tl('Technical flags')} sub={tl('held names first, then the tape — RSI, trend and volume extremes')}>
+        {s.techNotes.length ? (
+          <div class="max-h-[26rem] overflow-y-auto">
+            {s.techNotes.map((n) => (
+              <div key={n.symbol} class="grid grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-x-2.5 px-3 py-1.5 border-b border-line/40 last:border-0">
+                <span class="flex items-center gap-1.5 min-w-0">
+                  <span class={`h-1.5 w-1.5 shrink-0 rounded-full ${n.held ? 'bg-accent' : 'bg-transparent'}`} title={n.held ? tl('held') : undefined} aria-hidden="true" />
+                  <a href={`#/research/${n.symbol.toLowerCase()}`} class="font-[650] font-tick text-ink hover:no-underline">{n.symbol}</a>
                 </span>
-              ))}
-            </span>
+                <span class="flex min-w-0 items-center gap-1.5">
+                  <span class="truncate font-anth text-[10px] text-muted">{localName(n.symbol, quotes[n.symbol]?.quote?.name || '')}</span>
+                  <span class="ml-auto flex shrink-0 gap-1">
+                    {n.notes.map((note) => (
+                      <span key={note.text || note} class={`whitespace-nowrap rounded border px-1.5 py-px font-mono text-[9.5px] ${
+                        TECH_NOTE_TONE[note.kind] || 'border-line text-ink-2'}`}>
+                        {formatBriefTechnicalNote(note)}
+                      </span>
+                    ))}
+                  </span>
+                </span>
+                <RsiMeter value={n.rsi} />
+                <span class={`w-14 text-right font-mono text-[10px] ${n.pct == null ? 'text-muted' : upDown(n.pct)}`}>{n.pct == null ? '—' : fmtPct(n.pct)}</span>
+              </div>
+            ))}
           </div>
-        )) : <Empty label={tl('nothing stretched')} />}
+        ) : <Empty label={tl('nothing stretched')} />}
       </Card>
 
       <Card title={tl('Ahead')}>
@@ -210,7 +220,11 @@ function BriefData({ s }) {
 
 export function Brief() {
   const watchlist = useWatchlist()
-  const quotes = useQuotes(watchlist)
+  const tape = useTapeSymbols()
+  const [held] = useState(heldSymbols)
+  const followed = [...new Set([...watchlist, ...held, ...tape])]
+  const quotes = useQuotes(followed)
+  useZhNames(followed)
   const indexQuotes = useQuotes(INDEX_SYMBOLS)
   const earnDays = useEarningsDays(watchlist)
 
@@ -220,6 +234,7 @@ export function Brief() {
 
   const sections = assembleBriefing({
     watchlist, quotes, indices: INDICES, indexQuotes, earnDays, econEvents: econ,
+    held, techUniverse: tape,
   })
   const text = renderBriefing(sections)
 

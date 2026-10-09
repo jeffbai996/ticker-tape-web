@@ -114,3 +114,28 @@ describe('prompts', () => {
     expect(p.toLowerCase()).toMatch(/memo/)
   })
 })
+
+
+describe('technical flags: holdings first, every flagged name', () => {
+  // Jeff 2026-10-09: BAC, RY and BA looked random because the card only read
+  // the main watchlist; flags on held names come first, and it shows as many
+  // as there are rather than stopping at eight.
+  const hot = (symbol, rsi) => ({ quote: { symbol, price: 10, pct: 1 }, tech: { rsi } })
+  const quotes = Object.fromEntries(
+    ['H1', 'H2', ...Array.from({ length: 12 }, (_, i) => `W${i}`)].map((s, i) => [s, hot(s, 71 + i)]))
+
+  it('scans held names and the given universe, held names first', () => {
+    const s = assembleBriefing({ watchlist: [], quotes, held: ['H1', 'H2'], techUniverse: ['W0', 'W1', 'H1'] })
+    expect(s.techNotes.map((n) => n.symbol)).toEqual(['H2', 'H1', 'W1', 'W0'])
+    expect(s.techNotes.map((n) => n.held)).toEqual([true, true, false, false])
+  })
+  it('keeps every flagged name instead of the top eight', () => {
+    const universe = Array.from({ length: 12 }, (_, i) => `W${i}`)
+    const s = assembleBriefing({ watchlist: [], quotes, techUniverse: universe })
+    expect(s.techNotes).toHaveLength(12)
+  })
+  it('still reads the watchlist when no universe is given', () => {
+    const s = assembleBriefing({ watchlist: ['W3'], quotes })
+    expect(s.techNotes.map((n) => n.symbol)).toEqual(['W3'])
+  })
+})

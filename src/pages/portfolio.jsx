@@ -35,6 +35,7 @@ import {
 } from '../lib/brokerBook.js'
 import { BookAnalysis, MyPortfolios, MyNews, MyPerformance, MyTrades, MyEvents } from './portfolioMine.jsx'
 import { brokerSnapshots, recordBrokerSnapshot } from '../lib/brokerSnapshots.js'
+import { rememberBrokerHoldings } from '../lib/heldSymbols.js'
 import { BookNews } from './portfolioNews.jsx'
 import { BookEvents } from './portfolioEvents.jsx'
 import { loadPortfolios, onPortfoliosChange } from '../lib/myPortfolios.js'
@@ -391,6 +392,9 @@ function Positions({ priceMap, positions, margin, accountId, book, broker }) {
   useEffect(() => {
     if (markKey && knownCurrency(units) && Number.isFinite(nlv)) recordBrokerSnapshot(markKey, nlv, units)
   }, [markKey, units, Math.round(nlv || 0)])
+  // the briefing ranks technical flags on held names first
+  const heldKey = broker ? rows.map((r) => r.symbol).join('|') : ''
+  useEffect(() => { if (heldKey) rememberBrokerHoldings(heldKey.split('|')) }, [heldKey])
   const cardBook = { id: `broker-${markKey}`, ccy: units, snapshots: markKey ? brokerSnapshots(markKey) : [] }
   const cards = (slot) => (
     <BookAnalysis rows={cardRows} portfolio={cardBook} quotes={priceMap} rates={rates}
