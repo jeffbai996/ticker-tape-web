@@ -126,3 +126,27 @@ describe('privacy-bounded Worker security events', () => {
     expect(coarseUserAgent('ttw-backup/1')).toBe('ttw-backup')
   })
 })
+
+
+describe('family origins', () => {
+  // The family site is also served on www.jeffbai.com (e83ef64d). Without it on
+  // the list the browser blocked portfolio and watchlist reads there, and the
+  // page showed "No portfolios yet" (2026-10-08).
+  for (const origin of ['https://jeffbai.com', 'https://www.jeffbai.com']) {
+    it(`lets ${origin} read portfolios and watchlists`, async () => {
+      for (const path of ['/portfolios', '/watchlists']) {
+        const response = await worker.fetch(request(path, {
+          method: 'OPTIONS',
+          headers: { Origin: origin, 'Access-Control-Request-Method': 'GET', 'Access-Control-Request-Headers': 'Authorization' },
+        }), env())
+        expect(response.headers.get('Access-Control-Allow-Origin')).toBe(origin)
+      }
+    })
+  }
+  it('does not echo a foreign origin', async () => {
+    const response = await worker.fetch(request('/portfolios', {
+      method: 'OPTIONS', headers: { Origin: 'https://evil.example', 'Access-Control-Request-Method': 'GET' },
+    }), env())
+    expect(response.headers.get('Access-Control-Allow-Origin')).not.toBe('https://evil.example')
+  })
+})
