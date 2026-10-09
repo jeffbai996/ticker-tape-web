@@ -1,11 +1,12 @@
 import { BUCKETS } from './symbols.js'
 
 /** Group a watchlist in its own selected order. Configured groups win, then
- * the built-in broad-universe buckets, then General. */
-export function groupDashboardRows(watchlist, userGroups = {}) {
+ * the built-in broad-universe buckets, provider metadata, then General. */
+export function groupDashboardRows(watchlist, userGroups = {}, classifications = {}) {
   const names = [
     ...Object.keys(userGroups),
     ...BUCKETS.map((bucket) => bucket.name),
+    ...Object.values(classifications).filter(Boolean),
   ]
   names.push('General')
 
@@ -13,6 +14,7 @@ export function groupDashboardRows(watchlist, userGroups = {}) {
   for (const symbol of watchlist) {
     const category = Object.entries(userGroups).find(([, symbols]) => symbols.includes(symbol))?.[0]
       || BUCKETS.find((bucket) => bucket.symbols.includes(symbol))?.name
+      || classifications[symbol]
       || 'General'
     if (!grouped.has(category)) grouped.set(category, [])
     grouped.get(category).push(symbol)

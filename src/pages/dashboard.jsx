@@ -4,6 +4,7 @@ import {
   useFocusedSymbols, useInViewSymbols, useNamedWatchlists, useQuotes, useWatchlist, useZhNames,
 } from '../hooks.js'
 import { etParts, marketState, rollCashSession } from '../lib/marketState.js'
+import { useClassifications } from '../lib/useClassifications.js'
 import { BUCKETS } from '../lib/symbols.js'
 import { pulseStats } from '../lib/pulse.js'
 import { fetchEarningsDate, peekEarningsDate } from '../lib/fundamentals.js'
@@ -1109,9 +1110,10 @@ function RiskPanel() {
 /** Where the money moved today, by group. Ranked so the rotation reads off
  *  the top row instead of out of thirty individual % cells. */
 function HeatPanel({ watchlist, quotes }) {
+  const classifications = useClassifications(watchlist)
   const [, bump] = useState(0)
   useEffect(() => onUserGroupsChange(() => bump((n) => n + 1)), [])
-  const groups = groupDashboardRows(watchlist, loadUserGroups())
+  const groups = groupDashboardRows(watchlist, loadUserGroups(), classifications)
   const rows = groupHeat(groups, quotes)
   if (!rows.length) return null
   const span = Math.max(...rows.map((r) => Math.abs(r.avg)), 0.5)
@@ -1648,6 +1650,7 @@ export function Dashboard({ listId = null }) {
   const namedWatchlists = useNamedWatchlists()
   const activeList = listId ? namedWatchlists.find((item) => item.id === listId) : null
   const watchlist = activeList?.symbols || mainWatchlist
+  const classifications = useClassifications(watchlist)
   useZhNames(watchlist)
   useEffect(() => { rememberDashboardLanding(activeList?.id || null) }, [activeList?.id])
   const quotes = useQuotes(watchlist)
@@ -1703,16 +1706,16 @@ export function Dashboard({ listId = null }) {
   // the tick that changed a price.
   const nameKey = filter ? watchlist.filter((s) => quotes[s]?.quote?.name).join(',') : ''
   const sectorNames = useMemo(() =>
-    groupDashboardRows(watchlist, loadUserGroups()).map((group) => group.name),
-  [watchKey, groupsRev])
+    groupDashboardRows(watchlist, loadUserGroups(), classifications).map((group) => group.name),
+  [watchKey, groupsRev, classifications])
   // Grouping is pure list math: it doesn't move when a price does, and in flat
   // view nothing consumes it at all. It used to re-run on every quote tick in
   // both views, which on a 30-name board is the single hottest thing here.
   const { visibleManual, ordered } = useMemo(() => {
     if (viewMode !== 'grouped') return { visibleManual: [], ordered: [] }
     const rows = selectFlatRows(watchlist, quotes, { filter }).map((row) => row.symbol)
-    return { visibleManual: rows, ordered: orderGroups(groupDashboardRows(rows, loadUserGroups()), groupPrefs.order) }
-  }, [viewMode, watchKey, filter, nameKey, groupsRev, groupPrefs.order.join(',')])
+    return { visibleManual: rows, ordered: orderGroups(groupDashboardRows(rows, loadUserGroups(), classifications), groupPrefs.order) }
+  }, [viewMode, watchKey, filter, nameKey, groupsRev, classifications, groupPrefs.order.join(',')])
   // The flat view's numeric sorts genuinely re-rank on every tick, so this one
   // stays live — it just no longer runs while the grouped view is on screen.
   const flatRows = viewMode === 'flat' ? selectFlatRows(watchlist, quotes, { filter, sort }) : []
