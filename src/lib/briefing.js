@@ -60,7 +60,8 @@ export function assembleBriefing({ watchlist = [], quotes = {}, indices = [], in
       notes.push({ kind: 'downtrend', text: `downtrend · below 200d, lagging QQQ ${Math.abs(Math.round(t.rs))}pp` })
       severity += Math.abs(t.rs)
     }
-    if (notes.length) {
+    // held names always get a row (their RSI is the reading); others only when flagged
+    if (notes.length || heldSet.has(s)) {
       techNotes.push({ symbol: s, notes, severity, held: heldSet.has(s), name: quotes[s]?.quote?.name || '',
         rsi: t.rsi ?? null, pct: quotes[s]?.quote?.pct ?? null })
     }
@@ -106,9 +107,9 @@ export function renderBriefing(s) {
   }
   if (s.movers.gainers.length || s.movers.losers.length) lines.push('')
 
-  if (s.techNotes.length) {
+  if (s.techNotes.some((x) => x.notes.length)) {
     lines.push('TECHNICAL FLAGS')
-    for (const n of s.techNotes.slice(0, 12)) lines.push(`  ${n.symbol}${n.held ? ' (held)' : ''}: ${n.notes.map((x) => x.text).join(', ')}`)
+    for (const n of s.techNotes.filter((x) => x.notes.length).slice(0, 12)) lines.push(`  ${n.symbol}${n.held ? ' (held)' : ''}: ${n.notes.map((x) => x.text).join(', ')}`)
     lines.push('')
   }
 
