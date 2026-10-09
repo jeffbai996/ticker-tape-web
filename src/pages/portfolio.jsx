@@ -9,6 +9,8 @@ import {
 import { fmtPrice, fmtPct, fmtPctPlain, fmtChange, fmtRatio } from '../lib/format.js'
 import { getLocale, tl, thesisTerm, t as tt } from '../lib/i18n.js'
 import { FlashPrice } from '../components/Fig.jsx'
+import { fmtCcyParts } from '../lib/fx.js'
+import { localName } from '../lib/zhNames.js'
 import { Empty, Loading } from '../components/Loading.jsx'
 import { ChartMount } from '../components/LazyChartMount.jsx'
 import {
@@ -28,7 +30,9 @@ import {
 import { StatusPill } from '../components/StatusPill.jsx'
 import { countAdvancers } from '../lib/pulse.js'
 import { brokerBookStats } from '../lib/bookStats.js'
-import { brokerBook as adaptBrokerBook, brokerMoney, knownCurrency, portfolioSummary } from '../lib/brokerBook.js'
+import {
+  brokerBook as adaptBrokerBook, brokerMoney, knownCurrency, portfolioSummary, cdrRows,
+} from '../lib/brokerBook.js'
 import { MyPortfolios, MyNews, MyPerformance, MyTrades, MyEvents } from './portfolioMine.jsx'
 import { BookNews } from './portfolioNews.jsx'
 import { BookEvents } from './portfolioEvents.jsx'
@@ -63,6 +67,15 @@ const signedMoney = (v, currency) => {
 }
 
 const pnlCls = (v) => (v == null ? 'text-muted' : v >= 0 ? 'text-up' : 'text-down')
+
+/** A broker figure with its currency mark set smaller and grey, the family
+ *  page's convention. Falls back to the plain string when the book has no
+ *  known currency. */
+function Money({ v, ccy, digits = 0, size = '0.72em' }) {
+  if (v == null || !knownCurrency(ccy)) return brokerMoney(v, ccy, digits)
+  const { mark, figure } = fmtCcyParts(v, ccy, digits)
+  return <span class="tabular-nums whitespace-nowrap"><span class="mr-0.5 font-medium tracking-normal text-muted" style={{ fontSize: size }}>{mark.trim()}</span>{figure}</span>
+}
 
 function BookSummary({ rows, stats, margin, fallbackNlv, book, broker }) {
   const units = broker ? book?.currency ?? null : undefined
@@ -104,7 +117,7 @@ function BookSummary({ rows, stats, margin, fallbackNlv, book, broker }) {
       <div class="flex flex-wrap items-stretch">
         <div class="px-4 py-3 flex-1 min-w-[240px]">
           <div class="font-anth text-[9px] uppercase tracking-[.14em] text-muted">NLV</div>
-          <div class="font-anth text-[30px] leading-tight font-semibold tracking-tight text-ink">{dollars(broker ? equity : equity ?? gross, units)}</div>
+          <div class="font-anth text-[30px] leading-tight font-semibold tracking-tight text-ink">{broker ? <Money v={equity} ccy={units} size="0.55em" /> : dollars(equity ?? gross, units)}</div>
           {/* Each figure stays on one line; when both do not fit, the open P&L
               moves below the day chip whole (Jeff 2026-10-07). */}
           <div class="flex flex-wrap items-center gap-x-2 gap-y-1 pt-1.5">
@@ -118,9 +131,9 @@ function BookSummary({ rows, stats, margin, fallbackNlv, book, broker }) {
         <div class="px-4 py-3 flex-[1.4] min-w-[300px] border-l border-line max-sm:border-l-0 max-sm:border-t flex flex-col justify-center gap-2">
           <div class="grid grid-cols-3 gap-3">
             {[
-              [tl('Gross exposure'), dollars(gross, units)],
+              [tl('Gross exposure'), broker ? <Money v={gross} ccy={units} /> : dollars(gross, units)],
               [tl('Leverage'), leverage == null ? '—' : `${leverage.toFixed(2)}x`],
-              [tl('Excess liquidity'), dollars(margin?.above_maintenance, units)],
+              [tl('Excess liquidity'), broker ? <Money v={margin?.above_maintenance} ccy={units} /> : dollars(margin?.above_maintenance, units)],
             ].map(([label, value]) => (
               <div key={label}>
                 <div class="font-anth text-[8.5px] uppercase tracking-wider text-muted pb-0.5">{label}</div>
@@ -356,6 +369,7 @@ function Positions({ priceMap, positions, margin, accountId, book, broker }) {
   // ONE line at blended avg cost, so P&L% matches the ibkr readout
   const legs = combined && (!broker || knownCurrency(book?.currency)) ? mergeLegs(positions) : positions
   const rows = positionRows(legs, priceMap)
+  const cdr = cdrRows(rows)
   const stats = brokerBookStats(rows)
   const fallback = portfolioSummary(legs, priceMap, book, broker)
   const tot = (k) => (rows.every((r) => r[k] != null) ? rows.reduce((s, r) => s + r[k], 0) : null)
@@ -392,12 +406,20 @@ function Positions({ priceMap, positions, margin, accountId, book, broker }) {
           {rows.map((r) => (
             <tr key={`${r.account || ''}-${r.symbol}-${r.currency || ''}`} class="border-t border-line hover:bg-surface-3 cursor-pointer"
               onClick={() => (location.hash = `#/research/${r.symbol.toLowerCase()}`)}>
-              <td class="px-3 py-[3px] font-bold text-accent">{r.symbol}</td>
+              <td class="px-3 py-[3px] max-w-[16rem]">
+                <div class="flex items-center gap-1.5">
+                  <span class="font-bold text-accent">{r.symbol}</span>
+                  {cdr.has(r) && <span class="rounded-sm border border-line-2 px-1 font-anth text-[8.5px] font-semibold uppercase tracking-wider text-muted" title={r.currency}>CDR</span>}
+                </div>
+                {localName(r.symbol, priceMap[r.symbol]?.name || priceMap[r.symbol]?.shortName || '') && (
+                  <div class="truncate font-anth text-[10px] text-ink-2">{localName(r.symbol, priceMap[r.symbol]?.name || priceMap[r.symbol]?.shortName || '')}</div>
+                )}
+              </td>
               {combined && <td class="px-2 py-[3px] font-anth text-[10px] text-muted whitespace-nowrap">{tl(shortAccountLabel(r.accountLabel || r.account_label)) || '—'}</td>}
               <td class="px-2 py-[3px] text-right text-muted text-[10.5px]">{r.shares}</td>
-              <td class="px-2 py-[3px] text-right text-muted text-[10.5px]">{broker ? brokerMoney(r.avgCost, r.currency, 2) : fmtPrice(r.avgCost)}</td>
+              <td class="px-2 py-[3px] text-right text-muted text-[10.5px]">{broker ? <Money v={r.avgCost} ccy={r.currency} digits={2} /> : fmtPrice(r.avgCost)}</td>
               <td class="px-2 py-[3px] text-right text-ink-2 font-medium"><FlashPrice price={r.price} fmt={broker ? (value) => brokerMoney(value, r.currency, 2) : fmtPrice} /></td>
-              <td class="px-2 py-[3px] text-right text-ink font-semibold text-[12px]">{broker ? r.mktValue != null ? brokerMoney(r.mktValue, units) : brokerMoney(r.nativeValue, r.currency) : money(r.mktValue)}</td>
+              <td class="px-2 py-[3px] text-right text-ink font-semibold text-[12px]">{broker ? r.mktValue != null ? <Money v={r.mktValue} ccy={units} /> : <Money v={r.nativeValue} ccy={r.currency} /> : money(r.mktValue)}</td>
               <td class="px-2 py-[3px] text-right text-ink-2 font-medium">{fmtPctPlain(r.weight)}</td>
               <td class={`px-2 py-[3px] text-right font-semibold ${pnlCls(r.dayPnl)}`}>
                 {signedMoney(r.dayPnl, units)} {r.dayPct != null && <span class="text-[10px] font-normal">({fmtPct(r.dayPct)})</span>}
@@ -409,7 +431,7 @@ function Positions({ priceMap, positions, margin, accountId, book, broker }) {
           ))}
           <tr class="border-t border-line-2 bg-surface-2 font-bold">
             <td class="px-3 py-[6px] text-ink" colSpan={combined ? 5 : 4}>{tl('Total')}</td>
-            <td class="px-2 py-[6px] text-right text-ink text-[12.5px]">{broker ? brokerMoney(tot('mktValue'), units) : money(tot('mktValue'))}</td>
+            <td class="px-2 py-[6px] text-right text-ink text-[12.5px]">{broker ? <Money v={tot('mktValue')} ccy={units} /> : money(tot('mktValue'))}</td>
             <td class="px-2 py-[6px] text-right text-ink-2">{rows.length && rows.every((row) => row.weight != null) ? '100%' : '—'}</td>
             <td class={`px-2 py-[6px] text-right text-[12.5px] ${pnlCls(tot('dayPnl'))}`}>{signedMoney(tot('dayPnl'), units)}</td>
             <td class={`px-3 py-[6px] text-right text-[12.5px] ${pnlCls(tot('unrealPnl'))}`}>{signedMoney(tot('unrealPnl'), units)}</td>
