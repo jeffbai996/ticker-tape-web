@@ -909,7 +909,7 @@ function UpcomingCard({ symbols, quotes }) {
 /** The analysis cards. `rows` lets another book (the IBKR page) bring its own
  *  rows in the portfolioValues shape; `benchmarks` the indices it is judged
  *  against. Both default to the hand-entered book's. */
-export function BookAnalysis({ portfolio, quotes, rates, slot = null, fxLive = {}, bench = {}, rows: givenRows = null, benchmarks = BENCH }) {
+export function BookAnalysis({ portfolio, quotes, rates, slot = null, fxLive = {}, bench = {}, rows: givenRows = null, benchmarks = BENCH, omit = [] }) {
   const [hidden, setHidden] = useState(hiddenCards)
   const [editing, setEditing] = useState(false)
   useEffect(() => onCardsChange((next) => setHidden([...next])), [])
@@ -922,7 +922,9 @@ export function BookAnalysis({ portfolio, quotes, rates, slot = null, fxLive = {
 
   const card = (id, title, body) => {
     // a card whose body is null has nothing to say for this book — same as hidden
-    if (hidden.includes(id) || body == null) return null
+    // `omit`: a card that means nothing for this kind of book (a margin
+    // account has a loan, not cash to deploy)
+    if (hidden.includes(id) || omit.includes(id) || body == null) return null
     return (
       <section key={id} class="book-card rounded-xl border border-line bg-surface-1 px-3 py-2 min-w-0">
         <div class="book-eyebrow pb-1 font-anth text-[9px] uppercase tracking-wider text-muted">{title}</div>
