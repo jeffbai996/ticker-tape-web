@@ -1,4 +1,5 @@
 import { accountSummary, positionRows } from './demo.js'
+import { fmtCcy } from './fx.js'
 
 const finite = (value) => typeof value === 'number' && Number.isFinite(value)
 const number = (value) => finite(value) ? value : null
@@ -71,7 +72,17 @@ export function portfolioSummary(positions, priceMap, book, broker) {
     cushionPct: number(margin?.cushion_pct), dayPnl: sum('dayPnl'), unrealPnl: sum('unrealPnl') }
 }
 
+/** Broker money with its currency mark in front (C$1,234, $5.10), the way the
+ *  family portfolio page prints it, instead of "1,234 CAD" after every figure
+ *  (Jeff 2026-10-09). An unknown currency is a dash, never a guessed mark. */
 export function brokerMoney(value, currency, digits = 0) {
-  return finite(value) && knownCurrency(currency)
-    ? `${value.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits })} ${currency}` : '—'
+  return finite(value) && knownCurrency(currency) ? fmtCcy(value, currency, digits) : '—'
+}
+
+/** The rows that are the non-USD twin of a symbol also held in USD: a CDR
+ *  (NVDA on the NEO in CAD beside NVDA in USD). Labelled so they stop
+ *  reading as duplicates. */
+export function cdrRows(rows) {
+  const usd = new Set(rows.filter((r) => r.currency === 'USD').map((r) => r.symbol))
+  return new Set(rows.filter((r) => r.currency && r.currency !== 'USD' && usd.has(r.symbol)))
 }

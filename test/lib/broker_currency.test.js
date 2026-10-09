@@ -13,7 +13,7 @@ vi.mock('../../src/hooks.js', async (original) => ({
 vi.mock('../../src/lib/wire.js', async (original) => ({
   ...await original(), wireServiceUrl: () => 'https://fixture.invalid',
 }))
-import { brokerBook, knownCurrency } from '../../src/lib/brokerBook.js'
+import { brokerBook, brokerMoney, knownCurrency } from '../../src/lib/brokerBook.js'
 import { Portfolio } from '../../src/pages/portfolio.jsx'
 
 const unknown = { broker: true, symbol: 'MSFT', shares: 2, avgCost: 80,
@@ -88,7 +88,7 @@ describe('broker response rendering', () => {
       const text = await mount(clone(entry.expected))
       expect(text).toContain('FIXTURE')
       if (entry.name === 'complete_cad') {
-        expect(text).toContain('2,000 CAD')
+        expect(text).toContain('C$2,000')
         expect(text).toContain('0.15x')
       } else {
         expect(text).toContain(entry.expected.margin_warning)
@@ -96,7 +96,7 @@ describe('broker response rendering', () => {
         expect(text).not.toContain('100%')
         expect(text).toContain('Primary')
         expect(text).toContain('Secondary')
-        expect(text).toContain('200 ' + entry.expected.positions[1].currency)
+        expect(text).toContain(brokerMoney(200, entry.expected.positions[1].currency))
       }
     })
   }
@@ -120,7 +120,7 @@ describe('broker response rendering', () => {
     out.margin_warning = 'Margin incomplete: maintenance unavailable.'
     const text = await mount(out, 'account')
     expect(text).toContain(out.margin_warning)
-    expect(text).toContain('1,000 CAD')
+    expect(text).toContain('C$1,000')
     expect(text).not.toContain('$75')
     expect(text).not.toContain('$3,200')
   })
@@ -132,7 +132,7 @@ describe('broker response rendering', () => {
     out.account_summaries = []
     const text = await mount(out, 'account')
     expect(text).toContain(out.margin_warning)
-    expect(text).not.toContain('2,000 CAD')
+    expect(text).not.toContain('C$2,000')
     expect(text).not.toContain('0.15x')
   })
 })
@@ -165,8 +165,8 @@ describe('broker metadata availability', () => {
     out.margin_warning = 'Base currency unavailable. Cached values are unavailable.'
     const text = await mount(out)
     expect(text).toContain(out.margin_warning)
-    expect(text).not.toContain('1,000 CAD')
-    expect(text).not.toContain('2,000 CAD')
+    expect(text).not.toContain('C$1,000')
+    expect(text).not.toContain('C$2,000')
   })
   it('an empty unknown book has no zero-filled stress estimates', async () => {
     const out = { ...clone(fixture.cases[1].expected), positions: [] }
@@ -183,7 +183,7 @@ describe('broker metadata availability', () => {
     out.positions = []
     out.margin = { equity: 0, maintenance: 0, above_maintenance: 0 }
     const text = await mount(out, 'account')
-    expect(text).toContain('0 CAD')
+    expect(text).toContain('C$0')
     expect(text).not.toContain('3,200')
   })
 })
