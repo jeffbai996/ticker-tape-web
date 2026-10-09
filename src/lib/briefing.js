@@ -9,7 +9,7 @@ const MAX_MOVERS = 5
 const EARNINGS_HORIZON_DAYS = 14
 
 /** Build briefing sections from live feed data. All inputs optional-safe. */
-export function assembleBriefing({ watchlist = [], quotes = {}, indices = [], indexQuotes = {}, earnDays = {}, econEvents = [] }) {
+export function assembleBriefing({ watchlist = [], quotes = {}, indices = [], indexQuotes = {}, earnDays = {}, econEvents = [], held = [], techUniverse = null }) {
   const valid = watchlist
     .map((s) => quotes[s]?.quote)
     .filter((q) => q && q.price > 0 && q.pct != null)
@@ -35,10 +35,12 @@ export function assembleBriefing({ watchlist = [], quotes = {}, indices = [], in
     .sort((a, b) => a.days - b.days)
 
   // Technical flags are for active conditions, not a second inventory of
-  // every name below its 52-week high. Cap and rank the list so the briefing
-  // stays a briefing.
+  // every name below its 52-week high. Held names come first, then the given
+  // universe (the tape's lists); every flagged name is kept and the card
+  // scrolls (Jeff 2026-10-09: "always display as many as you can").
+  const heldSet = new Set(held)
   const techNotes = []
-  for (const s of watchlist) {
+  for (const s of [...new Set([...held, ...(techUniverse ?? watchlist)])]) {
     const t = quotes[s]?.tech
     if (!t) continue
     const notes = []
@@ -59,18 +61,18 @@ export function assembleBriefing({ watchlist = [], quotes = {}, indices = [], in
       severity += Math.abs(t.rs)
     }
     if (notes.length) {
-      techNotes.push({ symbol: s, notes, severity,
+      techNotes.push({ symbol: s, notes, severity, held: heldSet.has(s),
         rsi: t.rsi ?? null, pct: quotes[s]?.quote?.pct ?? null })
     }
   }
-  techNotes.sort((a, b) => b.severity - a.severity)
+  techNotes.sort((a, b) => (b.held - a.held) || (b.severity - a.severity))
 
   return {
     macro,
     movers,
     pulse: pulseStats(valid),
     earnings,
-    techNotes: techNotes.slice(0, 8).map(({ symbol, notes, rsi, pct }) => ({ symbol, notes, rsi, pct })),
+    techNotes: techNotes.map(({ symbol, notes, rsi, pct, held: h }) => ({ symbol, notes, rsi, pct, held: h })),
     calendar: econEvents.slice(0, 5),
   }
 }
@@ -106,7 +108,7 @@ export function renderBriefing(s) {
 
   if (s.techNotes.length) {
     lines.push('TECHNICAL FLAGS')
-    for (const n of s.techNotes) lines.push(`  ${n.symbol}: ${n.notes.map((x) => x.text).join(', ')}`)
+    for (const n of s.techNotes.slice(0, 12)) lines.push(`  ${n.symbol}${n.held ? ' (held)' : ''}: ${n.notes.map((x) => x.text).join(', ')}`)
     lines.push('')
   }
 
