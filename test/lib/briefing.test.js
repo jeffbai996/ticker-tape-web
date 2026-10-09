@@ -139,3 +139,12 @@ describe('technical flags: holdings first, every flagged name', () => {
     expect(s.techNotes.map((n) => n.symbol)).toEqual(['W3'])
   })
 })
+
+describe('technical flag rows', () => {
+  // 2026-10-09: the card read quotes it was never given and the briefing
+  // page threw "quotes is not defined". The name rides on the flag instead.
+  it('carry the company name so the card needs nothing else', () => {
+    const s = assembleBriefing({ watchlist: ['N1'], quotes: { N1: { quote: { symbol: 'N1', price: 1, pct: 1, name: 'Name One Inc.' }, tech: { rsi: 80 } } } })
+    expect(s.techNotes[0].name).toBe('Name One Inc.')
+  })
+})

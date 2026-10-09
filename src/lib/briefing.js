@@ -61,7 +61,7 @@ export function assembleBriefing({ watchlist = [], quotes = {}, indices = [], in
       severity += Math.abs(t.rs)
     }
     if (notes.length) {
-      techNotes.push({ symbol: s, notes, severity, held: heldSet.has(s),
+      techNotes.push({ symbol: s, notes, severity, held: heldSet.has(s), name: quotes[s]?.quote?.name || '',
         rsi: t.rsi ?? null, pct: quotes[s]?.quote?.pct ?? null })
     }
   }
@@ -72,7 +72,7 @@ export function assembleBriefing({ watchlist = [], quotes = {}, indices = [], in
     movers,
     pulse: pulseStats(valid),
     earnings,
-    techNotes: techNotes.map(({ symbol, notes, rsi, pct, held: h }) => ({ symbol, notes, rsi, pct, held: h })),
+    techNotes: techNotes.map(({ symbol, notes, rsi, pct, held: h, name }) => ({ symbol, notes, rsi, pct, held: h, name })),
     calendar: econEvents.slice(0, 5),
   }
 }

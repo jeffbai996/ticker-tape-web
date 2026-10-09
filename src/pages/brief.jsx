@@ -175,7 +175,7 @@ function BriefData({ s }) {
                   <a href={`#/research/${n.symbol.toLowerCase()}`} class="font-[650] font-tick text-ink hover:no-underline">{n.symbol}</a>
                 </span>
                 <span class="flex min-w-0 items-center gap-1.5">
-                  <span class="truncate font-anth text-[10px] text-muted">{localName(n.symbol, quotes[n.symbol]?.quote?.name || '')}</span>
+                  <span class="truncate font-anth text-[10px] text-muted">{localName(n.symbol, n.name)}</span>
                   <span class="ml-auto flex shrink-0 gap-1">
                     {n.notes.map((note) => (
                       <span key={note.text || note} class={`whitespace-nowrap rounded border px-1.5 py-px font-mono text-[9.5px] ${
