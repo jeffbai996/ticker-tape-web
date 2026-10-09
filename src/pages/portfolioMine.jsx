@@ -906,11 +906,14 @@ function UpcomingCard({ symbols, quotes }) {
   )
 }
 
-function BookAnalysis({ portfolio, quotes, rates, slot = null, fxLive = {}, bench = {} }) {
+/** The analysis cards. `rows` lets another book (the IBKR page) bring its own
+ *  rows in the portfolioValues shape; `benchmarks` the indices it is judged
+ *  against. Both default to the hand-entered book's. */
+export function BookAnalysis({ portfolio, quotes, rates, slot = null, fxLive = {}, bench = {}, rows: givenRows = null, benchmarks = BENCH }) {
   const [hidden, setHidden] = useState(hiddenCards)
   const [editing, setEditing] = useState(false)
   useEffect(() => onCardsChange((next) => setHidden([...next])), [])
-  const { rows } = portfolioValues(portfolio.holdings, quotes, rates, portfolio.ccy, portfolio.cash)
+  const { rows } = givenRows ? { rows: givenRows } : portfolioValues(portfolio.holdings, quotes, rates, portfolio.ccy, portfolio.cash)
   const priced = rows.filter((r) => r.valueDisplay != null)
   const ccy = portfolio.ccy
   // only the slot that renders the Sectors card pays for industry lookups
@@ -996,7 +999,7 @@ function BookAnalysis({ portfolio, quotes, rates, slot = null, fxLive = {}, benc
       return (
         <div class="flex flex-col gap-1">
           {row(tl('This book'), bookPct, true)}
-          {BENCH.map((b) => row(tl(b.label), bench?.[b.symbol]?.quote?.pct ?? null, false))}
+          {benchmarks.map((b) => row(tl(b.label), bench?.[b.symbol]?.quote?.pct ?? null, false))}
         </div>
       )
     })()),
