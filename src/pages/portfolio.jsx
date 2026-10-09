@@ -394,7 +394,7 @@ function Positions({ priceMap, positions, margin, accountId, book, broker }) {
   const cardBook = { id: `broker-${markKey}`, ccy: units, snapshots: markKey ? brokerSnapshots(markKey) : [] }
   const cards = (slot) => (
     <BookAnalysis rows={cardRows} portfolio={cardBook} quotes={priceMap} rates={rates}
-      fxLive={fxLive} bench={bench} benchmarks={BROKER_BENCH} slot={slot} />
+      fxLive={fxLive} bench={bench} benchmarks={BROKER_BENCH} omit={['cash']} slot={slot} />
   )
   const fallback = portfolioSummary(legs, priceMap, book, broker)
   const tot = (k) => (rows.every((r) => r[k] != null) ? rows.reduce((s, r) => s + r[k], 0) : null)
@@ -470,6 +470,7 @@ function Positions({ priceMap, positions, margin, accountId, book, broker }) {
     {/* the analytics used to live in a side rail hidden below xl — on an
         iPad that meant a table over a black void (Jeff 2026-08-05) */}
     <div class="grid gap-2 md:grid-cols-3 items-start">
+      {!(broker && knownCurrency(units)) && (
       <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
         <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
           <h2 class="font-anth font-bold text-[10px] tracking-wider text-accent uppercase">{tl('Concentration')}</h2>
@@ -487,6 +488,7 @@ function Positions({ priceMap, positions, margin, accountId, book, broker }) {
           ))}
         </div>
       </section>
+      )}
       {margin && (
         <section class="bg-surface-1 border border-line rounded-xl overflow-hidden">
           <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
