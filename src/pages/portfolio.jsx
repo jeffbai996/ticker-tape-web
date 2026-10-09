@@ -9,7 +9,7 @@ import {
 import { fmtPrice, fmtPct, fmtPctPlain, fmtChange, fmtRatio } from '../lib/format.js'
 import { getLocale, tl, thesisTerm, t as tt } from '../lib/i18n.js'
 import { FlashPrice } from '../components/Fig.jsx'
-import { fmtCcyParts } from '../lib/fx.js'
+import { fmtCcyParts, fxSymbolsFor, ratesFromQuotes } from '../lib/fx.js'
 import { localName } from '../lib/zhNames.js'
 import { Empty, Loading } from '../components/Loading.jsx'
 import { ChartMount } from '../components/LazyChartMount.jsx'
@@ -31,9 +31,10 @@ import { StatusPill } from '../components/StatusPill.jsx'
 import { countAdvancers } from '../lib/pulse.js'
 import { brokerBookStats } from '../lib/bookStats.js'
 import {
-  brokerBook as adaptBrokerBook, brokerMoney, knownCurrency, portfolioSummary, cdrRows,
+  brokerBook as adaptBrokerBook, brokerMoney, knownCurrency, portfolioSummary, cdrRows, brokerCardRows,
 } from '../lib/brokerBook.js'
-import { MyPortfolios, MyNews, MyPerformance, MyTrades, MyEvents } from './portfolioMine.jsx'
+import { BookAnalysis, MyPortfolios, MyNews, MyPerformance, MyTrades, MyEvents } from './portfolioMine.jsx'
+import { brokerSnapshots, recordBrokerSnapshot } from '../lib/brokerSnapshots.js'
 import { BookNews } from './portfolioNews.jsx'
 import { BookEvents } from './portfolioEvents.jsx'
 import { loadPortfolios, onPortfoliosChange } from '../lib/myPortfolios.js'
@@ -362,6 +363,13 @@ function BrokerAnalysis({ rows, priceMap, stats }) {
   )
 }
 
+// The indices this book is judged against on the shared vs-indices card.
+const BROKER_BENCH = [
+  { symbol: 'SPY', label: 'S&P 500' },
+  { symbol: 'QQQ', label: 'Nasdaq 100' },
+  { symbol: '^SOX', label: 'Semis (SOX)' },
+]
+
 function Positions({ priceMap, positions, margin, accountId, book, broker }) {
   const units = broker ? book?.currency ?? null : undefined
   const combined = accountId === BOTH_ACCOUNTS
@@ -371,6 +379,23 @@ function Positions({ priceMap, positions, margin, accountId, book, broker }) {
   const rows = positionRows(legs, priceMap)
   const cdr = cdrRows(rows)
   const stats = brokerBookStats(rows)
+  // the shared cards (the family page's) read these; hooks run for the demo
+  // book too so their order never changes between renders
+  const cardRows = useMemo(() => brokerCardRows(rows), [rows])
+  const ccys = useMemo(() => [...new Set([units, ...rows.map((r) => r.currency)].filter(Boolean))], [units, rows])
+  const fxLive = useQuotes(fxSymbolsFor(ccys))
+  const rates = ratesFromQuotes(fxLive)
+  const bench = useQuotes(BROKER_BENCH.map((b) => b.symbol))
+  const nlv = margin?.nlv ?? margin?.equity ?? null
+  const markKey = broker ? String(accountId || 'all') : null
+  useEffect(() => {
+    if (markKey && knownCurrency(units) && Number.isFinite(nlv)) recordBrokerSnapshot(markKey, nlv, units)
+  }, [markKey, units, Math.round(nlv || 0)])
+  const cardBook = { id: `broker-${markKey}`, ccy: units, snapshots: markKey ? brokerSnapshots(markKey) : [] }
+  const cards = (slot) => (
+    <BookAnalysis rows={cardRows} portfolio={cardBook} quotes={priceMap} rates={rates}
+      fxLive={fxLive} bench={bench} benchmarks={BROKER_BENCH} slot={slot} />
+  )
   const fallback = portfolioSummary(legs, priceMap, book, broker)
   const tot = (k) => (rows.every((r) => r[k] != null) ? rows.reduce((s, r) => s + r[k], 0) : null)
   // aggregate by symbol for the weight ladder — CDR + US lines merge
@@ -385,7 +410,7 @@ function Positions({ priceMap, positions, margin, accountId, book, broker }) {
   return (
     <div class="flex flex-col gap-2">
     <BookSummary rows={rows} stats={stats} margin={margin} fallbackNlv={fallback.nlv} book={book} broker={broker} />
-    <BrokerAnalysis rows={rows} priceMap={priceMap} stats={stats} />
+    {broker && knownCurrency(units) ? cards('top') : <BrokerAnalysis rows={rows} priceMap={priceMap} stats={stats} />}
     <div class="flex flex-col gap-2">
     <section class="bg-surface-1 border border-line rounded-xl overflow-x-auto">
       <table class="w-full border-collapse font-mono text-[11px]">
@@ -439,6 +464,8 @@ function Positions({ priceMap, positions, margin, accountId, book, broker }) {
         </tbody>
       </table>
     </section>
+
+    {broker && knownCurrency(units) && cards('rest')}
 
     {/* the analytics used to live in a side rail hidden below xl — on an
         iPad that meant a table over a black void (Jeff 2026-08-05) */}

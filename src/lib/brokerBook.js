@@ -86,3 +86,17 @@ export function cdrRows(rows) {
   const usd = new Set(rows.filter((r) => r.currency === 'USD').map((r) => r.symbol))
   return new Set(rows.filter((r) => r.currency && r.currency !== 'USD' && usd.has(r.symbol)))
 }
+
+/** Broker position rows in the shape the shared portfolio cards read
+ *  (myPortfolios.portfolioValues). The broker's own base-currency value,
+ *  day P&L, open P&L and weight carry across untouched: nothing is re-priced
+ *  or re-converted, and a figure the broker did not give stays null. */
+export function brokerCardRows(rows) {
+  const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null)
+  return rows.map((r) => ({
+    kind: 'equity', symbol: r.symbol, ccy: r.currency || null, shares: num(r.shares),
+    cost: num(r.avgCost), price: num(r.price), dayPct: num(r.dayPct),
+    valueDisplay: num(r.mktValue), dayPnlDisplay: num(r.dayPnl),
+    unrealDisplay: num(r.unrealPnl), weightPct: num(r.weight),
+  }))
+}
