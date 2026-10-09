@@ -148,3 +148,14 @@ describe('technical flag rows', () => {
     expect(s.techNotes[0].name).toBe('Name One Inc.')
   })
 })
+
+describe('held names on the flags card', () => {
+  it('always show a held name, flagged or not; others only when flagged', () => {
+    const quotes = {
+      HQ: { quote: { symbol: 'HQ', price: 1, pct: 0 }, tech: { rsi: 50 } },
+      WQ: { quote: { symbol: 'WQ', price: 1, pct: 0 }, tech: { rsi: 50 } },
+    }
+    const s = assembleBriefing({ watchlist: [], quotes, held: ['HQ'], techUniverse: ['WQ'] })
+    expect(s.techNotes.map((n) => [n.symbol, n.notes.length])).toEqual([['HQ', 0]])
+  })
+})
