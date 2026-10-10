@@ -208,4 +208,31 @@ describe('feedStatus', () => {
     expect(feed.feedStatus().streamConnected).toBe(false)
     release()
   })
+
+  // The shell's snapshot window follows this number, so it must be the
+  // interval of the sweep timer actually pending. A cadence recomputed from
+  // the clock would shrink to 15s at the Monday pre-market open while the
+  // weekend's 120s timer is still in flight.
+  it('reports the interval of the pending sweep', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    try {
+      vi.setSystemTime(new Date('2026-10-10T16:00:00Z'))   // Saturday 12:00 ET
+      let feed = await loadFeed()
+      expect(feed.feedStatus().sweepIntervalMs).toBe(0)     // nothing pending yet
+      let release = feed.follow([AAPL])
+      expect(feed.feedStatus().sweepIntervalMs).toBe(120_000)
+      vi.setSystemTime(new Date('2026-10-12T08:05:00Z'))   // Monday 04:05 ET, pre
+      expect(feed.feedStatus().sweepIntervalMs).toBe(120_000)
+      release()
+      expect(feed.feedStatus().sweepIntervalMs).toBe(0)
+
+      vi.setSystemTime(new Date('2026-10-07T15:00:00Z'))   // Wednesday 11:00 ET
+      feed = await loadFeed()
+      release = feed.follow([AAPL])
+      expect(feed.feedStatus().sweepIntervalMs).toBe(30_000)
+      release()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })

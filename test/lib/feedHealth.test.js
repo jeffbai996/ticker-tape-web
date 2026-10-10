@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { sweepIntervalMs } from '../../src/lib/feed.js'
 import {
   FEED_DELAYED_MS, SNAPSHOT_LIVE_MS, SYMBOL_STALE_MS,
   feedHealth, fmtAge, freshnessTitle, isLiveSource, symbolFreshness,
@@ -37,6 +38,42 @@ describe('feedHealth', () => {
       streamConnected: true,
       lastStreamTs: NOW - SNAPSHOT_LIVE_MS - 1,
       lastSnapshotTs: NOW - SNAPSHOT_LIVE_MS - 1,
+    }, NOW)
+    expect(h.state).toBe('recovering')
+  })
+
+  // Weekends and holidays sweep every 120s, so a snapshot past the 75s
+  // open-session window only means the next sweep is not due yet. Before this
+  // the chip flipped LIVE → RECOVERING for ~45s of every two-minute cycle.
+  it('stays LIVE on a weekend while the next slow sweep is not yet due', () => {
+    const h = feedHealth({
+      streamConnected: true,
+      lastStreamTs: 0,
+      lastSnapshotTs: NOW - 100_000,
+      sweepIntervalMs: sweepIntervalMs('closed', false),
+    }, NOW)
+    expect(h.state).toBe('live')
+  })
+
+  it('reads RECOVERING for the same 100s-old snapshot in the open session', () => {
+    const h = feedHealth({
+      streamConnected: true,
+      lastStreamTs: NOW - 2_000,
+      lastSnapshotTs: NOW - 100_000,
+      sweepIntervalMs: sweepIntervalMs('open'),
+    }, NOW)
+    expect(h.state).toBe('recovering')
+    expect(h.titleKey).toBe('feed.title_snapshot_late')
+  })
+
+  // the slow cadence widens the window; it does not switch the check off
+  it('reads RECOVERING once a weekend sweep is a whole beat overdue', () => {
+    const weekend = sweepIntervalMs('closed', false)
+    const h = feedHealth({
+      streamConnected: true,
+      lastStreamTs: 0,
+      lastSnapshotTs: NOW - 2 * weekend,
+      sweepIntervalMs: weekend,
     }, NOW)
     expect(h.state).toBe('recovering')
   })
