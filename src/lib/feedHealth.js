@@ -9,6 +9,8 @@
 
 /** A snapshot older than ~2.5 sweeps (30s cadence) is no longer "current". */
 export const SNAPSHOT_LIVE_MS = 75_000
+/** Slack past a slow sweep's due time: request latency plus timer jitter. */
+export const SNAPSHOT_GRACE_MS = 30_000
 /** Matches the sidebar's long-standing 5-minute stale banner. */
 export const FEED_DELAYED_MS = 300_000
 /** Same window per symbol: past this, the row is a museum piece. */
@@ -30,6 +32,11 @@ export function fmtAge(ms) {
  *             arrived yet — a cold start is not a failure)
  * delayed     nothing at all for FEED_DELAYED_MS
  *
+ * The sweep window is SNAPSHOT_LIVE_MS, widened to one pending sweep plus
+ * SNAPSHOT_GRACE_MS when `sweepIntervalMs` says the next snapshot is further
+ * out than that (weekends and holidays sweep every 120s). Without it the shell
+ * read a slow cadence as a late one.
+ *
  * `ageMs` is the age of the newest data of any kind, which is what "+ age"
  * means next to a non-live label.
  *
@@ -38,9 +45,10 @@ export function fmtAge(ms) {
  * be shown in English, which is how three of these four explanations shipped
  * untranslated.
  */
-export function feedHealth({ streamConnected, lastStreamTs, lastSnapshotTs } = {}, now = Date.now()) {
+export function feedHealth({ streamConnected, lastStreamTs, lastSnapshotTs, sweepIntervalMs } = {}, now = Date.now()) {
   const newest = Math.max(lastStreamTs || 0, lastSnapshotTs || 0)
   const snapshotAge = lastSnapshotTs ? now - lastSnapshotTs : Infinity
+  const snapshotLiveMs = Math.max(SNAPSHOT_LIVE_MS, (sweepIntervalMs || 0) + SNAPSHOT_GRACE_MS)
   const ageMs = newest ? now - newest : null
 
   let state
@@ -53,7 +61,7 @@ export function feedHealth({ streamConnected, lastStreamTs, lastSnapshotTs } = {
   } else if (ageMs >= FEED_DELAYED_MS) {
     state = 'delayed'
     titleKey = 'feed.title_delayed'
-  } else if (!streamConnected || snapshotAge >= SNAPSHOT_LIVE_MS) {
+  } else if (!streamConnected || snapshotAge >= snapshotLiveMs) {
     state = 'recovering'
     titleKey = streamConnected ? 'feed.title_snapshot_late' : 'feed.title_reconnecting'
   } else {

@@ -168,6 +168,10 @@ const listeners = new Set()
 let queue = []
 let lanes = 0
 let sweepTimer = null
+// Interval of the sweep timer now pending (0 when none is). Recorded at
+// scheduling time rather than recomputed, so at a session boundary it still
+// describes the timer actually in flight.
+let pendingSweepMs = 0
 let fastTimer = null
 let liveStream = null
 // outage = a stream that HAS been up and lost its socket; a socket that
@@ -357,6 +361,7 @@ export function feedStatus() {
     streamConnected: liveStream?.isConnected() ?? false,
     lastStreamTs,
     lastSnapshotTs,
+    sweepIntervalMs: pendingSweepMs,
   }
 }
 
@@ -451,6 +456,7 @@ let lastFullSweepTs = 0
 function stopSweeps() {
   clearTimeout(sweepTimer)
   sweepTimer = null
+  pendingSweepMs = 0
   clearTimeout(fastTimer)
   fastTimer = null
 }
@@ -574,6 +580,7 @@ function activate(symbols, register) {
     let sinceCharts = 0
     const beat = () => {
       const every = sweepIntervalMs(marketState().state, isOvernight(), streamHealthyForCadence())
+      pendingSweepMs = every
       sweepTimer = setTimeout(() => {
         fullSweep()
         setTimeout(overnightSweep, 5_000)
