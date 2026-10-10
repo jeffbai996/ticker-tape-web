@@ -75,6 +75,9 @@ Corollaries:
   `src/lib/dialog.js`, Preact/DOM wiring in `src/components/Overlay.jsx` — role,
   label, focus entry/return, Escape, backdrop dismissal, scroll containment.
   Used by the palette, chat drawers, research rail, and ChartSuite.
+- Samsung TV widget: a 10-foot market board for the remote, built from `tv/`
+  on the shared `src/lib/` data layer and packaged by `scripts/tizen_tv.sh`.
+  It targets Chromium 85 (Tizen 6.5); see `tizen/README.md`.
 - Responsive mobile navigation and PWA installation: a bottom tab bar, a
   spotlight-style inline search, and the command console as its own phone-only
   page (desktop keeps the floating panel).
