@@ -14,7 +14,8 @@
     "probe": "python3 scripts/probe_gate.py",
     "build:tailnet": "bash scripts/deploy_tailnet.sh",
     "dev:tv": "vite --config vite.tv.config.js",
-    "build:tv": "vite build --config vite.tv.config.js"
+    "build:tv": "vite build --config vite.tv.config.js",
+    "package:tv": "bash scripts/tizen_tv.sh"
   },
   "dependencies": {
     "@preact/preset-vite": "^2.10.5",

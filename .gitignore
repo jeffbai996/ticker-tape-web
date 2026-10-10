@@ -17,3 +17,5 @@ private/
 dist-family/
 dist-family-releases/
 dist-tailnet.pre-atomic-*/
+dist-tv/
+dist-tizen/
