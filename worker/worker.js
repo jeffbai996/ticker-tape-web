@@ -51,6 +51,37 @@ const CRUMB_TTL = 3600 * 1000; // refresh crumb every hour
 // (IN-0060).
 const REFRESH_BACKOFF = 30 * 1000;
 let _refreshBlockedUntil = 0;
+// Isolates share one Yahoo session through KV. getcrumb rate-limits Cloudflare's
+// shared egress, so most isolates could otherwise never get a crumb of their own.
+const SHARED_AUTH_KEY = 'yahoo-auth';
+const SHARED_AUTH_TTL = 6 * 3600;
+let _refusedCrumb = null;
+
+/** Take the session another isolate stored, when it is newer than ours. */
+async function adoptSharedCrumb(env) {
+    if (!env?.SPEND) return false;
+    try {
+        const shared = await env.SPEND.get(SHARED_AUTH_KEY, { type: 'json', cacheTtl: 60 });
+        if (!shared?.crumb || !shared.cookies || shared.crumb === _refusedCrumb) return false;
+        if (_crumb && shared.ts <= _crumbTs) return false;
+        _crumb = shared.crumb;
+        _cookies = shared.cookies;
+        _crumbTs = shared.ts;
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+async function shareCrumb(env) {
+    if (!env?.SPEND) return;
+    try {
+        await env.SPEND.put(SHARED_AUTH_KEY, JSON.stringify({ crumb: _crumb, cookies: _cookies, ts: _crumbTs }),
+            { expirationTtl: SHARED_AUTH_TTL });
+    } catch (e) {
+        console.warn('Sharing the Yahoo session failed:', e);
+    }
+}
 
 export default {
     async fetch(request, env, ctx) {
@@ -99,7 +130,7 @@ export default {
             try {
                 const body = await request.text();
                 if (body.length > MAX_PROXY_BODY) return jsonResp({ error: 'Request too large' }, 413);
-                return await proxyWithCrumb(path, url.search, body);
+                return await proxyWithCrumb(path, url.search, body, env);
             } catch (err) {
                 return jsonResp({ error: `Proxy error: ${err.message}` }, 502);
             }
@@ -145,7 +176,7 @@ export default {
             }
 
             // v7/v10 need crumb+cookies
-            return await proxyWithCrumb(path, url.search);
+            return await proxyWithCrumb(path, url.search, null, env);
         } catch (err) {
             return jsonResp({ error: `Proxy error: ${err.message}` }, 502);
         }
@@ -174,21 +205,26 @@ async function proxyDirect(path, search) {
 // Single-flight: N concurrent 401s must share ONE refresh, not stampede
 // Yahoo's getcrumb endpoint (which rate-limits and then everyone fails).
 let _refreshing = null;
-function refreshCrumbOnce() {
+function refreshCrumbOnce(env) {
     if (Date.now() < _refreshBlockedUntil) return Promise.resolve(false);
     if (!_refreshing) {
         _refreshing = refreshCrumb()
-            .then(ok => { if (!ok) _refreshBlockedUntil = Date.now() + REFRESH_BACKOFF; return ok; })
+            .then(async ok => {
+                if (ok) await shareCrumb(env);
+                else _refreshBlockedUntil = Date.now() + REFRESH_BACKOFF;
+                return ok;
+            })
             .finally(() => { _refreshing = null; });
     }
     return _refreshing;
 }
 
 /** Proxy with crumb+cookies (v7, v10 GETs; visualization POST when body given). */
-async function proxyWithCrumb(path, search, body = null) {
-    // Ensure we have a valid crumb
-    if (!_crumb || !_cookies || Date.now() - _crumbTs > CRUMB_TTL) {
-        const ok = await refreshCrumbOnce();
+async function proxyWithCrumb(path, search, body = null, env = {}) {
+    const stale = () => !_crumb || !_cookies || Date.now() - _crumbTs > CRUMB_TTL;
+    if (stale()) await adoptSharedCrumb(env);
+    if (stale()) {
+        const ok = await refreshCrumbOnce(env);
         // An hour-old crumb usually still works; keep using it until a refresh succeeds.
         if (!ok && !(_crumb && _cookies)) return jsonResp({ error: 'Failed to obtain Yahoo auth crumb' }, 502);
     }
@@ -215,8 +251,9 @@ async function proxyWithCrumb(path, search, body = null) {
     // If 401, crumb might be stale — refresh once and retry
     if (resp.status === 401) {
         // Yahoo refused this crumb, so it must not be reused if the refresh fails.
+        _refusedCrumb = _crumb;
         _crumb = null;
-        const ok = await refreshCrumbOnce();
+        const ok = (await adoptSharedCrumb(env)) || (await refreshCrumbOnce(env));
         if (!ok) return jsonResp({ error: 'Yahoo auth failed after refresh' }, 502);
         resp = await doFetch();
     }

@@ -84,3 +84,39 @@ describe('Yahoo crumb refresh (IN-0060)', () => {
     expect(calls.crumb).toBe(1)
   })
 })
+
+// A KV namespace as the Worker uses it: JSON values under one key.
+function kv(initial = {}) {
+  const data = { ...initial }
+  return {
+    data,
+    get: vi.fn(async (key, opts) => (key in data ? (opts?.type === 'json' ? JSON.parse(data[key]) : data[key]) : null)),
+    put: vi.fn(async (key, value) => { data[key] = value }),
+  }
+}
+const quoteWith = (env) => worker.fetch(new Request('https://worker.test/v7/finance/quote?symbols=AAPL'), env)
+
+describe('Yahoo session shared across isolates (IN-0060)', () => {
+  it('uses the crumb another isolate stored instead of asking Yahoo', async () => {
+    const calls = yahoo({ crumbs: [429] })
+    const SPEND = kv({ 'yahoo-auth': JSON.stringify({ crumb: 'shared', cookies: 'A3=other', ts: Date.now() }) })
+    expect((await quoteWith({ SPEND })).status).toBe(200)
+    expect(calls.crumb).toBe(0)
+    expect(calls.quote).toEqual(['shared'])
+  })
+
+  it('stores a crumb it fetched for the other isolates', async () => {
+    yahoo({ crumbs: ['abc'] })
+    const SPEND = kv()
+    expect((await quoteWith({ SPEND })).status).toBe(200)
+    expect(JSON.parse(SPEND.data['yahoo-auth'])).toMatchObject({ crumb: 'abc', cookies: 'A3=session' })
+  })
+
+  it('does not take back a crumb Yahoo just refused', async () => {
+    const calls = yahoo({ crumbs: ['def'], quotes: [401, 200] })
+    const SPEND = kv({ 'yahoo-auth': JSON.stringify({ crumb: 'abc', cookies: 'A3=other', ts: Date.now() }) })
+    expect((await quoteWith({ SPEND })).status).toBe(200)
+    expect(calls.quote).toEqual(['abc', 'def'])
+    expect(JSON.parse(SPEND.data['yahoo-auth']).crumb).toBe('def')
+  })
+})
