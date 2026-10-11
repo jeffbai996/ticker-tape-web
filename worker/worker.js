@@ -46,6 +46,11 @@ let _crumb = null;
 let _cookies = null;
 let _crumbTs = 0;
 const CRUMB_TTL = 3600 * 1000; // refresh crumb every hour
+// After a refused refresh, wait before asking Yahoo again. getcrumb is rate
+// limited, and retrying on every request kept it refusing for whole sweeps
+// (IN-0060).
+const REFRESH_BACKOFF = 30 * 1000;
+let _refreshBlockedUntil = 0;
 
 export default {
     async fetch(request, env, ctx) {
@@ -170,8 +175,11 @@ async function proxyDirect(path, search) {
 // Yahoo's getcrumb endpoint (which rate-limits and then everyone fails).
 let _refreshing = null;
 function refreshCrumbOnce() {
+    if (Date.now() < _refreshBlockedUntil) return Promise.resolve(false);
     if (!_refreshing) {
-        _refreshing = refreshCrumb().finally(() => { _refreshing = null; });
+        _refreshing = refreshCrumb()
+            .then(ok => { if (!ok) _refreshBlockedUntil = Date.now() + REFRESH_BACKOFF; return ok; })
+            .finally(() => { _refreshing = null; });
     }
     return _refreshing;
 }
@@ -181,7 +189,8 @@ async function proxyWithCrumb(path, search, body = null) {
     // Ensure we have a valid crumb
     if (!_crumb || !_cookies || Date.now() - _crumbTs > CRUMB_TTL) {
         const ok = await refreshCrumbOnce();
-        if (!ok) return jsonResp({ error: 'Failed to obtain Yahoo auth crumb' }, 502);
+        // An hour-old crumb usually still works; keep using it until a refresh succeeds.
+        if (!ok && !(_crumb && _cookies)) return jsonResp({ error: 'Failed to obtain Yahoo auth crumb' }, 502);
     }
 
     const sep = search ? '&' : '?';
@@ -205,6 +214,8 @@ async function proxyWithCrumb(path, search, body = null) {
 
     // If 401, crumb might be stale — refresh once and retry
     if (resp.status === 401) {
+        // Yahoo refused this crumb, so it must not be reused if the refresh fails.
+        _crumb = null;
         const ok = await refreshCrumbOnce();
         if (!ok) return jsonResp({ error: 'Yahoo auth failed after refresh' }, 502);
         resp = await doFetch();
@@ -237,34 +248,37 @@ async function refreshCrumb() {
             .filter(Boolean)
             .join('; ');
 
-        if (!cookies) {
+        let jar = cookies;
+        if (!jar) {
             // Fallback: try consent page
             const consentResp = await fetch('https://guce.yahoo.com/consent', {
                 headers: { 'User-Agent': UA },
                 redirect: 'manual',
             });
-            const fallbackCookies = [consentResp.headers.get('set-cookie')].filter(Boolean)
-                .map(c => c.split(';')[0]).join('; ');
-            if (fallbackCookies) _cookies = fallbackCookies;
-        } else {
-            _cookies = cookies;
+            jar = [consentResp.headers.get('set-cookie')].filter(Boolean)
+                .map(c => c.split(';')[0]).join('; ') || _cookies;
         }
+        if (!jar) return false;
 
         // Step 2: Fetch crumb using the cookies
         const crumbResp = await fetch('https://query2.finance.yahoo.com/v1/test/getcrumb', {
             headers: {
                 'User-Agent': UA,
-                'Cookie': _cookies,
+                'Cookie': jar,
                 'Referer': 'https://finance.yahoo.com/',
             },
         });
 
         if (!crumbResp.ok) return false;
 
-        _crumb = await crumbResp.text();
+        // Cookies and crumb are a pair: replace both only when the crumb is real,
+        // never with a consent or error page.
+        const crumb = (await crumbResp.text()).trim();
+        if (!crumb || crumb.includes('<')) return false;
+        _cookies = jar;
+        _crumb = crumb;
         _crumbTs = Date.now();
-
-        return !!_crumb && _crumb.length > 0 && !_crumb.includes('<');
+        return true;
     } catch (e) {
         console.error('Crumb refresh failed:', e);
         return false;
