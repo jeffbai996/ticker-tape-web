@@ -258,7 +258,10 @@ async function refreshCrumb() {
             jar = [consentResp.headers.get('set-cookie')].filter(Boolean)
                 .map(c => c.split(';')[0]).join('; ') || _cookies;
         }
-        if (!jar) return false;
+        if (!jar) {
+            console.warn('Crumb refresh refused: no session cookie from fc.yahoo.com or the consent page');
+            return false;
+        }
 
         // Step 2: Fetch crumb using the cookies
         const crumbResp = await fetch('https://query2.finance.yahoo.com/v1/test/getcrumb', {
@@ -269,12 +272,18 @@ async function refreshCrumb() {
             },
         });
 
-        if (!crumbResp.ok) return false;
+        if (!crumbResp.ok) {
+            console.warn(`Crumb refresh refused: getcrumb returned ${crumbResp.status}`);
+            return false;
+        }
 
         // Cookies and crumb are a pair: replace both only when the crumb is real,
         // never with a consent or error page.
         const crumb = (await crumbResp.text()).trim();
-        if (!crumb || crumb.includes('<')) return false;
+        if (!crumb || crumb.includes('<')) {
+            console.warn('Crumb refresh refused: getcrumb returned a page, not a crumb');
+            return false;
+        }
         _cookies = jar;
         _crumb = crumb;
         _crumbTs = Date.now();
