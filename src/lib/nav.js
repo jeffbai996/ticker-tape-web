@@ -114,8 +114,20 @@ if (FAMILY_BUILD) {
   delete portfolio.badge
 }
 
+// The Samsung TV build is driven by a remote. Sections whose whole feature
+// is free typing (chat, the command console) or an AI preview that cannot
+// run there are left out; deep links to them land on the dashboard.
+const TV_BUILD = import.meta.env.VITE_TV === '1'
+if (TV_BUILD) {
+  for (const id of ['brief', 'chat', 'console']) {
+    const at = NAV.findIndex((s) => s.id === id)
+    if (at >= 0) NAV.splice(at, 1)
+  }
+}
+
 export const IS_PRIVATE_BUILD = PRIVATE_BUILD
 export const IS_FAMILY_BUILD = FAMILY_BUILD
+export const IS_TV_BUILD = TV_BUILD
 
 export const DEFAULT_SECTION = 'dashboard'
 

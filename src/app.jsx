@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { parseHash, hrefFor } from './lib/route.js'
-import { NAV } from './lib/nav.js'
+import { NAV, IS_TV_BUILD } from './lib/nav.js'
 import { isTypingTarget } from './lib/keys.js'
 import { conditionText } from './lib/alerts.js'
 import { tl } from './lib/i18n.js'
@@ -189,7 +189,8 @@ export function App() {
           <Page route={route} />
         </main>
       </div>
-      <CommandBar />
+      {/* The console captures every printable key; a remote has no use for it. */}
+      {!IS_TV_BUILD && <CommandBar />}
       <BottomNav route={route} />
       <AlertToasts toasts={toasts} dismiss={dismiss} />
       {paletteOpen && <Palette seed={paletteSeed} onClose={() => { setPaletteOpen(false); setPaletteSeed('') }} />}

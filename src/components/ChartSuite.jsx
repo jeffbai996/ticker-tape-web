@@ -19,6 +19,7 @@ import { loadDrawings, addDrawing, removeDrawing, clearDrawings } from '../lib/c
 import { fmtPrice } from '../lib/format.js'
 import { attachVisiblePeak } from '../lib/visiblePeak.js'
 import { tl } from '../lib/i18n.js'
+import { IS_TV_BUILD } from '../lib/nav.js'
 
 const KEY = 'tape-chartsuite-v1'
 const UP = '#3fb950'
@@ -553,8 +554,9 @@ export function ChartSuite({ symbol }) {
           c.priceScale('right').applyOptions({ autoScale: true })
         }, null, 'reset zoom and re-arm the auto price scale')}
         {/* Drawing tools. Hidden outright in compare mode: the frame is % change
-            there, so a price anchored line would be a lie, not a limitation. */}
-        {!comparing && (
+            there, so a price anchored line would be a lie, not a limitation.
+            Hidden on the TV too: placing a drawing needs a pointer. */}
+        {!comparing && !IS_TV_BUILD && (
           <>
             <span class="w-2" />
             {chip(mode === 'hline', tl('LINE'),

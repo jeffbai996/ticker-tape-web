@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { streamChat } from '../lib/chatClient.js'
 import { fetchWireChatModels, wireComplete, wireStream } from '../lib/wirechat.js'
 import { wireUrl } from '../lib/wire.js'
-import { IS_PRIVATE_BUILD } from '../lib/nav.js'
+import { IS_PRIVATE_BUILD, IS_TV_BUILD } from '../lib/nav.js'
 import { saveReport } from '../lib/archive.js'
 import { getLocale, tl } from '../lib/i18n.js'
 import { LENGTHS, TONES, applyAiPreferences, loadDials, saveDials } from '../lib/aidials.js'
@@ -136,6 +136,9 @@ function dialSummary(dials) {
  *    every completed generation auto-saves to the report archive
  */
 export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI report', hint = '', archive = null }) {
+  // No model service reaches the TV, and its output is copy and download
+  // controls a remote cannot use. A build constant, so hook order is stable.
+  if (IS_TV_BUILD) return null
   const [text, setText] = useState('')
   // dials are shared across every generate button — set the shape once and
   // the briefing, the market read and the thesis memo all honour it
