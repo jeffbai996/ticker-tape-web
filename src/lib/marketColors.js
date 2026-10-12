@@ -1,13 +1,21 @@
 const STORAGE_KEY = 'ttw_market_color_order_v1'
 const ORDERS = new Set(['global', 'cn'])
 
-export function defaultMarketColorOrder(family = import.meta.env.VITE_FAMILY_BUILD === '1') {
+/** Red-up is the family web build's default. The family edition on the TV
+ *  shares its data, not its reader, and starts in global colors. */
+export function cnColorsByDefault(env) {
+  return env.VITE_FAMILY_BUILD === '1' && env.VITE_TV !== '1'
+}
+
+const CN_BY_DEFAULT = cnColorsByDefault(import.meta.env)
+
+export function defaultMarketColorOrder(family = CN_BY_DEFAULT) {
   return family ? 'cn' : 'global'
 }
 
 export function getMarketColorOrder(
   store = globalThis.localStorage,
-  family = import.meta.env.VITE_FAMILY_BUILD === '1',
+  family = CN_BY_DEFAULT,
 ) {
   try {
     const saved = store?.getItem(STORAGE_KEY)
