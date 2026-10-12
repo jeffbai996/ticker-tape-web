@@ -3,6 +3,7 @@ import { fetchNews } from '../../lib/history.js'
 import { wireServiceUrl } from '../../lib/wire.js'
 import { getLocale, tl, t as tt } from '../../lib/i18n.js'
 import { SectionCard } from './shared.jsx'
+import { rowActivation } from '../../lib/rowActivation.js'
 
 function NewsReadBody({ ev, base }) {
   const [state, setState] = useState({ status: 'loading', paras: [] })
@@ -140,7 +141,7 @@ export function SymbolNewsView({ symbol, name }) {
               {shownWire.map((e) => (
                 <div key={e.id}
                   class={`border-t border-line first:border-0 cursor-pointer ${openId === e.id ? 'bg-surface-2/60' : 'hover:bg-surface-3'}`}
-                  onClick={() => setOpenId(openId === e.id ? null : e.id)}>
+                  {...rowActivation(() => setOpenId(openId === e.id ? null : e.id), { role: 'button' })}>
                   <div class="grid grid-cols-[86px_36px_1fr_auto] gap-x-2.5 items-baseline px-3 py-[3px]">
                     <span class="text-muted whitespace-nowrap">
                       {new Date(e.ts_event * 1000).toLocaleDateString(getLocale() === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric' }).toLowerCase()}
