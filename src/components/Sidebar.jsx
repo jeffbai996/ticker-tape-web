@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { NAV, hrefFor } from '../lib/route.js'
 import { goChatHome } from '../lib/chatnav.js'
 import { t as tt, tl } from '../lib/i18n.js'
-import { useNamedWatchlists, useQuotes, useWatchlist } from '../hooks.js'
+import { useEscape, useNamedWatchlists, useQuotes, useWatchlist } from '../hooks.js'
 import { FlashPrice } from './Fig.jsx'
 import { watch, unwatch, isWatchlistFull, MAX_WATCHLIST } from '../lib/watchlist.js'
 import {
@@ -118,6 +118,7 @@ export function Sidebar({ route, width, onWidthCommit, onCollapse }) {
   const namedWatchlists = useNamedWatchlists()
   const [sidebarListId, setSidebarListId] = useState(() => loadSidebarWatchlistId(namedWatchlists))
   const [pickerOpen, setPickerOpen] = useState(false)
+  useEscape(() => setPickerOpen(false), pickerOpen)
   const activeNamed = namedWatchlists.find((item) => item.id === sidebarListId) || null
   const stored = activeNamed?.symbols || mainWatchlist
   const quotes = useQuotes(stored)
@@ -243,7 +244,7 @@ export function Sidebar({ route, width, onWidthCommit, onCollapse }) {
         </button>
         <AddSymbol onAdd={addSymbol} isFull={listFull} cap={listCap} />
         {pickerOpen && (
-          <div role="listbox" aria-label={tl('Watchlists')}
+          <div data-layer role="listbox" aria-label={tl('Watchlists')}
             class="absolute left-2 right-2 top-full z-30 mt-1 overflow-hidden rounded-md border border-line-2 bg-surface-1 py-1 shadow-lg shadow-black/60">
             {[{ id: 'main', name: tl('Default') }, ...namedWatchlists].map((list) => (
               <button key={list.id} type="button" role="option" aria-selected={sidebarListId === list.id}

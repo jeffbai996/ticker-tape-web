@@ -288,6 +288,7 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
     <div
       data-wire-row
       data-wire-hot={hot || undefined}
+      data-layer={open ? '' : undefined}
       id={`ev-${ev.id}`}
       class={`border-b border-line/30 border-l-2 font-mono transition-colors ${
         hot ? 'duration-1000 bg-accent text-black border-l-transparent'

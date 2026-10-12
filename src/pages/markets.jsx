@@ -1163,7 +1163,7 @@ function Calendar() {
   // "back to calendar" (or Escape, still wired above) is the only way out.
   if (openEvent && details) {
     return (
-      <div class="flex-1 min-w-0 flex flex-col gap-2">
+      <div data-layer class="flex-1 min-w-0 flex flex-col gap-2">
         <button onClick={() => setOpenKey('')}
           class="self-start font-mono text-[11px] text-muted hover:text-accent">
           ← {tl('back to calendar')}
