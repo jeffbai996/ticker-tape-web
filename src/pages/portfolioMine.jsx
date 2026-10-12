@@ -32,6 +32,7 @@ import { BookEvents } from './portfolioEvents.jsx'
 import { PORTFOLIO_CCYS, cashAccountName, convertCcy, fmtCcy, fmtCcyZh, fxSymbolsFor, holdingCurrency, ratesFromQuotes, fmtCcyParts } from '../lib/fx.js'
 import { MAX_MY_HOLDINGS, createPortfolio, deletePortfolio, loadPortfolios, loadTrash, onPortfoliosChange, purgeTrash, restoreFromTrash, removeCash, removeHolding, renamePortfolio, setCash, setHolding, setPortfolioCcy, portfolioValues, recordSnapshot, previousSnapshot } from '../lib/myPortfolios.js'
 import { IS_FAMILY_BUILD } from '../lib/nav.js'
+import { rowActivation } from '../lib/rowActivation.js'
 
 const pnlCls = (v) => (v == null ? 'text-muted' : v >= 0 ? 'text-up' : 'text-down')
 // Account totals read in full digits in any locale — 富途/同花顺 print
@@ -363,7 +364,7 @@ export function Holdings({ portfolio, quotes, rates }) {
   const holdingRow = (r) => (
     <tr key={r.symbol} class="border-t border-line hover:bg-surface-3 whitespace-nowrap">
       <td class="px-2.5 py-[2px] cursor-pointer"
-        onClick={() => (location.hash = `#/research/${r.symbol.toLowerCase()}`)}>
+        {...rowActivation(() => (location.hash = `#/research/${r.symbol.toLowerCase()}`))}>
         <span class="font-bold text-accent">{r.symbol}</span>
         {holdingName(r.symbol, quotes) && (
           <span class={`block max-w-[9rem] truncate font-anth text-[9px] font-medium leading-[1.15] ${familySecondary}`}>

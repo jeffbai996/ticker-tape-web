@@ -42,6 +42,7 @@ import { loadPortfolios, onPortfoliosChange } from '../lib/myPortfolios.js'
 import { IS_FAMILY_BUILD } from '../lib/nav.js'
 import { onHeaderActions } from '../lib/headerSlot.js'
 import { IS_PUBLIC_DEMO } from '../lib/publicDemo.js'
+import { rowActivation } from '../lib/rowActivation.js'
 
 const SYMBOLS = DEMO_POSITIONS.map((p) => p.symbol)
 const BOTH_ACCOUNTS = 'all'
@@ -434,7 +435,7 @@ function Positions({ priceMap, positions, margin, accountId, book, broker }) {
         <tbody>
           {rows.map((r) => (
             <tr key={`${r.account || ''}-${r.symbol}-${r.currency || ''}`} class="border-t border-line hover:bg-surface-3 cursor-pointer"
-              onClick={() => (location.hash = `#/research/${r.symbol.toLowerCase()}`)}>
+              {...rowActivation(() => (location.hash = `#/research/${r.symbol.toLowerCase()}`))}>
               <td class="px-3 py-[3px] max-w-[16rem]">
                 <div class="flex items-center gap-1.5">
                   <span class="font-bold text-accent">{r.symbol}</span>

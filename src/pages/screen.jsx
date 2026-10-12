@@ -14,6 +14,7 @@ import { BUCKETS, SYMBOL_RE } from '../lib/symbols.js'
 import { isWatched, watch, unwatch } from '../lib/watchlist.js'
 import { loadScreens, saveScreen, deleteScreen, passesScreenFilters } from '../lib/screens.js'
 import { ScreenBoard } from './screenBoard.jsx'
+import { rowActivation } from '../lib/rowActivation.js'
 
 const DEFAULT_SYMBOLS = 'AAPL MSFT NVDA GOOG AMZN SPY'
 const LINE_COLORS = ['#f59e0b', '#22d3ee', '#3fb950', '#f85149', '#a78bfa', '#ec4899', '#e7ecf3', '#79828d']
@@ -148,7 +149,7 @@ function ScreenTable({ symbols, hist }) {
               <tr
                 key={sym}
                 class="border-b border-line last:border-0 hover:bg-surface-3 cursor-pointer"
-                onClick={() => (location.hash = `#/research/${sym.toLowerCase()}`)}
+                {...rowActivation(() => (location.hash = `#/research/${sym.toLowerCase()}`))}
               >
                 <WatchCell sym={sym} />
                 <td class="px-3 py-[3px] font-bold text-accent">{sym}</td>
@@ -447,7 +448,7 @@ function TechScreen({ symbols, hist }) {
         <tbody>
           {rows.map((r) => (
             <tr key={r.sym} class="border-t border-line hover:bg-surface-3 cursor-pointer"
-              onClick={() => (location.hash = `#/research/${r.sym.toLowerCase()}`)}>
+              {...rowActivation(() => (location.hash = `#/research/${r.sym.toLowerCase()}`))}>
               <td class="px-3 py-[3px] font-[650] font-tick text-ink">{r.sym}</td>
               <td class="px-2 py-[3px] text-right text-ink-2">{r.price.toFixed(2)}</td>
               <td class={`px-2 py-[3px] text-right font-semibold ${r.rsi == null ? 'text-muted' : r.rsi >= 70 ? 'text-down' : r.rsi <= 30 ? 'text-up' : 'text-ink-2'}`}>

@@ -38,6 +38,7 @@ import {
 import {
   MOVER_FLOORS, buildMoverRows, filterMoverRows, rankMoverRows,
 } from '../lib/movers.js'
+import { rowActivation } from '../lib/rowActivation.js'
 
 /** The day's session on one labeled track: the grey rail is today's range, the
  *  coloured span is the distance travelled from yesterday's close to the last
@@ -124,7 +125,7 @@ function QuoteRow({ label, symbol, data, unit, withUnits = false,
   return (
     <tr
       class="border-b border-line last:border-0 hover:bg-white/[0.035] cursor-pointer"
-      onClick={() => { if (symbol) location.hash = hrefFor('research', symbol.toLowerCase()) }}
+      {...rowActivation(() => { if (symbol) location.hash = hrefFor('research', symbol.toLowerCase()) })}
     >
       {/* phone: the name column keeps a real width so a Chinese label reads
           标普500 on one line instead of one character per line; a long
@@ -271,7 +272,7 @@ function RelativeSignals() {
             const relative = a?.pct != null && b?.pct != null ? a.pct - b.pct : null
             return (
               <tr key={item.label} class="border-b border-line last:border-0 hover:bg-white/[0.035] cursor-pointer"
-                onClick={() => { location.hash = hrefFor('research', item.a.toLowerCase()) }}>
+                {...rowActivation(() => { location.hash = hrefFor('research', item.a.toLowerCase()) })}>
                 <td class="px-3 py-[3px] font-anth text-[11.5px] text-ink-2">{tl(item.label)}</td>
                 <td class="px-2 py-[3px] text-right font-mono text-[10px] text-muted">{item.a}/{item.b}</td>
                 <td class="px-2 py-[3px] text-right font-mono text-[11.5px] text-ink font-semibold">{ratio == null ? '—' : ratio.toFixed(ratio >= 100 ? 1 : ratio >= 10 ? 2 : 3)}</td>
@@ -370,7 +371,7 @@ function SectorRotation() {
         <tbody>
           {rows.map((r) => (
             <tr key={r.symbol} class="border-t border-line hover:bg-surface-3 cursor-pointer"
-              onClick={() => (location.hash = `#/research/${r.symbol.toLowerCase()}`)}>
+              {...rowActivation(() => (location.hash = `#/research/${r.symbol.toLowerCase()}`))}>
               <td class="px-3 py-[3px] font-mono text-[11px]">
                 <span class="font-[650] font-tick text-ink">{r.symbol}</span>{' '}
                 <span class="text-muted font-anth text-[10.5px] max-sm:hidden">{tl(r.label)}</span>
@@ -553,7 +554,7 @@ function MoverTable({ title, rows, activity = false }) {
             const extUp = (q?.extPct ?? 0) >= 0
             return (
               <tr key={symbol} class="cursor-pointer border-t border-line hover:bg-surface-3"
-                onClick={() => (location.hash = `#/research/${symbol.toLowerCase()}`)}>
+                {...rowActivation(() => (location.hash = `#/research/${symbol.toLowerCase()}`))}>
                 <td class="min-w-0 px-3 py-[4px]">
                   <div class="font-tick font-[650] leading-none text-ink">{symbol}</div>
                   {name && <div class="mt-1 truncate font-anth text-[8.5px] leading-none text-muted" title={name}>{name}</div>}
@@ -723,7 +724,7 @@ function Earnings() {
               <tr
                 key={e.sym}
                 class="border-b border-line last:border-0 hover:bg-surface-3 cursor-pointer"
-                onClick={() => (location.hash = `#/research/${e.sym.toLowerCase()}`)}
+                {...rowActivation(() => (location.hash = `#/research/${e.sym.toLowerCase()}`))}
               >
                 <td class="px-3 py-[3px] font-bold text-accent">{e.sym}</td>
                 <td class="px-2 py-[3px] text-ink">
