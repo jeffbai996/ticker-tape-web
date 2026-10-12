@@ -26,4 +26,17 @@ export function exitApp() {
   }
 }
 
+/** Open a web page in the TV's own browser; a widget cannot open a tab. */
+export function openExternal(url) {
+  const t = globalThis.tizen
+  if (!t?.application || !t.ApplicationControl) {
+    globalThis.open?.(url, '_blank', 'noopener')
+    return
+  }
+  try {
+    const control = new t.ApplicationControl('http://tizen.org/appcontrol/operation/view', url)
+    t.application.launchAppControl(control, null, () => {}, () => {})
+  } catch { /* no browser registered for the view operation */ }
+}
+
 export const isTizen = () => !!globalThis.tizen

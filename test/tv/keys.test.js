@@ -12,27 +12,34 @@ describe('TV remote key mapping', () => {
     expect(actionForKey(key(13))).toBe('enter')
   })
 
-  it('treats the Samsung Back key and desktop Escape as back', () => {
+  it('maps the Samsung Back key to back and leaves Escape to the app', () => {
     expect(actionForKey(key(10009))).toBe('back')
-    expect(actionForKey(key(27, { key: 'Escape' }))).toBe('back')
+    expect(actionForKey(key(27, { key: 'Escape' }))).toBeNull()
   })
 
-  it('maps the four colour keys and their desktop stand-ins', () => {
+  it('leaves Backspace to text fields', () => {
+    expect(actionForKey(key(8, { key: 'Backspace' }))).toBeNull()
+  })
+
+  it('maps the four colour keys', () => {
     expect(actionForKey(key(403))).toBe('red')
     expect(actionForKey(key(404))).toBe('green')
     expect(actionForKey(key(405))).toBe('yellow')
     expect(actionForKey(key(406))).toBe('blue')
-    expect(actionForKey(key(0, { key: 'r' }))).toBe('red')
-    expect(actionForKey(key(0, { key: 'g' }))).toBe('green')
   })
 
-  it('maps channel up and down to page moves', () => {
+  it('never treats a typed letter as a colour key', () => {
+    expect(actionForKey(key(82, { key: 'r' }))).toBeNull()
+    expect(actionForKey(key(71, { key: 'g' }))).toBeNull()
+  })
+
+  it('maps channel up and down, and PageUp/PageDown, to page moves', () => {
     expect(actionForKey(key(427))).toBe('pageUp')
     expect(actionForKey(key(428))).toBe('pageDown')
     expect(actionForKey(key(33, { key: 'PageUp' }))).toBe('pageUp')
   })
 
-  it('returns null for keys the app does not handle', () => {
+  it('returns null for keys the remote layer does not handle', () => {
     expect(actionForKey(key(65, { key: 'a' }))).toBeNull()
   })
 
