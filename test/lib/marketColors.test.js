@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   applyMarketColorOrder,
+  cnColorsByDefault,
   defaultMarketColorOrder,
   getMarketColorOrder,
   oppositeMarketColorOrder,
@@ -36,5 +37,21 @@ describe('market gain/loss color convention', () => {
     expect(getMarketColorOrder(store, false)).toBe('cn')
     expect(oppositeMarketColorOrder('cn')).toBe('global')
     expect(applyMarketColorOrder('bogus', root)).toBe('global')
+  })
+})
+
+describe('which build starts in Chinese colors', () => {
+  it('is the family web build', () => {
+    expect(cnColorsByDefault({ VITE_FAMILY_BUILD: '1' })).toBe(true)
+  })
+
+  it('is not the family edition on the TV', () => {
+    expect(cnColorsByDefault({ VITE_FAMILY_BUILD: '1', VITE_TV: '1' })).toBe(false)
+  })
+
+  it('is not the public, private or plain TV build', () => {
+    expect(cnColorsByDefault({})).toBe(false)
+    expect(cnColorsByDefault({ VITE_PRIVATE: '1' })).toBe(false)
+    expect(cnColorsByDefault({ VITE_TV: '1' })).toBe(false)
   })
 })

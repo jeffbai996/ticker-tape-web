@@ -9,7 +9,8 @@ import './styles/main.css'
 
 // Paint the preferred gain/loss convention before Preact mounts so the
 // family build never flashes green-up on its way to the Chinese default.
-initMarketColorOrder({ family: import.meta.env.VITE_FAMILY_BUILD === '1' })
+// Which builds default to Chinese colors is decided in marketColors.js.
+initMarketColorOrder()
 applyHighContrast(getHighContrast())
 render(<App />, document.getElementById('app'))
 // Capability-scoped sync belongs only to builds that HAVE a capability: the
