@@ -11,6 +11,7 @@ import { fmtPct, fmtPrice } from '../lib/format.js'
 import { getLocale, tl } from '../lib/i18n.js'
 import { loadZhTable, onZhTable, zhName } from '../lib/zhNames.js'
 import { SymbolSuggest } from '../components/SymbolSuggest.jsx'
+import { IS_TV_BUILD } from '../lib/nav.js'
 
 // 交易 — the ledger behind a hand-built book (Jeff 2026-08-22: lots instead
 // of holdings). One trade at a time, or a broker export pasted in; the
@@ -200,7 +201,7 @@ export function BookTrades({ portfolio, quotes }) {
               <span class={v >= 0 ? 'text-up' : 'text-down'}>{v >= 0 ? '+' : '-'}{fmtCcy(Math.abs(v), c, 2)}</span></span>
           ))}
           <span class="ml-auto flex gap-1">
-            {[['add', tl('Add trade')], ['import', tl('Import trades')]].map(([id, label]) => (
+            {[['add', tl('Add trade')], ...(IS_TV_BUILD ? [] : [['import', tl('Import trades')]])].map(([id, label]) => (
               <button key={id} type="button" aria-expanded={tab === id} onClick={() => setTab(tab === id ? null : id)}
                 class={`rounded border px-2 py-0.5 font-anth text-[10px] transition-colors ${tab === id ? 'border-accent/45 bg-accent/10 text-accent' : 'border-line-2 text-muted hover:border-line hover:text-ink'}`}>{label}</button>
             ))}
