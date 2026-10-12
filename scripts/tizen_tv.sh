@@ -4,8 +4,14 @@
 # Runs from WSL against a Windows Tizen Studio install. Signing happens in a
 # Windows temp directory because Tizen's Windows signer rejects WSL UNC paths.
 #
-#   TIZEN_PROFILE=<certificate profile> scripts/tizen_tv.sh
-#   TIZEN_PROFILE=<profile> TIZEN_TV=<tv-ip> scripts/tizen_tv.sh --install
+#   TIZEN_PROFILE=<profile> scripts/tizen_tv.sh                      # public data
+#   TIZEN_PROFILE=<profile> scripts/tizen_tv.sh --family <full sha>  # family books
+#   ... --install with TIZEN_TV=<tv-ip> also installs and launches it.
+#
+# --family builds the family edition: the sync capability from
+# ~/.config/ttw/sync_token is compiled in, so like scripts/deploy_family.sh
+# it builds only from a clean committed checkout at the named SHA, after the
+# full test suite, and never takes the capability on a command line.
 #
 # TIZEN_STUDIO defaults to /mnt/c/tizen-studio. The signed widget is copied to
 # dist-tizen/TickerTapeTV-<version>.wgt.
@@ -13,7 +19,16 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 INSTALL=0
-[[ "${1:-}" == "--install" ]] && INSTALL=1
+FAMILY=0
+SOURCE_SHA=""
+while (( $# )); do
+  case "$1" in
+    --install) INSTALL=1 ;;
+    --family) FAMILY=1; SOURCE_SHA="${2:-}"; shift ;;
+    *) echo "usage: scripts/tizen_tv.sh [--install] [--family FULL_SOURCE_SHA]" >&2; exit 2 ;;
+  esac
+  shift
+done
 : "${TIZEN_PROFILE:?set TIZEN_PROFILE to a Samsung TV certificate profile name}"
 if (( INSTALL )); then : "${TIZEN_TV:?set TIZEN_TV to the TV address for --install}"; fi
 STUDIO="${TIZEN_STUDIO:-/mnt/c/tizen-studio}"
@@ -30,14 +45,48 @@ if ! node -e "if (!require('node:util').styleText) process.exit(1)" >/dev/null 2
   newest="$(ls -d "$HOME"/.nvm/versions/node/v*/bin 2>/dev/null | sort -V | tail -1 || true)"
   if [[ -n "$newest" ]]; then export PATH="$newest:$PATH"; fi
 fi
-(cd "$ROOT" && npm run --silent build:tv)
+
+SOURCE_DIR=""
+if (( FAMILY )); then
+  TOKEN_FILE="${TTW_SYNC_TOKEN_FILE:-${HOME}/.config/ttw/sync_token}"
+  READER_FILE="${HOME}/.config/ttw/reader_token"
+  FONT_FILE="${TTW_PRIVATE_FONT_FILE:-${HOME}/repos/fragwire/static/fonts/AnthropicSansVariable-TextRegular.woff2}"
+  [[ -f "$TOKEN_FILE" ]] || { echo "family sync token file is missing" >&2; exit 2; }
+  [[ -f "$FONT_FILE" ]] || { echo "private family font file is missing" >&2; exit 2; }
+  mapfile -t token_lines < "$TOKEN_FILE"
+  sync_token="${token_lines[0]:-}"
+  unset token_lines
+  if [[ ! "$sync_token" =~ ^[a-f0-9]{32}$ ]]; then
+    echo "family sync token file has the wrong shape" >&2
+    exit 2
+  fi
+  reader_token=""
+  if [[ -f "$READER_FILE" ]]; then read -r reader_token < "$READER_FILE"; fi
+  # shellcheck source=private_release.sh
+  source "$ROOT/scripts/private_release.sh"
+  release_prepare "$ROOT" "$SOURCE_SHA"   # cds into a clean archive of SOURCE_SHA
+  VITE_FAMILY_BUILD=1 \
+  VITE_SYNC_CAPABILITY="$sync_token" \
+  VITE_READER_CAPABILITY="$reader_token" \
+    npm run --silent build:tv
+  unset sync_token reader_token
+  install -d -m 0700 "$SOURCE_DIR/dist-tv/fonts"
+  install -m 0600 "$FONT_FILE" "$SOURCE_DIR/dist-tv/fonts/AnthropicSansVariable-TextRegular.woff2"
+  BUILD_DIR="$SOURCE_DIR/dist-tv"
+else
+  (cd "$ROOT" && npm run --silent build:tv)
+  BUILD_DIR="$ROOT/dist-tv"
+fi
 
 win_temp="$(wslpath -u "$("$CMD" /c 'echo %TEMP%' 2>/dev/null | tr -d '\r')")"
 work="$win_temp/ttw-tv-$(date +%Y%m%d-%H%M%S)-$$"
 stage="$work/widget"
 mkdir -p "$stage"
-trap 'rm -rf "$work"' EXIT
-cp -r "$ROOT/dist-tv/." "$stage/"
+# The family stage holds the capability in plain script: remove every copy.
+trap 'rm -rf -- "$work" ${SOURCE_DIR:+"$SOURCE_DIR"}' EXIT
+cp -r "$BUILD_DIR/." "$stage/"
+# Web-only files: the widget has no service worker or install manifest.
+rm -f "$stage/sw.js" "$stage/manifest.webmanifest"
 cp "$ROOT/tizen/config.xml" "$ROOT/tizen/icon.png" "$stage/"
 
 tizen package -t wgt -s "$TIZEN_PROFILE" -- "$(wslpath -w "$stage")"
@@ -54,7 +103,7 @@ import re, sys, zipfile
 path, version = sys.argv[1], sys.argv[2]
 with zipfile.ZipFile(path) as z:
     names = set(z.namelist())
-    missing = {"config.xml", "index.html", "icon.png", "author-signature.xml", "signature1.xml"} - names
+    missing = {"config.xml", "tv.html", "icon.png", "author-signature.xml", "signature1.xml"} - names
     if missing:
         sys.exit(f"widget is missing {', '.join(sorted(missing))}")
     if not any(n.startswith("assets/") and n.endswith(".js") for n in names):
@@ -68,6 +117,7 @@ PY
 mkdir -p "$ROOT/dist-tizen"
 out="$ROOT/dist-tizen/TickerTapeTV-$VERSION.wgt"
 cp "${built[0]}" "$out"
+chmod 0600 "$out"
 echo "signed $out ($(stat -c %s "$out") bytes, sha256 $(sha256sum "$out" | cut -c1-16))"
 # The CLI names the file after <name>; the TV's installer rejects a path
 # with a space in it, so install from a copy with the release name.

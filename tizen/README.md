@@ -1,50 +1,58 @@
 # Ticker Tape for Samsung TV
 
-A Tizen web widget built from `tv/`: a 1920×1080 market board for the remote.
-It shows the watchlist, a markets rail, wire headlines from the public mirror,
-and a scrolling tape, and opens a full-screen chart on OK. It reads the same
-public data path as the web app (the Cloudflare Worker and Yahoo's price
-stream) through the shared modules in `src/lib/`, and carries no account data.
+The web app itself, built for a Tizen TV and driven by the remote. Same
+source, same components, same stylesheet as the browser builds; the TV
+build changes how they are compiled and adds a remote layer on top.
 
 ## Remote
 
 | Key | Action |
 | --- | --- |
-| ▲ ▼ | Move through the watchlist or the markets rail |
-| ◀ ▶ | Switch between watchlist and markets; in a chart, change the range |
-| CH ▲ / CH ▼ | Page the watchlist |
-| OK | Open the chart; ▲ ▼ inside a chart step to the previous or next symbol |
-| Green | Add a symbol (opens the on-screen keyboard) |
-| Red | Remove the focused symbol, after confirmation |
-| Yellow | Sort by list order, top gainers or top losers |
-| Back | Close the chart or dialog; on the board, exit |
+| ◀ ▲ ▼ ▶ | Move focus to the nearest control in that direction |
+| OK | Open or press the focused control |
+| Back | Leave a text field, close the open menu or panel, go back a page; on the dashboard, exit |
+| Red | Search |
+| Blue | Dashboard |
+| CH ▲ / CH ▼ | Scroll the focused panel by a page |
+| ◀ ▶ on a drop-down | Step through its options |
 
-The watchlist and sort mode persist in widget storage on the TV.
+## What the TV build leaves out
 
-## Runtime target
+Surfaces that need a pointer or are mostly typing: AI chat, the command
+console and its key capture, the AI briefing and report cards, chart
+drawing tools, drag and resize handles, and CSV trade import. Links that
+would open a new tab open in the TV's web browser.
 
-2021 Samsung sets run Tizen 6.5, whose web engine is Chromium 85. The TV build
-therefore:
+## Build
 
-- uses plain CSS (`tv/tv.css`) instead of Tailwind v4, whose output requires
-  Chromium 111;
-- compiles to a single classic script with `target: 'chrome85'`
-  (`vite.tv.config.js`);
-- installs runtime shims for APIs newer than Chromium 85 that the shared data
-  layer calls, such as `AbortSignal.timeout` (`tv/lib/polyfills.js`).
+`vite.tv.config.js` builds `tv.html`, which loads `tv/main.jsx` and then the
+app's own `src/main.jsx`. It differs from the web build in four ways:
 
-Check new shared-module dependencies against Chromium 85 before the TV build
-imports them.
+- **One classic script.** A widget loads from its installed package, where
+  module scripts and lazy chunks are unreliable, so every dynamic import is
+  inlined and the output is an IIFE with relative URLs.
+- **Chromium 85.** 2021 Samsung sets run Tizen 6.5, whose engine is Chromium
+  85. Syntax is compiled to that target; `tv/lib/polyfills.js` supplies the
+  newer runtime APIs the app calls (`AbortSignal.timeout`, `Array.prototype.at`,
+  `Object.hasOwn`, `crypto.randomUUID`).
+- **A lowered stylesheet.** `tv/build/cssCompat.js` rewrites what Chromium 85
+  would drop from Tailwind v4's output: cascade layers (emulated with
+  specificity), `:where()`/`:is()`, `:focus-visible`, individual transform
+  properties, `inset`, and dynamic viewport units. The build fails if
+  anything unsupported remains outside an `@supports` or `@container` block.
+- **10-foot sizing.** `tv.html` declares a 1280px viewport, so the set lays
+  out the desktop app at 1.5 device pixels per CSS pixel.
 
-## Develop
+`VITE_TV=1` is defined for the build; `IS_TV_BUILD` in `src/lib/nav.js` gates
+the omissions above.
 
 ```sh
-npm run dev:tv      # http://localhost:5173, scaled to fit the window
 npm run build:tv    # dist-tv/
 ```
 
-In a desktop browser, arrow keys, Enter and Escape stand in for the remote,
-and `r`, `g`, `y` stand in for the colour keys.
+To check navigation without a TV, serve `dist-tv/` and open `tv.html` at a
+1280x720 window. Arrow keys and Enter behave as on the remote; dispatch a
+`keydown` with `keyCode` 10009 for Back and 403 for Red.
 
 ## Sign and install
 
@@ -56,15 +64,17 @@ Prerequisites, on a Windows host with WSL:
 - Developer Mode on the TV, with this computer's IP as the host.
 
 ```sh
-TIZEN_PROFILE=<profile> scripts/tizen_tv.sh                       # sign only
-TIZEN_PROFILE=<profile> TIZEN_TV=<tv-ip> scripts/tizen_tv.sh --install
+TIZEN_PROFILE=<profile> scripts/tizen_tv.sh                         # public data
+TIZEN_PROFILE=<profile> scripts/tizen_tv.sh --family <full sha>     # family books
+TIZEN_PROFILE=<profile> TIZEN_TV=<tv-ip> scripts/tizen_tv.sh --family <full sha> --install
 ```
 
-The script builds `dist-tv`, signs it in a Windows temp directory (the Windows
-signer rejects WSL paths), checks that the widget carries both signatures and
-the `config.xml` version, writes `dist-tizen/TickerTapeTV-<version>.wgt`, then
-installs and launches it. Raise `version` in `tizen/config.xml` for each
-release.
+`--family` builds the family edition, with the same release rules as
+`scripts/deploy_family.sh`: a clean checkout of the named commit, the full
+test suite, the sync capability read from its file and never passed on a
+command line, and the signed widget written with owner-only permissions.
+`--install` also launches the app on the TV. Raise `version` in
+`tizen/config.xml` for each release.
 
 ## Debug on the TV
 
