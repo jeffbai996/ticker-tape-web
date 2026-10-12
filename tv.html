@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <!-- The TV's web viewport is 1920 CSS px. Declaring 1280 makes the set
+       render the desktop layout at 1.5 device pixels per CSS pixel: text
+       readable at ten feet, charts drawn at full resolution. -->
+  <meta name="viewport" content="width=1280" />
+  <title>Ticker Tape</title>
+  <meta name="theme-color" content="#000000" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- Samsung's WebAPIs loader; the TV resolves $WEBAPIS. -->
+  <script src="$WEBAPIS/webapis/webapis.js"></script>
+  <script type="module" src="/tv/main.jsx"></script>
+</head>
+<body>
+  <div id="app"></div>
+</body>
+</html>

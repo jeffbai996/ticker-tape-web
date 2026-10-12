@@ -22,6 +22,17 @@ describe('TV runtime polyfills', () => {
     expect(target.AbortSignal.timeout).toBe(native)
   })
 
+  it('adds crypto.randomUUID as an RFC 4122 version 4 id where the runtime lacks it', () => {
+    const target = {
+      AbortSignal: { timeout() {} },
+      crypto: { getRandomValues: (bytes) => globalThis.crypto.getRandomValues(bytes) },
+    }
+    installPolyfills(target)
+    const id = target.crypto.randomUUID()
+    expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/)
+    expect(target.crypto.randomUUID()).not.toBe(id)
+  })
+
   it('adds Array.prototype.at and Object.hasOwn equivalents when missing', () => {
     const arrayProto = {}
     const target = {

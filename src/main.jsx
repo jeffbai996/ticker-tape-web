@@ -31,7 +31,11 @@ if (import.meta.env.VITE_FAMILY_BUILD === '1' || import.meta.env.VITE_PRIVATE ==
   import('./lib/familyResidue.js').then((m) => m.purgeFamilyResidue(globalThis.localStorage))
 }
 startWireWatchlistSync()
-// stale open tabs reload themselves on tab-return after a deploy
-startFreshnessWatch()
-// the shell launches from disk on the next open (add-to-home-screen works)
-registerServiceWorker()
+// The TV build runs from an installed package: there is no newer deploy to
+// reload into and no secure origin for a service worker.
+if (import.meta.env.VITE_TV !== '1') {
+  // stale open tabs reload themselves on tab-return after a deploy
+  startFreshnessWatch()
+  // the shell launches from disk on the next open (add-to-home-screen works)
+  registerServiceWorker()
+}

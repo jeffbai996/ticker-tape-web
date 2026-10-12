@@ -1,12 +1,13 @@
 import { defineConfig } from 'vite'
-import preact from '@preact/preset-vite'
 import web from './vite.config.js'
+import { downlevelCss, findUnsupported } from './tv/build/cssCompat.js'
 
-// The Samsung TV build. A Tizen widget loads index.html from its installed
-// package, where module scripts and crossorigin requests are unreliable, so
-// the bundle is one classic script with relative URLs. Chromium 85 is the
-// engine on Tizen 6.5 (2021 sets); the target downlevels syntax to it, and
-// tv/lib/polyfills.js covers the runtime APIs a target cannot.
+// The Samsung TV build of the web app. Same source, same plugins, same CSS;
+// only the output changes. A Tizen widget loads its page from the installed
+// package, where module scripts and lazy chunks are unreliable, so the
+// bundle is one classic script with relative URLs. Tizen 6.5 (2021 sets)
+// renders with Chromium 85: the target downlevels syntax, tv/lib/polyfills.js
+// covers missing runtime APIs, and Lightning CSS lowers the stylesheet.
 function classicScripts() {
   return {
     name: 'ttw-tv-classic-scripts',
@@ -19,21 +20,40 @@ function classicScripts() {
   }
 }
 
+/** Lower the finished stylesheet and refuse a build that still holds
+ *  something the TV would silently drop. */
+function chromium85Css() {
+  return {
+    name: 'ttw-tv-chromium85-css',
+    enforce: 'post',
+    generateBundle(_options, bundle) {
+      for (const asset of Object.values(bundle)) {
+        if (asset.type !== 'asset' || !asset.fileName.endsWith('.css')) continue
+        const lowered = downlevelCss(String(asset.source))
+        const left = findUnsupported(lowered)
+        if (left.length) {
+          this.error(`${asset.fileName} still uses ${left.join(', ')}, which Chromium 85 ignores`)
+        }
+        asset.source = lowered
+      }
+    },
+  }
+}
+
 export default defineConfig({
-  root: 'tv',
+  ...web,
+  // The service-worker stamp has no worker to stamp in this build.
+  plugins: [...web.plugins.filter((p) => p?.name !== 'ttw-sw-build-id'), classicScripts(), chromium85Css()],
   base: './',
-  plugins: [preact(), classicScripts()],
+  define: { 'import.meta.env.VITE_TV': JSON.stringify('1') },
   build: {
-    outDir: '../dist-tv',
+    outDir: 'dist-tv',
     emptyOutDir: true,
     target: 'chrome85',
     cssTarget: 'chrome85',
+    cssMinify: 'lightningcss',
     modulePreload: false,
-    // One stylesheet linked from the document, instead of CSS injected by the
-    // script after it runs.
     cssCodeSplit: false,
-    rollupOptions: { output: { format: 'iife' } },
+    rollupOptions: { input: 'tv.html', output: { format: 'iife' } },
   },
-  // `npm run dev:tv` reaches Yahoo through the web app's dev pass-through.
-  server: web.server,
 })
