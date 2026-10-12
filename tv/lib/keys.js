@@ -1,20 +1,17 @@
-// Samsung remote → app actions. Tizen delivers the D-pad, Enter and Back to a
-// web app unasked; the colour and channel keys arrive only after
+// Samsung remote → remote-layer actions. Tizen delivers the D-pad, Enter and
+// Back to a web app unasked; the colour and channel keys arrive only after
 // tvinputdevice.registerKey, which is why REGISTERED_KEYS lists just those.
-// Desktop keys stand in for each one so the board can be driven in a browser.
+// PageUp/PageDown stand in for the channel keys on a desktop keyboard. Escape
+// stays the app's own key: Back reuses it by dispatching one, so mapping it
+// here too would close two layers per press. Letters and Backspace are never
+// mapped; they belong to whatever text field has focus.
 
 const BY_CODE = new Map([
   [37, 'left'], [38, 'up'], [39, 'right'], [40, 'down'],
   [13, 'enter'],
-  [10009, 'back'], [27, 'back'], [8, 'back'],
+  [10009, 'back'],
   [403, 'red'], [404, 'green'], [405, 'yellow'], [406, 'blue'],
   [427, 'pageUp'], [428, 'pageDown'], [33, 'pageUp'], [34, 'pageDown'],
-])
-
-const BY_KEY = new Map([
-  ['Escape', 'back'], ['Backspace', 'back'],
-  ['r', 'red'], ['g', 'green'], ['y', 'yellow'], ['b', 'blue'],
-  ['PageUp', 'pageUp'], ['PageDown', 'pageDown'],
 ])
 
 export const REGISTERED_KEYS = [
@@ -22,7 +19,7 @@ export const REGISTERED_KEYS = [
   'ChannelUp', 'ChannelDown',
 ]
 
-/** The action a keydown means, or null when the app leaves it alone. */
+/** The action a keydown means, or null when the remote layer leaves it alone. */
 export function actionForKey(event) {
-  return BY_CODE.get(event.keyCode) || BY_KEY.get(event.key) || null
+  return BY_CODE.get(event.keyCode) || null
 }
