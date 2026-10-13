@@ -114,7 +114,7 @@ function useWireHeadlines() {
     if (!base) return
     let dead = false
     const pull = () => {
-      fetch(`${base.replace(/\/$/, '')}/api/events?limit=60&newest=1`,
+      fetch(`${base.replace(/\/$/, '')}/api/events?limit=60&newest=1&session_cap=0`,
             { signal: AbortSignal.timeout(8000) })
         .then((r) => r.json())
         .then((out) => { if (!dead) setRows(tapeworthy(out.events || [])) })
