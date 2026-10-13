@@ -1084,7 +1084,7 @@ export function Wire({ route }) {
             showZhSources
               ? 'bg-accent border-accent text-black'
               : 'border-line text-ink-2 hover:text-ink'
-          }`}>中文源{showZhSources ? ` · ${events.filter((ev) => eventLanguage(ev) === 'zh').length}` : ''}</button>
+          }`}>中文{showZhSources ? ` · ${events.filter((ev) => eventLanguage(ev) === 'zh').length}` : ''}</button>
         <span aria-hidden="true" class="h-4 w-px bg-line mx-0.5" />
         {[1, 2, 3].map((tier) => (
           <button key={tier} data-tier-filter={tier}
