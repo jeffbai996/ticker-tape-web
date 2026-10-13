@@ -80,7 +80,7 @@ function EventPanel({ symbol, date, epsEstimate }) {
   // only cost a request and then read as "wire unavailable".
     const base = wireServiceUrl()
     if (base) {
-      fetch(`${base.replace(/\/$/, '')}/api/events?symbols=${encodeURIComponent(symbol)}&limit=8&newest=1`,
+      fetch(`${base.replace(/\/$/, '')}/api/events?symbols=${encodeURIComponent(symbol)}&limit=8&newest=1&session_cap=0`,
             { signal: AbortSignal.timeout(8000) })
         .then((r) => r.json())
         .then((out) => { if (!dead) setWire(out.events || []) })
