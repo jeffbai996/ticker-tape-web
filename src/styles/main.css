@@ -296,8 +296,10 @@ html, body {
 /* Desktop density at 100% browser zoom approximates the former 110% view.
    CSS zoom already sizes the element's box in the viewport: reducing its
    width/height to 1/1.1 left a visible strip on the right and bottom. */
+:root { --app-zoom: 1; }
 @media (min-width: 1024px) {
-  #app { zoom: 1.1; }
+  :root { --app-zoom: 1.1; }
+  #app { zoom: var(--app-zoom); }
   #app > .h-dvh { height: 100%; }
 }
 
@@ -990,3 +992,8 @@ html[data-pointer-hover] .tape-hot *:not(.text-up):not(.text-down):not([data-tap
 .chat-token-effort { display:inline-flex; color:#b19055; }
 .chat-token-stat { display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }
 .chat-token-arrow { color:#73767e; }
+
+/* A chart mounts in a child that undoes the desktop zoom: lightweight-charts
+   reads the mouse in on-screen pixels and draws in its own, so under the zoom
+   its crosshair drifted right of the cursor (chartview.js chartHost). */
+.lwc-unzoom { position: absolute; inset: 0; zoom: calc(1 / var(--app-zoom)); }

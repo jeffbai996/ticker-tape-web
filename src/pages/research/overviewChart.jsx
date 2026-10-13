@@ -5,7 +5,7 @@ import { vwapSeries } from '../../lib/vwap.js'
 import { fmtPct, fmtVol } from '../../lib/format.js'
 import { tl } from '../../lib/i18n.js'
 import { emaSeries, macdSeries, trimToWindow, warmedBars } from '../../lib/chartmath.js'
-import { boundedTimeScale, marketTimeLabel } from '../../lib/chartview.js'
+import { boundedTimeScale, chartFont, chartHost, marketTimeLabel } from '../../lib/chartview.js'
 import { memoWindow, overlayAutoscale } from '../../lib/chartScale.js'
 import { attachVisiblePeak } from '../../lib/visiblePeak.js'
 
@@ -85,13 +85,13 @@ export function Candles({ bars, warmPad, intraday, timeAxis, ticks, tick, onTick
 
   useEffect(() => {
     if (!el.current) return
-    const chart = createChart(el.current, {
+    const chart = createChart(chartHost(el.current), {
       autoSize: true,
       layout: {
         background: { color: 'transparent' },
         textColor: '#79828d',
         fontFamily: "'IBM Plex Mono', monospace",
-        fontSize: 10,
+        fontSize: chartFont(10),
       },
       grid: {
         vertLines: { color: 'rgba(255,255,255,0.05)' },
