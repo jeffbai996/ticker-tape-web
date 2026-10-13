@@ -117,7 +117,7 @@ export function Settings() {
     </div>
     <label class="settings-row">
       {label('Chinese-language wire sources', '快讯中文来源')}
-      <Switch label={label('Chinese sources', '中文源')} checked={chinese} onChange={() => changeSources(!chinese)} />
+      <Switch label={label('Chinese sources', '中文')} checked={chinese} onChange={() => changeSources(!chinese)} />
     </label>
     <label class="settings-row">
       {label('Show wire sidebar', '显示快讯侧栏')}
