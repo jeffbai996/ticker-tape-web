@@ -35,7 +35,7 @@ describe('public demo surface parity', () => {
     expect(report).toContain('if (!IS_PRIVATE_BUILD || !wireUrl()) return')
     expect(report).not.toContain('if (!IS_PRIVATE_BUILD && !wireUrl()) return null')
     expect(report).toContain('data-ai-service-state={serviceAvailable ? \'ready\' : \'disabled\'}')
-    expect(report).toContain('disabled={!serviceAvailable || busy}')
+    expect(report).toContain('disabled={!serviceAvailable || busy || writerBusy}')
   })
 
   // The public build now defaults to the worker mirror rather than to nothing,
