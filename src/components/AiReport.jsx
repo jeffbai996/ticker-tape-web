@@ -104,23 +104,50 @@ function renderLine(line, i, parts) {
   }
 }
 
-/** One notch row: label plus mutually-exclusive pills. */
-function DialGroup({ label, options, value, onPick }) {
+// Each kind of control has its own look so the card reads at a glance: the
+// model is a filled dropdown, tiers (effort, length) are one segmented track,
+// tones are round chips, counter-case is a switch, copy and download are
+// outlined buttons, and generate is the only solid one.
+const DIAL_LABEL = 'font-anth text-[9px] uppercase tracking-wider text-muted'
+
+/** Ordered tiers in one track with the chosen segment lit. */
+function Segmented({ label, options, value, onPick }) {
   return (
-    <div class="flex flex-wrap items-center gap-1.5">
-      <span class="font-anth text-[9px] uppercase tracking-wider text-muted shrink-0">{label}</span>
-      <div class="flex flex-wrap gap-1">
-        {options.map((o) => (
-          <button key={o.key} onClick={() => onPick(o.key)}
-            class={`font-mono text-[10px] px-2 py-0.5 rounded border ${
-              value === o.key ? 'border-accent text-accent bg-accent-soft' : 'border-line text-muted hover:text-ink'}`}>
-            {tl(o.label)}
-          </button>
-        ))}
-      </div>
+    <span role="radiogroup" aria-label={label}
+      class="h-6 inline-flex w-fit items-center gap-0.5 rounded-md border border-line bg-surface-0 px-0.5">
+      {options.map((o) => (
+        <button key={o.key} type="button" role="radio" aria-checked={value === o.key}
+          onClick={() => onPick(o.key)}
+          class={`px-1.5 py-px rounded font-mono text-[10px] transition-colors ${
+            value === o.key ? 'bg-accent text-black font-bold' : 'text-muted hover:text-ink hover:bg-surface-3'}`}>
+          {tl(o.label)}
+        </button>
+      ))}
+    </span>
+  )
+}
+
+/** Tones are peers, not tiers: chips in whole rows of three, or one row of
+ *  six when the card is wide, so a lone chip never wraps onto its own line. */
+function ToneChips({ value, onPick }) {
+  return (
+    <div role="radiogroup" aria-label={tl('tone')}
+      class="grid w-fit grid-cols-3 @[32rem]:grid-cols-6 gap-1">
+      {TONES.map((o) => (
+        <button key={o.key} type="button" role="radio" aria-checked={value === o.key}
+          onClick={() => onPick(o.key)}
+          class={`h-6 px-2.5 rounded-full border font-mono text-[10px] ${
+            value === o.key ? 'border-accent text-accent bg-accent-soft' : 'border-line text-muted hover:text-ink hover:border-muted'}`}>
+          {tl(o.label)}
+        </button>
+      ))}
     </div>
   )
 }
+
+const ICON = { width: 11, height: 11, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
+  'stroke-width': 2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true' }
+const ACTION = 'h-6 inline-flex items-center gap-1 rounded border border-line px-1.5 font-anth text-[10px] font-semibold text-ink-2 hover:border-muted hover:text-ink hover:bg-surface-3'
 
 /** The collapsed control has to say what it's set to, or the dials are
  *  invisible state that silently changes every report. */
@@ -177,6 +204,12 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
       .catch(() => {})
   }, [])
 
+  // The wire marks a model busy while another program holds it (the local
+  // model has one slot); re-read that before the menu opens and before a run.
+  const refreshModels = () => fetchWireChatModels()
+    .then((live) => { setModels(live); return live })
+    .catch(() => null)
+
   // While generating, the panel used to push the whole page down line by
   // line — cap it and follow the tail inside its own scroller instead.
   useEffect(() => {
@@ -187,8 +220,14 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
     if (!serviceAvailable || busy) return
     setBusy(true)
     setError(null)
-    setText('')
     try {
+      if (wireUrl()) {
+        const live = await refreshModels()
+        if (live?.find((m) => m.key === writer)?.busy) {
+          throw new Error(tl('This model is busy with another request. Please pick another model or try again shortly.'))
+        }
+      }
+      setText('')
       const { system, prompt } = await buildPrompt()
       const shaped = applyAiPreferences(system, {
         dials, instructions, locale: getLocale(),
@@ -264,19 +303,17 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
     return () => removeEventListener('pointerdown', away)
   }, [modelMenu])
   const selectedWriter = models.find((model) => model.key === writer)
+  const writerBusy = !!selectedWriter?.busy
   const effortLevels = reportEfforts(selectedWriter)
   const hasDetails = !serviceAvailable || showDials || !!text || !!error
 
   return (
     <section data-ai-service-state={serviceAvailable ? 'ready' : 'disabled'}
       class="ai-report-card @container bg-surface-1 border border-line rounded-xl">
-      {/* one wrapping row of two control units: wide surfaces get a single
-          line; the narrow rail breaks into exactly two — model+effort, then
-          copy/dials/generate. justify-end right-aligns overflow rows,
-          mr-auto keeps the title left (Jeff 2026-08-09: "model picker and
-          effort on same row; the others on the row below") */}
-      <header class={`ai-report-head flex flex-wrap items-center justify-end gap-x-1.5 gap-y-1.5 px-3 py-2 bg-surface-2 ${hasDetails ? 'border-b border-line-2 rounded-t-xl' : 'rounded-xl'}`}>
-        <div class="min-w-0 mr-auto flex items-center gap-2">
+      {/* Rows come from .ai-report-head in main.css: narrow puts the title
+          beside model+effort and the actions below; wide is one row. */}
+      <header class={`ai-report-head items-center gap-x-1.5 gap-y-1.5 px-3 py-2 bg-surface-2 ${hasDetails ? 'border-b border-line-2 rounded-t-xl' : 'rounded-xl'}`}>
+        <div class="min-w-0 flex items-center gap-2">
           <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase flex items-center gap-1.5 whitespace-nowrap shrink-0"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3m0 12v3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1M3 12h3m12 0h3M5.6 18.4l2.1-2.1m8.6-8.6 2.1-2.1"/><circle cx="12" cy="12" r="3.5"/></svg>{tl(label)}</h2>
           {hint && <span class="font-mono text-[9.5px] text-muted normal-case tracking-normal truncate min-w-0 max-sm:hidden">{hint}</span>}
         </div>
@@ -291,16 +328,23 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
             // system size no matter what the CSS says — the picker rendered
             // huge on the iPad three fixes in a row (Jeff 2026-08-21).
             <span class="relative" data-model-menu>
-              <button type="button" onClick={() => setModelMenu((v) => !v)}
-                aria-label={tl('Report model')} title={tl('Report model')}
-                class="h-6 inline-flex items-center gap-1 rounded border border-line bg-surface-3 px-1.5 font-anth text-[10px] font-semibold text-ink cursor-pointer hover:border-accent/50">
-                <span class="max-w-[130px] truncate">{reportModelLabel(models.find((m) => m.key === writer)?.label || writer)}</span>
+              <button type="button"
+                onClick={() => {
+                  const open = !modelMenu
+                  setModelMenu(open)
+                  if (open) refreshModels()
+                }}
+                aria-label={tl('Report model')} title={writerBusy ? tl('Busy with another request') : tl('Report model')}
+                class="h-6 inline-flex items-center gap-1 rounded-md bg-surface-3 px-2 font-anth text-[10px] font-semibold text-ink cursor-pointer hover:bg-line">
+                <span class={`max-w-[130px] truncate ${writerBusy ? 'text-muted' : ''}`}>{reportModelLabel(selectedWriter?.label || writer)}</span>
+                {writerBusy && <span class="font-mono text-[9px] font-normal text-muted">{tl('busy')}</span>}
                 <span aria-hidden="true" class="text-[7px] text-muted">▼</span>
               </button>
               {modelMenu && (
-                <div class="absolute right-0 top-full z-40 mt-1 min-w-[9rem] overflow-hidden rounded-lg border border-line bg-surface-1/95 backdrop-blur shadow-[0_8px_24px_rgba(0,0,0,0.6)]">
+                <div class="absolute right-0 top-full z-40 mt-1 min-w-[10rem] overflow-hidden rounded-lg border border-line bg-surface-1/95 backdrop-blur shadow-[0_8px_24px_rgba(0,0,0,0.6)]">
                   {models.map((m) => (
-                    <button key={m.key} type="button"
+                    <button key={m.key} type="button" disabled={!!m.busy}
+                      title={m.busy ? tl('Busy with another request') : undefined}
                       onClick={() => {
                         const nextEffort = clampEffort(m, effort)
                         setWriter(m.key)
@@ -309,9 +353,11 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
                         if (nextEffort) localStorage.setItem(EFFORT_KEY, nextEffort)
                         setModelMenu(false)
                       }}
-                      class={`block w-full px-2.5 py-1.5 text-left font-anth text-[10px] font-semibold border-t border-line/60 first:border-0 ${
-                        m.key === writer ? 'text-accent bg-accent-soft' : 'text-ink-2 hover:bg-accent-soft hover:text-ink'}`}>
-                      {reportModelLabel(m.label)}
+                      class={`flex w-full items-center justify-between gap-3 px-2.5 py-1.5 text-left font-anth text-[10px] font-semibold border-t border-line/60 first:border-0 ${
+                        m.busy ? 'text-muted/50 cursor-not-allowed'
+                          : m.key === writer ? 'text-accent bg-accent-soft' : 'text-ink-2 hover:bg-accent-soft hover:text-ink'}`}>
+                      <span>{reportModelLabel(m.label)}</span>
+                      {m.busy && <span class="font-mono text-[9px] font-normal">{tl('busy')}</span>}
                     </button>
                   ))}
                 </div>
@@ -319,7 +365,7 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
             </span>
           )}
           {effortLevels.length > 0 && (
-            <span class="h-6 flex items-center gap-0.5 bg-surface-2 border border-line rounded-md px-0.5"
+            <span class="h-6 flex items-center gap-0.5 bg-surface-0 border border-line rounded-md px-0.5"
                   title={tl('Thinking effort')}>
               {effortLevels.map((level) => (
                 <button key={level} type="button"
@@ -339,43 +385,39 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
               ))}
             </span>
           )}
+          {/* fixed effort is a fact about the model, not a control — plain
+              text, so it does not read as one more button */}
           {selectedWriter?.fixed_effort && (
-            <span class="h-6 flex items-center font-mono text-[9px] text-muted border border-line rounded-md px-1.5"
-                  title={tl('Fixed model effort')}>
+            <span class="font-mono text-[9px] text-muted" title={tl('Fixed model effort')}>
               {selectedWriter.fixed_effort}
             </span>
           )}
         </div>
         <div class="flex items-center gap-1.5">
-          {text && !busy && (
-            <>
-              <button onClick={copy} class="font-mono text-[10px] text-muted hover:text-ink">
-                {copied ? '✓' : tl('copy')}
-              </button>
-              <button onClick={download} class="font-mono text-[10px] text-muted hover:text-ink">.md</button>
-            </>
-          )}
           {/* the dials button wears its state, not its name — the sliders
               glyph plus the current summary; the full label lives in the
-              tooltip and in the panel it opens */}
+              tooltip. No border: it opens a panel, it is not a choice. */}
           <button
+            type="button"
             onClick={() => setShowDials((v) => !v)}
             disabled={!serviceAvailable}
             aria-expanded={showDials}
             aria-label={tl('Style & analysis')}
             title={tl('Style & analysis')}
-            class={`h-6 flex items-center gap-1 font-anth text-[10px] px-1.5 rounded border whitespace-nowrap disabled:opacity-45 disabled:cursor-not-allowed ${
-              showDials ? 'border-accent text-accent' : 'border-line text-muted hover:text-ink'}`}
+            class={`h-6 flex items-center gap-1 px-1 rounded font-mono text-[10px] whitespace-nowrap disabled:opacity-45 disabled:cursor-not-allowed ${
+              showDials ? 'text-accent' : 'text-muted hover:text-ink'}`}
           >
-            <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h10m4 0h2M4 12h4m4 0h8M4 18h13m3 0h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="19" cy="18" r="2"/></svg>
-            <span class="font-mono text-[9px] opacity-80 truncate max-w-32">{dialSummary(dials)}</span>
+            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h10m4 0h2M4 12h4m4 0h8M4 18h13m3 0h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="19" cy="18" r="2"/></svg>
+            <span class="truncate max-w-32">{dialSummary(dials)}</span>
           </button>
           {/* label goes invisible (not removed) while busy so the button
               keeps its exact width; the spinner sits in the reserved box */}
           <button
+            type="button"
             onClick={generate}
-            disabled={!serviceAvailable || busy}
-            class="relative h-6 inline-flex items-center font-mono text-[10px] px-2 rounded border border-accent text-accent bg-accent-soft hover:bg-accent hover:text-black disabled:opacity-40"
+            disabled={!serviceAvailable || busy || writerBusy}
+            title={writerBusy ? tl('Busy with another request') : undefined}
+            class="relative h-6 inline-flex items-center font-anth text-[10px] font-bold px-2.5 rounded bg-accent text-black hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <span class={busy ? 'invisible' : ''}>{text ? tl('regenerate') : tl('generate')}</span>
             {busy && (
@@ -393,43 +435,56 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
         </div>
       )}
       {showDials && (
-        <div class="flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2.5 border-b border-line-2 bg-surface-2/60">
-          <div class="basis-full flex items-baseline gap-2">
-            <span class="font-anth text-[11px] font-semibold text-ink">{tl('Style & analysis')}</span>
-            <span class="font-anth text-[10px] text-muted">{tl('Controls the shape and point of view of this generation.')}</span>
-          </div>
-          <DialGroup label={tl('length')} options={LENGTHS} value={dials.length}
+        <div class="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-2 px-3 py-2.5 border-b border-line-2 bg-surface-2/60">
+          <span class={DIAL_LABEL}>{tl('length')}</span>
+          <Segmented label={tl('length')} options={LENGTHS} value={dials.length}
             onPick={(key) => setDials(saveDials({ ...dials, length: key }))} />
-          <DialGroup label={tl('tone')} options={TONES} value={dials.tone}
+          <span class={DIAL_LABEL}>{tl('tone')}</span>
+          <ToneChips value={dials.tone}
             onPick={(key) => setDials(saveDials({ ...dials, tone: key }))} />
-          <button
+          <button type="button" role="switch" aria-checked={dials.disconfirm}
             onClick={() => setDials(saveDials({ ...dials, disconfirm: !dials.disconfirm }))}
-            class={`font-mono text-[10px] px-2 py-0.5 rounded border ${
-              dials.disconfirm ? 'border-accent-2 text-accent-2 bg-accent-2-soft' : 'border-line text-muted hover:text-ink'}`}
-          >
+            class="col-start-2 w-fit inline-flex items-center gap-2 font-anth text-[11px] text-ink-2 hover:text-ink">
+            <span class={`relative h-3.5 w-6 shrink-0 rounded-full transition-colors ${
+              dials.disconfirm ? 'bg-accent-2' : 'bg-surface-3 ring-1 ring-inset ring-line'}`}>
+              <span class={`absolute top-0.5 h-2.5 w-2.5 rounded-full transition-[left] ${
+                dials.disconfirm ? 'left-3 bg-black' : 'left-0.5 bg-muted'}`} />
+            </span>
             {tl('include counter-case')}
           </button>
-          <label class="basis-full mt-0.5">
-            <span class="block mb-1 font-anth text-[9px] uppercase tracking-wider text-muted">
-              {tl('Custom instructions')}
-            </span>
-            <textarea value={instructions}
-              onInput={(event) => {
-                const next = event.currentTarget.value
-                setInstructions(next)
-                localStorage.setItem(INSTRUCTIONS_KEY, next)
-              }}
-              rows={2}
-              placeholder={tl('e.g. focus on rates, compare against consensus, flag stale inputs')}
-              class="block w-full resize-y rounded border border-line bg-surface-0 px-2.5 py-1.5 font-anth text-[11px] leading-relaxed text-ink outline-none placeholder:text-muted/70 focus:border-accent/60"
-            />
-          </label>
+          <textarea value={instructions}
+            onInput={(event) => {
+              const next = event.currentTarget.value
+              setInstructions(next)
+              localStorage.setItem(INSTRUCTIONS_KEY, next)
+            }}
+            rows={1}
+            aria-label={tl('Custom instructions')}
+            placeholder={tl('Custom instructions')}
+            class="col-span-2 block w-full min-h-7 max-h-40 resize-y [field-sizing:content] rounded border border-line bg-surface-0 px-2.5 py-1 font-anth text-[11px] leading-relaxed text-ink outline-none placeholder:text-muted/70 focus:border-accent/60"
+          />
         </div>
       )}
       {(text || error) && (
         <div ref={bodyRef} class="px-3 py-2 font-anth text-[13px] leading-relaxed select-text text-ink-2 max-h-[45vh] overflow-y-auto">
           {error ? <span class="font-mono text-[11px] text-down">{error}</span> : <MdLite text={text} />}
           {busy && <span class="text-accent">▌</span>}
+        </div>
+      )}
+      {/* the actions on a finished report sit with the report, not in the
+          header row, so that row never has to fit five controls */}
+      {text && !busy && !error && (
+        <div class="flex items-center justify-end gap-1.5 px-3 py-1.5 border-t border-line/60">
+          <button type="button" onClick={copy} class={ACTION}>
+            {copied
+              ? <svg {...ICON}><path d="m5 12 5 5 9-10" /></svg>
+              : <svg {...ICON}><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V5a2 2 0 0 1 2-2h8" /></svg>}
+            {copied ? tl('copied') : tl('copy')}
+          </button>
+          <button type="button" onClick={download} class={ACTION}>
+            <svg {...ICON}><path d="M12 4v11m-4-4 4 4 4-4M5 20h14" /></svg>
+            .md
+          </button>
         </div>
       )}
     </section>
