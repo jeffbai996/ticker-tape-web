@@ -86,8 +86,12 @@ export function MdLite({ text }) {
 
 function renderLine(line, i, parts) {
   {
-    const h = line.match(/^#{1,4}\s+(.*)/)
-    if (h) return <div key={i} class="font-anth font-bold text-accent text-[12.5px] pt-2 pb-0.5">{parts(h[1])}</div>
+    // Local models title their sections with a bold-only line rather than a
+    // hash heading; rendered as inline bold, the memo had no visible sections.
+    const h = line.match(/^#{1,6}\s+(.*)/) || line.match(/^\s*\*\*([^*]+)\*\*(:?)\s*$/)
+    if (h) {
+      return <div key={i} class="font-anth font-bold text-accent text-[12.5px] pt-2 first:pt-0 pb-0.5">{parts(h[1] + (h[2] || ''))}</div>
+    }
     if (/^\s*[-*]\s+/.test(line)) {
       return <div key={i} class="pl-4 relative"><span class="absolute left-1 text-muted">·</span>{parts(line.replace(/^\s*[-*]\s+/, ''))}</div>
     }
