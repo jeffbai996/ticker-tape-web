@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { createChart, LineSeries } from 'lightweight-charts'
-import { boundedTimeScale } from '../lib/chartview.js'
+import { boundedTimeScale, chartFont, chartHost } from '../lib/chartview.js'
 import { useQuotes } from '../hooks.js'
 import { fetchHistory } from '../lib/history.js'
 import { fetchFundamentals } from '../lib/fundamentals.js'
@@ -183,13 +183,13 @@ function Compare({ symbols, hist }) {
 
   useEffect(() => {
     if (!el.current) return
-    const chart = createChart(el.current, {
+    const chart = createChart(chartHost(el.current), {
       autoSize: true,
       layout: {
         background: { color: 'transparent' },
         textColor: '#79828d',
         fontFamily: "'IBM Plex Mono', monospace",
-        fontSize: 10,
+        fontSize: chartFont(10),
       },
       grid: {
         vertLines: { color: 'rgba(255,255,255,0.05)' },

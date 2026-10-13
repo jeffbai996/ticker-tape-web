@@ -122,3 +122,28 @@ export function trendlinePrimitive({ points, color = '#22d3ee', width = 1.5 } = 
     },
   }
 }
+
+// The desktop layout zooms #app by --app-zoom (main.css). lightweight-charts
+// reads the mouse as clientX - box.left, both on-screen pixels, but draws in
+// its own CSS pixels, so under the zoom the crosshair landed at the cursor
+// times the zoom: an inch right of the cursor on the right of a wide chart
+// (2026-10-13). A chart mounts in a child that undoes the zoom (.lwc-unzoom),
+// and its font is scaled back up so the text looks as it did.
+export function chartHost(el) {
+  let inner = [...el.children].find((child) => child.classList.contains('lwc-unzoom'))
+  if (!inner) {
+    if (getComputedStyle(el).position === 'static') el.style.position = 'relative'
+    inner = document.createElement('div')
+    inner.className = 'lwc-unzoom'
+    el.appendChild(inner)
+  }
+  return inner
+}
+
+export function appZoom() {
+  if (typeof document === 'undefined') return 1
+  const value = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--app-zoom'))
+  return value > 0 ? value : 1
+}
+
+export const chartFont = (px) => Math.round(px * appZoom() * 10) / 10

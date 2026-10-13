@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'preact/hooks'
 import { shortAccountLabel } from '../lib/accounts.js'
-import { boundedTimeScale } from '../lib/chartview.js'
+import { boundedTimeScale, chartFont, chartHost } from '../lib/chartview.js'
 import { useEscape, useQuotes } from '../hooks.js'
 import {
   DEMO_POSITIONS, DEMO_CASH, DEMO_BETAS, DEMO_ACCOUNT_ID, DEMO_MARGIN_RATE,
@@ -729,13 +729,13 @@ function Timeline({ priceMap, positions, accountId }) {
   // the wire build.
   const draw = (host, { createChart, AreaSeries }) => {
     if (!real && s.nlv == null) return undefined
-    const chart = createChart(host, {
+    const chart = createChart(chartHost(host), {
       autoSize: true,
       layout: {
         background: { color: 'transparent' },
         textColor: '#79828d',
         fontFamily: "'IBM Plex Mono', monospace",
-        fontSize: 10,
+        fontSize: chartFont(10),
       },
       grid: {
         vertLines: { color: 'rgba(255,255,255,0.05)' },

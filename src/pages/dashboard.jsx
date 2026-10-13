@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
-import { boundedTimeScale } from '../lib/chartview.js'
+import { boundedTimeScale, chartFont, chartHost } from '../lib/chartview.js'
 import {
   useFocusedSymbols, useInViewSymbols, useNamedWatchlists, useQuotes, useWatchlist, useZhNames,
 } from '../hooks.js'
@@ -816,9 +816,9 @@ function MiniChart({ symbol }) {
   // Runs once the chart chunk is on the page; identical to the effect this was
   // before the library moved behind ChartMount, teardown included.
   const draw = (host, { createChart, AreaSeries }) => {
-    const chart = createChart(host, {
+    const chart = createChart(chartHost(host), {
       autoSize: true,
-      layout: { background: { color: 'transparent' }, textColor: '#79828d', fontSize: 9, fontFamily: "'IBM Plex Mono', monospace" },
+      layout: { background: { color: 'transparent' }, textColor: '#79828d', fontSize: chartFont(9), fontFamily: "'IBM Plex Mono', monospace" },
       grid: { vertLines: { visible: false }, horzLines: { color: 'rgba(255,255,255,0.04)' } },
       rightPriceScale: { borderVisible: false },
       timeScale: { ...boundedTimeScale(false), borderVisible: false, visible: false },

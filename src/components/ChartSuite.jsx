@@ -13,7 +13,7 @@ import { memoWindow, overlayAutoscale } from '../lib/chartScale.js'
 import { smaSeries, emaSeries, rsiSeries, macdSeries, bollingerSeries,
          normalizedSeries } from '../lib/chartmath.js'
 import { vwapSeries } from '../lib/vwap.js'
-import { boundedTimeScale, marketTimeLabel, trendlinePrimitive, projectSegment } from '../lib/chartview.js'
+import { boundedTimeScale, chartFont, chartHost, marketTimeLabel, trendlinePrimitive, projectSegment } from '../lib/chartview.js'
 import { nearestDrawing } from '../lib/chartmath.js'
 import { loadDrawings, addDrawing, removeDrawing, clearDrawings } from '../lib/chartDrawings.js'
 import { fmtPrice } from '../lib/format.js'
@@ -176,8 +176,9 @@ export function ChartSuite({ symbol }) {
 
   useEffect(() => {
     if (!el.current || !bars || !bars.length) return
-    const chart = createChart(el.current, {
+    const chart = createChart(chartHost(el.current), {
       ...CHART_OPTS,
+      layout: { ...CHART_OPTS.layout, fontSize: chartFont(CHART_OPTS.layout.fontSize) },
       localization: timeAxis ? { timeFormatter: marketTimeLabel } : undefined,
       timeScale: boundedTimeScale(timeAxis),
       rightPriceScale: {
