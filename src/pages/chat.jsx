@@ -714,7 +714,7 @@ export function Chat() {
     })
   }
   const [model, setModel] = useState(
-    localStorage.getItem(modelStorageKey) || (onWire ? 'agy-flash' : 'flash'),
+    localStorage.getItem(modelStorageKey) || (onWire ? 'agy-argon' : 'argon'),
   )
   const [effort, setEffort] = useState(localStorage.getItem('chat_effort') || 'auto')
   const [spend, setSpend] = useState(null)
@@ -863,7 +863,7 @@ export function Chat() {
       setModels(liveModels)
       const current = liveModels.find((candidate) => candidate.key === model)
       if (!current) {
-        const fallback = liveModels[0]?.key || (onWire ? 'agy-flash' : 'flash')
+        const fallback = liveModels[0]?.key || (onWire ? 'agy-argon' : 'argon')
         setModel(fallback)
         localStorage.setItem(modelStorageKey, fallback)
         const info = liveModels[0]
