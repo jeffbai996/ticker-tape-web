@@ -163,10 +163,20 @@ html[data-pointer-hover] .rail-grab:is(:hover, :active) > span {
 button, a, select, summary, [role="button"], .cursor-pointer,
 .tui-row, .wl-row, .rail-row, .book-card, .terminal-sidebar * { transition: none !important; }
 
-/* App chrome is not selectable; content areas opt back in per component. */
-body {
+/* Page-level Tailwind selection utilities must not turn controls into text
+   targets. Keep the terminal inert even when browser caret browsing is on. */
+body, body * {
   -webkit-user-select: none;
   user-select: none;
+  caret-color: transparent;
+}
+
+/* Editing still needs native selection and a visible insertion point. */
+body input, body textarea,
+body [contenteditable="true"], body [contenteditable="true"] * {
+  -webkit-user-select: text;
+  user-select: text;
+  caret-color: auto;
 }
 
 /* Source quality is a tiny stepped signal — data, not an accidental kebab
