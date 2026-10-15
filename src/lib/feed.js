@@ -234,6 +234,23 @@ function streamSymbols(symbols) {
   liveStream.setSymbols(symbols)
 }
 
+/** Day quote derived from the chart meta + daily closes when the v7 batch has
+ *  not landed (or failed). A missing previous close means the day change is
+ *  UNKNOWN, so `change`/`pct` stay null — the row keeps its "—" ghost. The old
+ *  code cached a real flat 0.00%, which read as "no move" on a halted or
+ *  delisted name (A31 F5). */
+export function chartDerivedQuote(meta = {}, closes = []) {
+  const price = meta.regularMarketPrice ?? closes[closes.length - 1] ?? 0
+  const prevClose = meta.previousClose ?? (closes.length >= 2 ? closes[closes.length - 2] : null)
+  const change = prevClose != null && price ? price - prevClose : null
+  return {
+    price,
+    change,
+    pct: change != null && prevClose ? (change / prevClose) * 100 : null,
+    prevClose,
+  }
+}
+
 async function fetchSymbol(symbol) {
   // One 1Y daily chart per symbol feeds the histogram spark AND the badge
   // row (RSI / SMA flags / vol ratio / off-high / RS). The day quote itself
@@ -266,9 +283,7 @@ async function fetchSymbol(symbol) {
     // Batch hasn't landed (or failed): derive an honest day quote from the
     // daily series — last close vs the one before it.
     const meta = result.meta || {}
-    const price = meta.regularMarketPrice ?? closes[closes.length - 1] ?? 0
-    const prev = meta.previousClose ?? (closes.length >= 2 ? closes[closes.length - 2] : null)
-    const change = prev != null && price ? price - prev : 0
+    const { price, change, pct, prevClose } = chartDerivedQuote(meta, closes)
     quote = {
       symbol,
       // longName first: Yahoo truncates shortName at 31 chars, so TSM read
@@ -277,8 +292,8 @@ async function fetchSymbol(symbol) {
       name: meta.longName || meta.shortName || '',
       price,
       change,
-      pct: prev ? (change / prev) * 100 : 0,
-      prevClose: prev ?? null,
+      pct,
+      prevClose,
       dayHigh: meta.regularMarketDayHigh ?? null,
       dayLow: meta.regularMarketDayLow ?? null,
       volume: meta.regularMarketVolume ?? null,
