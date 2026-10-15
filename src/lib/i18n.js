@@ -708,6 +708,7 @@ const LABELS = {
   'nothing on the docket': '日程为空', prints: '次财报', vs: '对比',
   edit: '编辑', close: '关闭', 'flat tape': '盘面平静', 'nothing stretched': '暂无极端信号',
   'clear runway': '近期无重大事件', 'pulling the story…': '正在获取正文…',
+  'source did not provide text': '源站未提供正文',
   "source wouldn't give up its text —": '源站未提供正文 —',
   'open the page ↗': '打开页面 ↗',
   'full text at the source ↗': '完整正文见源站 ↗',

@@ -184,12 +184,8 @@ function ReadBody({ ev }) {
   if (state.status === 'empty') {
     return (
       <p class="text-[10.5px] font-mono text-muted pt-1">
-        {state.error === 'reader limit reached' ? (getLocale() === 'zh' ? '阅读请求已达限额。' : 'Reader request limit reached.') : tl("source wouldn't give up its text —")}{' '}
-        <button class="text-accent mr-2" onClick={() => setAttempt((n) => n + 1)}>{tl('retry')}</button>
-        <a href={ev.url} target="_blank" rel="noopener"
-           class="text-accent hover:underline" onClick={(e) => e.stopPropagation()}>
-          {tl('open the page ↗')}
-        </a>
+        {state.error === 'reader limit reached' ? (getLocale() === 'zh' ? '阅读请求已达限额。' : 'Reader request limit reached.') : tl('source did not provide text')}{' '}
+        <button class="text-accent" onClick={() => setAttempt((n) => n + 1)}>{tl('retry')}</button>
       </p>
     )
   }
