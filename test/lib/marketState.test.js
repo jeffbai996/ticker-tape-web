@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { marketState, etParts, isOvernight, rollCashSession, HOLIDAYS } from '../../src/lib/marketState.js'
+import { marketState, etParts, isOvernight, rollCashSession, nextSessionInfo, HOLIDAYS } from '../../src/lib/marketState.js'
 
 // All fixtures pin the UTC offset explicitly (EDT −4 in summer, EST −5 in
 // winter) so the tests are independent of the runner's local timezone.
@@ -96,5 +96,51 @@ describe('rollCashSession', () => {
     expect(rollCashSession(prior, new Date('2026-08-10T09:29:59-04:00'))).toBe(prior)
     expect(rollCashSession(prior, new Date('2026-08-10T09:30:00-04:00'))).toBe('2026-08-10')
     expect(rollCashSession('2026-08-10', new Date('2026-08-10T20:30:00-04:00'))).toBe('2026-08-10')
+  })
+})
+
+describe('nextSessionInfo — the chip only promises sessions that will happen (A31 F2)', () => {
+  const at = (iso) => new Date(iso)
+
+  it('counts down to an edge that lands on the same trading day', () => {
+    // Wed 06:00 ET: pre-market opens today at 04:00? no — 06:00 is past it;
+    // the next edge is the 09:30 open, 3h 30m away.
+    expect(nextSessionInfo(at('2026-10-14T06:00:00-04:00')))
+      .toEqual({ event: 'session opens in {t}', minutes: 210 })
+    // Wed 17:00 ET: after-hours ends today at 20:00.
+    expect(nextSessionInfo(at('2026-10-14T17:00:00-04:00')))
+      .toEqual({ event: 'after-hours ends in {t}', minutes: 180 })
+  })
+
+  it('names the next real session (day + pre-market time) on weeknights after 20:00', () => {
+    // Wed 21:00 ET → Thursday, not "monday" (the old walk said monday).
+    expect(nextSessionInfo(at('2026-10-14T21:00:00-04:00')))
+      .toEqual({ day: 'Thursday', time: '04:00' })
+    // Thu 23:30 ET → Friday.
+    expect(nextSessionInfo(at('2026-10-15T23:30:00-04:00')))
+      .toEqual({ day: 'Friday', time: '04:00' })
+  })
+
+  it('never promises a session on weekends — the old walk advertised one', () => {
+    // Sat 05:00 ET (old tooltip: "session opens in 4h 30m").
+    expect(nextSessionInfo(at('2026-10-17T09:00:00Z')))
+      .toEqual({ day: 'Monday', time: '04:00' })
+    // Sun 10:00 ET (old tooltip: "session closes in 6h 0m").
+    expect(nextSessionInfo(at('2026-10-18T14:00:00Z')))
+      .toEqual({ day: 'Monday', time: '04:00' })
+  })
+
+  it('skips exchange holidays to the next trading day', () => {
+    // Fri 2026-07-03 is observed Independence Day; 21:00 ET → Monday Jul 6.
+    expect(nextSessionInfo(at('2026-07-03T21:00:00-04:00')))
+      .toEqual({ day: 'Monday', time: '04:00' })
+    // Sat before the holiday: Fri Jul 3 is closed, so Monday again.
+    expect(nextSessionInfo(at('2026-07-04T12:00:00-04:00')))
+      .toEqual({ day: 'Monday', time: '04:00' })
+  })
+
+  it('keeps same-day countdowns on a holiday-free weekday morning', () => {
+    expect(nextSessionInfo(at('2026-10-19T01:30:00-04:00')))
+      .toEqual({ event: 'pre-market opens in {t}', minutes: 150 })
   })
 })
