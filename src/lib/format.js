@@ -11,7 +11,10 @@ const kNotation = (abs) =>
 
 export function fmtPrice(v) {
   if (v == null || Number.isNaN(v)) return DASH
-  if (Math.abs(v) >= BIG_PRICE) return kNotation(Math.abs(v))
+  // The K-notation branch was added for KRW/JPY six-figure prices and dropped
+  // the sign on the way in — −1,500,000 read as "1500k", identical to +1.5M.
+  // Every sibling formatter (fmtPct, fmtChange) keeps its sign (A31 F3).
+  if (Math.abs(v) >= BIG_PRICE) return `${v < 0 ? '-' : ''}${kNotation(Math.abs(v))}`
   return v.toFixed(2)
 }
 

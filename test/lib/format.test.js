@@ -162,6 +162,15 @@ describe('KRW-scale prices', () => {
     expect(fmtPrice(54349.12)).toBe('54349.12')
     expect(fmtPrice(29537.25)).toBe('29537.25')
   })
+
+  it('fmtPrice keeps the minus sign at K scale (A31 F3)', () => {
+    // −1,500,000 and +1,500,000 must not render identically — the sibling
+    // formatters (fmtPct, fmtChange) all keep their sign.
+    expect(fmtPrice(-1_500_000)).toBe('-1500k')
+    expect(fmtPrice(-100_000)).toBe('-100k')
+    expect(fmtPrice(-99_999.5)).toBe('-99999.50')
+    expect(fmtPrice(1_500_000)).toBe('1500k')
+  })
   it('fmtChange keeps its sign in K-notation at scale', () => {
     expect(fmtChange(-173000)).toBe('-173k')
     // 4-digit-plus moves: decimals are noise, the grouped integer reads
