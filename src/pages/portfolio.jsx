@@ -7,6 +7,7 @@ import {
   positionRows, accountSummary, mergeLegs, sizeForWeight, carryAt, stressGrid, nlvWalk,
 } from '../lib/demo.js'
 import { fmtPrice, fmtPct, fmtPctPlain, fmtChange, fmtRatio } from '../lib/format.js'
+import { cushionCls, cushionBarCls } from '../lib/cushion.js'
 import { getLocale, tl, thesisTerm, t as tt } from '../lib/i18n.js'
 import { FlashPrice } from '../components/Fig.jsx'
 import { fmtCcyParts, fxSymbolsFor, ratesFromQuotes } from '../lib/fx.js'
@@ -148,10 +149,10 @@ function BookSummary({ rows, stats, margin, fallbackNlv, book, broker }) {
             <div>
               <div class="flex justify-between font-anth text-[8.5px] uppercase tracking-wider text-muted pb-1">
                 <span>{tl('Maintenance')}</span>
-                <span class={cushion < 8 ? 'text-down' : 'text-up'}>{tl('Cushion')} {fmtPctPlain(cushion)}</span>
+                <span class={cushionCls(cushion)}>{tl('Cushion')} {fmtPctPlain(cushion)}</span>
               </div>
               <div class="relative h-2 rounded-full bg-down/25 overflow-hidden">
-                <div class={`absolute inset-y-0 right-0 rounded-full ${cushion < 8 ? 'bg-down' : 'bg-up/70'}`}
+                <div class={`absolute inset-y-0 right-0 rounded-full ${cushionBarCls(cushion)}`}
                   style={{ width: `${(runway * 100).toFixed(1)}%` }} />
               </div>
             </div>
