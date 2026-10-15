@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { useQuotes } from '../hooks.js'
 import { INDICES } from '../lib/symbols.js'
-import { marketState } from '../lib/marketState.js'
+import { marketState, nextSessionInfo } from '../lib/marketState.js'
 import { paintRollingTime, stopRollingTime, CLOCK_ZONES } from '../lib/rollclock.js'
 import { startVisibleClock } from '../lib/idleClock.js'
 import { hrefFor } from '../lib/route.js'
@@ -235,20 +235,16 @@ export function StatusBar() {
   // AH, to match the session-state family OPEN/CLOSED/POST/PRE (Jeff 2026-08-06)
   const chipLabel = holiday ? 'HOLIDAY' : state === 'pre' ? 'PRE' : state === 'post' ? 'POST' : state.toUpperCase()
   const compactChipLabel = (getLocale() === 'zh' ? COMPACT_STATE_LABEL_ZH : COMPACT_STATE_LABEL)[holiday ? 'holiday' : state]
-  // "session closes in 2h 14m" on hover — ET boundary walk, DST via Intl
-  const etParts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: 'numeric', hour12: false }).formatToParts(now)
-  const etMins = Number(etParts.find((p) => p.type === 'hour').value) % 24 * 60
-    + Number(etParts.find((p) => p.type === 'minute').value)
-  // {t} pattern keys: zh needs the countdown in a different position than
-  // "<event> in 2h 14m", so the whole sentence is the label and tl's
-  // fall-back-to-key keeps English working until the entry lands
-  const EDGES = [[240, 'pre-market opens in {t}'], [570, 'session opens in {t}'],
-    [960, 'session closes in {t}'], [1200, 'after-hours ends in {t}']]
-  const edge = EDGES.find(([m]) => etMins < m)
+  // "session closes in 2h 14m" on hover — date-aware (A31 F2): a countdown is
+  // only promised for an edge that will actually happen today; otherwise the
+  // tooltip names the next real session's day and pre-market time. The old
+  // walk read only the time of day, so mid-week evenings said "next session
+  // monday" and Saturdays advertised an open that would not come until Monday.
+  const next = nextSessionInfo(now)
   const chipTitle = holiday ? tl(holiday)
-    : edge ? tl(edge[1]).replace('{t}',
-      `${Math.floor((edge[0] - etMins) / 60)}h ${(edge[0] - etMins) % 60}m`)
-    : tl('next session monday')
+    : next.event
+      ? tl(next.event).replace('{t}', `${Math.floor(next.minutes / 60)}h ${next.minutes % 60}m`)
+      : tl('next session {d}').replace('{d}', `${tl(next.day)} ${next.time}`)
 
   return (
     <header class="flex items-center gap-3 max-md:gap-1.5 px-3 max-md:px-2 h-8 shrink-0 bg-black border-b border-line font-mono text-[11px] select-none">

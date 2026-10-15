@@ -803,7 +803,10 @@ const LABELS = {
   'microphone unavailable': '麦克风不可用',
   'pre-market opens in {t}': '距盘前开始 {t}', 'session opens in {t}': '距开盘 {t}',
   'session closes in {t}': '距收盘 {t}', 'after-hours ends in {t}': '距盘后结束 {t}',
-  'next session monday': '下个交易日为周一', online: '在线', offline: '离线',
+  // next-session chip (A31 F2): the day is translated separately so each
+  // weekday keeps its own label; {d} lands in the sentence's slot
+  'next session {d}': '下个交易日为{d}', online: '在线', offline: '离线',
+  Monday: '周一', Tuesday: '周二', Wednesday: '周三', Thursday: '周四', Friday: '周五',
   'Switch gain and loss colors': '切换涨跌颜色', 'red up, green down': '红涨绿跌',
   'green up, red down': '绿涨红跌', 'tap to switch': '点按切换',
   symbol: '代码', Label: '说明', 'what happens that day': '当天发生什么',

@@ -22,6 +22,45 @@ const ET_FMT = new Intl.DateTimeFormat('en-US', {
 })
 
 const DAY_NUM = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
+const DOW_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+// The session edges a countdown may honestly promise ON the day it lands.
+// All four can actually happen on a trading day; once 20:00 has passed there
+// is nothing left today, so the answer switches to naming the next session.
+const SESSION_EDGES = [
+  [240, 'pre-market opens in {t}'],
+  [570, 'session opens in {t}'],
+  [960, 'session closes in {t}'],
+  [1200, 'after-hours ends in {t}'],
+]
+
+// Calendar-day arithmetic on ET date strings (UTC noon keeps DST out of it).
+const isoAddDays = (iso, n) => { const d = new Date(`${iso}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10) }
+const isoDow = (iso) => new Date(`${iso}T12:00:00Z`).getUTCDay()
+
+/** The next session edge the status chip may name, date-aware (A31 F2).
+ *
+ *  Same trading day before its last edge → {event, minutes}: a countdown to
+ *  an edge that will actually happen today. Anywhere else — weekend, holiday,
+ *  or after the 20:00 after-hours close — there is no session left today, so
+ *  the answer names the NEXT real one: {day, time} (its pre-market open).
+ *  The old walk read only the time of day and promised "session opens in 4h"
+ *  on a Saturday; that is gone. */
+export function nextSessionInfo(date = new Date()) {
+  const { iso, day, hh, mm } = etParts(date)
+  if (day >= 1 && day <= 5 && !HOLIDAYS[iso]) {
+    const mins = hh * 60 + mm
+    for (const [edge, event] of SESSION_EDGES) {
+      if (mins < edge) return { event, minutes: edge - mins }
+    }
+  }
+  let d = iso
+  for (;;) {
+    d = isoAddDays(d, 1)
+    const dow = isoDow(d)
+    if (dow >= 1 && dow <= 5 && !HOLIDAYS[d]) return { day: DOW_NAMES[dow], time: '04:00' }
+  }
+}
 
 /** ET wall-clock fields for an instant: {iso, day (0=Sun), hh, mm}. */
 export function etParts(date = new Date()) {
