@@ -28,6 +28,8 @@ export function sessionDayPct(q) {
  *  today's value discounted by the move, not today's value itself. */
 export function dayPnlFromValue(mktValue, dayPct) {
   if (mktValue == null || dayPct == null) return null
-  const base = mktValue / (1 + dayPct / 100)
-  return mktValue - base
+  const denom = 1 + dayPct / 100
+  if (!denom) return null   // −100% day: the base is indeterminate, not a number
+  const pnl = mktValue - mktValue / denom
+  return Number.isFinite(pnl) ? pnl : null
 }
