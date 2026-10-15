@@ -127,4 +127,24 @@ describe('dashboard ticker row', () => {
     } })
     expect(host.querySelector('.tui-quote-cluster').textContent).toContain('AH 124.10 ▲0.5%')
   })
+
+  it('prints an unknown extended move as a dash — no arrow, no up/down color', () => {
+    // A fresh print (not stale) with a price but no computable percent — the
+    // v7 shape where preMarketChangePercent is absent. The row must not
+    // invent a flat ▲0.0% in the "up" color.
+    const nowSec = Math.floor(Date.now() / 1000)
+    mount({ data: {
+      ...DATA,
+      quote: { ...DATA.quote, extLabel: 'PM', extPrice: 251.3, extPct: null,
+        extMarketTime: nowSec, marketTime: nowSec - 60 },
+    } })
+    const ext = host.querySelector('[data-col="ext"]')
+    expect(ext.textContent).toContain('—')
+    expect(ext.textContent).not.toContain('▲')
+    expect(ext.textContent).not.toContain('▼')
+    const pctSpan = [...ext.querySelectorAll('span')].find(
+      (s) => s.classList.contains('font-normal'))
+    expect(pctSpan.classList.contains('text-up')).toBe(false)
+    expect(pctSpan.classList.contains('text-down')).toBe(false)
+  })
 })

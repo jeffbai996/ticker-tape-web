@@ -309,7 +309,10 @@ export function TuiRow({ symbol, data, earnDays, selecting, selected, onToggleSe
     onReveal?.(symbol)
   }
   const up = (q?.pct ?? 0) >= 0
-  const extUp = (q?.extPct ?? 0) >= 0
+  // An unknown extended move is not a flat one: null stays a dash, never an
+  // invented ▲0.0% in the "up" color (research/header.jsx and markets.jsx
+  // already guard this way — A31 F1).
+  const extUp = q?.extPct != null && q.extPct >= 0
   const heavy = (data?.tech?.volRatio ?? 0) >= 1.5
   // the 20-day average the ratio was measured against — VOL alone says
   // nothing without it, and it costs no extra fetch
@@ -458,9 +461,9 @@ export function TuiRow({ symbol, data, earnDays, selecting, selected, onToggleSe
                       number on the row; without its flash the board reads
                       dead (Jeff: "lost its price change red green animation"). */}
                   <span class={`${extStale ? 'text-muted' : 'text-ink-2'} font-semibold text-[12px] max-sm:text-[11px]`}>{extStale ? fmtPriceBare(q.extPrice) : <BigPrice v={q.extPrice} fmt={fmtPriceBare} />}</span>{' '}
-                  <span class={`font-normal ${extStale ? 'text-muted' : extUp ? 'text-up' : 'text-down'}`}>
-                    {extUp ? '▲' : '▼'}{fmtPctPlain(Math.abs(q.extPct ?? 0))}
-                  </span>
+                   <span class={`font-normal ${q.extPct == null || extStale ? 'text-muted' : extUp ? 'text-up' : 'text-down'}`}>
+                     {q.extPct != null ? `${extUp ? '▲' : '▼'}${fmtPctPlain(Math.abs(q.extPct))}` : '—'}
+                   </span>
                   {extStale && <span class="text-muted ml-1" aria-hidden="true">◷</span>}
                   </span>
                 </span>
