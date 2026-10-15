@@ -22,6 +22,19 @@ describe('sessionDayPct — day P&L follows the tape, not the calendar', () => {
     expect(dayPnlFromValue(1000, 25)).toBeCloseTo(200)     // 800 → 1000
     expect(dayPnlFromValue(1000, null)).toBeNull()
   })
+
+  it('returns null on a −100% day — the base is indeterminate (A31 F6)', () => {
+    // 1 + (−100)/100 === 0: a position that went to zero today. NaN and
+    // −Infinity must not leak into signedMoney or the P&L chips; null keeps
+    // the cell honest, like every other unknown in this file.
+    expect(dayPnlFromValue(0, -100)).toBeNull()
+    expect(dayPnlFromValue(12.5, -100)).toBeNull()
+    expect(dayPnlFromValue(100_000, -100)).toBeNull()
+  })
+
+  it('keeps finite answers for ordinary days', () => {
+    expect(dayPnlFromValue(100_000, -3.2)).toBeCloseTo(-3305.79)
+  })
 })
 
 describe('positionRows uses the session-aware day move', () => {
