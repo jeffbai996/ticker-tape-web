@@ -332,7 +332,7 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
         </span>
         <span class={`text-[10.5px] text-right px-0.5 tabular-nums max-sm:row-start-1 max-sm:col-start-4 max-sm:justify-self-end ${hot ? '' : lat < 60 ? 'text-up' : 'text-muted'}`}>{latTxt}</span>
       </div>
-      {open && ev.story_cluster && (
+      {open && ev.live_call && ev.story_cluster && (
         <div class="px-2.5 pb-2 pl-[168px] max-sm:pl-2.5 flex flex-col gap-0.5">
           <p class="text-[8.5px] uppercase tracking-wider text-muted">{tt('wire.story_outlets', { count: ev.story_cluster.count })}</p>
           {ev.story_cluster.members.map((m) => (
@@ -364,7 +364,20 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
       )}
       {open && !ev.live_call && (
         <div class="px-2.5 pb-2 mx-auto w-full max-w-[78ch]">
-          <button onClick={() => setReaderOpen(true)} class="my-2 border border-accent/40 px-2 py-1 font-mono text-[11px] text-accent">{loc === 'zh' ? '打开文章' : 'Open article'} ↗</button>
+          <div class="flex items-start gap-4 my-2 max-sm:flex-wrap">
+            <button onClick={() => setReaderOpen(true)} class="shrink-0 border border-accent/40 px-2 py-1 font-mono text-[11px] text-accent">{loc === 'zh' ? '打开文章' : 'Open article'} ↗</button>
+            {ev.story_cluster && (
+              <div class="min-w-0 flex-1 flex flex-col gap-0.5">
+                <p class="text-[8.5px] uppercase tracking-wider text-muted">{tt('wire.story_outlets', { count: ev.story_cluster.count })}</p>
+                {ev.story_cluster.members.map((m) => (
+                  <p key={m.id} class="text-[11.5px] font-mono truncate">
+                    <span class="text-muted text-[9.5px] mr-1.5">{(() => { try { return new URL(m.url).hostname.replace('www.', '') } catch { return m.source } })()}</span>
+                    <a href={m.url} target="_blank" rel="noopener" class="text-ink-2 hover:text-accent" onClick={(e) => e.stopPropagation()}>{m.headline}</a>
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
           <h3 class="font-anth font-semibold text-[15px] leading-snug text-ink pt-1.5 pb-1">{hl}</h3>
           {/* the byline: everything that used to hide in the footer, at the
               top where a reader decides whether to read — source spelled as a
