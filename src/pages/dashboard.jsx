@@ -461,9 +461,9 @@ export function TuiRow({ symbol, data, earnDays, selecting, selected, onToggleSe
                       number on the row; without its flash the board reads
                       dead (Jeff: "lost its price change red green animation"). */}
                   <span class={`${extStale ? 'text-muted' : 'text-ink-2'} font-semibold text-[12px] max-sm:text-[11px]`}>{extStale ? fmtPriceBare(q.extPrice) : <BigPrice v={q.extPrice} fmt={fmtPriceBare} />}</span>{' '}
-                   <span class={`font-normal ${q.extPct == null || extStale ? 'text-muted' : extUp ? 'text-up' : 'text-down'}`}>
-                     {q.extPct != null ? `${extUp ? '▲' : '▼'}${fmtPctPlain(Math.abs(q.extPct))}` : '—'}
-                   </span>
+                  <span class={`font-normal ${q.extPct == null || extStale ? 'text-muted' : extUp ? 'text-up' : 'text-down'}`}>
+                    {q.extPct != null ? `${extUp ? '▲' : '▼'}${fmtPctPlain(Math.abs(q.extPct))}` : '—'}
+                  </span>
                   {extStale && <span class="text-muted ml-1" aria-hidden="true">◷</span>}
                   </span>
                 </span>
