@@ -70,8 +70,8 @@ TIZEN_PROFILE=<profile> TIZEN_TV=<tv-ip> scripts/tizen_tv.sh --family <full sha>
 ```
 
 `--family` builds the family edition, with the same release rules as
-`scripts/deploy_family.sh`: a clean checkout of the named commit, the full
-test suite, the sync capability read from its file and never passed on a
+`scripts/deploy_family.sh`: a clean checkout of the named commit, focused
+release checks, the sync capability read from its file and never passed on a
 command line, and the signed widget written with owner-only permissions.
 `--install` also launches the app on the TV. Raise `version` in
 `tizen/config.xml` for each release.

@@ -11,6 +11,14 @@ release_prepare() {
     echo "release requires a clean committed source checkout" >&2
     return 2
   fi
+  local test_runner="${TTW_TEST_RUNNER:-}"
+  if [[ -z "$test_runner" ]] && command -v cc-land >/dev/null 2>&1; then
+    test_runner="$(dirname "$(readlink -f "$(command -v cc-land)")")/cc_test.py"
+  fi
+  if [[ ! -f "$test_runner" ]]; then
+    echo "release requires the focused test runner; set TTW_TEST_RUNNER to its path" >&2
+    return 2
+  fi
   SOURCE_SHA="$requested"
   SOURCE_DIR="$(mktemp -d "${TMPDIR:-/tmp}/ttw-release-source.XXXXXX")"
   trap 'rm -rf -- "$SOURCE_DIR"' EXIT
@@ -19,7 +27,11 @@ release_prepare() {
   unset VITE_SYNC_CAPABILITY VITE_FAMILY_BUILD VITE_PRIVATE TTW_BASE TTW_OUT_DIR
   cd "$SOURCE_DIR"
   npm ci
-  npm test
+  # Application tests run at landing. Recheck the release and architecture
+  # contracts against the archived bytes without repeating the whole suite.
+  "${TTW_TEST_PYTHON:-python3}" "$test_runner" --worktree "$SOURCE_DIR" \
+    --test test/private_release.test.js --test test/test_architecture.test.js \
+    --test test/test_scope.test.js
 }
 
 release_probe() {

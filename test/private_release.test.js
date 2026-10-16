@@ -31,7 +31,15 @@ function fixture() {
 [ "$*" != "\${FAIL_STEP:-none}" ] || exit 83
 if [ "$*" = 'run build' ]; then mkdir -p "$TTW_OUT_DIR"; echo built > "$TTW_OUT_DIR/index.html"; fi
 `)
-  executable('python3', `echo probe >> "$STEP_LOG"
+  executable('test-runner', `echo focused-tests >> "$STEP_LOG"
+[ "\${FAIL_STEP:-none}" != focused-tests ] || exit 86
+[[ "$*" == *'--test test/private_release.test.js'* ]] || exit 87
+[[ "$*" == *'--test test/test_architecture.test.js'* ]] || exit 88
+[[ "$*" == *'--worktree /'* ]] || exit 89
+[[ "$*" == *'--test test/test_scope.test.js'* ]] || exit 90
+`)
+  executable('python3', `if [ "$1" = "$TTW_TEST_RUNNER" ]; then exec "$@"; fi
+echo probe >> "$STEP_LOG"
 [ "\${FAIL_STEP:-none}" != probe ] || exit 84
 [[ "$*" == *--offline* ]] || exit 85
 `)
@@ -39,7 +47,7 @@ if [ "$*" = 'run build' ]; then mkdir -p "$TTW_OUT_DIR"; echo built > "$TTW_OUT_
   const token = join(base, 'token'), font = join(base, 'font')
   writeFileSync(token, '0'.repeat(32)); writeFileSync(font, 'synthetic font')
   const env = { ...process.env, HOME: home, PATH: `${bin}:${process.env.PATH}`, STEP_LOG: log,
-    TTW_SYNC_TOKEN_FILE: token, TTW_PRIVATE_FONT_FILE: font, TTW_PROBE_PYTHON: join(bin, 'python3') }
+    TTW_SYNC_TOKEN_FILE: token, TTW_PRIVATE_FONT_FILE: font, TTW_PROBE_PYTHON: join(bin, 'python3'), TTW_TEST_RUNNER: join(bin, 'test-runner') }
   const run = (variant, mode = '--deploy', requested = sha, extra = {}) => spawnSync('bash', [`scripts/deploy_${variant}.sh`, mode, requested], { cwd: repo, env: { ...env, ...extra }, encoding: 'utf8' })
   const steps = () => existsSync(log) ? readFixtureArtifact(base, log).trim().split('\n') : []
   return { base, repo, sha, run, steps }
@@ -51,6 +59,11 @@ describe.each(['family', 'tailnet'])('%s release admission', variant => {
     for (const sha of [f.sha.slice(0, 7), 'f'.repeat(40)]) expect(f.run(variant, '--deploy', sha).status).not.toBe(0)
     expect(f.steps()).toEqual([])
   })
+  it('requires the focused test runner instead of falling back to a full suite', () => {
+    const f = fixture()
+    expect(f.run(variant, '--deploy', f.sha, { TTW_TEST_RUNNER: join(f.base, 'missing-runner') }).status).not.toBe(0)
+    expect(f.steps()).toEqual([])
+  })
   it('rejects dirty tracked source and untracked source', () => {
     const f = fixture()
     writeFileSync(join(f.repo, 'source.txt'), 'dirty')
@@ -60,7 +73,7 @@ describe.each(['family', 'tailnet'])('%s release admission', variant => {
     expect(f.run(variant).status).not.toBe(0)
     expect(f.steps()).toEqual([])
   })
-  it.each(['ci', 'test', 'run build', 'probe'])('does not publish if %s fails', step => {
+  it.each(['ci', 'focused-tests', 'run build', 'probe'])('does not publish if %s fails', step => {
     const f = fixture()
     const previous = join(f.repo, 'dist-tailnet-releases', 'previous')
     mkdirSync(previous, { recursive: true })
@@ -72,7 +85,7 @@ describe.each(['family', 'tailnet'])('%s release admission', variant => {
   it('validates archived bytes in order before publishing and records provenance', () => {
     const f = fixture(), result = f.run(variant)
     expect(result.status, result.stderr).toBe(0)
-    expect(f.steps()).toEqual(['ci', 'test', 'run build', 'probe', ...(variant === 'family' ? ['publish'] : [])])
+    expect(f.steps()).toEqual(['ci', 'focused-tests', 'run build', 'probe', ...(variant === 'family' ? ['publish'] : [])])
     if (variant === 'tailnet') {
       const release = readlinkSync(join(f.repo, 'dist-tailnet'))
       expect(JSON.parse(readFixtureArtifact(f.base, join(release, 'release.json'))).source_sha).toBe(f.sha)
@@ -82,7 +95,7 @@ describe.each(['family', 'tailnet'])('%s release admission', variant => {
   it('defaults build-only to validated output without a publish action', () => {
     const f = fixture(), result = f.run(variant, '--build-only')
     expect(result.status, result.stderr).toBe(0)
-    expect(f.steps()).toEqual(['ci', 'test', 'run build', 'probe'])
+    expect(f.steps()).toEqual(['ci', 'focused-tests', 'run build', 'probe'])
     expect(existsSync(join(f.repo, 'dist-tailnet'))).toBe(false)
   })
 })
