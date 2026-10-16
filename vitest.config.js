@@ -1,5 +1,8 @@
 import { defineConfig } from 'vitest/config'
 import preact from '@preact/preset-vite'
+import { assertFocusedVitest } from './scripts/testScope.mjs'
+
+assertFocusedVitest(process.argv.slice(2))
 
 export default defineConfig({
   // Most suites only read source text, but the ones that mount a component

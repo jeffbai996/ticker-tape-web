@@ -91,13 +91,18 @@ Node 22 is required for the build chain (Vite 8 + Tailwind v4).
 npm install
 npm run dev        # Vite dev server
 npm run build      # production build to dist/
-npm test           # Vitest
+npm test -- test/lib/wire_layout.test.js  # one explicit Vitest file
 npm run budget     # build, then fail if the entry chunk drifts over budget
 ```
 
 Routed pages are lazy-loaded, so the shell, dashboard, and command grammar are
 the only eager chunks. `scripts/probe_matrix.py` runs the responsive matrix
 against a served build (Playwright + chromium).
+
+Vitest refuses empty, directory, and substring-only test selections before
+collection. Managed landings choose related files automatically; direct test
+commands must name existing `.test.js` or `.spec.js` files. Public deployment
+checks run explicit release contracts; application behavior is checked at landing.
 
 Worker: `cd worker && npx wrangler deploy` (needs Cloudflare credentials).
 Provision or rotate family sync separately with
@@ -134,8 +139,12 @@ Build the separately hosted family bundle with
 reads the capability from `~/.config/ttw/sync_token`, validates it without
 printing it, and preserves the existing `ttw-family` Assets Worker routes.
 Both private release scripts require the full current HEAD SHA and a clean
-checkout, export only committed files, and run `npm ci`, full Vitest, production
-build, then the offline served responsive probe before publishing. Ignored
+checkout, export only committed files, and run `npm ci`, focused release and
+architecture tests, a production build, then the offline served responsive
+probe before publishing. Application tests are selected by changed files at
+landing. The release tests use the shared `cc_test.py` runner beside `cc-land`;
+`TTW_TEST_RUNNER` and `TTW_TEST_PYTHON` can select its path and interpreter.
+Missing tooling or failed checks stop publication. Ignored
 `.env` files are excluded; the family capability is supplied only to the build.
 Each output carries `release.json` with its source SHA and an asset hash manifest.
 Use `npm run build:tailnet -- --build-only FULL_SOURCE_SHA` to validate a tailnet

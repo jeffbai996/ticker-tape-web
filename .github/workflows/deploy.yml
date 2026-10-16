@@ -26,8 +26,8 @@ jobs:
           node-version: '22'
           cache: 'npm'
       - run: npm ci
-      - name: Unit, component, and architecture gate
-        run: npm test
+      - name: Focused release and architecture checks
+        run: npm test -- test/test_scope.test.js test/private_release.test.js test/test_architecture.test.js test/compile.test.js
       # PUBLIC BUILD ONLY. This deploy must never carry VITE_FAMILY_BUILD or
       # VITE_SYNC_CAPABILITY again (Jeff 2026-08-25). It did until then: the
       # family bearer was inlined into this bundle, so the shared portfolio
