@@ -1,3 +1,4 @@
+// @vitest-environment node
 /** Idle CPU and timer hygiene (2026-08-18 perf pass).
  *
  *  The measured problem: a tab sitting on any route still paid for a 1 Hz

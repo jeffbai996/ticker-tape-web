@@ -1,3 +1,4 @@
+// @vitest-environment node
 // Contract for the two places feed health surfaces: the shell status row and
 // the dashboard price tooltip. Row-level freshness must stay discoverable
 // without adding visible chrome beside every quote.

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from 'vitest'
 import {
   handleWire, selectEvents, selectUpdates, validateWireSnapshot, WIRE_KEY,

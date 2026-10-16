@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from 'vitest'
 import { marketState, etParts, isOvernight, rollCashSession, nextSessionInfo, HOLIDAYS } from '../../src/lib/marketState.js'
 

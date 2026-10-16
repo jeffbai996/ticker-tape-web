@@ -1,3 +1,4 @@
+// @vitest-environment node
 /** Analytics for a hand-built book (Jeff 2026-08-21: "add more analytics to
  *  portfolio"). Everything here derives from the rows `portfolioValues`
  *  already produced — no second pass over quotes, no extra fetch — so a card

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { expect, it } from 'vitest'
 import { spawnSync } from 'node:child_process'
 

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /** The HK / mainland holder's glance: venues, sessions, limits, FX — pure. */
 import { describe, expect, it } from 'vitest'
 import { fxDayPct, fxImpact, limitFlag, marketSession, venueDayBreakdown, venueOfSymbol } from '../../src/lib/cnMarkets.js'

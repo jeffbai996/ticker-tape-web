@@ -1,3 +1,4 @@
+// @vitest-environment node
 /** The 净值 line: marks in, aligned normalised series out — pure. */
 import { describe, expect, it } from 'vitest'
 import { alignToDates, barDate, buildPerformance, normalizeTo100, spanReturn } from '../../src/lib/performance.js'

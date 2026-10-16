@@ -1,3 +1,4 @@
+// @vitest-environment node
 /** The trade ticket promises the user two numbers before committing: what the
  *  trade costs, and what the position becomes. Wrong numbers here are worse
  *  than none.

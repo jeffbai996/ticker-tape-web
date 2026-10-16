@@ -1,3 +1,4 @@
+// @vitest-environment node
 /** The family book is a real person's money behind one Durable Object row.
  *  Two guards keep a bad push from erasing it: every accepted write is kept
  *  in a short revision ring (restorable), and a write that shrinks the book

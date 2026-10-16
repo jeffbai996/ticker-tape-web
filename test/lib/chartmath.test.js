@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from 'vitest'
 import { smaSeries, emaSeries, rsiSeries, macdSeries, bollingerSeries,
          normalizedSeries, warmedBars, trimToWindow } from '../../src/lib/chartmath.js'

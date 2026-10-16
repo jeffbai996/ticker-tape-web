@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from 'vitest'
 import { parseHash, hrefFor, NAV } from '../../src/lib/route.js'
 

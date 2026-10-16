@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { tapeEntries } from '../../src/lib/tape.js'
 

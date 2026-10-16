@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from 'vitest'
 import { vwapSeries } from '../../src/lib/vwap.js'
 

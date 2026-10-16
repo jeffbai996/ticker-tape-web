@@ -1,3 +1,4 @@
+// @vitest-environment node
 /** The portfolio sync route holds a real person's book behind nothing but a
  *  capability string — the validator is the only wall between the KV store
  *  and whatever anyone POSTs at it.
