@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from 'vitest'
 import {
   DEMO_POSITIONS, DEMO_CASH, positionRows, accountSummary, mergeLegs,

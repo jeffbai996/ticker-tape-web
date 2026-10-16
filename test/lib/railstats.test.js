@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from 'vitest'
 import { groupHeat, alertDistance, rankAlerts, rangeExtremes } from '../../src/lib/railstats.js'
 

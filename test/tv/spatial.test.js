@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { backAction, nextHashStack, pickNext } from '../../tv/lib/spatial.js'
 

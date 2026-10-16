@@ -1,3 +1,4 @@
+// @vitest-environment node
 /** Multi-currency portfolios (Jeff 2026-08-20): a book can hold USD, CAD,
  *  HKD and CNY names at once, and each portfolio picks its own display
  *  currency. All conversion goes through live Yahoo FX pairs quoted against

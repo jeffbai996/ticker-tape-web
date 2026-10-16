@@ -10,6 +10,8 @@ export default defineConfig({
   // the default transform emits react/jsx-runtime imports that do not exist here.
   plugins: [preact()],
   test: {
+    // Bound focused invocations as well as the full/fast helper.
+    maxWorkers: 2,
     include: ['test/**/*.test.js'],
     environment: 'jsdom',
     globals: true,

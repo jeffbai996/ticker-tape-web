@@ -1,3 +1,4 @@
+// @vitest-environment node
 // vitest.config.js applies this guard before importing any test modules.
 import { afterEach, describe, expect, it } from 'vitest'
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'

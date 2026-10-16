@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from 'vitest'
 import { dailyReturns, pearson, normalize } from '../../src/lib/stats.js'
 

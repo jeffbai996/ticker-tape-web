@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { extendedLabelClass, extendedQuoteStale } from '../../src/lib/extendedHours.js'
 import { quoteFromV7 } from '../../src/lib/yahoo.js'

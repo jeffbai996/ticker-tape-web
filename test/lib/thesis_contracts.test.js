@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { thesisAnalysisPrompt, thesisHealth, thesisSignals } from '../../src/lib/thesis.js'
 

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { completions, applyCompletion, COMMAND_WORDS } from '../../src/lib/complete.js'
 

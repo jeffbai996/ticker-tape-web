@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { atmContract, expiryForEvent, moveEdge, typicalMovePct } from '../../src/lib/expmove.js'
 import { expectedMove } from '../../src/lib/optionsIntel.js'

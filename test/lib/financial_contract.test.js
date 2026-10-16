@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import fixture from '../fixtures/contracts/financial-positions-v1.json'
 import { positionRows } from '../../src/lib/demo.js'

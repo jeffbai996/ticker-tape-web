@@ -1,3 +1,4 @@
+// @vitest-environment node
 /** The IBKR page reads like the family portfolio page (Jeff 2026-10-09: "our
  *  IBKR portfolio doesn't even look as good as the stepdad ticker tape"):
  *  a currency mark before the figure instead of "CAD" after every number,

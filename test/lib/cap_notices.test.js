@@ -1,3 +1,4 @@
+// @vitest-environment node
 // Source-contract tests: the cap and the drop are enforced in the libs (tested
 // there), but the whole point of this pass is that the user SEES the refusal.
 // Preact pages aren't mounted anywhere in this suite, so — same idiom as

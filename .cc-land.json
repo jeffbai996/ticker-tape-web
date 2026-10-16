@@ -1,1 +1,12 @@
-{"gates":[{"prefix":"","command":["npm","test"]}]}
+{
+  "gates": [
+    {
+      "prefix": "",
+      "command": [
+        "node",
+        "test/run-tests.mjs",
+        "--full"
+      ]
+    }
+  ]
+}

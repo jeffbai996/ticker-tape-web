@@ -15,7 +15,9 @@
     "build:tailnet": "bash scripts/deploy_tailnet.sh",
     "dev:tv": "vite --config vite.tv.config.js",
     "build:tv": "vite build --config vite.tv.config.js",
-    "package:tv": "bash scripts/tizen_tv.sh"
+    "package:tv": "bash scripts/tizen_tv.sh",
+    "test:full": "node test/run-tests.mjs --full",
+    "test:fast": "node test/run-tests.mjs --fast"
   },
   "dependencies": {
     "@preact/preset-vite": "^2.10.5",

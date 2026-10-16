@@ -1,3 +1,4 @@
+// @vitest-environment node
 /** Trades → positions, FIFO. Money here is the reason the page exists. */
 import { describe, expect, it } from 'vitest'
 import { applyLedger, positionsFromTxns } from '../../src/lib/lots.js'

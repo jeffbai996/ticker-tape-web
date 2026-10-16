@@ -1,3 +1,4 @@
+// @vitest-environment node
 /** Bare exchange codes are not tickers (2026-08-21: a book entry typed as
  *  "02628" was valued as a USD nothing). Yahoo has no bare
  *  numeric symbol on any venue, so a digits-only string is always broken —

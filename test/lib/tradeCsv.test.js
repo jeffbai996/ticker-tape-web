@@ -1,3 +1,4 @@
+// @vitest-environment node
 /** Broker exports in, trades out — by synonym, never by guess. */
 import { describe, expect, it } from 'vitest'
 import { normalizeDate, normalizeSide, normalizeTradeSymbol, parseTradesCsv } from '../../src/lib/tradeCsv.js'

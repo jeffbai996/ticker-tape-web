@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { bsDelta } from '../../src/lib/bs.js'
 import {

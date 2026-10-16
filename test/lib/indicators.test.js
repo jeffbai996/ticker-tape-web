@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from 'vitest'
 import { sma, ema, rsi, macd, bollinger } from '../../src/lib/indicators.js'
 
