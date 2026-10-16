@@ -415,3 +415,13 @@ Full-case identity comparison uses a multiset, including duplicate display title
 The landing configuration invokes `node test/run-tests.mjs --full` directly so the landing selector retains the complete command. The previous bare `npm test` policy is also honored during this transition.
 
 Final fast-preset verification (`npm run test:fast`) passed all 731 cases in 11.54 seconds wall time. The two-worker limit is also set in Vitest config so direct focused invocations stay bounded.
+
+## Follow-up: full-case local VM execution
+
+Fresh matched baseline at `02ce154`: all 1,924 tests passed in 44.63 seconds wall time with two fresh-process workers. An all-VM experiment took 12.09 seconds but was rejected: the font-build suite needs native Node module-loader registration, and the security-log suite needs native-realm WebCrypto. Their assertions are unchanged.
+
+The local preset uses isolated VM workers for the remaining files and the original process pool for those two native suites. Each test file keeps a fresh VM/window; external dependency startup is reused. Vitest documents the performance and cross-realm tradeoffs at https://vitest.dev/guide/improving-performance . The shipping/landing full gate remains the original fresh-process run. The VM mode is an additional local feedback lane, not a replacement gate.
+
+Follow-up coverage check: the VM group passed 1,914 cases with shuffled file order (seed 137), and the two native suites passed their 10 cases. A multiset comparison with the fresh-process baseline accounts for all 1,924 cases exactly once. Combined wall time was 13.25 seconds versus 44.63 seconds in the matched baseline. No test was omitted, deleted, sampled or weakened; no dependency or production code changed. The native shipping gate remains mandatory. The local preset must not replace it because VM workers share externalized dependency state and have different native API interop.
+
+The actual `npm run test:local` preset also passed both phases (1,914 + 10 cases), with native isolation retained for the two compatibility suites.

@@ -17,7 +17,8 @@
     "build:tv": "vite build --config vite.tv.config.js",
     "package:tv": "bash scripts/tizen_tv.sh",
     "test:full": "node test/run-tests.mjs --full",
-    "test:fast": "node test/run-tests.mjs --fast"
+    "test:fast": "node test/run-tests.mjs --fast",
+    "test:local": "node test/run-tests.mjs --full --pool=vmThreads --vmMemoryLimit=512MB --exclude=test/lib/private_font_build.test.js --exclude=test/worker/security_log.test.js && vitest run --pool=forks test/lib/private_font_build.test.js test/worker/security_log.test.js"
   },
   "dependencies": {
     "@preact/preset-vite": "^2.10.5",
