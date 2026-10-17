@@ -21,7 +21,8 @@ it('matches Chinese company names in the public feed without private symbol tags
 })
 
 it('drops content mills and does not fill gaps with unrelated stories', () => {
-  const rows=[event(1,'AAPL could soar',{url:'https://www.fool.com/a'}),event(2,'MSFT raises guidance')]
+  const rows=[event(1,'AAPL could soar',{url:'https://www.fool.com/a'}),event(2,'MSFT raises guidance'),
+    event(3,'Reuters says AAPL reported results',{url:'https://www.fool.com/b'})]
   expect(portfolioStories(rows,[{symbol:'AAPL',names:['Apple Inc.']}])).toEqual([])
 })
 
