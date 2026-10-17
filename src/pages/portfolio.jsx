@@ -1,3 +1,4 @@
+import { PortfolioHome } from '../components/PortfolioHome.jsx'
 import { useEffect, useMemo, useState } from 'preact/hooks'
 import { shortAccountLabel } from '../lib/accounts.js'
 import { boundedTimeScale, chartFont, chartHost } from '../lib/chartview.js'
@@ -416,7 +417,7 @@ function Positions({ priceMap, positions, margin, accountId, book, broker }) {
   return (
     <div class="flex flex-col gap-2">
     <BookSummary rows={rows} stats={stats} margin={margin} fallbackNlv={fallback.nlv} book={book} broker={broker} />
-    {broker && knownCurrency(units) ? cards('top') : <BrokerAnalysis rows={rows} priceMap={priceMap} stats={stats} />}
+    {broker && knownCurrency(units) ? <PortfolioHome portfolio={{...cardBook,name:book?.accountLabel || tl('Portfolio'),holdings:rows.map(r=>({symbol:r.symbol,shares:r.shares}))}} quotes={priceMap} valuedRows={cardRows} /> : <BrokerAnalysis rows={rows} priceMap={priceMap} stats={stats} />}
     <div class="flex flex-col gap-2">
     <section class="bg-surface-1 border border-line rounded-xl overflow-x-auto">
       <table class="w-full border-collapse font-mono text-[11px]">
@@ -471,7 +472,7 @@ function Positions({ priceMap, positions, margin, accountId, book, broker }) {
       </table>
     </section>
 
-    {broker && knownCurrency(units) && cards('rest')}
+    {broker && knownCurrency(units) && cards()}
 
     {/* the analytics used to live in a side rail hidden below xl — on an
         iPad that meant a table over a black void (Jeff 2026-08-05) */}

@@ -63,3 +63,7 @@ describe('fetchSymbolEvents', () => {
     expect(calls.some((c) => c.includes('/cn/report') && c.includes('AAPL'))).toBe(false)
   })
 })
+
+it('does not cache an outage as an empty corporate-action calendar',async()=>{
+ await expect(fetchSymbolEvents('000001.SZ',{fetchImpl:async()=>{throw Error('offline')}})).rejects.toThrow()
+})

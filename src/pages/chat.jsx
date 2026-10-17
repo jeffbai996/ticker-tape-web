@@ -31,6 +31,7 @@ import { plainTraceText, hasTurnActivity, activityGroups } from '../lib/chatTrac
 import { ChatFooter } from '../components/ChatFooter.jsx'
 import { loadZhTable, loadMissingZhName, onZhTable, zhName } from '../lib/zhNames.js'
 import { onPortfoliosChange } from '../lib/myPortfolios.js'
+import { CHAT_CONTEXT_EVENT, takeChatContext } from '../lib/chatHandoff.js'
 import { IS_FAMILY_AI } from '../lib/nav.js'
 
 // Base prompt stays generic in source. Whether the assistant has a real book
@@ -140,6 +141,17 @@ function NoteRow({ id, text, meta, onSave, onDelete }) {
  *  it into add/edit/delete ops applied through the normal memory mutators. */
 export function MemoryComposer({ memories, onApplied }) {
   const [v, setV] = useState('')
+  const [pendingContext,setPendingContext]=useState(takeChatContext)
+  useEffect(()=>{
+    const receive=()=>{
+      const question=sessionStorage.getItem('chat_prefill') || ''
+      sessionStorage.removeItem('chat_prefill')
+      if(question)setInput(question)
+      setPendingContext(takeChatContext());setAtHome(false)
+    }
+    window.addEventListener(CHAT_CONTEXT_EVENT,receive)
+    return ()=>window.removeEventListener(CHAT_CONTEXT_EVENT,receive)
+  },[])
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState(null)
   const run = async (e) => {
@@ -749,6 +761,17 @@ export function Chat() {
     sessionStorage.removeItem('chat_prefill')
     return pre
   })
+  const [pendingContext,setPendingContext]=useState(takeChatContext)
+  useEffect(()=>{
+    const receive=()=>{
+      const question=sessionStorage.getItem('chat_prefill') || ''
+      sessionStorage.removeItem('chat_prefill')
+      if(question)setInput(question)
+      setPendingContext(takeChatContext());setAtHome(false)
+    }
+    window.addEventListener(CHAT_CONTEXT_EVENT,receive)
+    return ()=>window.removeEventListener(CHAT_CONTEXT_EVENT,receive)
+  },[])
   const [busy, setBusy] = useState(false)
   const [queued, setQueued] = useState([])
   const [activity, setActivity] = useState([])
@@ -949,8 +972,8 @@ export function Chat() {
     if (!batch.length) return []
     queuedRef.current = []
     setQueued([])
-    return batch.map(({ text, model: queuedModel, ts }) => ({
-      role: 'user', content: text, ts, model: queuedModel,
+    return batch.map(({ text, model: queuedModel, ts, context }) => ({
+      role: 'user', content: text, ts, model: queuedModel, context,
     }))
   }
 
@@ -961,7 +984,7 @@ export function Chat() {
 
   const updateActivity = (fn) => replaceActivity(fn(activityRef.current))
 
-  const runTurn = async ({ text, model: runModel, effort: runEffort, ts }) => {
+  const runTurn = async ({ text, model: runModel, effort: runEffort, ts, context }) => {
     setError(null)
     setNotice(null)
     setLiveAnswer('')
@@ -977,7 +1000,7 @@ export function Chat() {
     }])
 
     const base = [...historyRef.current, {
-      role: 'user', content: text, ts: ts || Date.now(), model: runModel,
+      role: 'user', content: text, ts: ts || Date.now(), model: runModel, context,
     }]
     let added = []
     let live = ''
@@ -1176,7 +1199,8 @@ export function Chat() {
     e.preventDefault()
     const text = input.trim()
     if (!text) return
-    const item = { text, model, effort, ts: Date.now() }
+    const item = { text, model, effort, ts: Date.now(),context:pendingContext }
+    setPendingContext(null)
     clearComposer()
     setAtHome(false)   // asking a question is how you leave the launchpad
     if (busyRef.current) {
@@ -1259,6 +1283,10 @@ export function Chat() {
 
   const composer = (
       <form onSubmit={send} class="max-w-[46rem] w-full mx-auto pt-2">
+        {pendingContext && <div data-chat-context class="mb-2 flex items-center gap-2 rounded-md border border-line px-2 py-1 font-anth text-[10px] text-muted">
+          <span class="min-w-0 flex-1 truncate">{pendingContext.label}</span>
+          <button type="button" aria-label={tl('Remove')} onClick={()=>setPendingContext(null)}>✕</button>
+        </div>}
         {/* items-center keeps a one-line placeholder vertically centered
             against the 32px send button; the textarea grows downward from
             there (Jeff 2026-08-04: "placeholder isn't centered"). */}

@@ -78,14 +78,22 @@ const report = (symbol, name, n, opts) => getJson(`/cn/report?symbol=${encodeURI
  *  fails independently — a missing dividend report is a dash, not an error. */
 const eventsCache = new Map()          // symbol -> { ts, value } (6h)
 const EVENTS_TTL = 6 * 3600_000
+const pendingEvents = new Map()
 
 /** Cached wrapper: the overview's upcoming card and the events page ask for
  *  the same names; one fetch per symbol per six hours serves both. */
 export function fetchSymbolEventsCached(symbol, opts = {}) {
   const sym = String(symbol).toUpperCase()
+  const today=opts.today || new Date().toISOString().slice(0,10)
   const hit = eventsCache.get(sym)
-  if (hit && Date.now() - hit.ts < EVENTS_TTL) return Promise.resolve(hit.value)
-  return fetchSymbolEvents(sym, opts).then((v) => { eventsCache.set(sym, { ts: Date.now(), value: v }); return v })
+  if (hit && hit.today===today && Date.now() - hit.ts < EVENTS_TTL) return Promise.resolve(hit.value)
+  const key=`${sym}:${today}`
+  if(pendingEvents.has(key))return pendingEvents.get(key)
+  const job=fetchSymbolEvents(sym,{...opts,today}).then(v=>{
+    eventsCache.set(sym,{ts:Date.now(),today,value:v});return v
+  }).finally(()=>pendingEvents.delete(key))
+  pendingEvents.set(key,job)
+  return job
 }
 
 export async function fetchSymbolEvents(symbol, { today = new Date().toISOString().slice(0, 10), dividendsImpl = fetchDividends, ...opts } = {}) {
@@ -94,23 +102,27 @@ export async function fetchSymbolEvents(symbol, { today = new Date().toISOString
   const cn = isCnListing(sym)
   const mainland = cn && !sym.endsWith('.HK')
   const tasks = []
+  let successes=0
   if (mainland) {
     tasks.push(report(sym, 'a_results', 6, opts).then((d) => {
+      successes++
       const rows = parseAResults(d)
       const upcoming = rows.filter((r) => !r.actual && r.appointed && r.appointed >= today).sort((a, b) => a.appointed.localeCompare(b.appointed))[0]
       if (upcoming) { out.nextResults = upcoming.appointed; out.resultsPeriod = upcoming.period }
     }).catch(() => {}))
-    tasks.push(report(sym, 'a_dividends', 6, opts).then((d) => { out.dividends = parseADividends(d) }).catch(() => {}))
+    tasks.push(report(sym, 'a_dividends', 6, opts).then((d) => { successes++; out.dividends = parseADividends(d) }).catch(() => {}))
   } else {
     tasks.push(getJson(`/v10/finance/quoteSummary/${encodeURIComponent(sym)}?modules=calendarEvents`, opts).then((d) => {
+      successes++
       const c = parseYahooCalendar(d)
       out.nextResults = nextOnOrAfter(c.earnings, today)
       out.exDate = c.exDate; out.payDate = c.payDate
     }).catch(() => {}))
-    if (cn) tasks.push(report(sym, 'hk_dividends', 6, opts).then((d) => { out.dividends = parseHkDividends(d) }).catch(() => {}))
+    if (cn) tasks.push(report(sym, 'hk_dividends', 6, opts).then((d) => { successes++; out.dividends = parseHkDividends(d) }).catch(() => {}))
     else {
       // the chart's dividend events: amount per share in the listing's currency
       tasks.push(Promise.resolve().then(() => dividendsImpl(sym)).then((rows) => {
+        successes++
         out.dividends = (rows || []).filter((r) => r?.amount != null).map((r) => ({
           exDate: r.date ? new Date(r.date).toISOString().slice(0, 10) : null, recordDate: null, payDate: null,
           perShare: r.amount, plan: '', yieldPct: null, period: '', ccy: opts.ccy || 'USD',
@@ -119,6 +131,7 @@ export async function fetchSymbolEvents(symbol, { today = new Date().toISOString
     }
   }
   await Promise.all(tasks)
+  if(!successes)throw new Error('Corporate actions unavailable')
   const latest = out.dividends[0]
   if (latest) {
     if (!out.exDate || (latest.exDate && latest.exDate > out.exDate)) out.exDate = latest.exDate || out.exDate
