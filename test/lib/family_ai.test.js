@@ -76,3 +76,24 @@ it('generates a family report through the subscription transport', async () => {
     root.remove()
   }
 })
+
+it('uses the family transport for memory edits from the full chat UI', async () => {
+  await family()
+  const fetcher = vi.fn(async () => Response.json({ ok: true, text: '[{"op":"add","text":"Prefers concise summaries."}]' }))
+  vi.stubGlobal('fetch', fetcher)
+  const { h, render } = await import('preact')
+  const { act } = await import('preact/test-utils')
+  const { MemoryComposer } = await import('../../src/pages/chat.jsx')
+  const root = document.createElement('div')
+  document.body.append(root)
+  try {
+    await act(async () => render(h(MemoryComposer, { memories: [], onApplied: () => {} }), root))
+    const input = root.querySelector('textarea,input')
+    await act(async () => { input.value = 'Remember concise summaries'; input.dispatchEvent(new Event('input', { bubbles: true })) })
+    await act(async () => root.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })))
+    await vi.waitFor(() => expect(fetcher).toHaveBeenCalled())
+    const [url, options] = fetcher.mock.calls[0]
+    expect(url).toBe('https://proxy.example.test/family-ai/api/chat')
+    expect(options.headers.Authorization).toBe(`Bearer ${'a'.repeat(32)}`)
+  } finally { await act(async () => render(null, root)); root.remove() }
+})
