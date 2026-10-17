@@ -1090,8 +1090,8 @@ export function Wire({ route }) {
           title={getLocale() === 'zh' ? '仅显示中文来源' : 'Show only Chinese-language sources'}
           class={`border rounded-md px-2.5 py-0.5 text-[11px] font-semibold transition-colors ${
             showZhSources
-              ? 'bg-accent border-accent text-black'
-              : 'border-line text-ink-2 hover:text-ink'
+              ? 'bg-teal-400/20 border-teal-400/60 text-teal-200'
+              : 'border-teal-600/40 text-teal-400 hover:border-teal-400/60 hover:text-teal-200'
           }`}>中文{showZhSources ? ` · ${events.filter((ev) => eventLanguage(ev) === 'zh').length}` : ''}</button>
         <span aria-hidden="true" class="h-4 w-px bg-line mx-0.5" />
         {[1, 2, 3].map((tier) => (
