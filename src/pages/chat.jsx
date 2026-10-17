@@ -1480,7 +1480,7 @@ export function Chat() {
           <path d="M8.4 9.2h7.2M8.4 12.2h4.4" />
         </svg>
         <h1 class="font-bold text-[17px] leading-tight text-ink" style="font-family: var(--font-sans)">{tl('AI Chat')}</h1>
-        <span class={`w-1.5 h-1.5 rounded-full ${models.length ? 'bg-teal-400' : 'bg-muted animate-pulse'}`}
+        <span class={`w-1.5 h-1.5 rounded-full ${models.length ? 'bg-[#3fb950]' : 'bg-muted animate-pulse'}`}
               title={tl(onWire ? 'online — private wire' : 'online — public proxy')} />
       </div>
         <div class="absolute top-2.5 right-3 z-30 h-7 flex items-center gap-0.5 rounded-lg px-0.5">

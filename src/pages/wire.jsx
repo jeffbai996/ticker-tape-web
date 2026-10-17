@@ -1099,7 +1099,7 @@ export function Wire({ route }) {
             title={tl(tier === 3 ? 'T3 — thesis story on a name you hold'
               : tier === 2 ? 'T2 — core thesis story' : 'T1 — touches the sector')}
             onClick={() => toggleTier(tier)}
-            class={`w-[38px] justify-center border rounded-md px-0 py-0.5 font-mono text-[10.5px] font-bold transition-colors ${
+            class={`w-[28px] shrink-0 justify-center border rounded-md px-0 py-0.5 font-mono text-[10.5px] font-bold transition-colors ${
               tierFilters.has(tier)
                 ? tier === 1 ? 'bg-[#58a6ff] border-[#58a6ff] text-black'
                   : tier === 2 ? 'bg-accent border-accent text-black'
