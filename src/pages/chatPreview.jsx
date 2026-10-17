@@ -24,7 +24,7 @@ export function ChatPreview() {
         <h1 class="font-anth font-bold text-[17px] leading-tight text-ink">{tl('AI Chat')}</h1>
         <span class="w-1.5 h-1.5 rounded-full bg-muted" />
         <span class="font-mono text-[9px] uppercase tracking-wider text-muted border border-line rounded px-1.5 py-0.5">
-          {tl('preview')}
+          {tl('demo')}
         </span>
       </div>
 
