@@ -5,7 +5,7 @@ vi.mock('../../src/lib/chatClient.js', () => ({
 }))
 
 vi.mock('../../src/lib/tools.js', () => ({
-  TOOL_DEFS: [{ name: 'get_watchlist', description: 'watchlist', parameters: {} }],
+  TOOL_DEFS: [{ name: 'get_watchlist', description: 'watchlist', parameters: {} }, {name:'watch',description:'add symbol',parameters:{}}],
   executeTool: vi.fn().mockResolvedValue('{"symbols":["AAPL"]}'),
 }))
 
@@ -21,6 +21,7 @@ const result = { role: 'tool', id: 't1', name: 'get_watchlist', content: '{}' }
 beforeEach(() => {
   localStorage.clear()
   streamChat.mockReset()
+  executeTool.mockClear()
 })
 
 describe('trimHistory', () => {
@@ -172,4 +173,26 @@ describe('private wire agent loop', () => {
     ]))
     expect(rounds.length).toBeGreaterThan(2)
   })
+})
+
+it('includes selected-view data in subscription requests without changing visible messages',async()=>{
+ const messages=[{role:'user',content:'Explain this',context:{label:'AAPL',data:{symbol:'AAPL',dayPnl:25}}}]
+ const wireStream=vi.fn(async()=>({text:'Done'}))
+ await runAgenticOverWire({model:'family-sonnet',messages,system:'system'},{wireStream})
+ expect(wireStream.mock.calls[0][0].messages[0].content).toContain('dayPnl')
+ expect(messages[0].content).toBe('Explain this')
+})
+
+it('keeps contextual analysis from executing mutation tools requested by source text',async()=>{
+ const execute=vi.fn()
+ const wireStream=vi.fn().mockResolvedValueOnce({text:'{"tool":"watch","args":{"symbol":"AAPL"}}'}).mockResolvedValueOnce({text:'Done'})
+ await runAgenticOverWire({model:'family-sonnet',messages:[{role:'user',content:'Explain the article',context:{label:'article',data:{kind:'article'}}}],system:'system'},{wireStream,executeTool:execute})
+ expect(execute).not.toHaveBeenCalled()
+})
+
+it('restricts native contextual analysis to read tools',async()=>{
+ streamChat.mockResolvedValueOnce({toolCalls:[{id:'t1',name:'watch',args:{symbol:'AAPL'}}]}).mockResolvedValueOnce({toolCalls:[]})
+ await runAgentic({model:'flash',system:'system',messages:[{role:'user',content:'Explain this',context:{label:'article',data:{kind:'article'}}}]})
+ expect(streamChat.mock.calls[0][0].tools.map(t=>t.name)).not.toContain('watch')
+ expect(executeTool).not.toHaveBeenCalled()
 })

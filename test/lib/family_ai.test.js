@@ -135,3 +135,11 @@ it('keeps selected holdings in context when a quote lacks a daily change',async(
     expect(block).toContain('AAPL: 10 shares')
   } finally {quote.mockRestore()}
 })
+
+it('opens family at the shared portfolio and leaves the main default intact',async()=>{
+ await family()
+ expect((await import('../../src/lib/nav.js')).DEFAULT_SECTION).toBe('portfolio')
+ vi.resetModules()
+ await family(true,false)
+ expect((await import('../../src/lib/nav.js')).DEFAULT_SECTION).toBe('dashboard')
+})

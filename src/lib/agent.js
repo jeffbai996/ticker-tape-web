@@ -4,6 +4,7 @@
 // turn. Each round is a separate worker request, so the daily spend cap
 // pre-charges every round — an agentic turn can't slip past accounting.
 
+import { contextualMessages } from './chatHandoff.js'
 import { streamChat } from './chatClient.js'
 import { TOOL_DEFS, executeTool } from './tools.js'
 import {
@@ -12,6 +13,9 @@ import {
 } from './wirechat.js'
 
 const MAX_ROUNDS = 6
+const ANALYSIS_TOOLS = new Set(['wire_search','get_quotes','get_technicals','get_earnings','get_market_pulse','get_watchlist','get_calendar','journal_search'])
+const analysisRequest = messages => !!messages.findLast(m=>m.role==='user')?.context
+const analysisResult = () => JSON.stringify({error:'This contextual analysis can only read data. Request changes in a separate chat message.'})
 
 /**
  * Trim chat history to at most `max` entries without orphaning tool messages:
@@ -61,7 +65,7 @@ export async function runAgenticOverWire({
   // Full provider transcript, including hidden corrective nudges. `added` is
   // only what belongs in the user's visible/persisted conversation.
   const contextAdded = []
-  const sys = `${system}\n\n${toolProtocol()}`
+  let readOnly = analysisRequest(messages)
   for (let round = 0; round < MAX_ROUNDS; round++) {
     // A follow-up is a polite queue, not a barge-in: only splice it into the
     // transcript between provider rounds, when no request is in flight.
@@ -70,11 +74,13 @@ export async function runAgenticOverWire({
     if (added.length > beforeFollowUps) {
       contextAdded.push(...added.slice(beforeFollowUps))
     }
+    readOnly ||= analysisRequest(added)
+    const sys = `${system}\n\n${toolProtocol(readOnly ? TOOL_DEFS.filter(t=>ANALYSIS_TOOLS.has(t.name)) : TOOL_DEFS)}`
     const convo = [...messages, ...contextAdded]
       .filter((m) => m.role !== 'tool' || m.content)
       .map((m) => (m.role === 'tool'
         ? { role: 'user', content: `TOOL_RESULT ${m.name}: ${m.content}` }
-        : { role: m.role, content: m.content }))
+        : { role: m.role, content: m.content,context:m.context }))
     const last = round === MAX_ROUNDS - 1
     const roundSystem = last ? `${system}\n\nAnswer now with what you have.` : sys
     onTrace?.({ type: 'model_start', round })
@@ -84,7 +90,7 @@ export async function runAgenticOverWire({
     let text = ''
     try {
       ;({ text } = await streamTurn({
-        model, effort, system: roundSystem, messages: convo,
+        model, effort, system: roundSystem, messages: contextualMessages(convo),
         onDelta,
         onThinking: (delta) => {
           onThinking?.(delta)
@@ -97,7 +103,7 @@ export async function runAgenticOverWire({
     } catch (err) {
       if (signal?.aborted) throw err        // a user stop is not a fallback case
       ;({ text } = await completeTurn({
-        model, effort, system: roundSystem, messages: convo,
+        model, effort, system: roundSystem, messages: contextualMessages(convo),
       }))
     }
     if (signal?.aborted) throw new DOMException('stopped', 'AbortError')
@@ -138,7 +144,7 @@ export async function runAgenticOverWire({
     onTrace?.({ type: 'tool_start', round, id, name: call.name, args: call.args })
     let result
     try {
-      result = await runTool(call.name, call.args)
+      result = readOnly && !ANALYSIS_TOOLS.has(call.name) ? analysisResult() : await runTool(call.name, call.args)
     } catch (err) {
       onTrace?.({
         type: 'tool_error', round, id, name: call.name,
@@ -169,9 +175,11 @@ export async function runAgentic({
   }
   const added = []
   const convo = () => [...messages, ...added]
+  let readOnly = analysisRequest(messages)
 
   for (let round = 0; round < MAX_ROUNDS; round++) {
     receiveFollowUps(takeFollowUps, added, onRound)
+    readOnly ||= analysisRequest(added)
     // Last chance: drop the tools so the model must answer with what it has.
     const finalRound = round === MAX_ROUNDS - 1
     let text = ''
@@ -180,8 +188,8 @@ export async function runAgentic({
       effort,
       model,
       system,
-      messages: convo(),
-      tools: finalRound ? undefined : TOOL_DEFS,
+      messages: contextualMessages(convo()),
+      tools: finalRound ? undefined : readOnly ? TOOL_DEFS.filter(t=>ANALYSIS_TOOLS.has(t.name)) : TOOL_DEFS,
       onDelta: (d) => {
         text += d
         onDelta?.(d)
@@ -202,7 +210,7 @@ export async function runAgentic({
       onTrace?.({ type: 'tool_start', round, id: tc.id, name: tc.name, args: tc.args })
       let result
       try {
-        result = await executeTool(tc.name, tc.args)
+        result = readOnly && !ANALYSIS_TOOLS.has(tc.name) ? analysisResult() : await executeTool(tc.name, tc.args)
       } catch (err) {
         onTrace?.({
           type: 'tool_error', round, id: tc.id, name: tc.name,

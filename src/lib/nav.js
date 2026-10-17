@@ -129,7 +129,7 @@ export const IS_FAMILY_BUILD = FAMILY_BUILD
 export const IS_FAMILY_AI = FAMILY_AI
 export const IS_TV_BUILD = TV_BUILD
 
-export const DEFAULT_SECTION = 'dashboard'
+export const DEFAULT_SECTION = FAMILY_BUILD ? 'portfolio' : 'dashboard'
 
 export function findSection(id) {
   return NAV.find((s) => s.id === id) || null

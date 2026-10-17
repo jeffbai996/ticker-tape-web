@@ -25,6 +25,7 @@ import { venueFlag } from '../lib/venueFlag.js'
 import { VENUE_LABEL, fxDayPct, fxImpact, limitFlag, marketSession, venueDayBreakdown } from '../lib/cnMarkets.js'
 import { fetchSymbolEventsCached } from '../lib/cnEvents.js'
 import { BookNews } from './portfolioNews.jsx'
+import { PortfolioHome } from '../components/PortfolioHome.jsx'
 import { PortfolioHistory } from '../components/PortfolioHistory.jsx'
 import { BookPerformance } from './portfolioPerformance.jsx'
 import { BookTrades } from './portfolioTrades.jsx'
@@ -1465,10 +1466,10 @@ export function MyPortfolios({ view = 'overview' } = {}) {
           {/* overview is the complete portfolio workspace; supporting routes
               replace it with a single focused surface. */}
           {view === 'overview' && <SummaryStrip portfolio={selected} quotes={quotes} rates={rates} ccys={ccys} fxLive={fxLive} bench={bench} />}
-          {view === 'overview' && <BookAnalysis portfolio={selected} quotes={quotes} rates={rates} fxLive={fxLive} bench={bench} slot="top" />}
+          {view === 'overview' && <PortfolioHome portfolio={selected} quotes={quotes} valuedRows={portfolioValues(selected.holdings,quotes,rates,selected.ccy,selected.cash).rows} />}
           {view === 'overview' && <Holdings portfolio={selected} quotes={quotes} rates={rates} />}
           {view === 'overview' && <BookTools portfolio={selected} quotes={quotes} rates={rates} />}
-          {view === 'overview' && <BookAnalysis portfolio={selected} quotes={quotes} rates={rates} fxLive={fxLive} bench={bench} slot="rest" />}
+          {view === 'overview' && <BookAnalysis portfolio={selected} quotes={quotes} rates={rates} fxLive={fxLive} bench={bench} />}
           {view === 'news' && <BookNews portfolio={selected} quotes={quotes} />}
           {view === 'performance' && <BookPerformance portfolio={selected} quotes={quotes} rates={rates} />}
           {view === 'trades' && <BookTrades portfolio={selected} quotes={quotes} />}
