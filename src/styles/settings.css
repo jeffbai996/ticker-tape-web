@@ -1,4 +1,6 @@
 .settings-page {
+  /* Intrinsic height lets the scrolling shell include its bottom-tab padding. */
+  align-self: flex-start;
   width: 100%; min-width: 0; max-width: 1120px; margin-inline: auto;
   padding: 28px 24px 40px; color: var(--color-ink); font-family: var(--font-sans);
 }
