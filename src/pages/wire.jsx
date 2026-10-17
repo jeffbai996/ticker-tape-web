@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { activityColor } from '../lib/contrast.js'
 import {
-  wireUrl, setWireUrl, newsserviceHome, calendarSubscriptionUrl, armAudioCapture, fetchEvents, fetchUpdates, fetchToday, fetchMeta,
+  wireUrl, setWireUrl, newsserviceHome, calendarSubscriptionUrl, armAudioCapture, fetchEvents, fetchUpdates, fetchToday, fetchMeta, fetchWireArticle,
   demoBackfill, demoEvent, demoToday, DEMO_SESSION_ROWS, rankEvents, collapseSessions, clusterStories,
   srcCred, evHeadline, evBody, matchesWireQuery, matchesWireRelevance,
   pubDisplayName, readMinutes, sortWireLatest, tierOfEvent, effectiveEventTime,
@@ -16,6 +16,7 @@ import { WireAudio } from '../components/WireAudio.jsx'
 import { MdLite } from '../components/AiReport.jsx'
 import { getLocale, t as tt, tl } from '../lib/i18n.js'
 import { cleanArticleText } from '../lib/articleText.js'
+import { readableCnUrl } from '../lib/cnData.js'
 
 const TIER_CLS = {
   1: 'text-[#58a6ff] border-[#58a6ff]/50',
@@ -159,14 +160,11 @@ function ReadBody({ ev }) {
     let dead = false
     const base = wireUrl()
     if (!base || ev.demo) { setState({ status: 'off', paras: [] }); return }
-    // The public mirror carries headlines and source links only — there is no
-    // extractor behind it. Fall straight to the "open the page" line instead
-    // of burning a request on a 404.
+    // Chinese stories use the public publisher reader. Other mirror imports
+    // require the separate retained-article capability.
     const readerToken = import.meta.env.VITE_READER_CAPABILITY || ''
-    if (isMirrorBase(base) && !readerToken) { setState({ status: 'empty', paras: [] }); return }
-    fetch(`${base.replace(/\/$/, '')}/api/read?id=${ev.id}&body=1&fast=1${attempt > 1 ? '&refresh=1' : ''}`,
-      { signal: AbortSignal.timeout(20_000), headers: isMirrorBase(base) ? { Authorization: `Bearer ${readerToken}` } : {} })
-      .then((r) => r.json())
+    if (isMirrorBase(base) && !readerToken && !readableCnUrl(ev.url)) { setState({ status: 'empty', paras: [] }); return }
+    fetchWireArticle(base, ev, { readerToken, refresh:attempt > 1 })
       .then((out) => {
         if (dead) return
         const text = cleanArticleText(out.ok ? (out.text || out.summary || '') : '')
@@ -176,7 +174,7 @@ function ReadBody({ ev }) {
       .catch(() => !dead && setState({ status: 'empty', paras: [] }))
     return () => { dead = true }
   }, [ev.id, attempt])
-  if (isMirrorBase(wireUrl()) && !import.meta.env.VITE_READER_CAPABILITY) return <a href={ev.url} target="_blank" rel="noopener" class="inline-flex mt-2 rounded border border-line px-2 py-1 text-accent text-[11px]">{tl('open the page ↗')}</a>
+  if (isMirrorBase(wireUrl()) && !import.meta.env.VITE_READER_CAPABILITY && !readableCnUrl(ev.url)) return <a href={ev.url} target="_blank" rel="noopener" class="inline-flex mt-2 rounded border border-line px-2 py-1 text-accent text-[11px]">{tl('open the page ↗')}</a>
   if (!attempt) return <button class="mt-2 rounded border border-accent/40 px-2 py-1 text-accent text-[11px]" onClick={() => setAttempt(1)}>{getLocale() === 'zh' ? '加载全文' : 'Load article'}</button>
   if (state.status === 'off') return null
   if (state.status === 'loading') {

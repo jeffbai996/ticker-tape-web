@@ -1,6 +1,6 @@
 import { createPCache } from './pcache.js'
-import { eventLanguage, isMirrorBase, pubDisplayName, srcCred } from './wire.js'
-import { fetchCnArticle, readableCnUrl } from './cnData.js'
+import { eventLanguage, fetchWireArticle, isMirrorBase, pubDisplayName, srcCred } from './wire.js'
+import { readableCnUrl } from './cnData.js'
 import { cleanArticleText } from './articleText.js'
 
 const cache = createPCache('portfolio_wire_news_v1', { max: 2 })
@@ -87,15 +87,10 @@ export function canReadPortfolioArticle(item) {
 }
 
 export async function readPortfolioArticle(item, { fetchImpl = fetch } = {}) {
-  if (readableCnUrl(item.link)) {
-    const out = await fetchCnArticle(item.link, { fetchImpl })
-    return { ...out, paras:cleanArticleText(out.paras.join('\n\n')).split(/\n{2,}/).filter(Boolean) }
-  }
   if (!canReadPortfolioArticle(item)) throw new Error('Article reader unavailable')
-  const response = await fetchImpl(`${item.wireBase.replace(/\/$/,'')}/api/read?id=${item.wireId}&body=1&fast=1`,
-    { signal:AbortSignal.timeout(20_000), headers:isMirrorBase(item.wireBase) ? { Authorization:`Bearer ${READER_TOKEN}` } : {} })
-  const out = await response.json()
+  const out = await fetchWireArticle(item.wireBase || '', {id:item.wireId,url:item.link}, {fetchImpl,readerToken:READER_TOKEN})
   const text = cleanArticleText(out.text || '')
-  if (!response.ok || !out.ok || !text) throw new Error('Article unavailable')
-  return { title:item.title, source:item.publisher, paras:text.split(/\n{2,}/).filter(Boolean), truncated:out.truncated }
+  if (!out.ok || !text) throw new Error('Article unavailable')
+  return { title:out.title || item.title, source:out.source || item.publisher, time:out.time,
+    paras:text.split(/\n{2,}/).filter(Boolean), truncated:out.truncated }
 }
