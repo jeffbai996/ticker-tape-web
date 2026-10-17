@@ -693,7 +693,7 @@ export function SummaryStrip({ portfolio, quotes, rates, ccys, fxLive, bench }) 
   const [inspection,setInspection]=useState(null)
   const inspected=inspection?.id===portfolio.id && inspection.ccy===portfolio.ccy ? inspection.point : null
   const displayedValue=inspected ? inspected.v : total.value
-  const hasDetail=inspected?.source==='collector'
+  const hasDetail=['collector','reconstructed'].includes(inspected?.source)
   const factLabel=name=>inspected && !hasDetail ? (getLocale()==='zh' ? `当前${tl(name)}` : `Current ${tl(name)}`) : tl(name)
   const shownCost=hasDetail ? (inspected.cost==null ? null : Number(inspected.cost)) : un.costBasis
   const shownPnl=hasDetail ? (inspected.unrealized==null ? null : Number(inspected.unrealized)) : total.unrealPnl
@@ -719,7 +719,7 @@ export function SummaryStrip({ portfolio, quotes, rates, ccys, fxLive, bench }) 
           <div>
             <div class="flex items-baseline gap-2 font-anth text-[9px] uppercase tracking-[.14em] text-muted">
               <span>{tl('Value')} ({portfolio.ccy})</span>
-              {inspected && <span data-portfolio-value-date class="font-mono tracking-normal text-accent">{inspected.d}</span>}
+              {inspected && <span data-portfolio-value-date class="font-mono tracking-normal text-accent">{inspected.d}{inspected.source==='reconstructed' && <span data-history-reconstructed class="ml-2 text-muted">{getLocale()==='zh' ? '重建' : 'Reconstructed'}</span>}</span>}
             </div>
             <div data-portfolio-value class="font-anth text-[30px] leading-tight font-semibold tracking-tight text-ink tabular-nums">
               <span class="mr-0.5 text-[0.55em] font-medium tracking-normal text-muted">{fmtCcyParts(displayedValue, portfolio.ccy).mark.trim()}</span>{fmtCcyParts(displayedValue, portfolio.ccy).figure}

@@ -54,10 +54,10 @@ it('scrubs the hero value and restores its live figures when inspection ends',as
   expect(root.querySelector('[data-portfolio-value-date]')).toBeNull()
 })
 
-it('restores collected cash and costs while scrubbing server history',async()=>{
+it.each(['collector','reconstructed'])('restores %s cash and costs while scrubbing server history',async(source)=>{
  const {SummaryStrip}=await import('../../src/pages/portfolioMine.jsx')
  service.state={configured:true,data:{marks:[
-  {d:'2026-01-01',v:100,c:'USD',source:'collector',cash:'40',cost:'50',unrealized:'10'},
+  {d:'2026-01-01',v:100,c:'USD',source,cash:'40',cost:'50',unrealized:'10'},
   {d:'2026-01-02',v:120,c:'USD',source:'collector',cash:'30',cost:'60',unrealized:'30'}
  ]}}
  root=document.createElement('div');document.body.append(root)
@@ -68,4 +68,5 @@ it('restores collected cash and costs while scrubbing server history',async()=>{
  expect(root.textContent).toContain('40')
  expect(root.textContent).toContain('50')
  expect(root.textContent).not.toContain('Current Cost basis')
+ if(source==='reconstructed')expect(root.querySelector('[data-history-reconstructed]')).not.toBeNull()
 })

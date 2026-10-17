@@ -120,7 +120,7 @@ export function PortfolioHistory({ marks,ccy,cashTxns=[],name='',onInspect }) {
           </div>
         </div>
         <div class="my-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-          <div data-history-date class="font-mono text-[11px] text-muted">{point.d}</div>
+          <div data-history-date class="font-mono text-[11px] text-muted">{point.d}{point.source==='reconstructed' && <span class="ml-2 text-accent">{label('Reconstructed','重建')}</span>}</div>
           <button type="button" onClick={()=>setSelected(null)} class="font-anth text-[10px] text-accent hover:underline">{label('Latest recorded','最新记录')}</button>
         </div>
         <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -129,6 +129,7 @@ export function PortfolioHistory({ marks,ccy,cashTxns=[],name='',onInspect }) {
           {metric(label('Period return','区间收益率'),percent(point.returnPct),tone(point.returnPct))}
           {metric(label('Drawdown','回撤'),percent(point.drawdownPct),tone(point.drawdownPct))}
         </div>
+        {point.source==='reconstructed' && <p class="mt-2 font-anth text-[10px] text-muted">{label('Breakdown reconstructed from saved holdings, trades and historical FX. Original total preserved.','明细据历史持仓、交易及汇率重建，原始总额不变。')}</p>}
         <div class="mt-4 text-muted"><HistoryPlot points={points} active={active} onInspect={setSelected} mode={mode} ccy={ccy} /></div>
         <input type="range" aria-label={label('History date','历史日期')} min="0" max={points.length-1} step="1" value={active}
           disabled={points.length<2} onInput={e=>setSelected(Number(e.currentTarget.value))} class="mt-2 w-full accent-accent" />
