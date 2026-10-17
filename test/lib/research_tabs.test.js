@@ -14,6 +14,7 @@
  *  removal of dead code, where "this text is absent" IS the assertion.
  */
 import { h, render } from 'preact'
+import { act } from 'preact/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { parseHash } from '../../src/lib/route.js'
 import { researchSource } from './researchSource.js'
@@ -32,18 +33,9 @@ const { useResearchKeys } = await import('../../src/pages/research/useResearchKe
 const SYMBOL = 'AAPL'
 const WATCHLIST = ['AAPL', 'MSFT', 'GOOGL']
 
-// Preact flushes effects after paint (rAF, else a 100ms fallback); jsdom has
-// no rAF, so shim one and give the flush a macrotask to land in.
-const flush = () => new Promise((resolve) => setTimeout(resolve, 40))
 let host = null
-let hadRaf = null
 
 beforeEach(() => {
-  hadRaf = globalThis.requestAnimationFrame
-  if (typeof hadRaf !== 'function') {
-    globalThis.requestAnimationFrame = (cb) => setTimeout(() => cb(Date.now()), 0)
-    globalThis.cancelAnimationFrame = (id) => clearTimeout(id)
-  }
   // Marquee measures the company name; jsdom ships no ResizeObserver
   if (!globalThis.ResizeObserver) {
     globalThis.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} }
@@ -57,13 +49,9 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  render(null, host)
+  act(() => render(null, host))
   document.body.innerHTML = ''
   location.hash = ''
-  if (typeof hadRaf !== 'function') {
-    delete globalThis.requestAnimationFrame
-    delete globalThis.cancelAnimationFrame
-  }
 })
 
 /** The header plus the key bindings the page installs alongside it. */
@@ -73,8 +61,9 @@ function ResearchProbe({ symbol, q, route }) {
 }
 
 async function mount({ symbol = SYMBOL, q = null, route = { view: null } } = {}) {
-  render(h(ResearchProbe, { symbol, q, route }), host)
-  await flush()
+  // Flush the installed effects before dispatching keys; elapsed time does
+  // not prove the keyboard listener has been attached under a busy runner.
+  await act(() => render(h(ResearchProbe, { symbol, q, route }), host))
   return host
 }
 
@@ -92,8 +81,7 @@ function tabs() {
 }
 
 const press = async (key, target = window) => {
-  target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }))
-  await flush()
+  await act(() => target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true })))
 }
 
 describe('research tab shortcuts', () => {
