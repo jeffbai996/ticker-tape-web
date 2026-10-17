@@ -125,7 +125,7 @@ export function PortfolioHistory({ marks,ccy,cashTxns=[],name='',onInspect }) {
         </div>
         <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {metric(tl('Value'),fmtCcy(point.v,ccy),'text-ink',{'data-history-value':true})}
-          {metric(label('Since previous record','较上一记录'),signed(point.change,ccy),tone(point.change))}
+          {metric(label('Since previous record','较上一交易日'),signed(point.change,ccy),tone(point.change))}
           {metric(label('Period return','区间收益率'),percent(point.returnPct),tone(point.returnPct))}
           {metric(label('Drawdown','回撤'),percent(point.drawdownPct),tone(point.drawdownPct))}
         </div>
