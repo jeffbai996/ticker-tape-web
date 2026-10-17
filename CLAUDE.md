@@ -160,7 +160,7 @@ scripts/
 ├── bundle_budget.sh          entry-chunk route budget (`npm run budget`)
 ├── probe_matrix.py           responsive matrix against a SERVED build
 └── deploy_tailnet.sh         private build deploy
-docs/                         design/feature audit and run plans
+docs/                         engineering notes and README images
 public/                       static/PWA assets
 ```
 
@@ -218,7 +218,6 @@ separate Wrangler deploy; pushing alone does not update the Worker.
 ## Reference Material
 
 - `README.md` documents the current user-facing features and architecture.
-- `docs/` holds the living design/feature audit and the current run plan.
 - The sibling `ticker-tape` repository is the TUI and the source for financial
   behavior worth porting; its runtime data must never be copied here.
 - The retired vanilla-JS v2 implementation remains available in git history

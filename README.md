@@ -207,7 +207,7 @@ ticker-tape-web/
 │   ├── components/      # StatusBar, FeedIndicator, Tape, CommandBar, Overlay, LazyPage, WorkspacesControl…
 │   └── lib/             # feed, feedHealth, yahoo, badges, eventLinks, screenDefs, workspaces, optionsIntel, wire…
 ├── scripts/             # bundle_budget.sh, probe_matrix.py, deploy_tailnet.sh
-├── docs/                # Fable design/feature handoff + run plans
+├── docs/                # engineering notes and README images
 ├── test/                # Vitest suites (test/lib + test/worker)
 └── vite.config.js
 ```
