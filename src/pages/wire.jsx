@@ -5,7 +5,7 @@ import {
   demoBackfill, demoEvent, demoToday, DEMO_SESSION_ROWS, rankEvents, collapseSessions, clusterStories,
   srcCred, evHeadline, evBody, matchesWireQuery, matchesWireRelevance,
   pubDisplayName, readMinutes, sortWireLatest, tierOfEvent, effectiveEventTime,
-  toggleWireArticle, isMirrorBase, mirrorAgeMinutes, eventLanguage, loadWireOrder, saveWireOrder,
+  toggleWireArticle, isMirrorBase, mirrorAgeMinutes, eventLanguage, filterWireLanguage, loadWireOrder, saveWireOrder,
 } from '../lib/wire.js'
 import { IS_FAMILY_BUILD, IS_PRIVATE_BUILD } from '../lib/nav.js'
 import { prefetchSymbol } from '../lib/history.js'
@@ -874,8 +874,7 @@ export function Wire({ route }) {
   const wanted = filter ? filter.split(',') : null
   // a session card answers for its audio contents on the type filter
   const typeOf = (ev) => (ev.type === 'live_call' ? 'digest' : ev.type)
-  const filtered = clusterStories(collapseSessions(events, now), now)
-    .filter((ev) => showZhSources || eventLanguage(ev) !== 'zh')
+  const filtered = clusterStories(collapseSessions(filterWireLanguage(events, showZhSources), now), now)
     .filter((ev) => !wanted || wanted.includes(typeOf(ev)) || wanted.includes(ev.type))
     .filter((ev) => matchesWireQuery(ev, query, getLocale()))
     .filter((ev) => matchesWireRelevance(ev, watchset, {
@@ -1088,7 +1087,8 @@ export function Wire({ route }) {
           </button>
         ))}
         <button data-zh-sources-filter onClick={() => setShowZhSources(!showZhSources)}
-          title={tl('show official Chinese-language sources')}
+          aria-pressed={showZhSources}
+          title={getLocale() === 'zh' ? '仅显示中文来源' : 'Show only Chinese-language sources'}
           class={`border rounded-md px-2.5 py-0.5 text-[11px] font-semibold transition-colors ${
             showZhSources
               ? 'bg-accent border-accent text-black'
