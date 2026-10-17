@@ -32,6 +32,11 @@ describe('bounded family reader', () => {
   it('can use structured article text', () => {
     expect(extractArticle('<script type="application/ld+json">{"@type":"NewsArticle","articleBody":"Full published article text"}</script>').text).toBe('Full published article text')
   })
+  it('cleans structured source boilerplate without removing article prose', () => {
+    const text = 'Facebook\n\nWhatsApp\n\nEmail\n\nEmail revenue increased by twelve percent.\n\nView Original'
+    const result = extractArticle(`<script type="application/ld+json">${JSON.stringify({ articleBody: text })}</script>`)
+    expect(result.text).toBe('Email revenue increased by twelve percent.')
+  })
   const request = (suffix = 'id=7') => new Request(`https://edge.test/wire/api/read?${suffix}`, { headers: { Authorization: 'Bearer fixture-reader' } })
   const env = () => ({ WIRE_READER_TOKEN: 'fixture-reader', SPEND: { get: vi.fn(async key => key === 'wire:public' ? { events: [{ id: 7, url: 'https://news.rthk.hk/a' }] } : null), put: vi.fn() }, READER_QUOTA: { idFromName: n => n, get: () => ({ fetch: async () => new Response(null, { status: 204 }) }) } })
   it('rejects missing credentials and arbitrary URL parameters before fetch', async () => {
@@ -60,5 +65,14 @@ describe('bounded family reader', () => {
     store.READER_QUOTA.get = () => ({ fetch: async () => new Response(null, { status: 429 }) })
     expect((await handleReader(request(), store)).status).toBe(429)
     expect(store.SPEND.get).not.toHaveBeenCalled()
+  })
+  it('cleans existing cached articles without fetching the publisher again', async () => {
+    const store = env(), fetcher = vi.fn()
+    store.SPEND.get.mockImplementation(async key => key === 'wire:public'
+      ? { events: [{ id: 7, url: 'https://news.rthk.hk/a' }] }
+      : { ok: true, source_url: 'https://news.rthk.hk/a', text: 'Facebook\n\nEmail\n\nPublished article prose.\n\nView Original' })
+    const out = await (await handleReader(request(), store, fetcher)).json()
+    expect(out.text).toBe('Published article prose.')
+    expect(fetcher).not.toHaveBeenCalled()
   })
 })
