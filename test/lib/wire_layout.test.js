@@ -76,7 +76,7 @@ describe('wire workbench sizing', () => {
   it('offers an opt-in official Chinese-source filter', () => {
     expect(src).toContain('data-zh-sources-filter')
     expect(src).toContain("localStorage.setItem('tape-wire-zh-sources'")
-    expect(src).toContain("showZhSources || eventLanguage(ev) !== 'zh'")
+    expect(src).toContain('collapseSessions(filterWireLanguage(events, showZhSources), now)')
   })
 
   it('renders generated event bodies instead of leaking markdown markers', () => {

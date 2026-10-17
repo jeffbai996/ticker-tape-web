@@ -505,6 +505,11 @@ export function eventLanguage(ev) {
   return String(ev?.language || ev?.meta?.language || '').toLowerCase()
 }
 
+/** Apply source selection before clustering, so another outlet cannot hide it. */
+export function filterWireLanguage(events, chineseOnly) {
+  return events.filter(ev => (eventLanguage(ev) === 'zh') === chineseOnly)
+}
+
 export const TYPE_WEIGHT = {
   earnings_release: 100, macro_print: 85, fed_headline: 75, fed_speech: 70,
   live_call: 90, digest: 60, filing: 55, headline: 40, transcript_chunk: 12,
