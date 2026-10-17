@@ -64,3 +64,16 @@ describe('buildPerformance', () => {
     expect(out.series[0].ret).toBeCloseTo(12.75)
   })
 })
+
+it('leaves full-period return unavailable after an unconverted external cash flow',()=>{
+  const out=buildPerformance([{d:'2026-01-01',v:100,c:'USD'},{d:'2026-01-02',v:200,c:'USD'},{d:'2026-01-03',v:210,c:'USD'}],[],
+    [{d:'2026-01-02',kind:'deposit',ccy:'CAD',amount:100}],'USD')
+  expect(out.series[0].values).toEqual([100,null,null])
+  expect(out.series[0].ret).toBeNull()
+})
+it('does not restart a broken return chain as a numeric loss after a zero balance',()=>{
+  const out=buildPerformance([{d:'2026-01-01',v:100,c:'USD'},{d:'2026-01-02',v:0,c:'USD'},{d:'2026-01-03',v:100,c:'USD'},{d:'2026-01-04',v:110,c:'USD'}],[],
+    [{d:'2026-01-03',kind:'deposit',ccy:'USD',amount:100}],'USD')
+  expect(out.series[0].values).toEqual([100,0,null,null])
+  expect(out.series[0].ret).toBeNull()
+})

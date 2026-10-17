@@ -49,8 +49,15 @@ export function normalizeTo100(values) {
 /** Return from the first finite value to the last, in percent. */
 export function spanReturn(values) {
   const finite = values.filter((v) => v != null && Number.isFinite(v))
-  if (finite.length < 2 || finite[0] <= 0) return null
+  if (finite.length < 2 || finite[0] <= 0 || !Number.isFinite(values.at(-1))) return null
   return ((finite[finite.length - 1] / finite[0]) - 1) * 100
+}
+
+/** An external flow cannot adjust performance until its conversion is known. */
+export function hasUnconvertedFlow(cashTxns, bookCcy, from, through) {
+  return (cashTxns || []).some(e=>['deposit','withdrawal','adjustment'].includes(e.kind)
+    && e.d>from && e.d<=through && e.ccy!==bookCcy
+    && !(e.bookCcy===bookCcy && Number.isFinite(e.bookAmount)))
 }
 
 /** Chain returns between marks after removing external cash flows. A deposit
@@ -68,7 +75,13 @@ export function flowAdjustedTo100(marks, cashTxns, bookCcy) {
     for (const [date, amount] of flows) {
       if (date > previous.d && date <= current.d) flow += amount
     }
-    const factor = previous.v > 0 ? (current.v - flow) / previous.v : null
+    const usable=previous.v>0 && out[i-1]!=null
+      && !hasUnconvertedFlow(cashTxns,bookCcy,previous.d,current.d)
+    // Marks and ledger entries are cent values; subtract money as integers.
+    const exact=[current.v,flow,previous.v].every(v=>Number.isSafeInteger(Math.round(v*100)))
+    const factor=usable && exact
+      ? Number(BigInt(Math.round(current.v*100))-BigInt(Math.round(flow*100)))/Math.round(previous.v*100)
+      : null
     out.push(factor != null && Number.isFinite(factor)
       ? Math.round(out[i - 1] * factor * 1e4) / 1e4
       : null)
