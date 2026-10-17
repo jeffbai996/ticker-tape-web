@@ -28,7 +28,7 @@ it('keeps family inference off until explicitly enabled', async () => {
   const chat = await family(false)
   expect(chat.wireChatAvailable()).toBe(false)
   const { NAV } = await import('../../src/lib/nav.js')
-  expect(NAV.find(s => s.id === 'chat').badge).toBe('PREVIEW')
+  expect(NAV.find(s => s.id === 'chat').badge).toBe('DEMO')
   expect(NAV.some(s => s.id === 'brief')).toBe(false)
 })
 

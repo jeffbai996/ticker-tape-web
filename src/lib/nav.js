@@ -11,7 +11,7 @@ const FAMILY_AI = FAMILY_BUILD && import.meta.env.VITE_FAMILY_AI === '1'
 
 const CHAT_SECTION = {
   id: 'chat', label: 'AI Chat', subs: [],
-  ...(PRIVATE_BUILD || FAMILY_AI ? {} : { badge: 'PREVIEW' }),
+  ...(PRIVATE_BUILD || FAMILY_AI ? {} : { badge: 'DEMO' }),
 }
 
 export const NAV = [
