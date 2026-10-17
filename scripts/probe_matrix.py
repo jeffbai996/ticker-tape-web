@@ -182,6 +182,11 @@ def board_route(route: str) -> bool:
     return route in ("#/", "#", "") or "watchlists" in route
 
 
+def board_wait_needed(section: str | None, has_rows: bool) -> bool:
+    """A variant may open Portfolio at #/; only quote boards await rows."""
+    return not has_rows and section in (None, 'dashboard', 'watchlists')
+
+
 def _grade(r: dict, width: int) -> tuple[list[str], list[str]]:
     """Return (failures, skipped). Data-dependent checks skip on an empty board."""
     failures, skipped = [], []
@@ -247,7 +252,8 @@ def probe_view(browser, base: str, route: str, view: tuple[str, int, int],
         # never go idle, so give them a fixed settle instead
         if board_route(route):
             while time.monotonic() < deadline - settle:
-                if page.evaluate("document.querySelectorAll('.tui-quote-cluster').length"):
+                section, has_rows = page.evaluate("[document.querySelector('main.app-content')?.dataset.section ?? null, !!document.querySelector('.tui-quote-cluster')]")
+                if not board_wait_needed(section, has_rows):
                     break
                 time.sleep(0.5)
         time.sleep(min(settle, max(0.5, deadline - time.monotonic())))
