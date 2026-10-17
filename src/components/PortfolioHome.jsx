@@ -1,3 +1,4 @@
+import {dataTime} from './PortfolioFreshness.jsx'
 import { useEffect, useMemo, useState } from 'preact/hooks'
 import { portfolioValues, localDate } from '../lib/myPortfolios.js'
 import { loadPortfolioWire, peekPortfolioWire, loadCompanyNews, portfolioStories } from '../lib/portfolioNews.js'
@@ -65,7 +66,7 @@ export function PortfolioHome({portfolio,quotes={},valuedRows}) {
         {header(text('News for your holdings','持仓新闻'),'#/portfolio/news')}
         <div class="space-y-2.5">{news.map(n=><button key={n.link} type="button" onClick={()=>setOpen({...n,portfolioName:portfolio.name})} class="block w-full text-left">
           <span class="line-clamp-2 font-anth text-[12px] leading-snug text-ink-2 hover:text-accent">{n.title}</span>
-          <span class="mt-1 block font-mono text-[9px] text-muted">{name(n.symbol)} · {n.publisher}</span>
+          <span class="mt-1 block font-mono text-[9px] text-muted">{name(n.symbol)} · {n.publisher} · {dataTime(new Date(n.time).getTime()/1000)}</span>
         </button>)}{!news.length && <p class="py-2 font-anth text-[11px] text-muted">{newsPending ? tl('loading')+'…' : newsError ? text('News unavailable. Please refresh.','新闻暂不可用，请刷新。') : tl('No matching headlines.')}</p>}</div>
       </div>
       <div class="min-w-0 p-3" data-home-dates>
