@@ -185,7 +185,7 @@ export function App() {
             ><RailChevron direction="right" /></button>
           </div>
         )}
-        <main ref={mainRef} class="app-content flex-1 flex min-w-0 min-h-0 overflow-y-auto max-md:pb-12">
+        <main ref={mainRef} data-section={route.section} class="app-content flex-1 flex min-w-0 min-h-0 overflow-y-auto max-md:pb-12">
           <Page route={route} />
         </main>
       </div>
