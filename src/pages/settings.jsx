@@ -10,6 +10,7 @@ import { getMarketColorOrder, saveMarketColorOrder, defaultMarketColorOrder } fr
 import { loadWireOrder, saveWireOrder } from '../lib/wire.js'
 import { isTapeList, toggleTapeList, onTapeListsChange } from '../lib/tapeLists.js'
 import { getWidgets, addWidget, removeWidget, resetWidgets, onWidgetsChange } from '../lib/widgets.js'
+import '../styles/settings.css'
 
 const WIDGET_OPTIONS = [
   ['pulse', 'Market pulse', '市场脉搏'], ['markets', 'Global markets', '全球市场'],
@@ -20,9 +21,16 @@ const WIDGET_OPTIONS = [
 
 function Switch({ checked, onChange, label }) {
   return <button type="button" role="switch" aria-checked={checked} aria-label={label} onClick={onChange}
-    class={`shrink-0 w-6 h-3 rounded-[2px] border flex items-center px-[1px] ${checked ? 'border-accent bg-accent/15 justify-end' : 'border-line-2 bg-surface-2 justify-start'}`}>
-    <span class={`block w-2 h-2 rounded-[1px] ${checked ? 'bg-accent' : 'bg-muted'}`} />
+    class="settings-switch">
+    <span class="settings-switch-track"><span /></span>
   </button>
+}
+
+function SettingsPanel({ id, title, children, wide = false }) {
+  return <section class={`settings-panel${wide ? ' settings-panel-wide' : ''}`} aria-labelledby={`settings-${id}-heading`}>
+    <h2 id={`settings-${id}-heading`} class="settings-panel-heading">{title}</h2>
+    {children}
+  </section>
 }
 
 export function Settings() {
@@ -63,16 +71,14 @@ export function Settings() {
     }
     resetWidgets()
   }
-  const control = 'rounded-sm border border-line-2 bg-surface-2 px-2 py-[2px] font-mono text-[12px] text-ink text-right hover:border-accent focus:border-accent outline-none'
-  const heading = 'flex items-center px-3 py-[3px] border-b border-line-2 bg-surface-2 font-anth font-bold text-[12px] tracking-wider text-accent uppercase'
-  return <section class="settings-page w-full min-w-0 flex-1 p-3 text-ink font-mono text-[12px]">
-    <div class="flex items-center justify-between border-b border-line pb-2 mb-3">
-      <h1 class="font-mono font-bold text-lg text-ink">{label('Settings', '设置')}</h1>
-      <button class="rounded-sm border border-line-2 bg-surface-2 px-2 py-[2px] font-mono text-[10px] uppercase tracking-wider text-muted hover:text-accent hover:border-accent" onClick={reset}>{label('Reset', '重置')}</button>
+  const control = 'settings-select'
+  return <section class="settings-page">
+    <div class="settings-header">
+      <h1>{label('Settings', '设置')}</h1>
+      <button type="button" class="settings-reset" onClick={reset}>{label('Reset defaults', '恢复默认')}</button>
     </div>
-    <div class="columns-1 lg:columns-2 gap-3">
-    <section class="settings-panel bg-surface-1 border border-line rounded-xl overflow-hidden">
-    <h2 class={heading}>{label('Appearance', '外观')}</h2>
+    <div class="settings-grid">
+    <SettingsPanel id="appearance" title={label('Appearance', '外观')}>
     <div class="settings-row">
       <label for="settings-language">{label('Language', '语言')}</label>
       <select id="settings-language" class={control} value={locale} onChange={(e) => changeLanguage(e.currentTarget.value)}>
@@ -98,17 +104,8 @@ export function Settings() {
         saveHighContrast(!contrast); setContrast(!contrast)
       }} />
     </label>
-    <h2 class={heading}>{label('Dashboard', '仪表盘')}</h2>
-    <div class="settings-row">
-      <label for="settings-landing">{label('Opening watchlist', '默认显示自选股')}</label>
-      <select id="settings-landing" class={control} value={landing} onChange={(e) => { const value = e.currentTarget.value; pinDashboardLanding(value || undefined); setLanding(value) }}>
-        <option value="">{label('Last viewed', '上次查看')}</option><option value="main">{tl('Default')}</option>
-        {lists.map((list) => <option key={list.id} value={list.id}>{list.name}</option>)}
-      </select>
-    </div>
-    </section>
-    <section class="settings-panel bg-surface-1 border border-line rounded-xl overflow-hidden">
-    <h2 class={heading}>{label('Wire', '快讯')}</h2>
+    </SettingsPanel>
+    <SettingsPanel id="wire" title={label('Wire', '快讯')}>
     <div class="settings-row">
       <label for="settings-wire-mode">{label('Feed order', '快讯排序')}</label>
       <select id="settings-wire-mode" class={control} value={mode} onChange={(e) => { setMode(e.currentTarget.value); saveWireOrder(e.currentTarget.value) }}>
@@ -116,49 +113,53 @@ export function Settings() {
       </select>
     </div>
     <label class="settings-row">
-      {label('Chinese-language wire sources', '快讯中文来源')}
-      <Switch label={label('Chinese sources', '中文')} checked={chinese} onChange={() => changeSources(!chinese)} />
+      <span>{label('Chinese-language wire sources', '快讯中文来源')}</span>
+      <Switch label={label('Chinese-language wire sources', '快讯中文来源')} checked={chinese} onChange={() => changeSources(!chinese)} />
     </label>
     <label class="settings-row">
-      {label('Show wire sidebar', '显示快讯侧栏')}
-      <Switch label={label('Wire sidebar', '快讯侧栏')} checked={rail} onChange={() => { setRail(!rail); localStorage.setItem('tape-wire-rail', !rail ? '1' : '0') }} />
+      <span>{label('Show wire sidebar', '显示快讯侧栏')}</span>
+      <Switch label={label('Show wire sidebar', '显示快讯侧栏')} checked={rail} onChange={() => { setRail(!rail); localStorage.setItem('tape-wire-rail', !rail ? '1' : '0') }} />
     </label>
-    </section>
-    <section class="settings-panel bg-surface-1 border border-line rounded-xl overflow-hidden">
-      <h2 class={heading}>{label('Tape watchlists', '滚动行情自选股')}</h2>
-      {[{ id: 'main', name: tl('Default') }, ...lists].map((list) => <div key={list.id} class="settings-row">
-        <span class="truncate font-anth">{list.name}</span><Switch label={list.name} checked={isTapeList(list.id)} onChange={() => toggleTapeList(list.id)} />
-      </div>)}
-    </section>
-    <section class="settings-panel bg-surface-1 border border-line rounded-xl overflow-hidden">
-      <h2 class={heading}>{label('Dashboard widgets', '仪表盘组件')}</h2>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 px-3">
-        {WIDGET_OPTIONS.map(([type, en, cn]) => <div key={type} class="settings-row">
+    </SettingsPanel>
+    <SettingsPanel id="dashboard" title={label('Dashboard', '仪表盘')} wide>
+    <div class="settings-row">
+      <label for="settings-landing">{label('Opening watchlist', '默认显示自选股')}</label>
+      <select id="settings-landing" class={control} value={landing} onChange={(e) => { const value = e.currentTarget.value; pinDashboardLanding(value || undefined); setLanding(value) }}>
+        <option value="">{label('Last viewed', '上次查看')}</option><option value="main">{tl('Default')}</option>
+        {lists.map((list) => <option key={list.id} value={list.id}>{list.name}</option>)}
+      </select>
+    </div>
+      <h3 class="settings-subheading">{label('Dashboard widgets', '仪表盘组件')}</h3>
+      <div class="settings-options">
+        {WIDGET_OPTIONS.map(([type, en, cn]) => <label key={type} class="settings-row">
           <span>{label(en, cn)}</span><Switch label={label(en, cn)} checked={widgets.some((w) => w.type === type)} onChange={() => {
             const existing = getWidgets().filter((w) => w.type === type)
             if (existing.length) existing.forEach((w) => removeWidget(w.id)); else addWidget(type)
           }} />
-        </div>)}
+        </label>)}
       </div>
-    </section>
-    <section class="settings-panel bg-surface-1 border border-line rounded-xl overflow-hidden">
-    <h2 class={heading}>{label('Portfolio cards', '持仓分析卡片')}</h2>
-    <div class="grid sm:grid-cols-2 gap-x-4 px-3">
-      {BOOK_CARDS.map((card) => <label key={card.id} class="settings-row">
-        {tl(card.label)}<Switch label={tl(card.label)} checked={!hidden.includes(card.id)} onChange={() => toggleCard(card.id)} />
+    </SettingsPanel>
+    <SettingsPanel id="tape" title={label('Tape watchlists', '滚动行情自选股')}>
+      {[{ id: 'main', name: tl('Default') }, ...lists].map((list) => <label key={list.id} class="settings-row">
+        <span class="min-w-0 break-words">{list.name}</span><Switch label={list.name} checked={isTapeList(list.id)} onChange={() => toggleTapeList(list.id)} />
       </label>)}
-    </div>
-    </section>
-    <section class="settings-panel bg-surface-1 border border-line rounded-xl overflow-hidden">
-    <h2 class={heading}>{label('Services', '服务')}</h2>
+    </SettingsPanel>
+    <SettingsPanel id="services" title={label('Services', '服务')}>
     <dl>
       {[
         [label('Wire', '快讯'), IS_PRIVATE_BUILD ? label('Live stream', '实时推送') : label('Periodic updates', '定期更新')],
         [label('AI chat', 'AI 对话'), IS_PRIVATE_BUILD ? label('Available', '可用') : label('Unavailable', '暂不可用')],
         [label('Portfolio', '持仓'), IS_PRIVATE_BUILD ? label('IBKR + manual', 'IBKR 与手动组合') : label('Manual', '手动组合')],
-      ].map(([name, status]) => <div key={name} class="settings-row"><dt>{name}</dt><dd class="text-ink-2 text-right font-mono">{status}</dd></div>)}
+      ].map(([name, status]) => <div key={name} class="settings-row"><dt>{name}</dt><dd class="settings-status">{status}</dd></div>)}
     </dl>
-    </section>
+    </SettingsPanel>
+    <SettingsPanel id="portfolio" title={label('Portfolio cards', '持仓分析卡片')} wide>
+    <div class="settings-options">
+      {BOOK_CARDS.map((card) => <label key={card.id} class="settings-row">
+        <span>{tl(card.label)}</span><Switch label={tl(card.label)} checked={!hidden.includes(card.id)} onChange={() => toggleCard(card.id)} />
+      </label>)}
+    </div>
+    </SettingsPanel>
     </div>
   </section>
 }

@@ -375,7 +375,7 @@ function StepIcon({ kind, verb, status }) {
   )
 }
 
-function ActivityTrace({ steps, busy = false, startedAt, usage = null }) {
+export function ActivityTrace({ steps, busy = false, startedAt, usage = null }) {
   const [open, setOpen] = useState(busy)
   const [, tick] = useState(0)
   useEffect(() => { if (busy) setOpen(true) }, [busy])
