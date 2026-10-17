@@ -32,8 +32,12 @@ async function boundedBody(request) {
   for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength }
   const body = JSON.parse(new TextDecoder().decode(bytes))
   if (!body || typeof body !== 'object' || Array.isArray(body)) throw new SyntaxError()
-  return JSON.stringify({ system: body.system, messages: body.messages,
-    model: 'family-sonnet', effort: 'medium' })
+  const model=body.model || 'family-sonnet'
+  const profiles={'family-sonnet':'medium','family-opus':'low'}
+  if (!Object.hasOwn(profiles,model)) throw new SyntaxError()
+  const effort=profiles[model]
+  if (body.effort && body.effort!==effort) throw new SyntaxError()
+  return JSON.stringify({system:body.system,messages:body.messages,model,effort})
 }
 
 /** A separate inference service, never a pass-through to the private app. */
