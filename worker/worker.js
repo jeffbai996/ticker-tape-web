@@ -7,6 +7,7 @@
  */
 
 import { handleWatchlists } from './watchlists.js'
+import { handleCompanyNews } from './company_news.js'
 import { handlePortfolios } from './portfolios.js'
 import { handleWire } from './wire.js'
 import { handleReader } from './reader.js'
@@ -88,6 +89,11 @@ export default {
     async fetch(request, env, ctx) {
         const url = new URL(request.url);
         const path = url.pathname;
+        if (path === '/cn/news-batch') return handleCompanyNews(request, (query, signal) => {
+            const search = new URL('https://cn.invalid/cn/news');
+            search.searchParams.set('q', query); search.searchParams.set('n', '20');
+            return handleCn('/cn/news', search, { signal });
+        });
         if (path === '/wire/api/read') return handleReader(request, env);
         if (path === '/family-ai' || path.startsWith('/family-ai/')) return handleFamilyAI(request, env);
 
@@ -476,7 +482,8 @@ async function handleTencentUsName(url) {
     return out;
 }
 
-async function handleCn(path, url) {
+async function handleCn(path, url, { signal } = {}) {
+    signal?.throwIfAborted();
     const kind = path.slice('/cn/'.length);
     if (!(kind in CN_TTL)) return jsonResp({ error: 'Unsupported cn route' }, 404);
     if (url.search.length > 512) return jsonResp({ error: 'Query too large' }, 414);
@@ -559,7 +566,7 @@ async function handleCn(path, url) {
     let resp;
     try {
         // the search endpoint is jsonp-shaped and 406s on an Accept: json
-        resp = await fetch(upstream, { headers: { 'User-Agent': CN_UA, 'Accept': '*/*', 'Referer': kind === 'news' ? 'https://so.eastmoney.com/' : 'https://www.eastmoney.com/' } });
+        resp = await fetch(upstream, { signal, headers: { 'User-Agent': CN_UA, 'Accept': '*/*', 'Referer': kind === 'news' ? 'https://so.eastmoney.com/' : 'https://www.eastmoney.com/' } });
     } catch (err) {
         return jsonResp({ error: `cn upstream: ${err.message}` }, 502);
     }
