@@ -55,7 +55,7 @@ function HistoryPlot({ points, active, onInspect, compact=false, mode='value', c
   }
   return <svg ref={ref} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none"
     class={`block w-full ${compact ? 'h-[44px]' : 'h-[260px] max-sm:h-[220px] rounded focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent/50'} cursor-crosshair`}
-    role={compact ? 'img' : 'slider'} tabIndex={compact ? undefined : 0}
+    role={compact ? 'img' : 'slider'} tabindex={compact ? undefined : 0}
     aria-label={compact ? label('Recorded portfolio values','组合历史金额') : label('History date','历史日期')}
     aria-valuemin={compact ? undefined : 0} aria-valuemax={compact ? undefined : points.length-1}
     aria-valuenow={compact ? undefined : active ?? points.length-1}
