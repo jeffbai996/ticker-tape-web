@@ -25,6 +25,7 @@ import { venueFlag } from '../lib/venueFlag.js'
 import { VENUE_LABEL, fxDayPct, fxImpact, limitFlag, marketSession, venueDayBreakdown } from '../lib/cnMarkets.js'
 import { fetchSymbolEventsCached } from '../lib/cnEvents.js'
 import { BookNews } from './portfolioNews.jsx'
+import { PortfolioHistory } from '../components/PortfolioHistory.jsx'
 import { BookPerformance } from './portfolioPerformance.jsx'
 import { BookTrades } from './portfolioTrades.jsx'
 import { CashActivity } from './portfolioCash.jsx'
@@ -615,21 +616,6 @@ function MiniLine({ marks, ccy }) {
   )
 }
 
-/** The book's own marks (one per day the page saw it fully priced) as a
- *  bare line — needs two marks before it draws anything. */
-function Sparkline({ marks }) {
-  const pts = marks.slice(-60).map((m) => m.v).filter((v) => Number.isFinite(v))
-  if (pts.length < 2) return null
-  const W = 120; const H = 30
-  const lo = Math.min(...pts); const hi = Math.max(...pts); const span = hi - lo || 1
-  const d = pts.map((v, i) => `${i ? 'L' : 'M'}${((i / (pts.length - 1)) * W).toFixed(1)},${(H - 2 - ((v - lo) / span) * (H - 4)).toFixed(1)}`).join(' ')
-  const up = pts[pts.length - 1] >= pts[0]
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" class="w-full h-[30px] max-sm:hidden" role="img">
-      <path d={d} fill="none" stroke={up ? 'var(--color-up)' : 'var(--color-down)'} stroke-width="1.6" vector-effect="non-scaling-stroke" />
-    </svg>
-  )
-}
 
 const CAPITAL_MIX = {
   cn: { label: 'A-shares', short: 'A', cls: 'bg-accent' },
@@ -730,7 +716,7 @@ function SummaryStrip({ portfolio, quotes, rates, ccys, fxLive, bench }) {
                     {prevMark.v > 0 && <span class="font-normal"> ({fmtPct((sinceLast / prevMark.v) * 100)})</span>}</span></span>
               )}
             </div>
-            <Sparkline marks={marks} />
+            <PortfolioHistory marks={marks} ccy={portfolio.ccy} cashTxns={portfolio.cashTxns || []} name={portfolio.name} />
           </div>
           {/* the book's own money facts live beside the headline; market facts
               live on the right (Jeff 2026-08-22: the space beside the number
