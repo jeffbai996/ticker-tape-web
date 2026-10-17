@@ -8,7 +8,7 @@ import { Overlay } from '../components/Overlay.jsx'
 import { MdLite } from '../components/AiReport.jsx'
 import { getLocale, tl, t as tt } from '../lib/i18n.js'
 import { applyLanguagePreference } from '../lib/aidials.js'
-import { fetchWireChatModels, wireChatAvailable } from '../lib/wirechat.js'
+import { fetchWireChatModels, wireChatAvailable, wireComplete } from '../lib/wirechat.js'
 import { useQuotes, useWatchlist } from '../hooks.js'
 import { useEarningsDays } from './dashboard.jsx'
 import { ECON_EVENTS } from '../lib/markets.js'
@@ -136,7 +136,7 @@ function NoteRow({ id, text, meta, onSave, onDelete }) {
 /** claude.ai-style memory composer: type what should change in plain words
  *  ("forget the SGOV note", "merge #2 and #5") — a one-shot model call turns
  *  it into add/edit/delete ops applied through the normal memory mutators. */
-function MemoryComposer({ memories, onApplied }) {
+export function MemoryComposer({ memories, onApplied }) {
   const [v, setV] = useState('')
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState(null)
@@ -153,19 +153,11 @@ function MemoryComposer({ memories, onApplied }) {
         + 'Allowed ops: {"op":"add","text":"..."}, {"op":"edit","id":N,"text":"..."}, '
         + '{"op":"delete","id":N}. Apply the smallest set of changes that satisfies '
         + 'the request; reply [] if nothing applies.'
-      const resp = await fetch(`${wireServiceUrl().replace(/\/$/, '')}/api/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        // 'auto' was retired from the registry (2026-08-05) and turned this
-        // whole dialog into "unknown chat model" (Jeff 2026-08-10). Ride the
-        // user's picked chat model instead, same fallback as the composer.
-        body: JSON.stringify({
-          model: localStorage.getItem('chat_wire_model') || 'agy-flash', system,
-          messages: [{ role: 'user', content: `Current memories:\n${listing}\n\nRequest: ${ask}` }] }),
+      const out = await wireComplete({
+        model: localStorage.getItem('chat_wire_model') || 'agy-flash', system,
+        messages: [{ role: 'user', content: `Current memories:\n${listing}\n\nRequest: ${ask}` }],
         signal: AbortSignal.timeout(90_000),
       })
-      const out = await resp.json()
-      if (!out.ok) throw new Error(out.error || `chat ${resp.status}`)
       const match = (out.text || '').match(/\[[\s\S]*\]/)
       const ops = JSON.parse(match ? match[0] : '[]')
       let applied = 0
@@ -1261,7 +1253,7 @@ export function Chat() {
             placeholder={busy ? tt('chat.follow_up') : tt('chat.placeholder')}
             class="flex-1 bg-transparent resize-none outline-none text-[13.5px] leading-[21px] py-[5.5px] text-ink placeholder:text-muted max-h-40 font-anth"
           />
-          {onWire && (
+          {onWire && !IS_FAMILY_AI && (
             <button
               type="button"
               onClick={mic}
