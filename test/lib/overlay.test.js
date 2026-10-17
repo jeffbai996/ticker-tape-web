@@ -1,4 +1,5 @@
 import { h, render } from 'preact'
+import { act } from 'preact/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Overlay } from '../../src/components/Overlay.jsx'
 
@@ -6,47 +7,21 @@ import { Overlay } from '../../src/components/Overlay.jsx'
 // than JSX because the vitest config carries no JSX transform — the rest of the
 // suite tests logic modules and source contracts.
 
-// Preact flushes effects after paint: via requestAnimationFrame when the
-// host has one, else a 100ms setTimeout fallback. jsdom has no rAF, so a 25ms
-// flush raced that fallback and the focus assertions flaked under a loaded
-// suite. Give the environment a rAF that fires on the next macrotask and the
-// effects land deterministically before flush() resolves.
-const flush = () => new Promise((resolve) => setTimeout(resolve, 40))
-// poll a condition instead of trusting one flush — a loaded suite can hold
-// a macrotask well past the effect window
-const waitFor = async (pred, ms = 800) => {
-  const t0 = Date.now()
-  while (!pred()) {
-    if (Date.now() - t0 > ms) return false
-    await new Promise((r) => setTimeout(r, 10))
-  }
-  return true
-}
+// Flush the real Preact render/effect queue; no timer estimate is needed.
 let host = null
-let hadRaf = null
 
 beforeEach(() => {
-  hadRaf = globalThis.requestAnimationFrame
-  if (typeof hadRaf !== 'function') {
-    globalThis.requestAnimationFrame = (cb) => setTimeout(() => cb(Date.now()), 0)
-    globalThis.cancelAnimationFrame = (id) => clearTimeout(id)
-  }
   document.body.innerHTML = '<button id="opener">open</button><div id="host"></div>'
   host = document.getElementById('host')
 })
 
-afterEach(() => {
-  render(null, host)
+afterEach(async () => {
+  await act(() => render(null, host))
   document.body.innerHTML = ''
-  if (typeof hadRaf !== 'function') {
-    delete globalThis.requestAnimationFrame
-    delete globalThis.cancelAnimationFrame
-  }
 })
 
 const open = async (props = {}, children = []) => {
-  render(h(Overlay, { onClose: () => {}, label: 'test dialog', ...props }, children), host)
-  await flush()
+  await act(() => render(h(Overlay, { onClose: () => {}, label: 'test dialog', ...props }, children), host))
   return host.querySelector('[role="dialog"]')
 }
 
@@ -67,10 +42,8 @@ describe('Overlay', () => {
     const opener = document.getElementById('opener')
     opener.focus()
     await open({}, [h('button', { id: 'inside' }, 'a')])
-    await waitFor(() => document.activeElement?.id === 'inside')
     expect(document.activeElement.id).toBe('inside')
-    render(null, host)
-    await flush()
+    await act(() => render(null, host))
     expect(document.activeElement.id).toBe('opener')
   })
 
@@ -120,9 +93,9 @@ describe('Overlay', () => {
   it('contains page scroll while open and restores it on close', async () => {
     document.body.style.overflow = 'auto'
     await open({})
-    expect(await waitFor(() => document.body.style.overflow === 'hidden')).toBe(true)
-    render(null, host)
-    expect(await waitFor(() => document.body.style.overflow === 'auto')).toBe(true)
+    expect(document.body.style.overflow).toBe('hidden')
+    await act(() => render(null, host))
+    expect(document.body.style.overflow).toBe('auto')
   })
 
   it('applies transition classes only when the user tolerates motion', async () => {
@@ -132,7 +105,7 @@ describe('Overlay', () => {
     expect(dialog.getAttribute('class')).toBe('panel transition-opacity')
     expect(dialog.hasAttribute('data-reduced-motion')).toBe(false)
 
-    render(null, host)
+    await act(() => render(null, host))
     globalThis.matchMedia = () => ({ matches: true })
     dialog = await open({ class: 'panel', motionClass: 'transition-opacity' })
     expect(dialog.getAttribute('class')).toBe('panel')
