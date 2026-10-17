@@ -211,6 +211,8 @@ Capability transport uses an Authorization header to the exact allowlisted
 sync routes, never a URL. The Worker requires its separately provisioned secret
 and serializes revision checks and writes through a Durable Object.
 
+@AGENTS.md
+
 ## Commands and Deployment
 
 The build chain needs **Node 22** (Vite 8 + Tailwind v4); older Node fails the
@@ -218,7 +220,7 @@ install.
 
 - `npm run dev` — local Vite server
 - `npm run build` — production build to `dist/`
-- `npm test` — Vitest suite
+- Test commands and tier selection are in `AGENTS.md`.
 - `npm run budget` — build, then fail if the entry chunk is over budget
 - `python3 scripts/probe_matrix.py <url>` — responsive checks on a served build
 - `cd worker && npx wrangler deploy` — deploy the Worker
