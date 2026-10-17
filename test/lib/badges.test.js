@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from 'vitest'
 import { techBadges, histoBars } from '../../src/lib/badges.js'
 import { pulseStats, countAdvancers } from '../../src/lib/pulse.js'

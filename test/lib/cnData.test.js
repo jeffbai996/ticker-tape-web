@@ -1,3 +1,4 @@
+// @vitest-environment node
 /** Chinese market data through the worker: the parsers are the contract. */
 import { describe, expect, it } from 'vitest'
 import { isCnListing, parseCnIndustry, parseCnNews, parseCnProfile, readableCnUrl } from '../../src/lib/cnData.js'

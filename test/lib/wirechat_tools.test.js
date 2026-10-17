@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { isPlanningStub, parseToolCall, toolProtocol } from '../../src/lib/wirechat.js'
 

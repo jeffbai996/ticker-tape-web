@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from 'vitest'
 import { parseEarningsHistory, matchReportDate, reactionAfter, earningsSummary, peersOf, parseCalendarRows, mergeQuarters } from '../../src/lib/earnings.js'
 

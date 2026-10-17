@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from 'vitest'
 import { parseProfile, parseHolders } from '../../src/lib/fundamentals.js'
 import { parseSecFilings } from '../../src/lib/edgar.js'

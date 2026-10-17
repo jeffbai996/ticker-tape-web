@@ -1,3 +1,4 @@
+// @vitest-environment node
 /** The front-page market deck (`MARKET_DECK`, rendered by the dashboard's
  *  Global markets panel). It is the only macro read on the landing page, so
  *  what it must cover — and what every row must be able to do — is pinned

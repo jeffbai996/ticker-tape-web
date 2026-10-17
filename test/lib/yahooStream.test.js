@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it, vi } from 'vitest'
 import { createYahooStream, decodePricingMessage } from '../../src/lib/yahooStream.js'
 

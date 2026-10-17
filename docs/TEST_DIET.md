@@ -425,3 +425,86 @@ The local preset uses isolated VM workers for the remaining files and the origin
 Follow-up coverage check: the VM group passed 1,914 cases with shuffled file order (seed 137), and the two native suites passed their 10 cases. A multiset comparison with the fresh-process baseline accounts for all 1,924 cases exactly once. Combined wall time was 13.25 seconds versus 44.63 seconds in the matched baseline. No test was omitted, deleted, sampled or weakened; no dependency or production code changed. The native shipping gate remains mandatory. The local preset must not replace it because VM workers share externalized dependency state and have different native API interop.
 
 The actual `npm run test:local` preset also passed both phases (1,914 + 10 cases), with native isolation retained for the two compatibility suites.
+
+## Follow-up: remove remaining browser startup from pure tests
+
+Source `299be3c`. A fresh full baseline passed all 1,924 cases in **47.14
+seconds wall time**. The earlier three-run baseline and fix-history survey
+above still apply to these unchanged test bodies. The native threads-pool
+experiment also passed every case, but took 48.55 seconds, so it was rejected.
+The process pool, isolation, two-worker limit and complete landing gate stay.
+
+Fifty more pure parsing, calculation, data and source-contract suites now use
+Node instead of starting jsdom. The only test-file changes are environment
+header lines; every body and assertion is byte-identical. Five candidates
+(cloudsave, cnEvents, cnFinancials, fundamentals and history) need browser
+storage through their imports and retain jsdom. Their assertions were not
+relaxed to fit another environment. No application bug was exposed.
+
+The complete suite remains 203 files / 1,924 cases. A shuffled full run (seed
+137) passed every case in **33.52 seconds**, with exactly the same multiset of
+case identities as the baseline. No money, FX, signs, missing-versus-zero,
+security or fixed-bug case was deleted, merged, sampled or omitted. The full
+process-based suite remains the gate; the VM local preset retains its two
+native-process exceptions. The normal complete command also passed every case
+in **35.11 seconds wall** (about 26% below the matched baseline). The all-case
+local VM/native preset passed 1,914 plus 10 cases in **13.00 seconds**. The final
+landing receipt is recorded in the task report.
+
+The Node-only fast tier now selects 131 files / 1251 cases.
+
+| File | Cases before / after | Class | Setup change |
+| --- | ---: | --- | --- |
+| `test/tv/css_compat.test.js` | 15 / 15 | keep | Pure test uses Node; no jsdom startup. |
+| `test/worker/crumb.test.js` | 9 / 9 | keep | Pure test uses Node; no jsdom startup. |
+| `test/worker/reader.test.js` | 8 / 8 | keep | Pure test uses Node; no jsdom startup. |
+| `test/worker/security_log.test.js` | 8 / 8 | keep | Pure test uses Node; no jsdom startup. |
+| `test/worker/worker.test.js` | 12 / 12 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/backtest.test.js` | 20 / 20 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/badges.test.js` | 20 / 20 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/chartDrawings.test.js` | 25 / 25 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/chartScale.test.js` | 16 / 16 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/chartview.test.js` | 2 / 2 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/chartview_drawings.test.js` | 15 / 15 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/chat_launchpad.test.js` | 10 / 10 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/classification.test.js` | 5 / 5 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/cnData.test.js` | 8 / 8 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/commandbar.test.js` | 7 / 7 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/console_store.test.js` | 5 / 5 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/dayPnl.test.js` | 9 / 9 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/deviceIdentity.test.js` | 2 / 2 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/earnings.test.js` | 15 / 15 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/eventLinks.test.js` | 22 / 22 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/feed.test.js` | 1 / 1 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/feedDerivedQuote.test.js` | 5 / 5 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/feedHealth.test.js` | 19 / 19 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/feed_cadence.test.js` | 6 / 6 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/feed_focus.test.js` | 14 / 14 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/financials.test.js` | 5 / 5 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/i18n_interface.test.js` | 4 / 4 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/idleClock.test.js` | 12 / 12 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/marketColors.test.js` | 6 / 6 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/market_deck.test.js` | 12 / 12 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/markets.test.js` | 24 / 24 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/marquee.test.js` | 5 / 5 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/portfolio_accounts.test.js` | 7 / 7 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/private_font_build.test.js` | 2 / 2 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/pwa.test.js` | 5 / 5 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/railResize.test.js` | 4 / 4 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/reconcile.test.js` | 17 / 17 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/research_pages.test.js` | 5 / 5 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/securityTelemetry.test.js` | 3 / 3 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/symbolSearch.test.js` | 9 / 9 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/tapeworthy.test.js` | 9 / 9 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/thesis.test.js` | 26 / 26 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/visibility.test.js` | 7 / 7 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/visiblePeak.test.js` | 1 / 1 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/watchlist_export.test.js` | 3 / 3 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/wireFetch.test.js` | 6 / 6 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/wirechat_tools.test.js` | 12 / 12 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/yahoo.test.js` | 32 / 32 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/yahooStream.test.js` | 6 / 6 | keep | Pure test uses Node; no jsdom startup. |
+| `test/lib/zhNames.test.js` | 20 / 20 | keep | Pure test uses Node; no jsdom startup. |
+
+All other classifications and counts above remain unchanged. No dependency,
+production file, assertion, snapshot or case list changed.

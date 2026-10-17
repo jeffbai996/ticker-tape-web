@@ -1,3 +1,4 @@
+// @vitest-environment node
 // Backtest core — port-parity tests against the CLI's hand-computed cases.
 import { describe, it, expect } from 'vitest'
 import {

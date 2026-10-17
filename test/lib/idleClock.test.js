@@ -1,3 +1,4 @@
+// @vitest-environment node
 /** The shared "stop while nobody is looking" clock. Every repeating job in
  *  the shell, the tape, the wire and the event workspace runs on this, so its
  *  contract is worth pinning: aligned to the period, silent while hidden, one

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /** One document listener for the whole board.
  *
  *  The idle-CPU probe counted ~1220 live JS listeners on the dashboard: every

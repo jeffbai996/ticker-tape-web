@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterEach, describe, expect, it } from 'vitest'
 import { formatBriefTechnicalNote, setLocale, t, tl } from '../../src/lib/i18n.js'
 

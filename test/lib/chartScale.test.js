@@ -1,3 +1,4 @@
+// @vitest-environment node
 /** Zooming into today must fit today's bars (Jeff 2026-08-18: "it stays
  *  squeezed because of the previous days data which is now out of view").
  *

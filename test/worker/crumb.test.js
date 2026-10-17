@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // The crumb cache is module state, so each test imports a fresh Worker.
