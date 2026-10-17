@@ -14,14 +14,14 @@ import { useEarningsDays } from './dashboard.jsx'
 import { ECON_EVENTS } from '../lib/markets.js'
 import { loadCatalysts, mergedEvents } from '../lib/catalysts.js'
 import { fmtPct } from '../lib/format.js'
-import { buildChatContext, hasLiveBook, fetchBookJson } from '../lib/chatContext.js'
+import { buildChatContext, hasLiveBook, fetchBookJson, savedChatBook } from '../lib/chatContext.js'
 import { pulseStats } from '../lib/pulse.js'
 import { loadMemories, addMemory, editMemory, removeMemory, applyMemoryTags } from '../lib/chatMemory.js'
 import { loadJournal, addJournalEntry, removeJournalEntry, searchJournal } from '../lib/journal.js'
 import { CHAT_HOME_EVENT, takeChatHomePending } from '../lib/chatnav.js'
 import { captureAnchor, restoreAnchor } from '../lib/scrollAnchor.js'
 import { CHATSTORE_SYNC_EVENT, chatstoreAvailable, syncNotes } from '../lib/chatstore.js'
-import { LANES, activeLanes, canRefresh, dynamicActions, visibleActions } from '../lib/launchpad.js'
+import { LANES, activeLanes, canRefresh, dynamicActions, visibleActions, promptLabel } from '../lib/launchpad.js'
 import {
   fetchThreadList, hydrateActiveThread, loadActiveHistory, migrateLegacy,
   openThread, removeThread, saveActiveHistory, startNewThread, currentThreadId,
@@ -29,6 +29,8 @@ import {
 import { wireServiceUrl } from '../lib/wire.js'
 import { plainTraceText, hasTurnActivity, activityGroups } from '../lib/chatTrace.js'
 import { ChatFooter } from '../components/ChatFooter.jsx'
+import { loadZhTable, loadMissingZhName, onZhTable, zhName } from '../lib/zhNames.js'
+import { onPortfoliosChange } from '../lib/myPortfolios.js'
 import { IS_FAMILY_AI } from '../lib/nav.js'
 
 // Base prompt stays generic in source. Whether the assistant has a real book
@@ -64,7 +66,7 @@ function baseSystem() {
       'portfolio section is a clearly-labeled synthetic demo. '
   if (IS_FAMILY_AI) return common +
     'This family edition uses the selected subscription model. ' +
-    'Only context supplied by this browser is available. There is no broker connection ' +
+    'Only context supplied by this browser is available. A SAVED PORTFOLIO block contains the selected user-entered holdings. Use those for portfolio questions. There is no broker connection ' +
     'or access to the subscription owner\'s accounts, files, or chat history. '
   return common + infrastructure + book
 }
@@ -495,7 +497,14 @@ export function ActivityTrace({ steps, busy = false, startedAt, usage = null }) 
  */
 function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
                      threadLen, onResume, memN, journalN, journal,
-                     onOpenMem, onOpenJournal }) {
+                     onOpenMem, onOpenJournal, bookRevision = 0 }) {
+  const [,nameTick]=useState(0)
+  useEffect(()=>{
+    if(getLocale()!=='zh') return
+    loadZhTable().then(()=>watchlist.forEach(s=>loadMissingZhName(s)))
+    return onZhTable(()=>nameTick(n=>n+1))
+  },[watchlist.join(',')])
+  const names=getLocale()==='zh' ? Object.fromEntries(watchlist.map(s=>[s,zhName(s)])) : {}
   const book = hasLiveBook()
   const nextEvent = events[0] || null
   const pool = dynamicActions({ watchlist, quotes, earnDays, nextEvent, book, journal })
@@ -519,10 +528,10 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
   const [bk, setBk] = useState(null)
   useEffect(() => {
     if (book) fetchBookJson().then(setBk).catch(() => {})
-  }, [book])
+  }, [book,bookRevision])
   const topPos = (bk?.positions || [])
-    .filter((p) => p.weight_pct != null)
-    .sort((a, b) => b.weight_pct - a.weight_pct)
+    .filter((p) => bk?.manual || p.weight_pct != null)
+    .sort((a, b) => (b.weight_pct || 0) - (a.weight_pct || 0))
     .slice(0, 3)
 
   const cell = "px-3 py-2 min-w-0"
@@ -608,13 +617,14 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
           {book && (
             <div class={cell}>
               <div class={eyebrow}>{tl('the book')}</div>
+              {bk?.manual && <a href="#/portfolio/mine" class="block truncate text-[10px] text-muted mb-1">{bk.name}</a>}
               {topPos.length ? (
                 <div class="font-mono text-[11.5px] leading-[1.55]">
                   {topPos.map((p) => (
                     <div key={p.symbol} class="flex justify-between">
-                      <span class="text-ink font-[650]">{p.symbol}</span>
-                      <span><span class="text-ink-2">{Math.round(p.weight_pct)}%</span>{' '}
-                        <span class={p.unrealized_pnl >= 0 ? 'text-up' : 'text-down'}>{p.unrealized_pnl >= 0 ? '▲' : '▼'}</span></span>
+                      <span class="text-ink font-[650]">{(getLocale()==='zh' && zhName(p.symbol)) || p.symbol}</span>
+                      {bk?.manual ? <span class="text-ink-2">{p.shares} {tl('shares')}</span> : <span><span class="text-ink-2">{Math.round(p.weight_pct)}%</span>{' '}
+                        <span class={p.unrealized_pnl >= 0 ? 'text-up' : 'text-down'}>{p.unrealized_pnl >= 0 ? '▲' : '▼'}</span></span>}
                     </div>
                   ))}
                   {bk?.margin?.cushion_pct != null && (
@@ -638,7 +648,7 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
               </button>
               <div class="flex justify-between"><span class="text-muted">{tl('watching')}</span><span class="text-ink-2">{watchlist.length}</span></div>
               <div class="flex justify-between"><span class="text-muted">{tl('book')}</span>
-                <span class={book ? 'text-up' : 'text-muted'}>{tl(book ? 'live' : 'demo')}</span></div>
+                <span class={book ? 'text-up' : 'text-muted'}>{tl(book ? (IS_FAMILY_AI ? 'saved' : 'live') : 'demo')}</span></div>
             </div>
           </div>
         </div>
@@ -697,7 +707,7 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
               class="flex items-center gap-1.5 font-anth text-[12px] text-ink-2 border border-line rounded-full pl-2.5 pr-3 py-1 hover:border-accent/60 hover:text-ink hover:bg-accent-soft transition-colors"
             >
               <span class={`w-1 h-1 rounded-full shrink-0 ${DOT[sug.k] || 'bg-muted'}`} />
-              {sug.t}
+              {promptLabel(sug.t,names)}
             </button>
           ))}
         </div>
@@ -772,8 +782,11 @@ export function Chat() {
   // Launchpad fuel — live quotes, earnings proximity, next calendar event.
   // useQuotes polls, so the pad's suggestions refresh on their own.
   const watchlist = useWatchlist()
+  const [bookRevision,bookTick]=useState(0)
+  useEffect(()=>onPortfoliosChange(()=>bookTick(n=>n+1)),[])
+  const quoteSymbols=IS_FAMILY_AI ? [...new Set([...watchlist,...(savedChatBook()?.positions || []).map(p=>p.symbol)])] : watchlist
   // the right rail is live even mid-thread, so the pad data polls always
-  const quotes = useQuotes(watchlist)
+  const quotes = useQuotes(quoteSymbols)
   const earnDays = useEarningsDays(watchlist)
   const upcoming = mergedEvents(ECON_EVENTS, loadCatalysts(),
     new Date().toISOString().slice(0, 10), 60).slice(0, 4)
@@ -1576,6 +1589,7 @@ export function Chat() {
           <Launchpad
             onWire={onWire}
             watchlist={watchlist}
+            bookRevision={bookRevision}
             quotes={quotes}
             earnDays={earnDays}
             events={upcoming}

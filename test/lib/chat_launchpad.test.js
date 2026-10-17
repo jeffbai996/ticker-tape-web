@@ -79,3 +79,11 @@ describe('pad windowing', () => {
     expect(lanes.map((l) => l.k)).toEqual(['mkt', 'book'])
   })
 })
+
+it('uses Chinese company names only in display labels and preserves precise prompts',async()=>{
+  const { promptLabel }=await import('../../src/lib/launchpad.js')
+  const prompt='AAPL 的技术面如何？与 MSFT 相比？'
+  expect(promptLabel(prompt,{AAPL:'苹果',MSFT:'微软'})).toBe('苹果 的技术面如何？与 微软 相比？')
+  expect(prompt).toBe('AAPL 的技术面如何？与 MSFT 相比？')
+  expect(promptLabel('AAPLX 不是 AAPL',{AAPL:'苹果'})).toBe('AAPLX 不是 苹果')
+})
