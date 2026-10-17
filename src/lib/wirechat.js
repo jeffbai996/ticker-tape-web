@@ -6,16 +6,35 @@
 
 import { TOOL_DEFS } from './tools.js'
 import { wireServiceUrl } from './wire.js'
+import { IS_FAMILY_AI } from './nav.js'
+import { getWatchlistCapability, watchlistSyncEndpoint } from './watchlistSync.js'
+
+function chatTransport() {
+  if (IS_FAMILY_AI) {
+    const cap = getWatchlistCapability()
+    const endpoint = watchlistSyncEndpoint(cap)
+    if (!endpoint) throw new Error('Assistant is not configured.')
+    return { base: endpoint.replace(/\/watchlists$/, '/family-ai'),
+      headers: { Authorization: `Bearer ${cap}` } }
+  }
+  return { base: wireServiceUrl().replace(/\/$/, ''), headers: {} }
+}
+
+function chatBody({ model, effort, system, messages }) {
+  return JSON.stringify({ model: IS_FAMILY_AI ? 'family-sonnet' : model,
+    effort: IS_FAMILY_AI ? 'medium' : effort, system, messages })
+}
 
 /** Is the private, subscription-backed path available in this browser? */
 export function wireChatAvailable() {
-  return !!wireServiceUrl()
+  return IS_FAMILY_AI ? !!getWatchlistCapability() : !!wireServiceUrl()
 }
 
 /** Fetch the selectable subscription models from the live router. */
 export async function fetchWireChatModels() {
-  const base = wireServiceUrl().replace(/\/$/, '')
+  const { base, headers } = chatTransport()
   const resp = await fetch(`${base}/api/chat/models`, {
+    headers,
     signal: AbortSignal.timeout(10_000),
   })
   if (!resp.ok) throw new Error(`wire chat models ${resp.status}`)
@@ -92,11 +111,11 @@ export function parseToolCall(text, defs = TOOL_DEFS) {
  */
 export async function wireStream({ model, effort, system, messages, onDelta, onThinking,
                                   onThinkingTokens, onUsage, signal }) {
-  const base = wireServiceUrl().replace(/\/$/, '')
+  const { base, headers } = chatTransport()
   const resp = await fetch(`${base}/api/chat/stream`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model, effort, system, messages }),
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    body: chatBody({ model, effort, system, messages }),
     signal,
   })
   if (!resp.ok || !resp.body) throw new Error(`wire stream ${resp.status}`)
@@ -147,11 +166,11 @@ export async function wireStream({ model, effort, system, messages, onDelta, onT
 
 /** One turn against newsservice's router. Returns the assistant's raw text. */
 export async function wireComplete({ model, effort, system, messages, signal }) {
-  const base = wireServiceUrl().replace(/\/$/, '')
+  const { base, headers } = chatTransport()
   const resp = await fetch(`${base}/api/chat`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model, effort, system, messages }),
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    body: chatBody({ model, effort, system, messages }),
     signal: signal || AbortSignal.timeout(180_000),
   })
   const out = await resp.json().catch(() => ({}))

@@ -17,7 +17,7 @@ describe('public demo surface parity', () => {
     expect(nav).toContain("id: 'chat', label: 'AI Chat'")
     expect(nav).toContain('CHAT_SECTION,')
     expect(nav).not.toContain('if (PRIVATE_BUILD) NAV.push(CHAT_SECTION)')
-    expect(pages).toContain('IS_PRIVATE_BUILD ? <Chat /> : <ChatPreview />')
+    expect(pages).toContain('IS_PRIVATE_BUILD || IS_FAMILY_AI ? <Chat /> : <ChatPreview />')
   })
 
   it('renders a complete but inert chat composer without service calls', () => {
@@ -33,7 +33,7 @@ describe('public demo surface parity', () => {
 
   it('shows disabled AI report controls instead of removing the panels', () => {
     expect(report).toContain('const serviceAvailable = IS_PRIVATE_BUILD')
-    expect(report).toContain('if (!IS_PRIVATE_BUILD || !wireUrl()) return')
+    expect(report).toContain('if (!serviceAvailable || !onWire) return')
     expect(report).not.toContain('if (!IS_PRIVATE_BUILD && !wireUrl()) return null')
     expect(report).toContain('data-ai-service-state={serviceAvailable ? \'ready\' : \'disabled\'}')
     expect(report).toContain('disabled={!serviceAvailable || busy || writerBusy}')

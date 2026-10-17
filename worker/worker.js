@@ -10,6 +10,7 @@ import { handleWatchlists } from './watchlists.js'
 import { handlePortfolios } from './portfolios.js'
 import { handleWire } from './wire.js'
 import { handleReader } from './reader.js'
+import { handleFamilyAI } from './family_ai.js'
 export { ReaderQuota } from './reader.js'
 import { handleFamilyView, withFamilyDocumentLog } from './security_log.js'
 export { CapDocCoordinator } from './capdoc.js'
@@ -88,9 +89,10 @@ export default {
         const url = new URL(request.url);
         const path = url.pathname;
         if (path === '/wire/api/read') return handleReader(request, env);
+        if (path === '/family-ai' || path.startsWith('/family-ai/')) return handleFamilyAI(request, env);
 
-        // Paid AI lives only behind the private tailnet service. The public
-        // market-data Worker must never grow a second, unauthenticated route.
+        // Generic chat stays disabled. Family inference has its own bearer,
+        // fixed model and isolated backend above.
         if (path === '/chat' || path.startsWith('/chat/')) {
             return jsonResp({ error: 'Not found' }, 404);
         }

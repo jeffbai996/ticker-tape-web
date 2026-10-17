@@ -1,5 +1,5 @@
 import { Placeholder } from '../components/Placeholder.jsx'
-import { IS_FAMILY_BUILD, IS_PRIVATE_BUILD } from '../lib/nav.js'
+import { IS_FAMILY_BUILD, IS_PRIVATE_BUILD, IS_FAMILY_AI } from '../lib/nav.js'
 import { useNamedWatchlists } from '../hooks.js'
 import { resolveDashboardLanding } from '../lib/dashboardLanding.js'
 import { lazyPage } from '../components/LazyPage.jsx'
@@ -68,7 +68,7 @@ export function Page({ route }) {
   if (route.section === 'console') return <ConsolePage />
   if (route.section === 'portfolio') return <Portfolio route={route} />
   if (route.section === 'chat') {
-    return IS_PRIVATE_BUILD ? <Chat /> : <ChatPreview />
+    return IS_PRIVATE_BUILD || IS_FAMILY_AI ? <Chat /> : <ChatPreview />
   }
   const page = PAGES[route.section]
   const sub = route.sub ? ` / ${route.sub}` : ''
