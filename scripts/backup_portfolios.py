@@ -24,6 +24,7 @@ import json
 import logging
 import os
 import stat
+import sqlite3
 import sys
 import tempfile
 import time
@@ -54,6 +55,27 @@ KEEP = 10
 KEEP_DAYS = 30
 CHANGE_LOG = "changes.log"
 log = logging.getLogger("ttw-backup")
+
+
+def backup_history(source: Path, directory: Path) -> Path:
+    """Copy a live WAL database through SQLite, verify, then publish atomically."""
+    directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+    target = directory / 'history.sqlite'
+    fd, temporary = tempfile.mkstemp(prefix='.history-', suffix='.sqlite', dir=directory)
+    os.close(fd)
+    try:
+        with sqlite3.connect(source.resolve().as_uri()+'?mode=ro', uri=True, timeout=15) as live:
+            with sqlite3.connect(temporary) as snapshot:
+                live.backup(snapshot, pages=256, sleep=0.05)
+                if snapshot.execute('PRAGMA integrity_check').fetchall() != [('ok',)]:
+                    raise sqlite3.DatabaseError('History backup failed integrity check')
+        with open(temporary, 'rb') as copied:
+            os.fsync(copied.fileno())
+        os.chmod(temporary, 0o600)
+        os.replace(temporary, target)
+        return target
+    finally:
+        Path(temporary).unlink(missing_ok=True)
 
 
 # ── pure decisions ────────────────────────────────────────────────────────
@@ -404,7 +426,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--run", action="store_true")
     ap.add_argument("--selftest", action="store_true")
     ap.add_argument("--list", action="store_true")
-    ap.add_argument("--dir", type=Path, default=DEFAULT_DIR)
+    ap.add_argument("--history-only", action="store_true")
+    ap.add_argument("--dir", type=Path, default=Path(os.environ.get('TTW_BACKUP_DIR', DEFAULT_DIR)))
     args = ap.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     if args.selftest:
@@ -413,6 +436,15 @@ def main(argv: list[str] | None = None) -> int:
         for p in sorted(args.dir.glob("*.json")):
             print(p.name)
         return 0
+    history = os.environ.get('TTW_HISTORY_DB')
+    if (args.run or args.history_only) and history:
+        try:
+            backup_history(Path(history), args.dir)
+        except (OSError, sqlite3.Error):
+            log.exception('History backup failed')
+            return 1
+    if args.history_only:
+        return 0 if history else 2
     if args.run:
         return run(os.environ.get("TTW_SYNC_URL", DEFAULT_URL), args.dir)
     ap.print_help()

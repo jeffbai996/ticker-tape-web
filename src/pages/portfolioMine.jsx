@@ -1,3 +1,6 @@
+import {usePortfolioHistory} from '../hooks/usePortfolioHistory.js'
+import {mergeHistory} from '../lib/portfolioData.js'
+import {PortfolioFreshness} from '../components/PortfolioFreshness.jsx'
 /** "My Portfolios" — Koyfin-style hand-built books (Jeff 2026-08-20).
  *
  *  Any number of portfolios, each with a display currency fixed at creation;
@@ -657,6 +660,7 @@ function CapitalMix({ rows, className = '' }) {
 }
 
 export function SummaryStrip({ portfolio, quotes, rates, ccys, fxLive, bench }) {
+  const history=usePortfolioHistory(portfolio.id)
   const { total, rows } = portfolioValues(portfolio.holdings, quotes, rates, portfolio.ccy, portfolio.cash)
   const priced = rows.filter((r) => r.valueDisplay != null)
   // The panel beside the headline number was three facts wide and mostly air
@@ -681,15 +685,21 @@ export function SummaryStrip({ portfolio, quotes, rates, ccys, fxLive, bench }) 
   // would write a value that is just "what loaded so far"
   const fullyPriced = rows.length > 0 && priced.length === rows.length && Number.isFinite(total.value)
   useEffect(() => {
-    if (!fullyPriced) return
+    if (!fullyPriced || history.configured) return
     recordSnapshot(portfolio.id, total.value, portfolio.ccy)
-  }, [fullyPriced, Math.round(total.value || 0), portfolio.id, portfolio.ccy])
-  const prevMark = previousSnapshot(portfolio, portfolio.ccy)
-  const marks = (portfolio.snapshots || []).filter((s) => s.c === portfolio.ccy)
+  }, [fullyPriced, Math.round(total.value || 0), portfolio.id, portfolio.ccy,history.configured])
+  const marks = mergeHistory(portfolio.snapshots,history.data?.marks).filter(s=>s.c===portfolio.ccy)
+  const prevMark = previousSnapshot({...portfolio,snapshots:marks}, portfolio.ccy)
   const [inspection,setInspection]=useState(null)
   const inspected=inspection?.id===portfolio.id && inspection.ccy===portfolio.ccy ? inspection.point : null
   const displayedValue=inspected ? inspected.v : total.value
-  const factLabel=name=>inspected ? (getLocale()==='zh' ? `当前${tl(name)}` : `Current ${tl(name)}`) : tl(name)
+  const hasDetail=inspected?.source==='collector'
+  const factLabel=name=>inspected && !hasDetail ? (getLocale()==='zh' ? `当前${tl(name)}` : `Current ${tl(name)}`) : tl(name)
+  const shownCost=hasDetail ? (inspected.cost==null ? null : Number(inspected.cost)) : un.costBasis
+  const shownPnl=hasDetail ? (inspected.unrealized==null ? null : Number(inspected.unrealized)) : total.unrealPnl
+  const shownCash=hasDetail ? Number(inspected.cash) : cs.cash
+  const shownPnlPct=hasDetail ? (shownCost>0 && shownPnl!=null ? shownPnl/shownCost*100 : null) : un.pct
+  const shownCashPct=hasDetail ? (inspected.v ? shownCash/inspected.v*100 : null) : cs.cashPct
   const vfact = (label, value, good, sub) => (
     <div key={label} class="min-w-0">
       <div class="font-anth text-[8.5px] uppercase tracking-wider text-muted pb-0.5">{label}</div>
@@ -740,10 +750,10 @@ export function SummaryStrip({ portfolio, quotes, rates, ccys, fxLive, bench }) 
               live on the right (Jeff 2026-08-22: the space beside the number
               and the strip under it were empty) */}
           <div class="flex flex-wrap gap-x-6 gap-y-2">
-            {vfact(factLabel('Cost basis'), un.costBasis != null ? money(un.costBasis, portfolio.ccy) : '—', null)}
-            {vfact(factLabel('Open P&L'), total.unrealPnl != null ? signed(total.unrealPnl, portfolio.ccy) : '—', total.unrealPnl == null ? null : total.unrealPnl >= 0,
-              un.pct != null ? fmtPct(un.pct) : null)}
-            {vfact(factLabel('Cash'), cs.cash ? money(cs.cash, portfolio.ccy) : '—', null, cs.cashPct != null ? fmtPctPlain(cs.cashPct) : null)}
+            {vfact(factLabel('Cost basis'), shownCost != null ? money(shownCost, portfolio.ccy) : '—', null)}
+            {vfact(factLabel('Open P&L'), shownPnl != null ? signed(shownPnl, portfolio.ccy) : '—', shownPnl == null ? null : shownPnl >= 0,
+              shownPnlPct != null ? fmtPct(shownPnlPct) : null)}
+            {vfact(factLabel('Cash'), shownCash!=null ? money(shownCash, portfolio.ccy) : '—', null, shownCashPct != null ? fmtPctPlain(shownCashPct) : null)}
           </div>
         </div>
         <div class="px-4 py-3 flex-[1.6] min-w-[300px] border-l border-line max-sm:border-l-0 max-sm:border-t flex flex-col justify-center">
@@ -809,6 +819,7 @@ export function SummaryStrip({ portfolio, quotes, rates, ccys, fxLive, bench }) 
           })()}
         </div>
       </div>
+      <PortfolioFreshness portfolio={portfolio} quotes={quotes} ccys={ccys} fxLive={fxLive} history={history} />
     </section>
   )
 }

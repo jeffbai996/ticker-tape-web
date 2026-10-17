@@ -11,6 +11,7 @@ import { handleCompanyNews } from './company_news.js'
 import { handlePortfolios } from './portfolios.js'
 import { handleWire } from './wire.js'
 import { handleReader } from './reader.js'
+import {handlePortfolioHistory} from './portfolio_history.js'
 import { handleFamilyAI } from './family_ai.js'
 export { ReaderQuota } from './reader.js'
 import { handleFamilyView, withFamilyDocumentLog } from './security_log.js'
@@ -95,6 +96,7 @@ export default {
             return handleCn('/cn/news', search, { signal });
         });
         if (path === '/wire/api/read') return handleReader(request, env);
+        if (path === '/portfolio-history') return handlePortfolioHistory(request, env);
         if (path === '/family-ai' || path.startsWith('/family-ai/')) return handleFamilyAI(request, env);
 
         // Generic chat stays disabled. Family inference has its own bearer,
