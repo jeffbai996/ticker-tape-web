@@ -17,6 +17,7 @@ it('does not report a cash deposit as investment performance or a withdrawal as 
 it('records monetary changes to cents and calculates drawdown from the adjusted peak',()=>{
   const points=historySeries([mark('2026-01-01',0.1),mark('2026-01-02',0.3),mark('2026-01-03',0.2)],'USD')
   expect(points[1].change).toBe(0.2)
+  expect(points[1].changePct).toBeCloseTo(200)
   expect(points[2].change).toBe(-0.1)
   expect(points[2].drawdownPct).toBeCloseTo(-33.3333)
   expect(historyStats(points).maxDrawdown).toBeCloseTo(-33.3333)

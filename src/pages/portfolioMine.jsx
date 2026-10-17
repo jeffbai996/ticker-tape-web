@@ -717,7 +717,7 @@ export function SummaryStrip({ portfolio, quotes, rates, ccys, fxLive, bench }) 
                 than wrapping the percent away from its number */}
             <div class="flex min-h-[34px] items-center gap-2 pt-1.5 overflow-x-auto no-scrollbar">
               {inspected ? <>
-                {chip(inspected.change, null)}
+                {chip(inspected.change, inspected.changePct)}
                 <span class="font-anth text-[10.5px] text-muted whitespace-nowrap">{inspected.change==null ? (getLocale()==='zh' ? '首条记录' : 'First record') : (getLocale()==='zh' ? '较上一记录' : 'Since previous record')}</span>
               </> : <>
               {chip(total.dayPnl, total.dayPct)}

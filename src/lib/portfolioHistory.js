@@ -29,6 +29,7 @@ export function historySeries(snapshots, currency, cashTxns=[], range='ALL') {
     const index=!flowGap && origin>0 && Number.isFinite(adjusted[i]) ? adjusted[i] : null
     if(index!=null) peak=peak==null ? index : Math.max(peak,index)
     return {...m,flowGap,change:i ? delta(m.v,marks[i-1].v) : null,
+      changePct:i && marks[i-1].v>0 ? delta(m.v,marks[i-1].v)/marks[i-1].v*100 : null,
       valueChange:delta(m.v,origin),returnPct:index==null ? null : index-100,
       drawdownPct:index!=null && peak>0 ? (index/peak-1)*100 : null}
   })
