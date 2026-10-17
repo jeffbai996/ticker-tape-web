@@ -5,14 +5,13 @@
 // in the information architecture so it does not present a cut-down product.
 // Its route renders an inert preview and never calls the model service.
 const PRIVATE_BUILD = import.meta.env.VITE_PRIVATE === '1'
-// The family instance is a working tool for a person who
-// never asked for AI copy — the briefing section is dropped whole there
-// (Jeff 2026-08-20).
 const FAMILY_BUILD = import.meta.env.VITE_FAMILY_BUILD === '1'
+const FAMILY_AI = FAMILY_BUILD && import.meta.env.VITE_FAMILY_AI === '1'
+  && /^[a-f0-9]{32}$/.test(import.meta.env.VITE_SYNC_CAPABILITY || '')
 
 const CHAT_SECTION = {
   id: 'chat', label: 'AI Chat', subs: [],
-  ...(PRIVATE_BUILD ? {} : { badge: 'PREVIEW' }),
+  ...(PRIVATE_BUILD || FAMILY_AI ? {} : { badge: 'PREVIEW' }),
 }
 
 export const NAV = [
@@ -127,6 +126,7 @@ if (TV_BUILD) {
 
 export const IS_PRIVATE_BUILD = PRIVATE_BUILD
 export const IS_FAMILY_BUILD = FAMILY_BUILD
+export const IS_FAMILY_AI = FAMILY_AI
 export const IS_TV_BUILD = TV_BUILD
 
 export const DEFAULT_SECTION = 'dashboard'

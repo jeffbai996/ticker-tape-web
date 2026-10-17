@@ -29,6 +29,7 @@ import {
 import { wireServiceUrl } from '../lib/wire.js'
 import { plainTraceText } from '../lib/chatTrace.js'
 import { ChatFooter } from '../components/ChatFooter.jsx'
+import { IS_FAMILY_AI } from '../lib/nav.js'
 
 // Base prompt stays generic in source. Whether the assistant has a real book
 // is decided at runtime by whether the viewer wired in their own fragwire —
@@ -48,7 +49,8 @@ function baseSystem() {
     'exists. A typical market answer covers the print, the driver, the levels ' +
     'that matter, and what to watch next. Tight paragraphs or dash bullets. ' +
     'No filler, no disclaimers, no restating the question. Depth beats ' +
-    'brevity — a thin answer is worse than a long one. ' +
+    'brevity — a thin answer is worse than a long one. '
+  const infrastructure =
     // the model kept guessing "metered API" about its own plumbing — state
     // the actual wiring so infra questions get the truth (Jeff 2026-08-06)
     'Infrastructure, if asked: on this private build your calls route ' +
@@ -60,7 +62,11 @@ function baseSystem() {
       'position and margin questions as real. '
     : 'You have no access to any personal, account, or portfolio data — the ' +
       'portfolio section is a clearly-labeled synthetic demo. '
-  return common + book
+  if (IS_FAMILY_AI) return common +
+    'This family edition uses a shared subscription with Sonnet 5.5 at medium effort. ' +
+    'Only context supplied by this browser is available. There is no broker connection ' +
+    'or access to the subscription owner\'s accounts, files, or chat history. '
+  return common + infrastructure + book
 }
 
 const MODEL_WINDOW = 48   // what a single turn actually sends to the model
@@ -714,9 +720,9 @@ export function Chat() {
     })
   }
   const [model, setModel] = useState(
-    localStorage.getItem(modelStorageKey) || (onWire ? 'agy-argon' : 'argon'),
+    IS_FAMILY_AI ? 'family-sonnet' : localStorage.getItem(modelStorageKey) || (onWire ? 'agy-argon' : 'argon'),
   )
-  const [effort, setEffort] = useState(localStorage.getItem('chat_effort') || 'auto')
+  const [effort, setEffort] = useState(IS_FAMILY_AI ? 'medium' : localStorage.getItem('chat_effort') || 'auto')
   const [spend, setSpend] = useState(null)
   const [history, setHistory] = useState(loadHistory)
   const [input, setInput] = useState(() => {

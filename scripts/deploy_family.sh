@@ -50,6 +50,7 @@ if [[ -f "$HOME/.config/ttw/reader_token" ]]; then
   read -r reader_token < "$HOME/.config/ttw/reader_token"
 fi
 VITE_FAMILY_BUILD=1 \
+VITE_FAMILY_AI="${TTW_FAMILY_AI:-0}" \
 VITE_SYNC_CAPABILITY="$sync_token" \
 VITE_READER_CAPABILITY="$reader_token" \
 TTW_BASE=/tape-fmnco7yjx6/ \

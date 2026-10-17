@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { streamChat } from '../lib/chatClient.js'
-import { fetchWireChatModels, wireComplete, wireStream } from '../lib/wirechat.js'
+import { fetchWireChatModels, wireComplete, wireStream, wireChatAvailable } from '../lib/wirechat.js'
 import { wireUrl } from '../lib/wire.js'
-import { IS_PRIVATE_BUILD, IS_TV_BUILD } from '../lib/nav.js'
+import { IS_PRIVATE_BUILD, IS_FAMILY_AI, IS_TV_BUILD } from '../lib/nav.js'
 import { saveReport } from '../lib/archive.js'
 import { getLocale, tl } from '../lib/i18n.js'
 import { LENGTHS, TONES, applyAiPreferences, loadDials, saveDials } from '../lib/aidials.js'
@@ -179,16 +179,17 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
   const [error, setError] = useState(null)
   const [copied, setCopied] = useState(false)
   const [models, setModels] = useState([])
-  const [writer, setWriter] = useState(() => localStorage.getItem(WRITER_KEY) || 'agy-flash')
-  const [effort, setEffort] = useState(() => localStorage.getItem(EFFORT_KEY) || '')
+  const [writer, setWriter] = useState(() => IS_FAMILY_AI ? 'family-sonnet' : localStorage.getItem(WRITER_KEY) || 'agy-flash')
+  const [effort, setEffort] = useState(() => IS_FAMILY_AI ? 'medium' : localStorage.getItem(EFFORT_KEY) || '')
   const [instructions, setInstructions] = useState(() => localStorage.getItem(INSTRUCTIONS_KEY) || '')
   const bodyRef = useRef(null)
-  const serviceAvailable = IS_PRIVATE_BUILD
+  const onWire = IS_FAMILY_AI ? wireChatAvailable() : !!wireUrl()
+  const serviceAvailable = IS_PRIVATE_BUILD || (IS_FAMILY_AI && onWire)
 
   // the subscription lineup, when a wire is connected — same registry the
   // chat picker uses, so nothing here hardcodes a lineup that can drift
   useEffect(() => {
-    if (!IS_PRIVATE_BUILD || !wireUrl()) return
+    if (!serviceAvailable || !onWire) return
     fetchWireChatModels()
       .then((live) => {
         setModels(live)
@@ -221,7 +222,7 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
     setBusy(true)
     setError(null)
     try {
-      if (wireUrl()) {
+      if (onWire) {
         const live = await refreshModels()
         if (live?.find((m) => m.key === writer)?.busy) {
           throw new Error(tl('This model is busy with another request. Please pick another model or try again shortly.'))
@@ -233,7 +234,7 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
         dials, instructions, locale: getLocale(),
       })
       let acc = ''
-      const wire = wireUrl()
+      const wire = onWire
       if (wire) {
         // tailnet: subscription models only — the picked writer streams over
         // /api/chat/stream; the metered API never enters this path.
