@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import worker from '../../worker/worker.js'
-import { coarseUserAgent, SECURITY_EVENT } from '../../worker/security_log.js'
+import { coarseUserAgent, familyOriginAllowed, SECURITY_EVENT } from '../../worker/security_log.js'
 import { capDocEnv } from './capdocHarness.js'
 
 const TOKEN = 'a'.repeat(32)
@@ -130,6 +130,27 @@ describe('privacy-bounded Worker security events', () => {
 
 
 describe('family origins', () => {
+  it('allows the bundled iOS origin to preflight sync while retaining bearer authentication', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    const origin = 'capacitor://localhost'
+    for (const path of ['/portfolios', '/watchlists']) {
+      const preflight = await worker.fetch(request(path, {
+        method: 'OPTIONS',
+        headers: { Origin: origin, 'Access-Control-Request-Method': 'GET', 'Access-Control-Request-Headers': 'Authorization' },
+      }), env())
+      expect(preflight.status).toBe(204)
+      expect(preflight.headers.get('Access-Control-Allow-Origin')).toBe(origin)
+      const anonymous = await worker.fetch(request(path, { headers: { Origin: origin } }), env())
+      expect(anonymous.status).toBe(401)
+      const authenticated = await worker.fetch(request(path, {
+        headers: { Origin: origin, Authorization: `Bearer ${TOKEN}` },
+      }), env())
+      expect(authenticated.status).toBe(200)
+      expect(authenticated.headers.get('Access-Control-Allow-Origin')).toBe(origin)
+    }
+    expect(familyOriginAllowed(request('/', { headers: { Origin: origin } }))).toBe(true)
+    expect(familyOriginAllowed(request('/', { headers: { Origin: 'capacitor://other-app' } }))).toBe(false)
+  })
   // The family site is also served on www.jeffbai.com (e83ef64d). Without it on
   // the list the browser blocked portfolio and watchlist reads there, and the
   // page showed "No portfolios yet" (2026-10-08).

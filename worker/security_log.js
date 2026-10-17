@@ -11,6 +11,7 @@ const CAPABILITY_RE = /^[a-f0-9]{32}$/
 const DEVICE_RE = /^[A-Za-z0-9._:-]{1,64}$/
 const SAFE_ID_RE = /^[A-Za-z0-9._:-]{1,96}$/
 const ALLOWED_FAMILY_ORIGINS = new Set([
+  'capacitor://localhost',
   'https://jeffbai.com',
   'https://www.jeffbai.com',
   'https://jeffbai996.github.io',
