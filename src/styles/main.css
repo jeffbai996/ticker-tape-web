@@ -84,22 +84,7 @@
   unicode-range: U+00A5, U+FFE5;
 }
 
-/* Settings is a set of rail panels: the dashboard's header band, its row
-   density (26px, hairline-separated, mono values on the right) and its
-   controls, so the page reads as part of the terminal rather than a form
-   dropped into it (Jeff 2026-09-22). */
-.settings-panel { break-inside: avoid; margin-bottom: 12px; }
 .wire-article-window::backdrop { background: rgba(0, 0, 0, .7); }
-.settings-row {
-  display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
-  min-height: 26px; padding: 3px 12px; border-bottom: 1px solid var(--color-line);
-  font-family: var(--font-sans);   /* names in the sans face, values in mono, as on the rail */
-}
-.settings-row:last-child { border-bottom: 0; }
-.settings-panel > .grid .settings-row { padding-left: 0; padding-right: 0; }
-.settings-row select, .settings-row dd { font-family: var(--font-mono); }
-.settings-page select { max-width: 60%; }
-.settings-page select:hover, .settings-page select:focus { border-color: var(--color-accent); }
 .ai-report-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
 /* Narrow: the title shares the model picker's row; the remaining controls take
    the row below, right-aligned (Jeff 2026-10-07: the heading sat alone). */
@@ -804,10 +789,15 @@ html[data-pointer-hover] .tape-hot *:not(.text-up):not(.text-down):not([data-tap
   to { opacity: 1; transform: none; }
 }
 
-.chat-trace { animation: chat-rise-in .3s cubic-bezier(.16, 1, .3, 1) both; }
+.chat-trace {
+  --chat-trace-gutter: 24px;
+  --chat-trace-gap: .46rem;
+  --chat-trace-indent: calc(var(--chat-trace-gutter) / 2 + var(--chat-trace-gap) - .5px);
+  animation: chat-rise-in .3s cubic-bezier(.16, 1, .3, 1) both;
+}
 .chat-trace-head {
-  width: 100%; min-height: 28px; display: flex; align-items: center; gap: .46rem;
-  padding: .2rem .15rem; color: var(--color-muted); text-align: left;
+  width: 100%; min-height: 28px; display: flex; align-items: center; gap: var(--chat-trace-gap);
+  padding: .2rem 0; color: var(--color-muted); text-align: left;
   background: transparent; border: 0; cursor: pointer;
   font-family: var(--font-sans);
 }
@@ -818,13 +808,13 @@ html[data-pointer-hover] .tape-hot *:not(.text-up):not(.text-down):not([data-tap
   margin-left: auto; color: var(--color-muted); font: 500 9px/1 "IBM Plex Mono", monospace;
 }
 .chat-trace-mark {
-  position: relative; width: 15px; height: 15px; flex: 0 0 15px;
+  position: relative; width: var(--chat-trace-gutter); height: 24px; flex: 0 0 var(--chat-trace-gutter);
   display: grid; place-items: center;
 }
 .chat-trace-mark svg { width: 15px; height: 15px; overflow: visible; }
-/* the working state wears the brand spinner, which needs more room than the
-   15px tick that replaces it when the turn lands (Jeff 2026-08-07) */
-.chat-trace-mark.is-running { width: 19px; height: 19px; flex: 0 0 19px; color: var(--color-accent); }
+/* All states share one gutter so the spinner, result mark and tool spine
+   stay on the same axis when a turn finishes. */
+.chat-trace-mark.is-running { color: var(--color-accent); }
 .chat-trace-mark svg.brand-spinner { width: 19px; height: 19px; }
 .chat-trace-mark svg path {
   fill: none; stroke: var(--color-ink-2); stroke-width: 1.45;
@@ -833,7 +823,7 @@ html[data-pointer-hover] .tape-hot *:not(.text-up):not(.text-down):not([data-tap
 }
 .chat-trace-mark.is-done::before,
 .chat-trace-mark.is-error::before {
-  content: ""; position: absolute; inset: 1px; background: var(--color-up);
+  content: ""; position: absolute; width: 13px; height: 13px; background: var(--color-up);
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5.2 12.9l4.5 4.5L18.8 7.4'/%3E%3C/svg%3E") center/100% no-repeat;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5.2 12.9l4.5 4.5L18.8 7.4'/%3E%3C/svg%3E") center/100% no-repeat;
 }
@@ -864,11 +854,12 @@ html[data-pointer-hover] .tape-hot *:not(.text-up):not(.text-down):not([data-tap
 .chat-trace-reveal > div { min-height: 0; overflow: hidden; }
 .chat-trace-reveal.is-open { grid-template-rows: 1fr; opacity: 1; }
 .chat-trace-body {
-  margin: .05rem 0 .2rem .47rem; padding: .05rem 0 .15rem .95rem;
+  margin: .05rem 0 .2rem calc(var(--chat-trace-gutter) / 2 - .5px);
+  padding: .05rem 0 .15rem var(--chat-trace-indent);
   border-left: 1px solid var(--color-line); display: flex; flex-direction: column;
 }
 .chat-trace-step {
-  position: relative; display: flex; gap: .55rem; padding: .34rem 0 .38rem .12rem;
+  position: relative; display: flex; gap: .55rem; padding: .34rem 0 .38rem;
   animation: chat-rise-in .24s cubic-bezier(.16, 1, .3, 1) both;
 }
 .chat-trace-step + .chat-trace-step { border-top: 1px solid rgba(231, 236, 243, .055); }
@@ -878,7 +869,7 @@ html[data-pointer-hover] .tape-hot *:not(.text-up):not(.text-down):not([data-tap
    happened, and state still rides on its colour. Sits on the spine where the
    dot did, with a black plate so the rail does not run through it. */
 .chat-trace-node {
-  position: absolute; left: calc(-.95rem - 7px); top: .55rem;
+  position: absolute; left: calc(-1 * var(--chat-trace-indent) - 7px); top: .55rem;
   color: var(--color-muted); background: #000; padding: 1px;
   fill: none; stroke: currentColor;
 }
