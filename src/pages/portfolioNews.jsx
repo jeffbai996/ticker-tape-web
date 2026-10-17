@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
-import { fetchNews } from '../lib/history.js'
-import { fetchCnArticle, fetchCnNews, readableCnUrl } from '../lib/cnData.js'
+import { useEffect, useMemo, useState } from 'preact/hooks'
+import { canReadPortfolioArticle, loadPortfolioWire, peekPortfolioWire,
+  portfolioStories, readPortfolioArticle } from '../lib/portfolioNews.js'
+import { wireUrl } from '../lib/wire.js'
 import { loadZhTable, onZhTable, zhName } from '../lib/zhNames.js'
 import { getLocale, tl } from '../lib/i18n.js'
 
@@ -8,34 +9,10 @@ import { getLocale, tl } from '../lib/i18n.js'
 // experience"). Three zones: a ticker rail (a column from lg up, one
 // scrolling row on a phone), the feed grouped by day, and a reading pane
 // that pulls the article text through the worker so a story opens HERE.
-// The picked ticker loads first; everything else trickles behind it with
-// provider spacing. A zh reader's names the table knows get Chinese
-// coverage by company name; the rest ride the provider's English feed and
-// open in a new tab (no extractor for them — honesty over a blank pane).
+// Read one cached wire snapshot and match holdings locally. No per-company
+// provider queue, and a portfolio's symbols never enter the public feed URL.
 
-const TTL_MS = 10 * 60 * 1000
 const PAGE = 30
-const cache = new Map()                 // key -> { ts, items }
-const inflight = new Map()              // symbol -> promise
-
-async function newsFor(symbol) {
-  if (inflight.has(symbol)) return inflight.get(symbol)
-  const p = (async () => {
-    const zh = getLocale() === 'zh'
-    let name = null
-    if (zh) { await loadZhTable(); name = zhName(symbol) }
-    const key = zh && name ? `cn:${name}` : `yf:${symbol}`
-    const hit = cache.get(key)
-    if (hit && Date.now() - hit.ts < TTL_MS) return hit.items
-    const items = zh && name
-      ? (await fetchCnNews(name, { n: 10 })).map((r) => ({ title: r.title, publisher: r.source, link: r.url, time: r.ts, summary: r.summary }))
-      : (await fetchNews(symbol)).map((r) => ({ ...r, summary: '' }))
-    cache.set(key, { ts: Date.now(), items })
-    return items
-  })().finally(() => inflight.delete(symbol))
-  inflight.set(symbol, p)
-  return p
-}
 
 const loc = () => (getLocale() === 'zh' ? 'zh-CN' : 'en-US')
 function dayKey(ts) { return ts ? new Date(ts).toDateString() : '' }
@@ -54,15 +31,15 @@ function Reader({ item, onClose }) {
   const [err, setErr] = useState(false)
   useEffect(() => {
     setArt(null); setErr(false)
-    if (!item || !readableCnUrl(item.link)) return undefined
+    if (!canReadPortfolioArticle(item)) return undefined
     let live = true
-    fetchCnArticle(item.link).then((a) => { if (live) setArt(a) }).catch(() => { if (live) setErr(true) })
+    readPortfolioArticle(item).then((a) => { if (live) setArt(a) }).catch(() => { if (live) setErr(true) })
     return () => { live = false }
-  }, [item?.link])
+  }, [item?.link, item?.wireBase, item?.wireId])
   if (!item) {
     return <div class="hidden lg:flex h-full items-center justify-center px-6 text-center font-anth text-[11px] text-muted">{tl('Pick a story to read it here.')}</div>
   }
-  const readable = readableCnUrl(item.link)
+  const readable = canReadPortfolioArticle(item)
   return (
     <article class="flex h-full min-h-0 flex-col">
       <header class="flex items-start gap-2 border-b border-line-2 px-4 py-3">
@@ -97,56 +74,45 @@ function Reader({ item, onClose }) {
 export function BookNews({ portfolio, quotes }) {
   const symbols = (portfolio.holdings || []).map((h) => h.symbol)
   const key = symbols.join(',')
-  const [news, setNews] = useState({})      // symbol -> items | 'error'
+  const base = wireUrl()
+  const [events, setEvents] = useState(() => peekPortfolioWire(base)?.events || [])
   const [done, setDone] = useState(false)
+  const [error, setError] = useState(false)
+  const [refresh, setRefresh] = useState(0)
   const [pick, setPick] = useState(null)     // null = all
   const [q, setQ] = useState('')
   const [limit, setLimit] = useState(PAGE)
   const [open, setOpen] = useState(null)     // the story in the reader
-  const [, zhTick] = useState(0)
+  const [nameRevision, zhTick] = useState(0)
   const zh = getLocale() === 'zh'
-  const liveRef = useRef(true)
-
   useEffect(() => {
-    if (!zh) return undefined
     loadZhTable()
     return onZhTable(() => zhTick((t) => t + 1))
-  }, [zh])
-
-  const load = async (sym) => {
-    try {
-      const items = await newsFor(sym)
-      if (liveRef.current) setNews((m) => (m[sym] === items ? m : { ...m, [sym]: items }))
-    } catch { if (liveRef.current) setNews((m) => ({ ...m, [sym]: 'error' })) }
-  }
+  }, [])
 
   useEffect(() => {
-    liveRef.current = true
-    setNews({}); setDone(false); setPick(null); setLimit(PAGE); setOpen(null)
-    ;(async () => {
-      for (const sym of symbols) {
-        if (!liveRef.current) return
-        await load(sym)
-        await new Promise((r) => setTimeout(r, 400))
-      }
-      if (liveRef.current) setDone(true)
-    })()
-    return () => { liveRef.current = false }
-  }, [key])
+    let dead = false
+    setEvents(peekPortfolioWire(base)?.events || [])
+    setDone(!symbols.length); setError(false); setPick(null); setLimit(PAGE); setOpen(null)
+    if (symbols.length) loadPortfolioWire(base, { refresh:refresh > 0 })
+      .then(rows => { if (!dead) setEvents(rows) })
+      .catch(() => { if (!dead) setError(true) })
+      .finally(() => { if (!dead) setDone(true) })
+    return () => { dead = true }
+  }, [key, base, refresh])
 
-  // the ticker the reader asked for jumps the queue
   const choose = (sym) => {
     const next = pick === sym ? null : sym
     setPick(next); setLimit(PAGE)
-    if (next && news[next] === undefined) load(next)
   }
 
   const label = (sym) => (zh && zhName(sym)) || quotes?.[sym]?.name || ''
-  const merged = useMemo(() => symbols.flatMap((s) => (Array.isArray(news[s]) ? news[s].map((n) => ({ ...n, symbol: s })) : []))
-    .sort((a, b) => (b.time || 0) - (a.time || 0)), [news, key])
+  const merged = useMemo(() => portfolioStories(events, (portfolio.holdings || []).map(h => ({
+    symbol:h.symbol, names:[h.name, quotes?.[h.symbol]?.name, zhName(h.symbol), zhName(h.symbol,{traditional:true})].filter(Boolean),
+  })), base), [events, key, quotes, nameRevision, base])
   const needle = q.trim().toLowerCase()
-  const shown = merged.filter((n) => (!pick || n.symbol === pick) && (!needle || `${n.title} ${n.summary || ''} ${n.publisher || ''}`.toLowerCase().includes(needle)))
-  const fetched = Object.keys(news).length
+  const shown = merged.filter((n) => (!pick || n.symbols.includes(pick)) && (!needle || `${n.title} ${n.summary || ''} ${n.publisher || ''}`.toLowerCase().includes(needle)))
+    .map(n => pick ? {...n,symbol:pick} : n)
 
   if (!symbols.length) {
     return <div class="rounded-xl border border-line bg-surface-1 px-4 py-6 text-center font-anth text-[11px] text-muted">{tl('Add holdings to see their news here.')}</div>
@@ -179,7 +145,7 @@ export function BookNews({ portfolio, quotes }) {
       {/* rail: a column of tickers from tablet width up, chips on a phone */}
       <nav aria-label={tl('News')} class="flex gap-1.5 overflow-x-auto no-scrollbar md:sticky md:top-2 md:flex-col md:gap-0 md:overflow-hidden md:rounded-xl md:border md:border-line md:bg-surface-1 md:[&>*:last-child]:border-b-0">
         {railItem(null, !pick, merged.length, '')}
-        {symbols.map((s) => railItem(s, pick === s, news[s] === undefined ? '…' : news[s] === 'error' ? '!' : news[s].length, label(s)))}
+        {symbols.map((s) => railItem(s, pick === s, !done && !events.length ? '…' : merged.filter(n=>n.symbols.includes(s)).length, label(s)))}
       </nav>
 
       {/* feed */}
@@ -188,11 +154,14 @@ export function BookNews({ portfolio, quotes }) {
           <input value={q} onInput={(e) => { setQ(e.currentTarget.value); setLimit(PAGE) }} placeholder={tl('Search news')} aria-label={tl('Search news')}
             data-1p-ignore data-lpignore="true"
             class="min-w-0 flex-1 rounded border border-line bg-surface-2 px-2 py-1 font-anth text-[11px] text-ink outline-none placeholder:text-muted focus:border-accent/60" />
-          <span class="shrink-0 font-mono text-[9.5px] text-muted">{shown.length}{!done && ` · ${tl('loading')} ${fetched}/${symbols.length}`}</span>
+          <span class="shrink-0 font-mono text-[9.5px] text-muted">{shown.length}{!done && ` · ${tl('loading')}…`}</span>
+          <button data-news-refresh type="button" onClick={() => setRefresh(n=>n+1)} disabled={!done}
+            aria-label={tl('Refresh news')} class="shrink-0 rounded border border-line px-2 py-1 text-muted hover:text-accent disabled:opacity-40">↻</button>
         </div>
+        {error && <p role="alert" class="pb-2 font-anth text-[11px] text-down">{zh ? '无法刷新新闻，请重试。' : 'Could not refresh news. Please retry.'}</p>}
         <div class="rounded-xl border border-line bg-surface-1 overflow-hidden">
           {shown.length === 0 && (
-            <div class="px-3 py-6 text-center font-anth text-[10.5px] text-muted">{done || (pick && news[pick] !== undefined) ? tl('No matching headlines.') : `${tl('loading')}…`}</div>
+            <div class="px-3 py-6 text-center font-anth text-[10.5px] text-muted">{done ? tl('No matching headlines.') : `${tl('loading')}…`}</div>
           )}
           {groups.map((g) => (
             <div key={g.key}>
@@ -211,7 +180,7 @@ export function BookNews({ portfolio, quotes }) {
                         <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); choose(n.symbol) }} class="font-bold text-accent hover:underline">{n.symbol}</button>
                         {!pick && label(n.symbol) && <span class="font-anth">{label(n.symbol)}</span>}
                         {n.publisher && <span>· {n.publisher}</span>}
-                        {!readableCnUrl(n.link) && <span>↗</span>}
+                        {!canReadPortfolioArticle(n) && <span>↗</span>}
                       </div>
                     </div>
                   </a>
