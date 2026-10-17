@@ -5,6 +5,7 @@
 // viewer's own fragwire /api/portfolio. Nothing personal ships in source;
 // the portfolio block exists only when the user configured an endpoint.
 
+import { holdingCurrency } from './fx.js'
 import { getCached } from './feed.js'
 import { getWatchlist } from './watchlist.js'
 import { fetchNews } from './history.js'
@@ -97,7 +98,8 @@ export async function buildChatContext(question) {
   if (quoted.length) {
     parts.push('', 'Current quotes:')
     for (const { s, q } of quoted) {
-      parts.push(`  ${s}: $${q.price.toFixed(2)} (${q.pct >= 0 ? '+' : ''}${q.pct.toFixed(2)}%)`)
+      const change=Number.isFinite(q.pct) ? ` (${q.pct>=0 ? '+' : ''}${q.pct.toFixed(2)}%)` : ''
+      parts.push(`  ${s}: ${q.price.toFixed(2)} ${q.currency || holdingCurrency(s)}${change}`)
     }
   }
 
