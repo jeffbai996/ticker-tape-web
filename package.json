@@ -18,9 +18,15 @@
     "package:tv": "bash scripts/tizen_tv.sh",
     "test:full": "node test/run-tests.mjs --full",
     "test:fast": "node test/run-tests.mjs --fast",
-    "test:local": "node test/run-tests.mjs --full --pool=vmThreads --vmMemoryLimit=512MB --exclude=test/lib/private_font_build.test.js --exclude=test/worker/security_log.test.js && vitest run --pool=forks test/lib/private_font_build.test.js test/worker/security_log.test.js"
+    "test:local": "node test/run-tests.mjs --full --pool=vmThreads --vmMemoryLimit=512MB --exclude=test/lib/private_font_build.test.js --exclude=test/worker/security_log.test.js && vitest run --pool=forks test/lib/private_font_build.test.js test/worker/security_log.test.js",
+    "build:ios": "node scripts/build-ios.mjs",
+    "ios:sync": "npm run build:ios && cap sync ios",
+    "ios:open": "cap open ios",
+    "ios:run": "npm run ios:sync && cap run ios"
   },
   "dependencies": {
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/ios": "^8.5.3",
     "@preact/preset-vite": "^2.10.5",
     "@tailwindcss/vite": "^4.2.2",
     "flag-icons": "^7.5.0",
@@ -31,6 +37,7 @@
     "vite": "^8.0.5"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.3",
     "@csstools/postcss-cascade-layers": "^6.0.2",
     "@csstools/postcss-is-pseudo-class": "^6.0.3",
     "@vitest/coverage-v8": "^4.1.4",

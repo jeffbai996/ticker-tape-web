@@ -5,6 +5,8 @@
 // index.html currently points at and reloads itself when it's stale — at
 // tab-return, when nobody is mid-anything.
 
+import { isNativeApp } from './native.js'
+
 function currentBundle() {
   const el = document.querySelector('script[src*="index-"]')
   const m = el && el.src.match(/index-[A-Za-z0-9_-]+\.js/)
@@ -21,8 +23,10 @@ async function servedBundle() {
 }
 
 export function startFreshnessWatch() {
+  // Native updates replace the signed bundle; there is no web deploy to poll.
+  if (isNativeApp() || typeof document === 'undefined') return
   const mine = currentBundle()
-  if (!mine || typeof document === 'undefined') return
+  if (!mine) return
   let stale = false
   const check = async () => {
     try {

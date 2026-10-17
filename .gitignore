@@ -9,6 +9,13 @@ logs/
 config.json
 node_modules
 dist/
+dist-ios/
+.env.*
+ios/App/App/public/
+ios/App/App/capacitor.config.json
+ios/App/App/config.xml
+ios/App/CapApp-SPM/.build/
+ios/build/
 .wrangler/
 dist-tailnet
 dist-tailnet.pre-atomic/

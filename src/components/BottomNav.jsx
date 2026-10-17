@@ -6,7 +6,7 @@ import { tl } from '../lib/i18n.js'
 // horizontally if the section list outgrows the viewport.
 export function BottomNav({ route }) {
   return (
-    <nav class="md:hidden fixed bottom-0 inset-x-0 z-40 bg-surface-1 border-t border-line flex overflow-x-auto no-scrollbar">
+    <nav class="bottom-nav md:hidden fixed bottom-0 inset-x-0 z-40 bg-surface-1 border-t border-line flex overflow-x-auto no-scrollbar">
       {NAV.map((section) => (
         <a
           key={section.id}

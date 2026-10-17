@@ -1,0 +1,27 @@
+/* The bundled WKWebView covers the screen; keep controls clear of system UI.
+   Scoped rules leave Safari and the existing web releases unchanged. */
+:root[data-native-app] {
+  color-scheme: dark;
+  --ttw-safe-top: env(safe-area-inset-top, 0px);
+  --ttw-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --ttw-safe-left: env(safe-area-inset-left, 0px);
+  --ttw-safe-right: env(safe-area-inset-right, 0px);
+}
+
+[data-native-app] .app-shell {
+  padding-top: var(--ttw-safe-top);
+  padding-left: var(--ttw-safe-left);
+  padding-right: var(--ttw-safe-right);
+}
+
+[data-native-app] .bottom-nav {
+  padding-bottom: var(--ttw-safe-bottom);
+  padding-left: var(--ttw-safe-left);
+  padding-right: var(--ttw-safe-right);
+}
+
+@media (width < 48rem) {
+  [data-native-app] .app-content {
+    padding-bottom: calc(3rem + var(--ttw-safe-bottom));
+  }
+}

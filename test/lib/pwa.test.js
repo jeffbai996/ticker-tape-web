@@ -44,4 +44,9 @@ describe('registerServiceWorker', () => {
     const main = src('src/main.jsx')
     expect(main.indexOf('render(<App />')).toBeLessThan(main.indexOf('registerServiceWorker()'))
   })
+  it('does not register a service worker in the bundled native app', () => {
+    const register = vi.fn()
+    expect(registerServiceWorker({ nav: { serviceWorker: { register } }, dev: false, native: true })).toBeNull()
+    expect(register).not.toHaveBeenCalled()
+  })
 })

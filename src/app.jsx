@@ -169,7 +169,7 @@ export function App() {
   }, [])
 
   return (
-    <div class="h-dvh w-full max-w-full min-w-0 overflow-hidden flex flex-col bg-surface-0 text-ink font-sans antialiased">
+    <div class="app-shell h-dvh w-full max-w-full min-w-0 overflow-hidden flex flex-col bg-surface-0 text-ink font-sans antialiased">
       <StatusBar />
       <Tape />
       <SubTabs route={route} />
@@ -185,7 +185,7 @@ export function App() {
             ><RailChevron direction="right" /></button>
           </div>
         )}
-        <main ref={mainRef} class="flex-1 flex min-w-0 min-h-0 overflow-y-auto max-md:pb-12">
+        <main ref={mainRef} class="app-content flex-1 flex min-w-0 min-h-0 overflow-y-auto max-md:pb-12">
           <Page route={route} />
         </main>
       </div>
