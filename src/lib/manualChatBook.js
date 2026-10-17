@@ -13,7 +13,7 @@ export function manualPortfolioContext(book) {
   if(!book) return ''
   return ['SAVED PORTFOLIO (user-entered holdings, not broker-synced):',
     `Selected portfolio: ${JSON.stringify(book.name)}; display currency: ${book.currency}.`,
-    'Use this selected portfolio for holding questions. Do not infer margin, cash, weights or a live broker balance.',
+    'Use this selected portfolio for holding questions. Calculate values or weights only with current quotes and the required currency conversion. Do not invent missing quotes, margin, cash or a live broker balance.',
     ...book.positions.map(p=>`  ${p.symbol}: ${p.shares} shares${p.avg_cost!=null ? `; cost per share ${p.avg_cost} ${p.currency}` : ''}`),
   ].join('\n')
 }
