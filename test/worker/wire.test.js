@@ -54,6 +54,13 @@ const call = async (request, env) => {
 }
 
 describe('wire snapshot validation', () => {
+  it('keeps the public publisher label while stripping private metadata', () => {
+    const out=validateWireSnapshot({generated_at:1_700_000_100,events:[ev(1,{publisher:'Example Financial Daily',meta:{private:'hidden'},symbols:['AAPL']})]})
+    expect(out.ok).toBe(true)
+    expect(out.value.events[0].publisher).toBe('Example Financial Daily')
+    expect(out.value.events[0]).not.toHaveProperty('meta')
+    expect(out.value.events[0]).not.toHaveProperty('symbols')
+  })
   it('accepts a well-formed snapshot and keeps only the contract fields', () => {
     const out = validateWireSnapshot({
       generated_at: 1_700_000_100,

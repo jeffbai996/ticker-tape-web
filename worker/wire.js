@@ -4,7 +4,7 @@
 // headlines with their source links, nothing more.
 //
 // Everything stored arrives through validateWireSnapshot, which keeps only the
-// seven required contract fields plus an optional allowlisted language tag;
+// seven required contract fields plus allowlisted language/publisher labels;
 // anything else the pusher sends is dropped, so
 // no private field can leak into a public response by accident.
 
@@ -48,6 +48,7 @@ function cleanEvent(row) {
   if (!tag(row.url, MAX_URL_CHARS)) return null
   if (row.url && !/^https?:\/\//i.test(row.url)) return null
   if (row.language != null && !['en', 'zh'].includes(row.language)) return null
+  if (row.publisher != null && !tag(row.publisher, 100)) return null
   const clean = {
     id: row.id,
     ts: row.ts,
@@ -58,6 +59,7 @@ function cleanEvent(row) {
     url: row.url,
   }
   if (row.language) clean.language = row.language
+  if (row.publisher) clean.publisher = row.publisher
   return clean
 }
 

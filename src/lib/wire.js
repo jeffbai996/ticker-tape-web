@@ -719,6 +719,8 @@ const PUB_NAMES = {
 const cap = (s) => (s ? s[0].toUpperCase() + s.slice(1) : '')
 
 export function pubDisplayName(ev) {
+  const publisher = ev.publisher || ev.meta?.publisher
+  if (typeof publisher === 'string' && publisher.trim()) return publisher.trim().slice(0,100)
   try {
     const host = new URL(ev.url).hostname.replace(/^www\./, '')
     if (host === 'news.google.com') {
