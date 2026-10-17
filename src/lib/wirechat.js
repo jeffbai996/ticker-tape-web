@@ -21,8 +21,8 @@ function chatTransport() {
 }
 
 function chatBody({ model, effort, system, messages }) {
-  return JSON.stringify({ model: IS_FAMILY_AI ? 'family-sonnet' : model,
-    effort: IS_FAMILY_AI ? 'medium' : effort, system, messages })
+  const chosen=IS_FAMILY_AI ? (model==='family-opus' ? 'family-opus' : 'family-sonnet') : model
+  return JSON.stringify({model:chosen,effort:IS_FAMILY_AI ? (chosen==='family-opus' ? 'low' : 'medium') : effort,system,messages})
 }
 
 /** Is the private, subscription-backed path available in this browser? */

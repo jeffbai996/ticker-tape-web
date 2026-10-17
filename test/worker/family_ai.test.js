@@ -45,3 +45,13 @@ describe('family AI edge',()=>{
   expect(response.status).toBe(503);expect(await response.text()).not.toContain('credential')
  })
 })
+
+it('routes the approved Opus option with low effort and rejects arbitrary models',async()=>{
+  const fetcher=vi.fn(async()=>Response.json({ok:true,text:'Done'}))
+  const response=await handleFamilyAI(request('/api/chat',cap,{model:'family-opus',messages:[{role:'user',content:'Hello'}]}),env(),fetcher)
+  expect(response.status).toBe(200)
+  expect(JSON.parse(fetcher.mock.calls[0][1].body)).toMatchObject({model:'family-opus',effort:'low'})
+  fetcher.mockClear()
+  expect((await handleFamilyAI(request('/api/chat',cap,{model:'arbitrary'}),env(),fetcher)).status).toBe(400)
+  expect(fetcher).not.toHaveBeenCalled()
+})

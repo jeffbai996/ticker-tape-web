@@ -27,7 +27,7 @@ import {
   openThread, removeThread, saveActiveHistory, startNewThread, currentThreadId,
 } from '../lib/threads.js'
 import { wireServiceUrl } from '../lib/wire.js'
-import { plainTraceText } from '../lib/chatTrace.js'
+import { plainTraceText, hasTurnActivity, activityGroups } from '../lib/chatTrace.js'
 import { ChatFooter } from '../components/ChatFooter.jsx'
 import { IS_FAMILY_AI } from '../lib/nav.js'
 
@@ -63,7 +63,7 @@ function baseSystem() {
     : 'You have no access to any personal, account, or portfolio data — the ' +
       'portfolio section is a clearly-labeled synthetic demo. '
   if (IS_FAMILY_AI) return common +
-    'This family edition uses a shared subscription with Sonnet 5.5 at medium effort. ' +
+    'This family edition uses the selected subscription model. ' +
     'Only context supplied by this browser is available. There is no broker connection ' +
     'or access to the subscription owner\'s accounts, files, or chat history. '
   return common + infrastructure + book
@@ -245,7 +245,7 @@ function ToolChips({ calls, results }) {
             title={failed ? res.slice(0, 200) : undefined}
             class="inline-flex items-center gap-1 font-mono text-[10px] text-muted"
           >
-            <span class={failed ? 'text-down' : res == null ? 'text-accent animate-pulse' : 'text-up'}>
+            <span class={failed ? 'text-down' : res == null ? 'text-accent animate-pulse' : 'text-muted'}>
               {failed ? '✕' : res == null ? '◌' : '✓'}
             </span>
             {toolLabel(tc)}
@@ -430,11 +430,25 @@ export function ActivityTrace({ steps, busy = false, startedAt, usage = null }) 
               show (Jeff 2026-08-07). */}
           {visibleSteps.length > 0 && (
           <div class="chat-trace-body">
-            {visibleSteps.map((step) => {
-              const end = step.endedAt || now
-              const stepElapsed = step.startedAt ? durationLabel(end - step.startedAt) : ''
-              return (
-                <div key={step.key} class={`chat-trace-step is-${step.status || 'done'}`}>
+            {activityGroups(visibleSteps).map((group, index) => (
+              <section key={group.model?.key || index} class="chat-trace-phase">
+                {group.model && (
+                  <div class="chat-trace-reason">
+                    <span>{group.model.label}</span>
+                    <span class="chat-trace-time">{group.model.startedAt ? durationLabel((group.model.endedAt || now)-group.model.startedAt) : ''}</span>
+                    {group.model.detail && <details class="chat-trace-reason-detail">
+                      <summary>{tl('details')}</summary>
+                      <div class="chat-trace-detail">{plainTraceText(group.model.detail)}</div>
+                    </details>}
+                    {!group.model.detail && group.model.thinkTokens ? <span class="chat-trace-time">{thinkDepth(group.model.thinkTokens)}</span> : null}
+                  </div>
+                )}
+                {group.tools.length > 0 && <div class="chat-trace-tools">
+                  {group.tools.map(step=>{
+                    const end=step.endedAt || now
+                    const stepElapsed=step.startedAt ? durationLabel(end-step.startedAt) : ''
+                    return (
+                <div key={step.key} class={`chat-trace-step is-tool is-${step.status || 'done'}`}>
                   <StepIcon kind={step.kind} verb={step.label || step.verb} status={step.status} />
                   <div class="min-w-0 flex-1">
                     <div class="flex items-baseline gap-2">
@@ -458,8 +472,11 @@ export function ActivityTrace({ steps, busy = false, startedAt, usage = null }) 
                       ) : null}
                   </div>
                 </div>
-              )
-            })}
+                    )
+                  })}
+                </div>}
+              </section>
+            ))}
           </div>
           )}
         </div>
@@ -712,7 +729,7 @@ export function Chat() {
     })
   }
   const [model, setModel] = useState(
-    IS_FAMILY_AI ? 'family-sonnet' : localStorage.getItem(modelStorageKey) || (onWire ? 'agy-argon' : 'argon'),
+    localStorage.getItem(modelStorageKey) || (IS_FAMILY_AI ? 'family-sonnet' : onWire ? 'agy-argon' : 'argon'),
   )
   const [effort, setEffort] = useState(IS_FAMILY_AI ? 'medium' : localStorage.getItem('chat_effort') || 'auto')
   const [spend, setSpend] = useState(null)
@@ -866,7 +883,7 @@ export function Chat() {
         localStorage.setItem(modelStorageKey, fallback)
         const info = liveModels[0]
         if (onWire) {
-          const nextEffort = info?.default_effort || info?.efforts?.[0] || ''
+          const nextEffort = info?.fixed_effort || info?.default_effort || info?.efforts?.[0] || ''
           setEffort(nextEffort)
           localStorage.setItem('chat_effort', nextEffort)
         }
@@ -874,7 +891,7 @@ export function Chat() {
         const choices = current.efforts || []
         const nextEffort = choices.includes(effort)
           ? effort
-          : (current.default_effort || choices[0] || '')
+          : (current.fixed_effort || current.default_effort || choices[0] || '')
         setEffort(nextEffort)
         localStorage.setItem('chat_effort', nextEffort)
       }
@@ -1222,8 +1239,8 @@ export function Chat() {
       setEffort(nextEffort)
       localStorage.setItem('chat_effort', nextEffort)
     } else if (onWire && !choices.length) {
-      setEffort('')
-      localStorage.setItem('chat_effort', '')
+      setEffort(info?.fixed_effort || '')
+      localStorage.setItem('chat_effort', info?.fixed_effort || '')
     }
   }
 
@@ -1356,7 +1373,7 @@ export function Chat() {
           {onWire && selectedModel?.fixed_effort && (
             <span class="font-mono text-[9px] text-muted border border-line rounded-md px-1.5 py-px"
                   title={tl('fixed thinking tier')}>
-              {selectedModel.fixed_effort}
+              thinking
             </span>
           )}
           <span class="composer-shortcuts ml-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
@@ -1389,7 +1406,7 @@ export function Chat() {
 
   return (
     <div class="flex-1 flex min-h-0 min-w-0">
-    <div class="relative flex-1 flex flex-col p-3 pt-8 min-h-0 min-w-0 select-text">
+    <div class="relative flex-1 flex flex-col p-3 pt-16 min-h-0 min-w-0 select-text">
       {/* The header row is gone — the dialog owns its vertical space. The
           wordmark tucks into the far top-left corner and the tool rail into
           the top-right, both floating transparent (Jeff 2026-08-06). Model
@@ -1422,7 +1439,7 @@ export function Chat() {
           <path d="M8.4 9.2h7.2M8.4 12.2h4.4" />
         </svg>
         <h1 class="font-bold text-[17px] leading-tight text-ink" style="font-family: var(--font-sans)">{tl('AI Chat')}</h1>
-        <span class={`w-1.5 h-1.5 rounded-full ${onWire ? 'bg-up' : 'bg-accent'}`}
+        <span class={`w-1.5 h-1.5 rounded-full ${models.length ? 'bg-teal-400' : 'bg-muted animate-pulse'}`}
               title={tl(onWire ? 'online — private wire' : 'online — public proxy')} />
       </div>
         <div class="absolute top-2.5 right-3 z-30 h-7 flex items-center gap-0.5 rounded-lg px-0.5">
@@ -1588,7 +1605,7 @@ export function Chat() {
         {history.map((m, i) => {
           if (m.role === 'tool') return null
           if (m.role === 'assistant' && m.toolCalls?.length) {
-            if (m.traceHidden) return null
+            if (m.traceHidden || hasTurnActivity(history, i, activity)) return null
             return (
               <div key={i} class="chat-message-enter self-start flex flex-col gap-1 max-w-[92%]">
                 {m.content && (
