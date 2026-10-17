@@ -1,15 +1,13 @@
 # ticker-tape-web
 
 Public Bloomberg-style market terminal: Preact + Vite + Tailwind v4 on GitHub
-Pages, backed by a Cloudflare Worker for Yahoo Finance data. The browser app,
-demo portfolio, disabled public AI previews, mobile layout, and worker are all
-shipped; the private tailnet build activates AI through newsservice. This is the
+Pages, backed by a Cloudflare Worker for Yahoo Finance data. This is the
 operating guide for the current application, not a build roadmap.
 
 ## THE RULE (read before touching anything)
 
 **This repo is PUBLIC. No real account data, real positions, real NLV/margin
-numbers, thesis names, or the owner's actual held tickers may ever appear in
+numbers, thesis names, or real holdings may ever appear in
 source, tests, fixtures, committed JSON, code comments, or runtime API responses
 — even transiently, even as an example.** Public portfolio-shaped features run only on
 synthetic demo data and must remain clearly labeled "DEMO — NOT REAL POSITIONS"
@@ -19,10 +17,9 @@ AMZN, TSLA, SPY, and QQQ is fine.
 Corollaries:
 
 - No broker calls or broker credentials in the public build or public Worker.
-  Private builds may render read-only broker data through the private service.
 - No trade-execution UI, including decorative controls.
 - API keys never enter browser storage or browser-served build variables. The
-  public build does not issue AI requests; private AI stays behind newsservice.
+  public build does not issue AI requests.
 - No GitHub Secrets carrying private symbol lists into the build.
 - Keep the demo account obviously synthetic. Do not make it resemble a real
   portfolio in the name of realism.
@@ -58,16 +55,14 @@ Corollaries:
   trades, thesis watcher, timeline, and backtest, with session-aware day P&L
   (`src/lib/dayPnl.js`): pre-market move before the open, session compounded
   with the extended print after the close.
-- AI briefing, memo, and multi-model chat surfaces. Public and private builds
-  ship the same information architecture; publicly the AI routes render inert
-  previews badged PREVIEW and never call the model service, and the private
-  tailnet build activates them through newsservice and drops the showcase badges.
+- AI briefing, memo, and multi-model chat surfaces. Publicly the AI routes
+  render inert previews badged PREVIEW and never call a model service.
 - Wire page with a synthetic public session, the public wire mirror, or an
-  optional user-supplied newsservice-compatible endpoint. The mirror is a
+  optional user-supplied wire endpoint. The mirror is a
   sanitized headline snapshot pushed to the Worker (`worker/wire.js`,
   `/wire/*`) and read back read-only; the client runs it as MIRROR mode with
-  the snapshot age on screen. The private build never falls back to it, and
-  `wireServiceUrl()` keeps mirror-backed surfaces out of chat/save/alert paths.
+  the snapshot age on screen. `wireServiceUrl()` keeps mirror-backed surfaces
+  out of chat/save/alert paths.
 - Routed pages are lazy-loaded behind `src/components/LazyPage.jsx`; the shell,
   dashboard, and command grammar stay eager. `npm run budget` fails the build if
   the entry chunk drifts back over budget.
@@ -96,7 +91,6 @@ Corollaries:
 | Tests | Vitest + jsdom |
 | Static deploy | GitHub Pages via Actions (`.github/workflows/deploy.yml`) |
 | Public data proxy | Cloudflare Worker (`worker/`) |
-| Private AI runtime | newsservice router on the tailnet build |
 
 ## Design System — Operator language
 
@@ -165,8 +159,8 @@ worker/
 scripts/
 ├── bundle_budget.sh          entry-chunk route budget (`npm run budget`)
 ├── probe_matrix.py           responsive matrix against a SERVED build
-└── deploy_tailnet.sh         private build + tailnet deploy
-docs/                         Fable design/feature handoff and run plans
+└── deploy_tailnet.sh         private build deploy
+docs/                         design/feature audit and run plans
 public/                       static/PWA assets
 ```
 
@@ -194,22 +188,15 @@ objects. Derive day change from the live quote, not a multi-range chart.
 
 The public Worker has no `/chat` route; hiding a browser control or setting CORS
 is not authorization for a paid endpoint. Public AI controls are deliberately
-inert. The private build gets its live model registry,
-chat streams, and report generation from newsservice; stale saved selections fall
-back to the first live registry entry. Browser-side tools remain read-only and
-no route exposes trading capabilities.
+inert. Browser-side tools remain read-only and no route exposes trading
+capabilities.
 
-Public Pages builds contain neither a family capability nor the family sync
-module. Family builds are separate artifacts on a separate origin; only that
-build reads the local capability secret. Never add secret-bearing build
-variables to the Pages workflow. The public origin purges legacy family
-portfolio residue before application initialization. Private broker views and
-family/manual books must remain isolated from the public demo. Architecture,
-residue, sync, and private-font tests enforce these boundaries.
-
-Capability transport uses an Authorization header to the exact allowlisted
-sync routes, never a URL. The Worker requires its separately provisioned secret
-and serializes revision checks and writes through a Durable Object.
+Private builds are separate artifacts. Their data and capabilities must never
+reach the public Pages build: never add secret-bearing build variables to the
+Pages workflow, and keep every private book isolated from the public demo. The
+architecture, residue, sync and private-font tests enforce these boundaries.
+Sync credentials travel in an Authorization header to allowlisted routes, never
+in a URL.
 
 @AGENTS.md
 
@@ -231,10 +218,8 @@ separate Wrangler deploy; pushing alone does not update the Worker.
 ## Reference Material
 
 - `README.md` documents the current user-facing features and architecture.
-- `docs/FABLE_DESIGN_FEATURE_HANDOFF.md` is the living design/feature audit with
-  per-finding status; `docs/FABLE_RUN_3_PLAN.md` is the next pass's lane plan.
-- The sibling `ticker-tape` repository is the private TUI and the source for
-  financial behavior worth porting, but its private runtime data must never be
-  copied here.
+- `docs/` holds the living design/feature audit and the current run plan.
+- The sibling `ticker-tape` repository is the TUI and the source for financial
+  behavior worth porting; its runtime data must never be copied here.
 - The retired vanilla-JS v2 implementation remains available in git history
   when historical behavior is useful; it is not the current architecture.
