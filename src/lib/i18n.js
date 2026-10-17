@@ -456,7 +456,7 @@ const LABELS = {
   'Scroll sectors right': '向右滚动板块',
   'Create watchlist': '新建自选股', 'Watchlist name': '自选股名称',
   PRIMARY: '默认', Rename: '重命名', Delete: '删除', Save: '保存',
-  'Refresh news': '刷新新闻', details: '详情',
+  Refresh: '刷新', 'Refresh news': '刷新新闻', details: '详情',
   Cancel: '取消',
       'Open dashboard →': '打开看盘 →', ticker: '只股票', tickers: '只股票',
   'average move': '平均涨跌', declining: '下跌',
