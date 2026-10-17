@@ -1,4 +1,4 @@
-import { buildPerformance } from './performance.js'
+import { buildPerformance, hasUnconvertedFlow } from './performance.js'
 
 const DAY=86400000
 const DAYS={'1M':30,'3M':90,'6M':180,'1Y':365}
@@ -23,11 +23,9 @@ export function historySeries(snapshots, currency, cashTxns=[], range='ALL') {
   // starts at its first observed mark; no unrecorded daily values are filled.
   const adjusted=buildPerformance(marks,[],cashTxns,currency).series[0].values
   let peak=null,flowGap=false
-  const unknownFlows=cashTxns.filter(e=>['deposit','withdrawal','adjustment'].includes(e.kind)
-    && e.ccy!==currency && !(e.bookCcy===currency && Number.isFinite(e.bookAmount)))
   const origin=marks[0].v
   return marks.map((m,i)=>{
-    if(i && unknownFlows.some(e=>e.d>marks[i-1].d && e.d<=m.d)) flowGap=true
+    if(i && hasUnconvertedFlow(cashTxns,currency,marks[i-1].d,m.d)) flowGap=true
     const index=!flowGap && origin>0 && Number.isFinite(adjusted[i]) ? adjusted[i] : null
     if(index!=null) peak=peak==null ? index : Math.max(peak,index)
     return {...m,flowGap,change:i ? delta(m.v,marks[i-1].v) : null,
