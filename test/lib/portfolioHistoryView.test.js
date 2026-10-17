@@ -15,6 +15,7 @@ it('opens a dated explorer and scrubs its figures without changing the portfolio
   expect(root.querySelector('[role="dialog"]')).not.toBeNull()
   expect(root.querySelector('input[type="range"]')).toBeNull()
   const chart=root.querySelector('[data-history-chart] [role="slider"]')
+  expect(chart.getAttribute('tabindex')).toBe('0')
   await act(()=>chart.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowLeft',bubbles:true})))
   expect(root.querySelector('[data-history-date]').textContent).toContain('2026-01-10')
   expect(root.querySelector('[data-history-value]').textContent).toContain('120')
