@@ -7,6 +7,8 @@
 import { IS_PRIVATE_BUILD } from './nav.js'
 import { proxyBase } from './feed.js'
 import { createPCache } from './pcache.js'
+import { fetchCnArticle, readableCnUrl } from './cnData.js'
+import { cleanArticleText } from './articleText.js'
 
 const KEY = 'tape-wire-url'
 
@@ -118,6 +120,22 @@ export async function fetchEvents(base, {
     `${base}/api/events?since_id=${sinceId}&limit=${limit}${newest ? '&newest=1' : ''}${typeParam ? `&types=${encodeURIComponent(typeParam)}` : ''}`)
   if (!resp.ok) throw new Error(`wire ${resp.status}`)
   return resp.json()
+}
+
+/** Use the working publisher reader on both news surfaces; ordinary wire
+ * articles remain ID-scoped and keep the capability off private requests. */
+export async function fetchWireArticle(base, event, {
+  fetchImpl = fetch, refresh = false, readerToken = import.meta.env.VITE_READER_CAPABILITY || '',
+} = {}) {
+  if (readableCnUrl(event.url)) {
+    const article = await fetchCnArticle(event.url, { fetchImpl })
+    return { ...article, ok:true, text:cleanArticleText(article.paras.join('\n\n')), truncated:false }
+  }
+  const response = await fetchImpl(`${base.replace(/\/$/, '')}/api/read?id=${event.id}&body=1&fast=1${refresh ? '&refresh=1' : ''}`,
+    { signal:AbortSignal.timeout(20_000), headers:isMirrorBase(base) ? { Authorization:`Bearer ${readerToken}` } : {} })
+  const out = await response.json()
+  if (!out || typeof out !== 'object') throw new Error('Invalid article response')
+  return { ...out, text:cleanArticleText(out.ok ? (out.text || out.summary || '') : '') }
 }
 
 /** Arm a capture only after the reader explicitly supplies an official
