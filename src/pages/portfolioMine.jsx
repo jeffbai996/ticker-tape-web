@@ -655,7 +655,7 @@ function CapitalMix({ rows, className = '' }) {
   )
 }
 
-function SummaryStrip({ portfolio, quotes, rates, ccys, fxLive, bench }) {
+export function SummaryStrip({ portfolio, quotes, rates, ccys, fxLive, bench }) {
   const { total, rows } = portfolioValues(portfolio.holdings, quotes, rates, portfolio.ccy, portfolio.cash)
   const priced = rows.filter((r) => r.valueDisplay != null)
   // The panel beside the headline number was three facts wide and mostly air
@@ -685,6 +685,10 @@ function SummaryStrip({ portfolio, quotes, rates, ccys, fxLive, bench }) {
   }, [fullyPriced, Math.round(total.value || 0), portfolio.id, portfolio.ccy])
   const prevMark = previousSnapshot(portfolio, portfolio.ccy)
   const marks = (portfolio.snapshots || []).filter((s) => s.c === portfolio.ccy)
+  const [inspection,setInspection]=useState(null)
+  const inspected=inspection?.id===portfolio.id && inspection.ccy===portfolio.ccy ? inspection.point : null
+  const displayedValue=inspected ? inspected.v : total.value
+  const factLabel=name=>inspected ? (getLocale()==='zh' ? `当前${tl(name)}` : `Current ${tl(name)}`) : tl(name)
   const vfact = (label, value, good, sub) => (
     <div key={label} class="min-w-0">
       <div class="font-anth text-[8.5px] uppercase tracking-wider text-muted pb-0.5">{label}</div>
@@ -702,30 +706,43 @@ function SummaryStrip({ portfolio, quotes, rates, ccys, fxLive, bench }) {
               (Jeff 2026-08-23). Each chip is atomic: wrap between facts,
               never inside one. */}
           <div>
-            <div class="font-anth text-[9px] uppercase tracking-[.14em] text-muted">{tl('Value')} ({portfolio.ccy})</div>
-            <div class="font-anth text-[30px] leading-tight font-semibold tracking-tight text-ink tabular-nums">
-              <span class="mr-0.5 text-[0.55em] font-medium tracking-normal text-muted">{fmtCcyParts(total.value, portfolio.ccy).mark.trim()}</span>{fmtCcyParts(total.value, portfolio.ccy).figure}
+            <div class="flex items-baseline gap-2 font-anth text-[9px] uppercase tracking-[.14em] text-muted">
+              <span>{tl('Value')} ({portfolio.ccy})</span>
+              {inspected && <span data-portfolio-value-date class="font-mono tracking-normal text-accent">{inspected.d}</span>}
+            </div>
+            <div data-portfolio-value class="font-anth text-[30px] leading-tight font-semibold tracking-tight text-ink tabular-nums">
+              <span class="mr-0.5 text-[0.55em] font-medium tracking-normal text-muted">{fmtCcyParts(displayedValue, portfolio.ccy).mark.trim()}</span>{fmtCcyParts(displayedValue, portfolio.ccy).figure}
             </div>
             {/* one row always (Jeff 2026-08-23) — overflow scrolls rather
                 than wrapping the percent away from its number */}
-            <div class="flex items-center gap-2 pt-1.5 overflow-x-auto no-scrollbar">
+            <div class="flex min-h-[34px] items-center gap-2 pt-1.5 overflow-x-auto no-scrollbar">
+              {inspected ? <>
+                {chip(inspected.change, null)}
+                <span class="font-anth text-[10.5px] text-muted whitespace-nowrap">{inspected.change==null ? (getLocale()==='zh' ? '首条记录' : 'First record') : (getLocale()==='zh' ? '较上一记录' : 'Since previous record')}</span>
+              </> : <>
               {chip(total.dayPnl, total.dayPct)}
               {sinceLast != null && (
                 <span class="font-anth text-[10.5px] text-muted whitespace-nowrap" title={prevMark.d}>{tl('since last')}{' '}
                   <span class={`font-semibold ${pnlCls(sinceLast)}`}>{signed(sinceLast, portfolio.ccy)}
                     {prevMark.v > 0 && <span class="font-normal"> ({fmtPct((sinceLast / prevMark.v) * 100)})</span>}</span></span>
               )}
+              </>}
             </div>
-            <PortfolioHistory marks={marks} ccy={portfolio.ccy} cashTxns={portfolio.cashTxns || []} name={portfolio.name} />
+            <PortfolioHistory marks={marks} ccy={portfolio.ccy} cashTxns={portfolio.cashTxns || []} name={portfolio.name}
+              onInspect={point=>setInspection(current=>{
+                if(!point)return null
+                if(current?.id===portfolio.id && current.ccy===portfolio.ccy && current.point.d===point.d && current.point.v===point.v && current.point.change===point.change)return current
+                return {id:portfolio.id,ccy:portfolio.ccy,point}
+              })} />
           </div>
           {/* the book's own money facts live beside the headline; market facts
               live on the right (Jeff 2026-08-22: the space beside the number
               and the strip under it were empty) */}
           <div class="flex flex-wrap gap-x-6 gap-y-2">
-            {vfact(tl('Cost basis'), un.costBasis != null ? money(un.costBasis, portfolio.ccy) : '—', null)}
-            {vfact(tl('Open P&L'), total.unrealPnl != null ? signed(total.unrealPnl, portfolio.ccy) : '—', total.unrealPnl == null ? null : total.unrealPnl >= 0,
+            {vfact(factLabel('Cost basis'), un.costBasis != null ? money(un.costBasis, portfolio.ccy) : '—', null)}
+            {vfact(factLabel('Open P&L'), total.unrealPnl != null ? signed(total.unrealPnl, portfolio.ccy) : '—', total.unrealPnl == null ? null : total.unrealPnl >= 0,
               un.pct != null ? fmtPct(un.pct) : null)}
-            {vfact(tl('Cash'), cs.cash ? money(cs.cash, portfolio.ccy) : '—', null, cs.cashPct != null ? fmtPctPlain(cs.cashPct) : null)}
+            {vfact(factLabel('Cash'), cs.cash ? money(cs.cash, portfolio.ccy) : '—', null, cs.cashPct != null ? fmtPctPlain(cs.cashPct) : null)}
           </div>
         </div>
         <div class="px-4 py-3 flex-[1.6] min-w-[300px] border-l border-line max-sm:border-l-0 max-sm:border-t flex flex-col justify-center">

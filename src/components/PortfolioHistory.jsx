@@ -63,7 +63,7 @@ function HistoryPlot({ points, active, onInspect, compact=false, mode='value', c
   </svg>
 }
 
-export function PortfolioHistory({ marks,ccy,cashTxns=[],name='' }) {
+export function PortfolioHistory({ marks,ccy,cashTxns=[],name='',onInspect }) {
   const [open,setOpen]=useState(false),[range,setRange]=useState('3M'),[mode,setMode]=useState('value')
   const [hover,setHover]=useState(null),[selected,setSelected]=useState(null)
   const compact=useMemo(()=>historySeries(marks,ccy,cashTxns,'3M'),[marks,ccy,cashTxns])
@@ -72,32 +72,32 @@ export function PortfolioHistory({ marks,ccy,cashTxns=[],name='' }) {
   if(!compact.length) return null
   const active=selected==null ? points.length-1 : Math.min(selected,points.length-1)
   const point=points[active]
-  const hovered=hover==null ? null : compact[Math.min(hover,compact.length-1)]
+  const inspectPoint=index=>{
+    setHover(index)
+    onInspect?.(index==null ? null : compact[index] || null)
+  }
   const keyboard=event=>{
     const direction=event.key==='ArrowLeft' ? -1 : event.key==='ArrowRight' ? 1 : 0
+    if(event.key==='Escape'){inspectPoint(null);return}
     if(!direction) return
-    event.preventDefault();setHover(i=>Math.max(0,Math.min(compact.length-1,(i ?? compact.length-1)+direction)))
+    event.preventDefault();inspectPoint(Math.max(0,Math.min(compact.length-1,(hover ?? compact.length-1)+direction)))
   }
   const metric=(title,value,cls='text-ink',props={})=><div class="min-w-0 rounded-lg border border-line-2 bg-surface-2/40 px-3 py-2">
     <div class="mb-1 text-[10px] text-muted font-anth">{title}</div>
     <div class={`font-anth text-[16px] font-semibold tabular-nums ${cls}`} {...props}>{value}</div>
   </div>
   return <>
-    <button type="button" data-history-open onClick={()=>{setOpen(true);setSelected(null)}}
-      onKeyDown={keyboard} onPointerLeave={()=>setHover(null)} onFocus={()=>setHover(compact.length-1)} onBlur={()=>setHover(null)}
+    <button type="button" data-history-open onClick={()=>{inspectPoint(null);setOpen(true);setSelected(null)}}
+      onKeyDown={keyboard} onPointerLeave={()=>inspectPoint(null)} onFocus={()=>inspectPoint(compact.length-1)} onBlur={()=>inspectPoint(null)}
       aria-label={label('Explore portfolio value history','查看组合金额历史')}
       class="relative mt-3 block w-full rounded-lg border border-line-2 bg-surface-2/25 px-2.5 pb-1.5 pt-2 text-left text-muted transition-colors hover:border-accent/40 focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent">
       <span class="flex items-center justify-between gap-2 font-anth text-[9px]">
         <span>{label('Value history','金额走势')}</span>
         <span class="text-muted">{label('Explore','查看详情')} ↗</span>
       </span>
-      <HistoryPlot points={compact} active={hover} onInspect={setHover} compact ccy={ccy} />
+      <HistoryPlot points={compact} active={hover} onInspect={inspectPoint} compact ccy={ccy} />
       <span class="flex justify-between gap-2 font-mono text-[8.5px] text-muted/80"><span>{compact[0].d}</span><span>{compact.at(-1).d}</span></span>
-      {hovered && <span role="tooltip" class="pointer-events-none absolute right-2 top-7 z-10 max-w-[90%] rounded-md border border-line bg-surface-1 px-2 py-1.5 shadow-xl">
-        <span class="block font-mono text-[9px] text-muted">{hovered.d}</span>
-        <span class="block font-anth text-[12px] font-semibold text-ink tabular-nums">{fmtCcy(hovered.v,ccy)}</span>
-        <span class={`block font-mono text-[9px] ${tone(hovered.returnPct)}`}>{label('Return','收益率')} {percent(hovered.returnPct)}</span>
-      </span>}
+
     </button>
     {open && <Overlay onClose={()=>setOpen(false)} label={label('Portfolio value history','组合金额历史')}
       class="w-full max-w-4xl max-h-[90dvh] overflow-y-auto rounded-2xl border border-line bg-surface-1 shadow-2xl">
