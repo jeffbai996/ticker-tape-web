@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from 'vitest'
 import { sessionDayPct, dayPnlFromValue } from '../../src/lib/dayPnl.js'
 import { positionRows, accountSummary } from '../../src/lib/demo.js'

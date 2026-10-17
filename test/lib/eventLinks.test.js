@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterEach, describe, expect, it } from 'vitest'
 import { setLocale, tl } from '../../src/lib/i18n.js'
 import { SYMBOL_RE } from '../../src/lib/symbols.js'

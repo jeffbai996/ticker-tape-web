@@ -1,3 +1,4 @@
+// @vitest-environment node
 
 import { reportProxyBatch as reportBatch, whenFirstBatch } from '../../src/lib/feed.js'
 

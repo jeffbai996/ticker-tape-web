@@ -1,3 +1,4 @@
+// @vitest-environment node
 /** Snappiness without more load (Jeff 2026-08-18): the batch print must never
  *  come back from the browser's HTTP cache, the sweep follows the session,
  *  and a returning tab reconnects the socket now instead of after backoff. */

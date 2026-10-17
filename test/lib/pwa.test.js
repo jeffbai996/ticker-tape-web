@@ -1,3 +1,4 @@
+// @vitest-environment node
 /** The app shell launches from disk; data never does. */
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'

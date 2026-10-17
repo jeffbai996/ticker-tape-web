@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { cnF10Upstream, cnSecurity, extractEmArticle, parseTencentUsName } from '../../worker/worker.js'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import worker, { allowedYahooGetPath } from '../../worker/worker.js'

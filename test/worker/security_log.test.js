@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import worker from '../../worker/worker.js'
 import { coarseUserAgent, SECURITY_EVENT } from '../../worker/security_log.js'

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /** Chinese company-name search: Yahoo's search returns nothing for a
  *  Chinese query (verified 2026-08-22), so a zh reader adding a holding by
  *  name needs a local table consulted before the provider. The table is

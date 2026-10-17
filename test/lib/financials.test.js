@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { mergeTimeseries, statementRows } from '../../src/lib/financials.js'
 

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it, vi } from 'vitest'
 import { categoryFromProfile, resolveClassification } from '../../src/lib/classification.js'
 import { groupDashboardRows } from '../../src/lib/dashboardRows.js'

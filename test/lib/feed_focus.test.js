@@ -1,3 +1,4 @@
+// @vitest-environment node
 // On-screen-first data: a surface declares which of its tracked symbols the
 // user is actually looking at, and the feed spends its request budget there
 // first. Everything the ordering and cadence rules do is a pure function, so

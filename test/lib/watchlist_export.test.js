@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it, vi } from 'vitest'
 import fs from 'node:fs'
 import { pushWatchlistToWire } from '../../src/lib/watchlistExport.js'

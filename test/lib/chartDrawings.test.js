@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect, beforeEach } from 'vitest'
 import {
   DRAWINGS_KEY, readAll, loadDrawings, saveDrawings, addDrawing,

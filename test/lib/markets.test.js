@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from 'vitest'
 import {
   daysUntil, upcomingEvents, ECON_EVENTS, MARKET_GROUPS, COMMODITY_GROUPS,

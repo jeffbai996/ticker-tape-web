@@ -25,3 +25,5 @@ Never relax an assertion to make it pass in a VM.
 Check for existing coverage before adding another source-contract test or a
 large parameter list. Prefer behavior tests and shared setup. Coverage details,
 native exceptions and timings are in `docs/TEST_DIET.md`.
+Use the Node environment for pure suites; retain jsdom when the tests or their
+imports require browser storage or the DOM.
