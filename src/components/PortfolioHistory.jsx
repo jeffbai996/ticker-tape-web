@@ -10,6 +10,8 @@ const signed=(v,ccy)=>v==null ? '—' : `${v>=0 ? '+' : '−'}${fmtCcy(Math.abs(
 const percent=v=>v==null ? '—' : fmtPct(v)
 const tone=v=>v==null ? 'text-muted' : v>=0 ? 'text-up' : 'text-down'
 const RANGES=['1M','3M','6M','1Y','ALL']
+const axisNumber=new Intl.NumberFormat('en',{notation:'compact',maximumFractionDigits:1})
+const axisDate=d=>new Date(`${d}T00:00:00Z`).toLocaleDateString(getLocale()==='zh' ? 'zh-CN' : 'en',{month:'short',day:'numeric',timeZone:'UTC'})
 
 function HistoryPlot({ points, active, onInspect, compact=false, mode='value', ccy }) {
   const ref=useRef(null),[width,setWidth]=useState(720)
@@ -22,7 +24,7 @@ function HistoryPlot({ points, active, onInspect, compact=false, mode='value', c
     return ()=>observer?.disconnect()
   },[])
   const W=width,H=compact ? 72 : 260
-  const L=compact ? 6 : Math.min(108,W*.3),R=compact ? 6 : 12,T=12,B=compact ? 8 : 28
+  const L=compact ? 6 : Math.min(64,W*.23),R=compact ? 6 : 12,T=12,B=compact ? 8 : 28
   const value=p=>mode==='value' ? p.v : p.returnPct
   const values=points.map(value).filter(Number.isFinite)
   const low=values.length ? Math.min(...values) : 0,high=values.length ? Math.max(...values) : 1
@@ -45,13 +47,24 @@ function HistoryPlot({ points, active, onInspect, compact=false, mode='value', c
     const fraction=((event.clientX-rect.left)/rect.width*W-L)/(W-L-R)
     onInspect(nearestHistoryIndex(points,fraction))
   }
+  const keyboard=event=>{
+    const step=event.key==='ArrowLeft' ? -1 : event.key==='ArrowRight' ? 1 : 0
+    if(!step && !['Home','End'].includes(event.key))return
+    event.preventDefault()
+    onInspect(event.key==='Home' ? 0 : event.key==='End' ? points.length-1 : Math.max(0,Math.min(points.length-1,(active ?? points.length-1)+step)))
+  }
   return <svg ref={ref} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none"
-    class={`block w-full ${compact ? 'h-[44px]' : 'h-[260px] max-sm:h-[220px]'} cursor-crosshair`}
-    role="img" aria-label={label('Recorded portfolio values','组合历史金额')}
+    class={`block w-full ${compact ? 'h-[44px]' : 'h-[260px] max-sm:h-[220px] rounded focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent/50'} cursor-crosshair`}
+    role={compact ? 'img' : 'slider'} tabIndex={compact ? undefined : 0}
+    aria-label={compact ? label('Recorded portfolio values','组合历史金额') : label('History date','历史日期')}
+    aria-valuemin={compact ? undefined : 0} aria-valuemax={compact ? undefined : points.length-1}
+    aria-valuenow={compact ? undefined : active ?? points.length-1}
+    aria-valuetext={compact ? undefined : points[active ?? points.length-1]?.d}
+    onKeyDown={compact ? undefined : keyboard}
     onPointerMove={inspect} onPointerDown={inspect} style={{touchAction:'pan-y'}}>
     {!compact && (low===high ? [low] : [low,(low+high)/2,high]).map((v,i)=><g key={i}>
       <line x1={L} x2={W-R} y1={y(v)} y2={y(v)} stroke="currentColor" stroke-opacity=".10" stroke-dasharray="3 5" />
-      <text x={L-10} y={y(v)+3} text-anchor="end" fill="currentColor" fill-opacity=".55" font-size="10" font-family="monospace">{mode==='value' ? fmtCcy(v,ccy,0) : `${v.toFixed(1)}%`}</text>
+      <text x={L-10} y={y(v)+3} text-anchor="end" fill="currentColor" fill-opacity=".55" font-size="10" font-family="var(--font-sans)">{mode==='value' ? axisNumber.format(v) : `${v.toFixed(1)}%`}</text>
     </g>)}
     <path d={path} fill="none" stroke={color} stroke-width={compact ? 1.7 : 2} stroke-linejoin="round" vector-effect="non-scaling-stroke" />
     {points.length===1 && Number.isFinite(value(points[0])) && <circle cx={x(points[0])} cy={y(value(points[0]))} r="3" fill={color} />}
@@ -59,7 +72,7 @@ function HistoryPlot({ points, active, onInspect, compact=false, mode='value', c
       <line x1={x(selected)} x2={x(selected)} y1={T} y2={H-B} stroke="currentColor" stroke-opacity=".3" stroke-dasharray="3 3" />
       {Number.isFinite(value(selected)) && <circle cx={x(selected)} cy={y(value(selected))} r={compact ? 3 : 4} fill={color} stroke="var(--color-surface-1)" stroke-width="2" />}
     </g>}
-    {!compact && [points[0],points.at(-1)].map((p,i)=><text key={i} x={i ? W-R : L} y={H-5} text-anchor={i ? 'end' : 'start'} fill="currentColor" fill-opacity=".6" font-size="10" font-family="monospace">{p.d}</text>)}
+    {!compact && [points[0],points.at(-1)].map((p,i)=><text key={i} x={i ? W-R : L} y={H-5} text-anchor={i ? 'end' : 'start'} fill="currentColor" fill-opacity=".6" font-size="10" font-family="var(--font-sans)">{axisDate(p.d)}</text>)}
   </svg>
 }
 
@@ -130,9 +143,10 @@ export function PortfolioHistory({ marks,ccy,cashTxns=[],name='',onInspect }) {
           {metric(label('Drawdown','回撤'),percent(point.drawdownPct),tone(point.drawdownPct))}
         </div>
         {point.source==='reconstructed' && <p class="mt-2 font-anth text-[10px] text-muted">{label('Breakdown reconstructed from saved holdings, trades and historical FX. Original total preserved.','明细据历史持仓、交易及汇率重建，原始总额不变。')}</p>}
-        <div class="mt-4 text-muted"><HistoryPlot points={points} active={active} onInspect={setSelected} mode={mode} ccy={ccy} /></div>
-        <input type="range" aria-label={label('History date','历史日期')} min="0" max={points.length-1} step="1" value={active}
-          disabled={points.length<2} onInput={e=>setSelected(Number(e.currentTarget.value))} class="mt-2 w-full accent-accent" />
+        <div data-history-chart class="mt-4 rounded-lg border border-line-2 bg-surface-2/50 px-2.5 pb-1.5 pt-2 text-muted sm:px-3">
+          <div class="mb-1 font-anth text-[9px] text-muted">{mode==='value' ? `${tl('Value')} · ${ccy}` : label('Return · %','收益率 · %')}</div>
+          <HistoryPlot points={points} active={active} onInspect={setSelected} mode={mode} ccy={ccy} />
+        </div>
         <div class="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-line pt-3 sm:grid-cols-4">
           <div><div class="font-anth text-[9px] text-muted">{label('Period high','区间最高')}</div><div class="font-mono text-[11px] text-ink-2">{fmtCcy(stats.high.v,ccy)}</div><div class="font-mono text-[9px] text-muted">{stats.high.d}</div></div>
           <div><div class="font-anth text-[9px] text-muted">{label('Period low','区间最低')}</div><div class="font-mono text-[11px] text-ink-2">{fmtCcy(stats.low.v,ccy)}</div><div class="font-mono text-[9px] text-muted">{stats.low.d}</div></div>
