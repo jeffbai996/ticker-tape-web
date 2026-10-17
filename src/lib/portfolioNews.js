@@ -1,6 +1,7 @@
 import { createPCache } from './pcache.js'
 import { eventLanguage, fetchWireArticle, isMirrorBase, pubDisplayName, srcCred } from './wire.js'
-import { readableCnUrl } from './cnData.js'
+import { proxyBase } from './feed.js'
+import { parseCnNews, isCnListing, readableCnUrl } from './cnData.js'
 import { cleanArticleText } from './articleText.js'
 
 const cache = createPCache('portfolio_wire_news_v1', { max: 2 })
@@ -38,15 +39,68 @@ export async function loadPortfolioWire(base, { fetchImpl = fetch, refresh = fal
   return job
 }
 
+const companyCache = createPCache('portfolio_company_news_v1', { max:80 })
+const companyPending = new Map()
+const companyName = name => String(name || '').trim()
+  .replace(/[-－](?:SW|W|B|S|R)$/i,'').replace(/^(?:XD|XR|DR)(?=[\u3400-\u9fff])/i,'').trim()
+
+/** Company searches supplement the independent wire; selection stays local. */
+export async function loadCompanyNews(holdings, { fetchImpl=fetch, refresh=false }={}) {
+  const companies=holdings.filter(h=>isCnListing(h.symbol)).map(h=>({
+    ...h, query:companyName((h.names || []).find(n=>/[\u3400-\u9fff]/.test(n))) || h.symbol.split('.')[0],
+  }))
+  const queries=[...new Set(companies.map(h=>h.query))]
+  const missing=queries.filter(q=>refresh || !companyCache.peek(q) || Date.now()-companyCache.peek(q).ts>600_000)
+  const errors=new Set()
+  for(let start=0;start<missing.length;start+=12) {
+    const batch=missing.slice(start,start+12), key=JSON.stringify(batch)
+    let job=companyPending.get(key)
+    if(!job) {
+      job=(async()=>{
+        const response=await fetchImpl(`${proxyBase()}/cn/news-batch`,{method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({queries:batch}),signal:AbortSignal.timeout(12_000)})
+        if(!response.ok) throw Error('News service unavailable')
+        const out=await response.json()
+        if(!Array.isArray(out.results)) throw Error('Invalid news response')
+        return out.results
+      })().finally(()=>companyPending.delete(key))
+      companyPending.set(key,job)
+    }
+    try {
+      const results=await job
+      for(const query of batch) {
+        const result=results.find(r=>r.query===query)
+        if(!Array.isArray(result?.rows)) { errors.add(query); continue }
+        const events=parseCnNews({result:{cmsArticleWebOld:result.rows}}).map(row=>({
+          type:'headline',headline:row.title,url:row.url,body:cleanArticleText(row.summary).slice(0,500),
+          publisher:row.source,language:'zh',ts_event:row.ts/1000,
+          symbols:companies.filter(h=>matches({headline:row.title,body:row.summary},h)).map(h=>h.symbol),
+        }))
+        companyCache.set(query,{events,ts:Date.now()})
+      }
+    } catch { for(const query of batch) errors.add(query) }
+  }
+  const events=queries.flatMap(q=>companyCache.peek(q)?.events || [])
+  // Exchange names can carry temporary ex-dividend markers or differ from
+  // the article's company name. A stock-code query recovers that coverage.
+  const fallback=companies.filter(h=>h.query!==h.symbol.split('.')[0]
+    && !events.some(e=>matches(e,h)))
+  const extra=fallback.length ? await loadCompanyNews(fallback.map(h=>({...h,names:[]})),{fetchImpl,refresh}) : {events:[],failed:[]}
+  return {events:[...events,...extra.events],
+    failed:[...new Set([...companies.filter(h=>errors.has(h.query)).map(h=>h.symbol),...extra.failed])]}
+
+}
+
 function matches(event, holding) {
   const symbol = String(holding.symbol).toUpperCase()
   if ((event.symbols || []).some(s => String(s).toUpperCase() === symbol)) return true
   const text = `${event.headline || ''} ${event.body || ''}`
   const quoted = escape(symbol)
+  if (/^\d{6}\.(?:SS|SZ)$/.test(symbol) && new RegExp(`(?<!\\d)${symbol.slice(0,6)}(?!\\d)`).test(text)) return true
   if ((symbol.length >= 3 && /[A-Z]/.test(symbol) && new RegExp(`\\b${quoted}\\b`, 'i').test(text))
       || new RegExp(`\\$${quoted}\\b|(?:NYSE|NASDAQ)\\s*:\\s*${quoted}\\b`, 'i').test(text)) return true
   for (const name of holding.names || []) {
-    const value = String(name).trim()
+    const value = companyName(name)
       .replace(/[-－](?:SW|W|B|S|R)$/i, '')
       .replace(/(?:股份有限公司|有限公司|公司)$/, '')
       .replace(/\s+(?:inc\.?|corp\.?|corporation|ltd\.?|limited|plc)$/i, '').trim()

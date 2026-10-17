@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'preact/hooks'
-import { canReadPortfolioArticle, loadPortfolioWire, peekPortfolioWire,
+import { canReadPortfolioArticle, loadCompanyNews, loadPortfolioWire, peekPortfolioWire,
   portfolioStories, readPortfolioArticle } from '../lib/portfolioNews.js'
 import { wireUrl } from '../lib/wire.js'
 import { loadZhTable, onZhTable, zhName } from '../lib/zhNames.js'
@@ -9,8 +9,8 @@ import { getLocale, tl } from '../lib/i18n.js'
 // experience"). Three zones: a ticker rail (a column from lg up, one
 // scrolling row on a phone), the feed grouped by day, and a reading pane
 // that pulls the article text through the worker so a story opens HERE.
-// Read one cached wire snapshot and match holdings locally. No per-company
-// provider queue, and a portfolio's symbols never enter the public feed URL.
+// Paint the wire immediately, then supplement with bounded company searches.
+// Company selection never enters the public wire snapshot.
 
 const PAGE = 30
 
@@ -76,6 +76,7 @@ export function BookNews({ portfolio, quotes }) {
   const key = symbols.join(',')
   const base = wireUrl()
   const [events, setEvents] = useState(() => peekPortfolioWire(base)?.events || [])
+  const [companyEvents, setCompanyEvents] = useState([])
   const [done, setDone] = useState(false)
   const [error, setError] = useState(false)
   const [refresh, setRefresh] = useState(0)
@@ -94,10 +95,18 @@ export function BookNews({ portfolio, quotes }) {
     let dead = false
     setEvents(peekPortfolioWire(base)?.events || [])
     setDone(!symbols.length); setError(false); setPick(null); setLimit(PAGE); setOpen(null)
-    if (symbols.length) loadPortfolioWire(base, { refresh:refresh > 0 })
-      .then(rows => { if (!dead) setEvents(rows) })
-      .catch(() => { if (!dead) setError(true) })
-      .finally(() => { if (!dead) setDone(true) })
+    setCompanyEvents([])
+    if (symbols.length) {
+      const wire=loadPortfolioWire(base, { refresh:refresh > 0 })
+        .then(rows => { if (!dead) setEvents(rows) })
+        .catch(() => { if (!dead) setError(true) })
+      const companies=loadZhTable().then(()=>loadCompanyNews((portfolio.holdings || []).map(h=>({
+        symbol:h.symbol,names:[zhName(h.symbol),h.name,quotes?.[h.symbol]?.name].filter(Boolean),
+      })),{refresh:refresh > 0}))
+        .then(out=>{if(!dead){setCompanyEvents(out.events);if(out.failed.length)setError(true)}})
+        .catch(()=>{if(!dead)setError(true)})
+      Promise.allSettled([wire,companies]).then(()=>{if(!dead)setDone(true)})
+    }
     return () => { dead = true }
   }, [key, base, refresh])
 
@@ -107,9 +116,9 @@ export function BookNews({ portfolio, quotes }) {
   }
 
   const label = (sym) => (zh && zhName(sym)) || quotes?.[sym]?.name || ''
-  const merged = useMemo(() => portfolioStories(events, (portfolio.holdings || []).map(h => ({
+  const merged = useMemo(() => portfolioStories([...events,...companyEvents], (portfolio.holdings || []).map(h => ({
     symbol:h.symbol, names:[h.name, quotes?.[h.symbol]?.name, zhName(h.symbol), zhName(h.symbol,{traditional:true})].filter(Boolean),
-  })), base), [events, key, quotes, nameRevision, base])
+  })), base), [events, companyEvents, key, quotes, nameRevision, base])
   const needle = q.trim().toLowerCase()
   const shown = merged.filter((n) => (!pick || n.symbols.includes(pick)) && (!needle || `${n.title} ${n.summary || ''} ${n.publisher || ''}`.toLowerCase().includes(needle)))
     .map(n => pick ? {...n,symbol:pick} : n)
@@ -158,7 +167,7 @@ export function BookNews({ portfolio, quotes }) {
           <button data-news-refresh type="button" onClick={() => setRefresh(n=>n+1)} disabled={!done}
             aria-label={tl('Refresh news')} class="shrink-0 rounded border border-line px-2 py-1 text-muted hover:text-accent disabled:opacity-40">↻</button>
         </div>
-        {error && <p role="alert" class="pb-2 font-anth text-[11px] text-down">{zh ? '无法刷新新闻，请重试。' : 'Could not refresh news. Please retry.'}</p>}
+        {error && <p role="alert" class="pb-2 font-anth text-[11px] text-down">{zh ? '部分新闻无法刷新，请重试。' : 'Some news could not be refreshed. Please retry.'}</p>}
         <div class="rounded-xl border border-line bg-surface-1 overflow-hidden">
           {shown.length === 0 && (
             <div class="px-3 py-6 text-center font-anth text-[10.5px] text-muted">{done ? tl('No matching headlines.') : `${tl('loading')}…`}</div>
