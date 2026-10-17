@@ -843,7 +843,7 @@ html[data-pointer-hover] .tape-hot *:not(.text-up):not(.text-down):not([data-tap
 }
 .chat-trace-mark.is-done::before,
 .chat-trace-mark.is-error::before {
-  content: ""; position: absolute; width: 13px; height: 13px; background: var(--color-up);
+  content: ""; position: absolute; width: 13px; height: 13px; background: var(--color-muted);
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5.2 12.9l4.5 4.5L18.8 7.4'/%3E%3C/svg%3E") center/100% no-repeat;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5.2 12.9l4.5 4.5L18.8 7.4'/%3E%3C/svg%3E") center/100% no-repeat;
 }
@@ -905,7 +905,7 @@ html[data-pointer-hover] .tape-hot *:not(.text-up):not(.text-down):not([data-tap
 }
 .chat-trace-step.is-running .chat-trace-node { color: var(--color-accent); animation: chat-node-pulse 1.5s ease-in-out infinite; }
 .chat-trace-step.is-done .chat-trace-node { color: var(--color-muted); }
-.chat-trace-step.is-error .chat-trace-node { color: var(--color-down); }
+.chat-trace-step.is-error .chat-trace-node { color: #f85149; }
 @keyframes chat-node-pulse { 50% { opacity: .35; transform: scale(.78); } }
 .chat-trace-label {
   color: var(--color-ink-2); font: 500 10.5px/1.35 var(--font-sans);

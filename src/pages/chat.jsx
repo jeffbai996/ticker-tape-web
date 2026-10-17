@@ -247,7 +247,7 @@ function ToolChips({ calls, results }) {
             title={failed ? res.slice(0, 200) : undefined}
             class="inline-flex items-center gap-1 font-mono text-[10px] text-muted"
           >
-            <span class={failed ? 'text-down' : res == null ? 'text-accent animate-pulse' : 'text-muted'}>
+            <span class={failed ? 'text-red-400' : res == null ? 'text-accent animate-pulse' : 'text-muted'}>
               {failed ? '✕' : res == null ? '◌' : '✓'}
             </span>
             {toolLabel(tc)}
@@ -1703,7 +1703,7 @@ export function Chat() {
           <div class="self-start font-mono text-[10px] text-up px-1">{notice}</div>
         )}
         {error && (
-          <div class="self-start font-mono text-[11px] text-down px-1">{error}</div>
+          <div class="self-start font-mono text-[11px] text-red-400 px-1">{error}</div>
         )}
           </div>
           {composer}
