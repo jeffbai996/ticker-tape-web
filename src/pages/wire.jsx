@@ -15,6 +15,7 @@ import { Empty, Loading } from '../components/Loading.jsx'
 import { WireAudio } from '../components/WireAudio.jsx'
 import { MdLite } from '../components/AiReport.jsx'
 import { getLocale, t as tt, tl } from '../lib/i18n.js'
+import { cleanArticleText } from '../lib/articleText.js'
 
 const TIER_CLS = {
   1: 'text-[#58a6ff] border-[#58a6ff]/50',
@@ -168,7 +169,7 @@ function ReadBody({ ev }) {
       .then((r) => r.json())
       .then((out) => {
         if (dead) return
-        const text = out.ok ? (out.text || out.summary || '') : ''
+        const text = cleanArticleText(out.ok ? (out.text || out.summary || '') : '')
         const paras = String(text).split(/\n{2,}/).map((x) => x.trim()).filter(Boolean)
         setState({ status: paras.length ? 'ok' : 'empty', paras, truncated: out.truncated, error: out.error })
       })
@@ -267,7 +268,7 @@ function ArticleWindow({ ev, onClose }) {
         <span>{new Date(ev.ts_event * 1000).toLocaleString()}</span>
         {ev.url && <a href={ev.url} target="_blank" rel="noopener" class="text-accent">{zh ? '打开来源' : 'Open source'} ↗</a>}
       </div>
-      {evBody(ev, getLocale()) && <div class="font-anth text-[13px] leading-relaxed"><MdLite text={evBody(ev, getLocale())} /></div>}
+      {evBody(ev, getLocale()) && <div class="font-anth text-[13px] leading-relaxed"><MdLite text={cleanArticleText(evBody(ev, getLocale()))} /></div>}
       {!ev.demo && ev.url && <ReadBody ev={ev} />}
     </article>
   </dialog>
@@ -279,7 +280,7 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
   const latTxt = lat > 0.5 && lat < 600 ? `+${lat.toFixed(1)}s` : ''
   const loc = getLocale()
   const hl = evHeadline(ev, loc)
-  const body = evBody(ev, loc)
+  const body = ev.url ? cleanArticleText(evBody(ev, loc)) : evBody(ev, loc)
   return (
     <div
       data-wire-row

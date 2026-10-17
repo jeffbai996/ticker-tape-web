@@ -1,6 +1,7 @@
 import { parseHTML } from 'linkedom'
 import { constantTimeEqual } from './capdoc.js'
 import { WIRE_KEY } from './wire.js'
+import { cleanArticleText } from '../src/lib/articleText.js'
 
 // Only public publishers, never the private newsservice server or a client URL.
 const PUBLISHERS = ['reuters.com', 'bloomberg.com', 'ft.com', 'wsj.com', 'barrons.com',
@@ -42,7 +43,9 @@ export function extractArticle(html) {
     const text = [...new Set(paras)].join('\n\n')
     if (text.length > best.length) best = text
   }
-  const text = (structured.length > best.length ? structured : best).trim()
+  const cleanStructured = cleanArticleText(structured)
+  const cleanBest = cleanArticleText(best)
+  const text = cleanStructured.length > cleanBest.length ? cleanStructured : cleanBest
   return { text: text.slice(0, MAX_TEXT), truncated: text.length < 400 || text.length > MAX_TEXT }
 }
 
@@ -113,7 +116,7 @@ export async function handleReader(request, env, fetcher = fetch) {
   if (!url) return out({ ok: false, error: 'publisher requires opening the source', unsupported: true }, 422)
   const key = `reader:v1:${event.id}`
   const cached = await env.SPEND.get(key, 'json')
-  if (cached?.source_url === url) return out(cached)
+  if (cached?.source_url === url) return out({ ...cached, text: cleanArticleText(cached.text) })
   try {
     const result = { ok: true, ...await fetchArticle(url, fetcher), source_url: url }
     await env.SPEND.put(key, JSON.stringify(result), { expirationTtl: result.text ? 21600 : 300 })
