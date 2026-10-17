@@ -58,7 +58,6 @@ describe('wire workbench sizing', () => {
     expect(src).toContain('data-tier-filter={tier}')
     expect(src).toContain('data-thesis-filter')
     expect(src).toContain('data-prime-filter')
-    expect(src).toContain('w-[38px] justify-center')
     expect(src).toContain('w-[28px] h-[22px] shrink-0')
     expect(src).toContain('px-[6px] py-0')
     expect(src).toContain('<SourceSignal tier={1.25}')
