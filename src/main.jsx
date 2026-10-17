@@ -5,13 +5,16 @@ import { startFreshnessWatch } from './lib/freshness.js'
 import { registerServiceWorker } from './lib/pwa.js'
 import { initMarketColorOrder } from './lib/marketColors.js'
 import { getHighContrast, applyHighContrast } from './lib/contrast.js'
+import { configureNativeShell } from './lib/native.js'
 import './styles/main.css'
+import './styles/native.css'
 
 // Paint the preferred gain/loss convention before Preact mounts so the
 // family build never flashes green-up on its way to the Chinese default.
 // Which builds default to Chinese colors is decided in marketColors.js.
 initMarketColorOrder()
 applyHighContrast(getHighContrast())
+configureNativeShell()
 render(<App />, document.getElementById('app'))
 // Capability-scoped sync belongs only to builds that HAVE a capability: the
 // family build (its own host) and the private tailnet build. The public

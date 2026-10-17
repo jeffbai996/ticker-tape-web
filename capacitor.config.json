@@ -1,0 +1,13 @@
+{
+  "appId": "com.tickertape.app",
+  "appName": "Ticker Tape",
+  "webDir": "dist-ios",
+  "plugins": {
+    "SystemBars": { "style": "DARK" }
+  },
+  "ios": {
+    "backgroundColor": "#050609",
+    "contentInset": "never",
+    "preferredContentMode": "mobile"
+  }
+}
