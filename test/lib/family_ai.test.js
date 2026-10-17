@@ -121,3 +121,17 @@ it('uses the selected family portfolio as chat context without calling a broker'
   expect(block).not.toContain('AAPL: 10 shares')
   expect(fetcher).not.toHaveBeenCalled()
 })
+
+it('keeps selected holdings in context when a quote lacks a daily change',async()=>{
+  await family()
+  const {replacePortfolios}=await import('../../src/lib/myPortfolios.js')
+  replacePortfolios([{id:'p1',name:'Example portfolio',ccy:'USD',holdings:[{symbol:'AAPL',shares:10,cost:100}]}])
+  const feed=await import('../../src/lib/feed.js')
+  const quote=vi.spyOn(feed,'getCached').mockReturnValue({quote:{price:12,currency:'CAD'}})
+  try {
+    const context=await import('../../src/lib/chatContext.js')
+    const block=await context.buildChatContext('Explain my holdings')
+    expect(block).toContain('12.00 CAD')
+    expect(block).toContain('AAPL: 10 shares')
+  } finally {quote.mockRestore()}
+})
