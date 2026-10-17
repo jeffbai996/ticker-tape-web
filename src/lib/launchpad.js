@@ -179,3 +179,11 @@ export function visibleActions(pool, { lane = null, page = 0, size = PAD_SIZE } 
 export function canRefresh(pool, { lane = null, size = PAD_SIZE } = {}) {
   return (lane ? pool.filter((a) => a.k === lane) : pool).length > size
 }
+
+/** Localized labels are presentation only; click handlers retain ticker prompts. */
+export function promptLabel(text, names = {}) {
+  const symbols=Object.keys(names).filter(s=>names[s]).sort((a,b)=>b.length-a.length)
+  if(!symbols.length) return text
+  const escaped=symbols.map(s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'))
+  return text.replace(new RegExp(`(?<![A-Z0-9.])(?:${escaped.join('|')})(?![A-Z0-9.])`,'g'),s=>names[s] || s)
+}

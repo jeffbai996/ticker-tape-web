@@ -97,3 +97,27 @@ it('uses the family transport for memory edits from the full chat UI', async () 
     expect(options.headers.Authorization).toBe(`Bearer ${'a'.repeat(32)}`)
   } finally { await act(async () => render(null, root)); root.remove() }
 })
+
+it('sends Opus through the family transport at its approved low effort',async()=>{
+  const chat=await family()
+  const fetcher=vi.fn(async()=>Response.json({ok:true,text:'Done'}));vi.stubGlobal('fetch',fetcher)
+  await chat.wireComplete({model:'family-opus',effort:'high',messages:[{role:'user',content:'Hello'}]})
+  expect(JSON.parse(fetcher.mock.calls[0][1].body)).toMatchObject({model:'family-opus',effort:'low'})
+})
+
+it('uses the selected family portfolio as chat context without calling a broker',async()=>{
+  await family()
+  const fetcher=vi.fn();vi.stubGlobal('fetch',fetcher)
+  const {replacePortfolios}=await import('../../src/lib/myPortfolios.js')
+  replacePortfolios([{id:'p1',name:'First portfolio',ccy:'USD',holdings:[{symbol:'AAPL',shares:10,cost:100}]},
+    {id:'p2',name:'Second portfolio',ccy:'USD',holdings:[{symbol:'MSFT',shares:20,cost:200}]}])
+  localStorage.setItem('my_portfolio_sel_v1','p2')
+  const context=await import('../../src/lib/chatContext.js')
+  expect(context.hasLiveBook()).toBe(true)
+  expect((await context.fetchBookJson()).positions.map(p=>p.symbol)).toEqual(['MSFT'])
+  const block=await context.buildChatContext('Explain my holdings')
+  expect(block).toContain('SAVED PORTFOLIO')
+  expect(block).toContain('MSFT: 20 shares')
+  expect(block).not.toContain('AAPL: 10 shares')
+  expect(fetcher).not.toHaveBeenCalled()
+})

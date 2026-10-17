@@ -9,13 +9,23 @@ import { getCached } from './feed.js'
 import { getWatchlist } from './watchlist.js'
 import { fetchNews } from './history.js'
 import { memoriesForPrompt, MEMORY_PROMPT } from './chatMemory.js'
+import { IS_FAMILY_AI } from './nav.js'
+import { loadPortfolios } from './myPortfolios.js'
+import { manualBookSnapshot, manualPortfolioContext } from './manualChatBook.js'
 import { wireServiceUrl } from './wire.js'
 
 // ── portfolio snapshot, cached so chat turns don't hammer the gateway ──
 let bookCache = { ts: 0, block: '' }
 const BOOK_TTL = 60_000
 
+export function savedChatBook() {
+  let selected=''
+  try {selected=localStorage.getItem('my_portfolio_sel_v1') || ''} catch {}
+  return manualBookSnapshot(loadPortfolios(),selected)
+}
+
 async function portfolioBlock() {
+  if(IS_FAMILY_AI) return manualPortfolioContext(savedChatBook())
   const base = wireServiceUrl()
   if (!base) return ''
   if (Date.now() - bookCache.ts < BOOK_TTL) return bookCache.block
@@ -66,7 +76,7 @@ async function mentionedNews(question, watchlist) {
  * only mentioned-symbol news may fetch (and it's TTL-cached too).
  */
 export async function buildChatContext(question) {
-  const watchlist = getWatchlist()
+  const watchlist = [...new Set([...getWatchlist(),...(IS_FAMILY_AI ? savedChatBook()?.positions.map(p=>p.symbol) || [] : [])])]
   const now = new Date()
   const parts = [
     `Current date/time: ${now.toLocaleString('en-US', {
@@ -107,6 +117,7 @@ export async function buildChatContext(question) {
 let bookJsonCache = { ts: 0, data: null }
 
 export async function fetchBookJson() {
+  if(IS_FAMILY_AI) return savedChatBook()
   const base = wireServiceUrl()
   if (!base) return null
   if (Date.now() - bookJsonCache.ts < BOOK_TTL) return bookJsonCache.data
@@ -123,5 +134,5 @@ export async function fetchBookJson() {
 
 /** Does this browser have a live book wired in (affects the base prompt)? */
 export function hasLiveBook() {
-  return !!wireServiceUrl()
+  return IS_FAMILY_AI ? !!savedChatBook()?.positions.length : !!wireServiceUrl()
 }
