@@ -7,6 +7,7 @@ const cache = createPCache('portfolio_wire_news_v1', { max: 2 })
 const pending = new Map()
 const TTL = 60_000
 const READER_TOKEN = import.meta.env.VITE_READER_CAPABILITY || ''
+const WEAK_SOURCE = /fool\.com|motley fool|zacks|investorplace|tipranks|gurufocus|insider ?monkey|247wallst|simplywall|stocktwits|quiver ?quant|marketbeat|barchart/i
 const escape = value => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
 export function peekPortfolioWire(base) {
@@ -64,6 +65,8 @@ export function portfolioStories(events, holdings, base = '') {
     try {
       link = new URL(event.url)
       if (!['http:', 'https:'].includes(link.protocol)) continue
+      // A headline mentioning Reuters must not promote a content mill.
+      if (WEAK_SOURCE.test(`${link.hostname} ${pubDisplayName(event)}`)) continue
       link.hash = ''
       for (const key of [...link.searchParams.keys()]) if (/^utm_|^(?:fbclid|gclid)$/.test(key)) link.searchParams.delete(key)
     } catch { continue }
