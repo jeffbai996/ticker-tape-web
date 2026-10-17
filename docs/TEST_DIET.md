@@ -508,3 +508,25 @@ The Node-only fast tier now selects 131 files / 1251 cases.
 
 All other classifications and counts above remain unchanged. No dependency,
 production file, assertion, snapshot or case list changed.
+
+## Deferred navigation and overlay effects
+
+At `3abea99`, a focused run passes 21 cases: `test/lib/tools.test.js` has 11
+cases and spends 3.29 s in test execution (3.28 s in navigation);
+`test/lib/overlay.test.js` has 10 cases and spends 0.51 s. Both files are
+**keep**. Navigation covers a real deferred URL change. Overlay covers focus
+entry/return, keyboard and backdrop dismissal, scroll locking, labels and
+motion preferences. Earlier bug coverage remains under the same names.
+
+The planned test-only change uses Vitest timers to exercise the full navigation
+delay, including its exact boundary, and Preact's existing `act` helper to flush
+render/effect work. No new dependency, production edit, case deletion, merge or
+shrinking is involved. The native complete-suite gate remains unchanged.
+
+Focused native validation passes all 21 original cases. Measured test execution
+falls from 3.80 s combined to 0.038 s (tools 3.288 -> 0.008 s; overlay
+0.513 -> 0.030 s), excluding process startup. A shuffled native run also
+passes. The navigation test now asserts the URL has not changed one millisecond
+before each deadline and has changed exactly at it. Overlay assertions run
+after the actual render/effect queue has drained, including unmount cleanup;
+no effect, focus, keyboard, scroll-lock or reduced-motion assertion is dropped.

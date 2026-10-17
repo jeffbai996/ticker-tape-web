@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { cleanSymbols, toolLabel, toolRunLabel, executeTool, TOOL_DEFS, NAV_DELAY_MS } from '../../src/lib/tools.js'
 import { loadAlerts } from '../../src/lib/alerts.js'
 import { getWatchlist } from '../../src/lib/watchlist.js'
@@ -92,24 +92,31 @@ describe('executeTool', () => {
     // The hop is deferred so the assistant's sentence renders before the page
     // changes under the reader (Jeff 2026-08-04) — the tool reports the
     // destination immediately, the URL follows.
-    const settle = () => new Promise((r) => setTimeout(r, NAV_DELAY_MS + 40))
+    vi.useFakeTimers()
+    try {
+      const m = JSON.parse(await executeTool('navigate', { view: 'heatmap' }))
+      expect(m.ok).toBe(true)
+      expect(m.navigatedTo).toBe('#/markets/heatmap')
+      expect(location.hash).not.toBe('#/markets/heatmap')   // not yet
+      await vi.advanceTimersByTimeAsync(NAV_DELAY_MS - 1)
+      expect(location.hash).not.toBe('#/markets/heatmap')
+      await vi.advanceTimersByTimeAsync(1)
+      expect(location.hash).toBe('#/markets/heatmap')
 
-    const m = JSON.parse(await executeTool('navigate', { view: 'heatmap' }))
-    expect(m.ok).toBe(true)
-    expect(m.navigatedTo).toBe('#/markets/heatmap')
-    expect(location.hash).not.toBe('#/markets/heatmap')   // not yet
-    await settle()
-    expect(location.hash).toBe('#/markets/heatmap')
+      const r = JSON.parse(await executeTool('navigate', { view: 'research', symbol: 'NVDA', sub: 'options' }))
+      expect(r.navigatedTo).toBe('#/research/nvda/options')
+      await vi.advanceTimersByTimeAsync(NAV_DELAY_MS - 1)
+      expect(location.hash).toBe('#/markets/heatmap')
+      await vi.advanceTimersByTimeAsync(1)
+      expect(location.hash).toBe('#/research/nvda/options')
 
-    const r = JSON.parse(await executeTool('navigate', { view: 'research', symbol: 'NVDA', sub: 'options' }))
-    expect(r.navigatedTo).toBe('#/research/nvda/options')
-    await settle()
-    expect(location.hash).toBe('#/research/nvda/options')
+      const bad = JSON.parse(await executeTool('navigate', { view: 'settings' }))
+      expect(bad.error).toMatch(/unknown view/)
 
-    const bad = JSON.parse(await executeTool('navigate', { view: 'settings' }))
-    expect(bad.error).toMatch(/unknown view/)
-
-    const noSym = JSON.parse(await executeTool('navigate', { view: 'research' }))
-    expect(noSym.error).toMatch(/symbol/)
+      const noSym = JSON.parse(await executeTool('navigate', { view: 'research' }))
+      expect(noSym.error).toMatch(/symbol/)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
