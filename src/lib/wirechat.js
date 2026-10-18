@@ -20,9 +20,14 @@ function chatTransport() {
   return { base: wireServiceUrl().replace(/\/$/, ''), headers: {} }
 }
 
-function chatBody({ model, effort, system, messages }) {
+export function newTurnId(){
+ return globalThis.crypto?.randomUUID?.().replaceAll('-','')||Array.from({length:32},()=>Math.floor(Math.random()*16).toString(16)).join('')
+}
+function chatBody({ model, effort, system, messages, turnId, sendIds }) {
   const chosen=IS_FAMILY_AI ? (['family-opus','family-flash'].includes(model) ? model : 'family-sonnet') : model
-  return JSON.stringify({model:chosen,effort:IS_FAMILY_AI ? (chosen==='family-opus' ? 'low' : 'medium') : effort,system,messages})
+  const identity=IS_FAMILY_AI?{turn_id:turnId||newTurnId()}:{}
+  if(IS_FAMILY_AI)identity.send_ids=sendIds||[identity.turn_id]
+  return JSON.stringify({model:chosen,effort:IS_FAMILY_AI ? (chosen==='family-opus' ? 'low' : 'medium') : effort,system,messages,...identity})
 }
 
 /** Preserve admission metadata so the UI can offer a timed retry. */
@@ -122,12 +127,12 @@ export function parseToolCall(text, defs = TOOL_DEFS) {
  * wireComplete.
  */
 export async function wireStream({ model, effort, system, messages, onDelta, onThinking,
-                                  onThinkingTokens, onUsage, signal }) {
+                                  onThinkingTokens, onUsage, signal, turnId, sendIds }) {
   const { base, headers } = chatTransport()
   const resp = await fetch(`${base}/api/chat/stream`, {
     method: 'POST',
     headers: { ...headers, 'Content-Type': 'application/json' },
-    body: chatBody({ model, effort, system, messages }),
+    body: chatBody({ model, effort, system, messages, turnId, sendIds }),
     signal,
   })
   if(!resp.ok)throw transportError(resp,await resp.json().catch(()=>({})))
@@ -178,12 +183,12 @@ export async function wireStream({ model, effort, system, messages, onDelta, onT
 }
 
 /** One turn against newsservice's router. Returns the assistant's raw text. */
-export async function wireComplete({ model, effort, system, messages, signal }) {
+export async function wireComplete({ model, effort, system, messages, signal, turnId, sendIds }) {
   const { base, headers } = chatTransport()
   const resp = await fetch(`${base}/api/chat`, {
     method: 'POST',
     headers: { ...headers, 'Content-Type': 'application/json' },
-    body: chatBody({ model, effort, system, messages }),
+    body: chatBody({ model, effort, system, messages, turnId, sendIds }),
     signal: signal || AbortSignal.timeout(180_000),
   })
   const out = await resp.json().catch(() => ({}))

@@ -37,7 +37,13 @@ async function boundedBody(request) {
   if (!Object.hasOwn(profiles,model)) throw new SyntaxError()
   const effort=profiles[model]
   if (body.effort && body.effort!==effort) throw new SyntaxError()
-  return JSON.stringify({system:body.system,messages:body.messages,model,effort})
+  if(body.turn_id!==undefined || body.send_ids!==undefined){
+    if(typeof body.turn_id!=='string'||!/^[a-f0-9]{32}$/.test(body.turn_id)
+      ||!Array.isArray(body.send_ids)||body.send_ids.length<1||body.send_ids.length>64
+      ||body.send_ids.some(id=>typeof id!=='string'||!/^[a-f0-9]{32}$/.test(id))
+      ||new Set(body.send_ids).size!==body.send_ids.length||!body.send_ids.includes(body.turn_id))throw new SyntaxError()
+  }
+  return JSON.stringify({system:body.system,messages:body.messages,model,effort,turn_id:body.turn_id,send_ids:body.send_ids})
 }
 
 /** A separate inference service, never a pass-through to the private app. */
@@ -72,6 +78,10 @@ export async function handleFamilyAI(request, env, fetcher = fetch) {
       ...(body ? { body } : {}),
     })
     if (!response.ok) {
+      if(response.status===400){
+        const info=await response.json().catch(()=>({}))
+        return info.code==='turn_limit'?out('This prompt reached its model-call limit. Please narrow the request.',400,{code:'turn_limit'}):out('Invalid request',400)
+      }
       if(response.status===429){
         const info=await response.json().catch(()=>({}))
         const busy=info.code==='assistant_busy'

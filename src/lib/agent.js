@@ -10,10 +10,11 @@ import { streamChat } from './chatClient.js'
 import { TOOL_DEFS, executeTool, APP_READ_TOOLS } from './tools.js'
 import {
   isPlanningStub, parseToolCall, toolProtocol, wireChatAvailable, wireComplete,
-  wireStream,
+  wireStream, newTurnId,
 } from './wirechat.js'
 
 const MAX_ROUNDS = 12
+const MAX_TOOL_CALLS = 12
 const ANALYSIS_TOOLS = new Set([...APP_READ_TOOLS,'wire_search','get_quotes','get_technicals','get_earnings','get_market_pulse','get_watchlist','get_calendar','journal_search'])
 const analysisRequest = messages => !!messages.findLast(m=>m.role==='user')?.context
 const analysisResult = () => JSON.stringify({error:'This contextual analysis can only read data. Request changes in a separate chat message.'})
@@ -61,7 +62,13 @@ export async function runAgenticOverWire({
 }, services = {}) {
   const streamTurn = services.wireStream || wireStream
   const completeTurn = services.wireComplete || wireComplete
-  const runTool = services.executeTool || executeTool
+  const execute = services.executeTool || executeTool
+  let toolCalls=0
+  const runTool=(...args)=>{
+    if(toolCalls>=MAX_TOOL_CALLS)throw new Error('This prompt reached its tool-call limit. Please narrow the request.')
+    toolCalls++;return execute(...args)
+  }
+  const turnId=newTurnId(),sendIds=[turnId]
   const added = []
   // Full provider transcript, including hidden corrective nudges. `added` is
   // only what belongs in the user's visible/persisted conversation.
@@ -86,7 +93,9 @@ export async function runAgenticOverWire({
     const beforeFollowUps = added.length
     receiveFollowUps(takeFollowUps, added, onRound)
     if (added.length > beforeFollowUps) {
-      contextAdded.push(...added.slice(beforeFollowUps))
+      const followUps=added.slice(beforeFollowUps)
+      contextAdded.push(...followUps)
+      sendIds.push(...followUps.filter(m=>m.role==='user').map(()=>newTurnId()))
     }
     readOnly ||= analysisRequest(added)
     const sys = `${system}\n\n${toolProtocol(readOnly ? TOOL_DEFS.filter(t=>ANALYSIS_TOOLS.has(t.name)) : TOOL_DEFS)}`
@@ -95,7 +104,7 @@ export async function runAgenticOverWire({
       .map((m) => (m.role === 'tool'
         ? { role: 'user', content: `TOOL_RESULT ${m.name}: ${m.content}` }
         : { role: m.role, content: m.content,context:m.context }))
-    const last = round === MAX_ROUNDS - 1
+    const last = round === MAX_ROUNDS - 1 || toolCalls>=MAX_TOOL_CALLS
     const roundSystem = last ? `${system}\n\nAnswer now with what you have.` : sys
     onTrace?.({ type: 'model_start', round })
     // Stream when the wire supports it — a tool-call round streams JSON, so
@@ -104,7 +113,7 @@ export async function runAgenticOverWire({
     let text = ''
     try {
       ;({ text } = await streamTurn({
-        model, effort, system: roundSystem, messages: contextualMessages(convo),
+        model, effort, system: roundSystem, messages: contextualMessages(convo),turnId,sendIds:[...sendIds],
         onDelta,
         onThinking: (delta) => {
           onThinking?.(delta)
@@ -117,13 +126,15 @@ export async function runAgenticOverWire({
     } catch (err) {
       if (IS_FAMILY_AI || signal?.aborted || err?.partial) throw err // never restart after visible output
       const completed = await completeTurn({
-        model, effort, system: roundSystem, messages: contextualMessages(convo),
+        model, effort, system: roundSystem, messages: contextualMessages(convo),turnId,sendIds:[...sendIds],
       })
       text = completed.text
       if (completed.usage) onTrace?.({type:'usage',round,usage:completed.usage})
     }
     if (signal?.aborted) throw new DOMException('stopped', 'AbortError')
-    const call = last ? null : parseToolCall(text)
+    const parsedCall = parseToolCall(text)
+    if(last && parsedCall)throw new Error('This prompt reached its tool-call limit. Please narrow the request.')
+    const call = last ? null : parsedCall
     if (!call) {
       const needsAnotherRound = !last
         && contextAdded.some((entry) => entry.role === 'tool')

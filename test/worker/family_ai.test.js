@@ -74,3 +74,18 @@ it('preserves retry information and disables stream transformations',async()=>{
  const stream=await handleFamilyAI(request('/api/chat/stream'),env(),async()=>new Response('event: done\ndata: {}\n\n'))
  expect(stream.headers.get('Cache-Control')).toContain('no-transform');expect(stream.headers.get('X-Accel-Buffering')).toBe('no')
 })
+
+it('preserves bounded turn and send identities for independent send accounting',async()=>{
+ const turn='a'.repeat(32),follow='b'.repeat(32)
+ const fetcher=vi.fn(async()=>Response.json({ok:true,text:'Done'}))
+ expect((await handleFamilyAI(request('/api/chat',cap,{turn_id:turn,send_ids:[turn,follow],messages:[{role:'user',content:'Hello'}]}),env(),fetcher)).status).toBe(200)
+ expect(JSON.parse(fetcher.mock.calls[0][1].body)).toMatchObject({turn_id:turn,send_ids:[turn,follow]})
+ expect((await handleFamilyAI(request('/api/chat',cap,{turn_id:turn,send_ids:[follow],messages:[]}),env(),fetcher)).status).toBe(400)
+})
+
+it('shows a known turn-limit message without exposing arbitrary gateway errors',async()=>{
+ const limited=await handleFamilyAI(request(),env(),async()=>Response.json({code:'turn_limit',error:'private detail'},{status:400}))
+ expect(await limited.json()).toMatchObject({code:'turn_limit',error:'This prompt reached its model-call limit. Please narrow the request.'})
+ const invalid=await handleFamilyAI(request(),env(),async()=>Response.json({error:'private detail'},{status:400}))
+ expect((await invalid.json()).error).toBe('Invalid request')
+})

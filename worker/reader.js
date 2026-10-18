@@ -86,7 +86,7 @@ export class ReaderQuota {
   constructor(state) { this.state = state }
   async fetch(request) {
     const family=request && new URL(typeof request==='string'?request:request.url).pathname==='/family-ai'
-    const limits=family?{minute:60,day:2000}:{minute:20,day:500}
+    const limits=family?{minute:30,day:2400}:{minute:20,day:500}
     const now = Date.now()
     const wait = await this.state.storage.transaction(async storage => {
       let v = await storage.get('quota') || {}

@@ -389,6 +389,8 @@ const STRINGS = {
 
 // Short labels keyed by English text. Absent key → English passthrough.
 const LABELS = {
+  'This prompt reached its tool-call limit. Please narrow the request.':'本次请求已达到工具调用上限，请缩小问题范围后重试。',
+  'This prompt reached its model-call limit. Please narrow the request.':'本次请求已达到模型调用上限，请缩小问题范围后重试。',
   'Model unavailable; please select another model.': '该模型暂不可用，请选择其他模型。',
   Settings: '设置',
   // Archive row controls

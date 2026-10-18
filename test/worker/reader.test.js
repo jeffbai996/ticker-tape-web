@@ -77,12 +77,16 @@ describe('bounded family reader', () => {
   })
 })
 
-it('gives family inference its own larger budget and a precise retry delay',async()=>{
+it('gives family inference its own budget and a precise retry delay',async()=>{
  let saved;const storage={get:async()=>saved,put:async(_,value)=>{saved=value}}
  const quota=new ReaderQuota({storage:{transaction:fn=>fn(storage)}}),clock=vi.spyOn(Date,'now').mockReturnValue(60000)
  try{
-  for(let i=0;i<60;i++)expect((await quota.fetch(new Request('https://quota/family-ai'))).status).toBe(204)
+  for(let i=0;i<30;i++)expect((await quota.fetch(new Request('https://quota/family-ai'))).status).toBe(204)
   const denied=await quota.fetch(new Request('https://quota/family-ai'))
   expect(denied.status).toBe(429);expect(denied.headers.get('Retry-After')).toBe('60')
+  clock.mockReturnValue(120000);saved.d=2400
+  expect((await quota.fetch(new Request('https://quota/family-ai'))).status).toBe(429)
+  clock.mockReturnValue(86400000)
+  expect((await quota.fetch(new Request('https://quota/family-ai'))).status).toBe(204)
  }finally{clock.mockRestore()}
 })

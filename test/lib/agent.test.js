@@ -231,3 +231,20 @@ it('allows a multi-book review to finish its required reads before answering',as
  const added=await runAgenticOverWire({model:'family-sonnet',system:'Review all requested books',messages:[{role:'user',content:'Review the accounts'}]},{wireStream,executeTool:async()=>'{"ok":true}'})
  expect(wireStream).toHaveBeenCalledTimes(10);expect(added.at(-1).content).toBe('Review complete.')
 })
+
+it('shares one turn identity across model rounds and assigns queued sends their own IDs',async()=>{
+ const requests=[];let follow=true
+ await runAgenticOverWire({model:'test',system:'Task',messages:[{role:'user',content:'Hello'}],takeFollowUps:()=>follow?(follow=false,[{role:'user',content:'One followup'}]):[]},
+ {executeTool:async()=> 'Result',wireStream:async request=>{requests.push(request);return {text:requests.length===1?'{"tool":"get_watchlist","args":{}}':'Done'}}})
+ expect(requests).toHaveLength(2)
+ expect(requests[0].turnId).toMatch(/^[a-f0-9]{32}$/)
+ expect(requests[1].turnId).toBe(requests[0].turnId)
+ expect(requests[1].sendIds).toHaveLength(2)
+})
+
+it('never executes more than twelve tools even when initial context tools fill the budget',async()=>{
+ const execute=vi.fn(async()=> 'Result')
+ await expect(runAgenticOverWire({model:'test',system:'Task',messages:[{role:'user',content:'Hello'}],initialTools:Array.from({length:13},()=>({name:'get_portfolios',args:{}}))},
+ {executeTool:execute,wireStream:async()=>({text:'Done'})})).rejects.toThrow('tool-call limit')
+ expect(execute).toHaveBeenCalledTimes(12)
+})
