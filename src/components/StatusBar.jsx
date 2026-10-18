@@ -18,7 +18,7 @@ const STATE_CHIP = {
   open: 'text-[#3fb950] border-[#3fb950]/50 bg-[#3fb950]/10',
   pre: 'text-[#5ba8d9] border-[#5ba8d9]/50 bg-[#5ba8d9]/10',
   post: 'text-[#c084fc] border-[#c084fc]/50 bg-[#c084fc]/10',
-  closed: 'text-muted border-line bg-surface-2',
+  closed: 'text-[#f85149] border-[#f85149]/50 bg-[#f85149]/10',
 }
 const COMPACT_STATE_LABEL = { open: 'O', pre: 'P', post: 'A', closed: 'C', holiday: 'H' }
 // single-character session states for the zh reader (Jeff 2026-08-05)

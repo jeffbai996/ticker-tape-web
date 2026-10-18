@@ -48,7 +48,7 @@ echo probe >> "$STEP_LOG"
   const token = join(base, 'token'), font = join(base, 'font')
   writeFileSync(token, '0'.repeat(32)); writeFileSync(font, 'synthetic font')
   const env = { ...process.env, HOME: home, PATH: `${bin}:${process.env.PATH}`, STEP_LOG: log,
-    TTW_SYNC_TOKEN_FILE: token, TTW_PRIVATE_FONT_FILE: font, TTW_PROBE_PYTHON: join(bin, 'python3'),
+    TTW_SYNC_TOKEN_FILE: token, TTW_PRIVATE_FONT_FILE: font, TTW_FAMILY_AI: '1', TTW_PROBE_PYTHON: join(bin, 'python3'),
     TTW_TEST_PYTHON: join(bin, 'python3'), TTW_TEST_RUNNER: join(bin, 'test-runner') }
   const run = (variant, mode = '--deploy', requested = sha, extra = {}) => spawnSync('bash', [`scripts/deploy_${variant}.sh`, mode, requested], { cwd: repo, env: { ...env, ...extra }, encoding: 'utf8' })
   const steps = () => existsSync(log) ? readFixtureArtifact(base, log).trim().split('\n') : []
@@ -106,5 +106,20 @@ describe.each(['family', 'tailnet'])('%s release admission', variant => {
     expect(result.status, result.stderr).toBe(0)
     expect(f.steps()).toEqual(['ci', 'focused-tests', 'run build', 'probe'])
     expect(existsSync(join(f.repo, 'dist-tailnet'))).toBe(false)
+  })
+})
+
+describe('family assistant publication mode', () => {
+  it('requires an explicit assistant mode before publishing', () => {
+    const f = fixture()
+    const result = f.run('family', '--deploy', f.sha, { TTW_FAMILY_AI: '' })
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain('TTW_FAMILY_AI')
+    expect(f.steps()).toEqual([])
+  })
+  it('rejects invalid assistant modes before publishing', () => {
+    const f = fixture()
+    expect(f.run('family', '--deploy', f.sha, { TTW_FAMILY_AI: 'true' }).status).not.toBe(0)
+    expect(f.steps()).toEqual([])
   })
 })

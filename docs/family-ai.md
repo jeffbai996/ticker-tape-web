@@ -25,12 +25,13 @@ publish the reviewed family source with:
 TTW_FAMILY_AI=1 bash scripts/deploy_family.sh --deploy FULL_SOURCE_SHA
 ```
 
-The build flag defaults to off. Setting `VITE_FAMILY_AI` alone does not activate
+Publication requires an explicit `TTW_FAMILY_AI=1` or `0`; build-only defaults
+to off. Setting `VITE_FAMILY_AI` alone does not activate
 the public build; it also requires the family build flag and its capability.
 Client chat history and notes use the browser's existing local storage. The
 inference transport does not make the gateway a private wire service or expose
 broker/account routes. Existing browser tools supply quotes, news and watchlist
 context to the assistant; native server tools are denied.
 
-To disable the UI, redeploy without `TTW_FAMILY_AI=1`. Removing either new Worker
+To disable the UI, redeploy with `TTW_FAMILY_AI=0`. Removing either new Worker
 secret makes the inference route fail closed without touching saved portfolios.

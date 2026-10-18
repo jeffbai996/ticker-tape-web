@@ -15,6 +15,16 @@ if [[ "$MODE" != "--build-only" && "$MODE" != "--deploy" ]]; then
   echo "usage: scripts/deploy_family.sh [--build-only|--deploy] FULL_SOURCE_SHA" >&2
   exit 2
 fi
+# Publishing a family bundle must never silently change assistant availability.
+case "${TTW_FAMILY_AI:-}" in
+  0|1) ;;
+  "")
+    if [[ "$MODE" == "--deploy" ]]; then
+      echo "family deployment requires explicit TTW_FAMILY_AI=1 (enabled) or 0 (disabled)" >&2
+      exit 2
+    fi ;;
+  *) echo "TTW_FAMILY_AI must be 0 or 1" >&2; exit 2 ;;
+esac
 if [[ ! -f "$TOKEN_FILE" ]]; then
   echo "family sync token file is missing" >&2
   exit 2

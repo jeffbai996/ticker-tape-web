@@ -137,8 +137,9 @@ Origin headers are authentication; the bearer remains the machine credential.
 
 Build the separately hosted family bundle with
 `scripts/deploy_family.sh --build-only FULL_SOURCE_SHA`. Publish it with
-`--deploy FULL_SOURCE_SHA`; the script
-reads the capability from `~/.config/ttw/sync_token`, validates it without
+`TTW_FAMILY_AI=1 scripts/deploy_family.sh --deploy FULL_SOURCE_SHA` for the
+enabled assistant, or explicitly set `TTW_FAMILY_AI=0` to disable it. Publication
+without either value is refused. The script reads the capability from `~/.config/ttw/sync_token`, validates it without
 printing it, and preserves the existing `ttw-family` Assets Worker routes.
 Both private release scripts require the full current HEAD SHA and a clean
 checkout, export only committed files, and run `npm ci`, focused release and
