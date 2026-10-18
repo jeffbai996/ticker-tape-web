@@ -1842,17 +1842,38 @@ function useLiveBook(account) {
   return book
 }
 
-function usePortfolioAccounts() {
+// null = still asking, false = discovery failed (retried every 30 s until it
+// answers), [] = the wire answered with no accounts.
+export function usePortfolioAccounts() {
   const [accounts, setAccounts] = useState(null)
   useEffect(() => {
     const base = wireServiceUrl()
     if (!base) return
-    fetch(`${base.replace(/\/$/, '')}/api/portfolio/accounts`, { signal: AbortSignal.timeout(10_000) })
+    let dead = false
+    let retry = 0
+    const pull = () => fetch(`${base.replace(/\/$/, '')}/api/portfolio/accounts`, { signal: AbortSignal.timeout(10_000) })
       .then((r) => r.json())
-      .then((out) => out.ok && setAccounts(out.accounts || []))
-      .catch(() => setAccounts([]))
+      .then((out) => {
+        if (!out?.ok) throw new Error(out?.error || 'accounts unavailable')
+        if (!dead) setAccounts(out.accounts || [])
+      })
+      .catch(() => {
+        if (dead) return
+        setAccounts((cur) => (Array.isArray(cur) ? cur : false))
+        retry = setTimeout(pull, 30_000)
+      })
+    pull()
+    return () => { dead = true; clearTimeout(retry) }
   }, [])
   return accounts
+}
+
+// With no account to ask for, the live book never loads, so a failed or
+// empty account discovery is the link-down state rather than an endless
+// "connecting".
+export function brokerBookState(liveBook, accounts, account) {
+  if (liveBook != null || account) return liveBook
+  return accounts === false || (Array.isArray(accounts) && accounts.length === 0) ? false : null
 }
 
 function BrokerAvailability({ book, broker }) {
@@ -1939,7 +1960,7 @@ export function Portfolio({ route }) {
     setAccount(next)
     localStorage.setItem('portfolio_account_v1', next)
   }
-  const book = useLiveBook(account)
+  const book = brokerBookState(useLiveBook(account), accounts, account)
   // a configured wire NEVER falls back to synthetic numbers — the demo book
   // only exists for the keyless public build (Jeff 2026-08-05)
   const wired = !!wireServiceUrl()
