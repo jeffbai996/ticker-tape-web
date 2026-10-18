@@ -8,8 +8,8 @@ import { etParts, marketState, rollCashSession } from '../lib/marketState.js'
 import { useClassifications } from '../lib/useClassifications.js'
 import { BUCKETS } from '../lib/symbols.js'
 import { pulseStats } from '../lib/pulse.js'
-import { fetchEarningsDate, peekEarningsDate } from '../lib/fundamentals.js'
-import { whenFirstBatch } from '../lib/feed.js'
+import {useEarningsDays} from '../hooks/useEarningsDays.js'
+export {useEarningsDays} from '../hooks/useEarningsDays.js'
 import { EARNINGS_UNIVERSE, EARNINGS_NAMES, ECON_EVENTS, MARKET_DECK, upcomingEvents, eventDayLabel } from '../lib/markets.js'
 import { loadCatalysts, onCatalystsChange, mergedEvents } from '../lib/catalysts.js'
 import { fetchHistory, prefetchSymbol } from '../lib/history.js'
@@ -55,8 +55,6 @@ import {
   RAIL_LIMITS, railWidthAtDrag, saveRailWidth, storedRailWidth, toggleRailWidth,
 } from '../lib/railResize.js'
 
-const DAY = 86_400_000
-const ETF_SKIP = new Set(['SPY', 'QQQ', 'IWM', 'GLD', 'TLT'])
 const fmtAbsChange = (v) => fmtChange(Math.abs(v)).replace('+', '')
 // KRW/JPY-sized prices: K-notation where columns are tight, the full thin-
 // space-grouped figure once the row container has the room (Jeff 2026-08-20)
@@ -77,40 +75,6 @@ function defaultDashboardRailWidth() {
   return viewport >= 1200 ? 230 : 190
 }
 
-/** Days until each symbol's next earnings — feeds the `27d` badge + panel.
- *  Exported for the briefing page, which reuses the same fan-out. */
-export function useEarningsDays(symbols) {
-  const [rows, setRows] = useState({})
-  useEffect(() => {
-    let alive = true
-    const timers = []
-    // Staggered, and behind the first prices: these lookups used to start
-    // the moment the bundle landed and sat on the browser's per-host
-    // connections ahead of the price batches (waterfall, 2026-08-22). A cold
-    // board waits for the first batch to land; cached symbols need no wait.
-    const start = () => {
-      if (!alive) return
-      symbols.filter((s) => !ETF_SKIP.has(s)).forEach((sym, i) => {
-        timers.push(setTimeout(() => {
-          if (!alive) return
-          fetchEarningsDate(sym)
-            .then((v) => alive && setRows((r) => ({ ...r, [sym]: v })))
-            .catch(() => {})
-        }, i * 200))
-      })
-    }
-    if (symbols.every((s) => peekEarningsDate(s) !== undefined)) start()
-    else whenFirstBatch().then(start)
-    return () => { alive = false; timers.forEach(clearTimeout) }
-  }, [symbols.join(',')])
-
-  const days = {}
-  const now = Date.now()
-  for (const [sym, v] of Object.entries(rows)) {
-    if (v?.date && v.date >= now - DAY) days[sym] = Math.max(0, Math.round((v.date - now) / DAY))
-  }
-  return days
-}
 
 /** Cash-session sparklines are intentionally demand-driven: the daily feed
  *  remains the cheap default, and this fan-out only exists while DAY is the

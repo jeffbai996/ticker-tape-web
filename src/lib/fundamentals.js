@@ -42,7 +42,7 @@ function crumbBase() {
 }
 
 const cache = createPCache('fund_cache_v2', { max: 40 })
-const calCache = createPCache('cal_cache_v1', { max: 60 })
+const calCache = createPCache('cal_cache_v1', { max: 600 })
 const CAL_TTL = 6 * 60 * 60_000
 
 /** Last-known values, synchronously and TTL-blind — research subviews seed
