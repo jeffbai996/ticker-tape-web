@@ -1,6 +1,5 @@
-// The dashboard's landing list is a device preference, not watchlist data.
-// Keeping it out of cloud sync lets two browsers open different household
-// boards even though both browsers share the same synced list collection.
+import {preferenceChanged} from './preferences.js'
+// Explicit opening-list pins sync across devices; last viewed stays local.
 
 const KEY = 'dashboard_landing_v1'
 const PIN_KEY = 'dashboard_landing_pin_v1'
@@ -20,10 +19,11 @@ export function rememberDashboardLanding(id, storage = localStorage) {
  *  clears the pin. */
 export function pinDashboardLanding(id, storage = localStorage) {
   try {
-    if (id === undefined) { storage.removeItem(PIN_KEY); return true }
+    if (id === undefined) { storage.removeItem(PIN_KEY); preferenceChanged(); return true }
     const value = id == null ? 'main' : String(id).toLowerCase()
     if (value !== 'main' && !ID_RE.test(value)) return false
     storage.setItem(PIN_KEY, value)
+    preferenceChanged()
     return true
   } catch { return false }
 }

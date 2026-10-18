@@ -19,7 +19,7 @@ import { queueAlertDelivery, retryPendingAlertDeliveries } from './lib/alertDeli
 /** Current locale; re-renders the caller when it changes. */
 export function useLocale() {
   const [locale, set] = useState(getLocale)
-  useEffect(() => onLocaleChange(set), [])
+  useEffect(() => {const off=onLocaleChange(set);set(getLocale());return off}, [])
   return locale
 }
 

@@ -101,7 +101,7 @@ function operationFor(path, method) {
 }
 
 function resourceFor(path) {
-  return path.startsWith('/portfolios') ? 'portfolios' : 'watchlists'
+  return path.startsWith('/settings') ? 'settings' : path.startsWith('/portfolios') ? 'portfolios' : 'watchlists'
 }
 
 function safeOutcome(status, payload) {

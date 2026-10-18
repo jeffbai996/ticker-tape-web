@@ -1,6 +1,6 @@
+import {preferenceChanged} from './preferences.js'
 // The language the top tape reads in: its names and its headlines. It follows
-// the app unless the reader picks one (Jeff 2026-10-08). Per device, like the
-// tape's watchlist choice.
+// the app unless the reader picks one; explicit choices sync across devices.
 import { getLocale } from './i18n.js'
 
 const KEY = 'tape_locale_v1'
@@ -17,6 +17,7 @@ export function getTapeLocaleSetting() {
 export function setTapeLocaleSetting(value) {
   const next = TAPE_LOCALES.includes(value) ? value : 'auto'
   try { localStorage.setItem(KEY, next) } catch { /* best-effort */ }
+  preferenceChanged()
   for (const fn of [...listeners]) fn(next)
 }
 

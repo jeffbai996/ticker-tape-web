@@ -23,6 +23,7 @@ render(<App />, document.getElementById('app'))
 // behind the flag means the portfolio-sync module is not merely inert in the
 // public build, it is not bundled into it.
 if (import.meta.env.VITE_FAMILY_BUILD === '1' || import.meta.env.VITE_PRIVATE === '1') {
+  import('./lib/startSettingsSync.js').then(m=>m.startSettingsSync())
   import('./lib/cloudsave.js').then((m) => m.startWatchlistSync())
   import('./lib/portfolioSync.js').then((m) => m.startMyPortfolioSync())
   // One call per tab session distinguishes JavaScript execution from an edge

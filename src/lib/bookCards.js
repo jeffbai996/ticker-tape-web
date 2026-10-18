@@ -1,3 +1,4 @@
+import {preferenceChanged} from './preferences.js'
 /** Which analytics cards a book shows (Jeff 2026-08-21: "if we add a ton then
  *  add a way for user to hide em").
  *
@@ -57,6 +58,7 @@ export function isCardShown(id) {
 
 function persist(next) {
   try { localStorage.setItem(KEY, JSON.stringify(next)) } catch { /* best-effort */ }
+  preferenceChanged()
   for (const fn of [...listeners]) fn(next)
   return next
 }
@@ -70,3 +72,5 @@ export function toggleCard(id) {
 export function resetCards() {
   return persist([])
 }
+
+export function refreshCardPreferences(){for(const fn of listeners)fn(hiddenCards())}

@@ -1,3 +1,4 @@
+import {preferenceChanged,onPreferencesApplied,settingsSyncStatus,onSettingsSyncStatus} from '../lib/preferences.js'
 import { useEffect, useState } from 'preact/hooks'
 import { getHighContrast, saveHighContrast } from '../lib/contrast.js'
 import { getLocale, setLocale, onLocaleChange, tl } from '../lib/i18n.js'
@@ -34,6 +35,8 @@ function SettingsPanel({ id, title, children, wide = false }) {
 }
 
 export function Settings() {
+  const [syncState,setSyncState]=useState(settingsSyncStatus)
+  useEffect(()=>onSettingsSyncStatus(setSyncState),[])
   const [locale, language] = useState(getLocale)
   const [contrast, setContrast] = useState(getHighContrast)
   useEffect(() => onLocaleChange(() => language(getLocale())), [])
@@ -50,6 +53,12 @@ export function Settings() {
   const [colors, color] = useState(getMarketColorOrder)
   const [tapeLanguage, setTapeLanguage] = useState(getTapeLocaleSetting)
   const [chinese, sources] = useState(() => localStorage.getItem('tape-wire-zh-sources') === '1')
+  useEffect(()=>onPreferencesApplied(()=>{
+    language(getLocale());setHidden(hiddenCards());setWidgets(getWidgets())
+    setLanding(pinnedDashboardLanding()||'');setContrast(getHighContrast());color(getMarketColorOrder())
+    setTapeLanguage(getTapeLocaleSetting());setMode(loadWireOrder())
+    setRail(localStorage.getItem('tape-wire-rail')!=='0');sources(localStorage.getItem('tape-wire-zh-sources')==='1')
+  }),[])
   const zh = locale === 'zh'
   const label = (en, cn) => zh ? cn : en
   const changeLanguage = (value) => { setLocale(value); language(value) }
@@ -72,9 +81,11 @@ export function Settings() {
     resetWidgets()
   }
   const control = 'settings-select'
-  return <section class="settings-page">
+  return <section class="settings-page" onClickCapture={()=>queueMicrotask(preferenceChanged)} onChangeCapture={()=>queueMicrotask(preferenceChanged)}>
     <div class="settings-header">
-      <h1>{label('Settings', '设置')}</h1>
+      <div><h1>{label('Settings', '设置')}</h1>
+        <div role="status" class="text-[10px] text-muted mt-1">{syncState==='synced'?label('Settings synced','设置已同步'):syncState==='syncing'?label('Syncing settings…','正在同步设置…'):syncState==='offline'?label('Saved on this device. Sync will resume when connected.','已保存至此设备，联网后继续同步。'):label('Saved on this device','已保存至此设备')}</div>
+      </div>
       <button type="button" class="settings-reset" onClick={reset}>{label('Reset defaults', '恢复默认')}</button>
     </div>
     <div class="settings-grid">

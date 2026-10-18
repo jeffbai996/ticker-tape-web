@@ -1,3 +1,4 @@
+import {preferenceChanged} from './preferences.js'
 const STORAGE_KEY = 'ttw_market_color_order_v1'
 const ORDERS = new Set(['global', 'cn'])
 
@@ -38,6 +39,7 @@ export function saveMarketColorOrder(
 ) {
   const normalized = applyMarketColorOrder(order, root)
   try { store?.setItem(STORAGE_KEY, normalized) } catch { /* best-effort preference */ }
+  preferenceChanged()
   return normalized
 }
 

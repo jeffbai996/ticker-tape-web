@@ -1,5 +1,6 @@
+import {preferenceChanged} from './preferences.js'
 // Dashboard widget layout — which panels the home view shows, in what order.
-// Persisted per-browser; the dashboard renders whatever this list says.
+// Explicit layout preferences sync across the account.
 
 import { SYMBOL_ANY_CASE_RE } from './symbols.js'
 
@@ -45,6 +46,7 @@ function save(widgets) {
   try {
     localStorage.setItem(KEY, JSON.stringify(widgets))
   } catch { /* quota — layout just won't persist */ }
+  preferenceChanged()
   for (const fn of listeners) fn(widgets)
 }
 
@@ -83,3 +85,5 @@ export function moveWidget(id, dir) {
   ;[widgets[i], widgets[j]] = [widgets[j], widgets[i]]
   save(widgets)
 }
+
+export function refreshWidgetPreferences(){for(const fn of listeners)fn(getWidgets())}

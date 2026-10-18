@@ -1,3 +1,4 @@
+import {preferenceChanged} from './preferences.js'
 const KEY = 'ttw_high_contrast_v1'
 
 export function getHighContrast(store = globalThis.localStorage) {
@@ -11,6 +12,7 @@ export function applyHighContrast(enabled, root = globalThis.document?.documentE
 export function saveHighContrast(enabled, store = globalThis.localStorage, root = globalThis.document?.documentElement) {
   applyHighContrast(enabled, root)
   try { store?.setItem(KEY, enabled ? '1' : '0') } catch { /* preference remains active */ }
+  preferenceChanged()
 }
 
 // Relative to the busiest five-minute interval, not price direction.

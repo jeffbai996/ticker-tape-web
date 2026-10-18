@@ -6,6 +6,7 @@
  * Deploy: npx wrangler deploy
  */
 
+import {handleSettings} from './settings.js'
 import { handleWatchlists } from './watchlists.js'
 import { handleCompanyNews } from './company_news.js'
 import { handlePortfolios } from './portfolios.js'
@@ -107,6 +108,9 @@ export default {
 
         // Public watchlist sync is capability-scoped and intentionally does
         // not proxy the private newsservice API.
+        if (path === '/settings' || path.startsWith('/settings/')) {
+            return withFamilyDocumentLog(request, env, path, ctx, () => handleSettings(request, env, path));
+        }
         if (path === '/watchlists' || path.startsWith('/watchlists/')) {
             return withFamilyDocumentLog(
                 request, env, path, ctx, () => handleWatchlists(request, env, path),

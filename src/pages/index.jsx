@@ -1,3 +1,5 @@
+import {useEffect,useState} from 'preact/hooks'
+import {onPreferencesApplied} from '../lib/preferences.js'
 import { Placeholder } from '../components/Placeholder.jsx'
 import { IS_FAMILY_BUILD, IS_PRIVATE_BUILD, IS_FAMILY_AI } from '../lib/nav.js'
 import { useNamedWatchlists } from '../hooks.js'
@@ -47,6 +49,8 @@ const PAGES = {
 }
 
 function LandingDashboard() {
+  const [,refresh]=useState(0)
+  useEffect(()=>onPreferencesApplied(()=>refresh(n=>n+1)),[])
   const lists = useNamedWatchlists()
   return <Dashboard listId={resolveDashboardLanding(lists)} />
 }

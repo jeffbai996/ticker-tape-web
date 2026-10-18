@@ -1,6 +1,5 @@
-// Which watchlists ride the scrolling tape up top. It is local only: the
-// synced watchlist document has a fixed shape, while tape composition is a
-// per-device reading preference.
+import {preferenceChanged} from './preferences.js'
+// Watchlists selected for the tape sync as explicit account preferences.
 const KEY = 'tape_lists_v1'
 export const MAIN_TAPE_OFF = '__main_off__'
 const listeners = new Set()
@@ -22,6 +21,7 @@ export function toggleTapeList(id) {
   const target = id === 'main' ? MAIN_TAPE_OFF : id
   const next = cur.includes(target) ? cur.filter((x) => x !== target) : [...cur, target]
   try { localStorage.setItem(KEY, JSON.stringify(next)) } catch { /* best-effort */ }
+  preferenceChanged()
   for (const fn of [...listeners]) fn(next)
   return next
 }
@@ -45,3 +45,5 @@ export function tapeSymbols(main, lists, ids) {
   }
   return out
 }
+
+export function refreshTapePreferences(){for(const fn of listeners)fn(tapeListIds())}

@@ -1,3 +1,4 @@
+import {preferenceChanged} from './preferences.js'
 // en/zh-CN internationalization, ported from the CLI's i18n string table.
 // Two lookup styles: t('key') for sentences and hints, tl('Label') for short
 // labels keyed by their English text — data-driven labels (bucket names,
@@ -36,6 +37,7 @@ export function setLocale(l) {
     localStorage.setItem(KEY, l)
   } catch { /* best-effort */ }
   for (const fn of listeners) fn(l)
+  preferenceChanged()
 }
 
 export function onLocaleChange(fn) {

@@ -1,3 +1,4 @@
+import {preferenceChanged} from './preferences.js'
 // Wire panel data layer — optional viewer-supplied endpoint. This site is public and static; it
 // ships NO wire URL and NO symbols. A viewer points the panel at their own
 // newsservice-compatible service (see its API.md: GET /api/events, SSE
@@ -563,6 +564,7 @@ export function loadWireOrder() {
 }
 export function saveWireOrder(value) {
   try { localStorage.setItem(WIRE_ORDER_KEY, value === 'top' ? 'top' : 'wire') } catch { /* preference only */ }
+  preferenceChanged()
 }
 
 export function tierOfEvent(ev, watchset) {

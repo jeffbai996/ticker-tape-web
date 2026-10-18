@@ -1,3 +1,4 @@
+import {preferenceChanged,onPreferencesApplied} from '../lib/preferences.js'
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { activityColor } from '../lib/contrast.js'
 import {
@@ -618,6 +619,10 @@ export function Wire({ route }) {
   const [showZhSources, setShowZhSourcesRaw] = useState(() => localStorage.getItem('tape-wire-zh-sources') === '1')
   // rail off = full-width reading; sticky, it's a layout preference
   const [rail, setRail] = useState(() => localStorage.getItem('tape-wire-rail') !== '0')
+  useEffect(()=>onPreferencesApplied(()=>{
+    setMode(loadWireOrder());setShowZhSourcesRaw(localStorage.getItem('tape-wire-zh-sources')==='1')
+    setRail(localStorage.getItem('tape-wire-rail')!=='0')
+  }),[])
   const [state, setState] = useState('demo')   // demo | connecting | live | mirror | error
   // when the feed is the public mirror: unix seconds of the pushed snapshot
   const [generatedAt, setGeneratedAt] = useState(null)
@@ -673,7 +678,7 @@ export function Wire({ route }) {
   }
   const setShowZhSources = (on) => {
     setShowZhSourcesRaw(on)
-    localStorage.setItem('tape-wire-zh-sources', on ? '1' : '0')
+    localStorage.setItem('tape-wire-zh-sources', on ? '1' : '0');preferenceChanged()
   }
 
   useEscape(() => setOpenIds(new Set()), openIds.size > 0)
@@ -1159,10 +1164,10 @@ export function Wire({ route }) {
         </div>
         {rail ? (
           <Rail today={today} now={now} events={events} watchset={watchset} onSource={(host) => setQuery(`source:${host}`)}
-            onHide={() => { setRail(false); localStorage.setItem('tape-wire-rail', '0') }} />
+            onHide={() => { setRail(false); localStorage.setItem('tape-wire-rail', '0');preferenceChanged() }} />
         ) : (
           <button
-            onClick={() => { setRail(true); localStorage.setItem('tape-wire-rail', '1') }}
+            onClick={() => { setRail(true); localStorage.setItem('tape-wire-rail', '1');preferenceChanged() }}
             title={tl('show the side panels')}
             class="max-lg:hidden self-stretch w-4 shrink-0 rounded-lg border border-line text-muted
                    hover:text-accent hover:border-accent/50 font-mono text-[11px] leading-none"

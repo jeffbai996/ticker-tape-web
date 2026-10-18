@@ -61,7 +61,7 @@ function histKey(rev) {
   return `hist:${String(rev).padStart(12, '0')}`
 }
 
-const STORAGE_KEY_RE = /^(?:watchlist|myportfolios):[a-f0-9]{32}$/
+const STORAGE_KEY_RE = /^(?:watchlist|myportfolios|settings):[a-f0-9]{32}$/
 
 /** Single-writer coordinator. One object exists per kind + capability. The
  * queue also orders the legacy KV write-through; the authoritative row lives

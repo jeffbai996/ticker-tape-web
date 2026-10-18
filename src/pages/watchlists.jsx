@@ -1,3 +1,4 @@
+import {onPreferencesApplied} from '../lib/preferences.js'
 import { useEffect, useState } from 'preact/hooks'
 import { useNamedWatchlists, useQuotes, useWatchlist } from '../hooks.js'
 import {
@@ -123,6 +124,7 @@ function SymbolPreview({ symbols, quotes, managing, onSend, onRemove }) {
 
 function WatchlistCard({ item, quotes, earnDays, allLists, primary = false }) {
   const [, pinBump] = useState(0)
+  useEffect(()=>onPreferencesApplied(()=>pinBump(n=>n+1)),[])
   const pinned = pinnedDashboardLanding()
   const isDefault = primary ? pinned === 'main' : pinned === item.id
   const [editing, setEditing] = useState(false)
