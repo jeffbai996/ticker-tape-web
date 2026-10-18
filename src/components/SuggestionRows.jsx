@@ -35,8 +35,9 @@ function SuggestionRow({items,index,onPick,label,paused}) {
     }
     sync.current=update
     const measure=()=>{
-      span=first.offsetWidth+8
-      overflow=span>el.clientWidth+8
+      const gap=parseFloat(getComputedStyle(first.parentElement).columnGap)||0
+      span=first.offsetWidth+gap
+      overflow=span>el.clientWidth+gap
       el.dataset.loop=String(overflow&&!reduced)
       if(!initialized.current&&overflow&&!reduced){el.scrollLeft=span*((index*.23)%1);initialized.current=true}
       update()
