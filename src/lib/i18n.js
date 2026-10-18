@@ -387,6 +387,7 @@ const STRINGS = {
 
 // Short labels keyed by English text. Absent key → English passthrough.
 const LABELS = {
+  'Model unavailable; please select another model.': '该模型暂不可用，请选择其他模型。',
   Settings: '设置',
   // Archive row controls
   'download .md': '下载 .md',
