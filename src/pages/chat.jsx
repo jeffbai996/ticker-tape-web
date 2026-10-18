@@ -294,8 +294,6 @@ function traceArgs(args) {
  *  didn't exist on touch, and Jeff couldn't find it at all — 2026-08-07), and
  *  arming it flips the row into a confirm rather than firing on one tap. */
 function SessionRow({ thread, active, busy, onOpen, onDelete }) {
-  return () => clearTimeout(t)
-  }, [arming])
   return (
     <div class={`flex items-center gap-2 rounded-lg px-2 py-1.5 ${active ? 'bg-accent-soft' : 'hover:bg-surface-2'}`}>
       <button type="button" disabled={busy} onClick={onOpen} class="flex-1 min-w-0 text-left disabled:opacity-50">
