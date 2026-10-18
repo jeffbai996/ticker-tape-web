@@ -364,7 +364,7 @@ function StepIcon({ kind, name, verb, status }) {
   const icon=traceIcon({kind,name,label:verb})
   const p={fill:'none',stroke:'currentColor','stroke-width':1.5,'stroke-linecap':'round','stroke-linejoin':'round'}
   const paths={
-    portfolio:<g {...p}><rect x="2" y="5" width="12" height="9" rx="1.5"/><path d="M5 5V3h6v2M2 9h12M7 9v2h2V9"/></g>,
+    portfolio:<g {...p}><path d="M2 3h4a2 2 0 0 1 2 2v9a2 2 0 0 0-2-2H2zM14 3h-4a2 2 0 0 0-2 2v9a2 2 0 0 1 2-2h4z"/></g>,
     calendar:<g {...p}><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M5 1.5v3M11 1.5v3M2 7h12M5 10h1M10 10h1"/></g>,
     market:<g {...p}><path d="M2 2v12h12M4 10l3-4 3 2 4-5"/></g>,
     read:<g {...p}><path d="M2 3h4a2 2 0 0 1 2 2v9a2 2 0 0 0-2-2H2zM14 3h-4a2 2 0 0 0-2 2v9a2 2 0 0 1 2-2h4z"/></g>,
@@ -1404,11 +1404,11 @@ export function Chat() {
               {(() => {
                 const live = models.length ? models : [{ key: model, label: model }]
                 const groups=modelGroups(live,IS_PRIVATE_BUILD)
-                return groups.map((g) => (
+                return groups.map((g) => g.name ? (
                   <optgroup key={g.name} label={`— ${g.name} —`}>
                     {g.items.map((m) => <option key={m.key} value={m.key} disabled={m.busy || m.available === false}>{m.label}</option>)}
                   </optgroup>
-                ))
+                ) : g.items.map(m=><option key={m.key} value={m.key} disabled={m.busy || m.available===false}>{m.label}</option>))
               })()}
             </select>
             <span class="pointer-events-none absolute right-1.5 text-[7px] leading-none text-muted">▾</span>

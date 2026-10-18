@@ -49,12 +49,17 @@ it('uses milliseconds for sub-second work instead of rounding it down to zero',(
  expect(metricDuration(1)).toBe('1s')
 })
 
-it('uses measured subscription streaming time without treating it as decoder telemetry',()=>{
- const usage=mergeTurnUsage(null,1,{in:100,out:80,stream_seconds:2})
+it('uses provider inference time without treating it as decoder telemetry',()=>{
+ const usage=mergeTurnUsage(null,1,{in:100,out:80,inference_seconds:2})
  expect(chatMetrics({usage}).rate).toBe(40)
- expect(chatMetrics({usage}).rateSource).toBe('stream')
+ expect(chatMetrics({usage}).rateSource).toBe('inference')
  expect(usage.decode_seconds).toBeUndefined()
  const mixed=mergeTurnUsage(usage,2,{in:120,out:20,decode_seconds:1})
  expect(chatMetrics({usage:mixed}).rate).toBeCloseTo(100/3)
- expect(chatMetrics({usage:mixed}).rateSource).toBe('stream')
+ expect(chatMetrics({usage:mixed}).rateSource).toBe('inference')
+})
+
+
+it('ignores legacy arrival-speed counters that could be inflated by buffering',()=>{
+ expect(chatMetrics({usage:{out:300,stream_tokens:300,stream_seconds:.001}}).rate).toBeNull()
 })

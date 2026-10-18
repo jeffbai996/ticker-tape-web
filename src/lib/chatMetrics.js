@@ -6,9 +6,9 @@ export function chatMetrics({ usage, startedAt, endedAt, now = Date.now() }) {
   const elapsed = startedAt > 0 ? Math.max(0, (endedAt ?? now) - startedAt) / 1000 : null
   const seconds = count(usage?.decode_seconds)
   const tokens = count(usage?.decode_tokens)
-  const streamSeconds=count(usage?.stream_seconds), streamTokens=count(usage?.stream_tokens)
-  const totalSeconds=(seconds||0)+(streamSeconds||0), totalTokens=(tokens||0)+(streamTokens||0)
-  return {input,output,elapsed,rate: totalSeconds>0 ? totalTokens/totalSeconds : null,rateSource:streamSeconds>0?'stream':'decoder'}
+  const inferenceSeconds=count(usage?.inference_seconds), inferenceTokens=count(usage?.inference_tokens)
+  const totalSeconds=(seconds||0)+(inferenceSeconds||0), totalTokens=(tokens||0)+(inferenceTokens||0)
+  return {input,output,elapsed,rate: totalSeconds>0 ? totalTokens/totalSeconds : null,rateSource:inferenceSeconds>0?'inference':'decoder'}
 }
 
 export function metricDuration(seconds) {
@@ -25,13 +25,13 @@ export function mergeTurnUsage(previous, round, reported={}) {
  const known=n=>typeof n==='number' && Number.isFinite(n) && n>=0
  const byRound={...(previous?.byRound || {})}
  byRound[round]={...(byRound[round] || {}),
-  ...(known(reported.stream_seconds) ? {stream_seconds:reported.stream_seconds} : {}),
+  ...(known(reported.inference_seconds) ? {inference_seconds:reported.inference_seconds} : {}),
   ...(known(reported.decode_seconds) ? {decode_seconds:reported.decode_seconds} : {}),
   ...(known(reported.in) ? {in:reported.in} : {}),...(known(reported.out) ? {out:reported.out} : {})}
  const measured=Object.values(byRound).filter(u=>known(u.out) && known(u.decode_seconds) && u.decode_seconds>0)
- const streamed=Object.values(byRound).filter(u=>known(u.out) && !known(u.decode_seconds) && u.stream_seconds>0)
+ const inferred=Object.values(byRound).filter(u=>known(u.out) && !known(u.decode_seconds) && u.inference_seconds>0)
  const inputs=Object.values(byRound).map(u=>u.in).filter(known)
  const outputs=Object.values(byRound).map(u=>u.out).filter(known)
- return {byRound,...(streamed.length ? {stream_seconds:streamed.reduce((a,u)=>a+u.stream_seconds,0),stream_tokens:streamed.reduce((a,u)=>a+u.out,0)} : {}),...(measured.length ? {decode_seconds:measured.reduce((a,u)=>a+u.decode_seconds,0),decode_tokens:measured.reduce((a,u)=>a+u.out,0)} : {}),...(inputs.length ? {in:Math.max(...inputs)} : {}),
+ return {byRound,...(inferred.length ? {inference_seconds:inferred.reduce((a,u)=>a+u.inference_seconds,0),inference_tokens:inferred.reduce((a,u)=>a+u.out,0)} : {}),...(measured.length ? {decode_seconds:measured.reduce((a,u)=>a+u.decode_seconds,0),decode_tokens:measured.reduce((a,u)=>a+u.out,0)} : {}),...(inputs.length ? {in:Math.max(...inputs)} : {}),
   ...(outputs.length ? {out:outputs.reduce((a,b)=>a+b,0)} : {})}
 }

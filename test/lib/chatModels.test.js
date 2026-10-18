@@ -19,9 +19,9 @@ it('gives the private picker one gem group with Argon then Opus and removes reti
  expect(groups.find(g=>g.name==='gem').items.map(m=>m.key)).toEqual(['agy-argon','agy-opus'])
  expect(groups.find(g=>g.name==='gem').items[1].fixed_effort).toBe('low')
 })
-it('preserves the family account label and its full allowed selection',()=>{
+it('leaves family options ungrouped while retaining its full allowed selection',()=>{
  expect(pickerModels(models,false)).toEqual(models)
- expect(modelGroups(models,false).find(g=>g.name==='jeffbai996').items.map(m=>m.key)).toEqual(['agy-argon','agy-flash','agy-opus'])
+ expect(modelGroups(models,false)).toEqual([{name:'',items:models}])
 })
 it('recognizes model providers while leaving unknown models generic',async()=>{
  const {modelProvider}=await import('../../src/lib/chatModels.js')

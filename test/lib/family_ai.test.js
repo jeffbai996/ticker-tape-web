@@ -202,3 +202,10 @@ it('supplies a catalog of every saved portfolio without restricting chat to the 
  expect(block).toContain('get_portfolio')
  expect(block).not.toContain('AAPL: 10 shares')
 })
+
+
+it('routes family Flash to its own model instead of silently choosing Sonnet',async()=>{
+ const chat=await family();const fetcher=vi.fn(async()=>Response.json({ok:true,text:'Ready'}));vi.stubGlobal('fetch',fetcher)
+ await chat.wireComplete({model:'family-flash',effort:'high',messages:[{role:'user',content:'Hello'}]})
+ expect(JSON.parse(fetcher.mock.calls[0][1].body)).toMatchObject({model:'family-flash',effort:'medium'})
+})
