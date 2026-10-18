@@ -1062,7 +1062,7 @@ html[data-pointer-hover] .tape-hot *:not(.text-up):not(.text-down):not([data-tap
 .briefing-data-grid,.briefing-summary{display:grid;gap:.75rem;min-width:0}
 @media(min-width:1280px){
  .briefing-summary{grid-template-columns:repeat(3,minmax(0,1fr));align-items:start}
- .briefing-summary>*{max-height:24rem;overflow-y:auto;scrollbar-width:thin}
+ .briefing-summary>*{max-height:20rem;overflow-y:auto;scrollbar-width:thin}
  .briefing-summary>section>header{position:sticky;top:0;z-index:1}
 }
 .chat-token-footer{container-type:inline-size;container-name:chat-metrics}
