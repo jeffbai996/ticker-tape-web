@@ -1,4 +1,4 @@
-/** Reported counts only; timing excludes prompt processing and tool execution. */
+/** Reported counts with decoder timing or provider inference duration. */
 export function chatMetrics({ usage, startedAt, endedAt, now = Date.now() }) {
   const count = (n) => typeof n === 'number' && Number.isFinite(n) && n >= 0 ? n : null
   const input = count(usage?.in)
