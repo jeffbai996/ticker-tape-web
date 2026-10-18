@@ -773,6 +773,7 @@ export function Chat() {
   const turnModelRef = useRef({})
   const queuedRef = useRef([])
   const busyRef = useRef(false)
+  const admissionRef = useRef(false)
 
   const splash = history.length === 0 || atHome
 
@@ -1201,10 +1202,20 @@ export function Chat() {
     finally {busyRef.current=false;setBusy(false)}
   }
 
-  const send = (e) => {
+  const send = async (e) => {
     e.preventDefault()
     const text = input.trim()
     if (!text) return
+    if (admissionRef.current) return
+    if (onWire && !IS_FAMILY_AI && !busyRef.current) {
+      admissionRef.current=true
+      try {
+        const available=pickerModels(await fetchWireChatModels(),IS_PRIVATE_BUILD)
+        setModels(available)
+        if(available.find(item=>item.key===model)?.busy){setError(tl('Model unavailable; please select another model.'));return}
+      } catch(err){setError(tl(err.message||String(err)));return}
+      finally {admissionRef.current=false}
+    }
     const item = { text, model, effort, ts: Date.now(),context:pendingContext }
     setPendingContext(null)
     clearComposer()
@@ -1281,8 +1292,11 @@ export function Chat() {
     if(onWire)fetchWireChatModels().then(items=>setModels(pickerModels(items,IS_PRIVATE_BUILD))).catch(()=>{})
   }
   useEffect(()=>{
-    window.addEventListener('focus',refreshModelAvailability)
-    return ()=>window.removeEventListener('focus',refreshModelAvailability)
+    const visible=()=>{if(document.visibilityState==='visible'&&!busyRef.current)refreshModelAvailability()}
+    const timer=onWire&&!IS_FAMILY_AI?setInterval(visible,3000):null
+    window.addEventListener('focus',visible)
+    document.addEventListener('visibilitychange',visible)
+    return ()=>{clearInterval(timer);window.removeEventListener('focus',visible);document.removeEventListener('visibilitychange',visible)}
   },[onWire])
 
   const chooseModel = (key) => {
@@ -1358,7 +1372,7 @@ export function Chat() {
           ) : (
             <button
               type="submit"
-              disabled={!input.trim()}
+              disabled={!input.trim() || selectedModel?.busy}
               title={`${tl('send')}  ⏎`}
               class="shrink-0 w-8 h-8 grid place-items-center rounded-md bg-white text-black disabled:bg-surface-3 disabled:text-muted transition-colors"
             >
@@ -1642,6 +1656,7 @@ export function Chat() {
             onOpenJournal={() => { setJournal(loadJournal()); setDrawer('journal') }}
           />
         </div>
+        {error && <div class="max-w-[46rem] w-full mx-auto"><ChatFailure error={error} /></div>}
         {composer}
         </>
       ) : (
@@ -1794,12 +1809,12 @@ export function Chat() {
           <div class="px-1 py-1 max-h-[34vh] overflow-y-auto">
             {liveThreads.length === 0 && <div class="px-1.5 font-anth text-[11px] text-muted py-0.5">{tl('no saved threads')}</div>}
             {liveThreads.map((t) => (
-              <div key={t.id} class={`group flex items-baseline gap-1.5 px-1.5 py-0.5 rounded-md ${t.id === currentThreadId() ? 'bg-accent-soft' : 'hover:bg-surface-2'}`}>
+              <div key={t.id} class={`group flex items-center gap-1.5 px-1.5 py-0.5 rounded-md ${t.id === currentThreadId() ? 'bg-accent-soft' : 'hover:bg-surface-2'}`}>
                 <button onClick={() => switchThread(t.id)} class="flex-1 min-w-0 text-left">
                   <span class={`block truncate font-anth text-[11px] ${t.id === currentThreadId() ? 'text-accent' : 'text-ink-2'}`}>{t.title || tl('untitled')}</span>
                 </button>
                 <span class="font-mono text-[8.5px] text-muted shrink-0">{t.n}</span>
-                <ConversationDelete onDelete={() => deleteSession(t.id)} disabled={busy} />
+                <ConversationDelete compact onDelete={() => deleteSession(t.id)} disabled={busy} />
               </div>
             ))}
           </div>
