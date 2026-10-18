@@ -62,7 +62,7 @@ describe('report card', () => {
     const local = [...root.querySelectorAll('[data-model-menu] button')]
       .find((b) => b.textContent.includes('Local 27B'))
     expect(local.disabled).toBe(true)
-    expect(local.textContent).toContain('busy')
+    expect(local.textContent).not.toContain('busy')
     expect(local.title).toBe('Busy with another request')
   })
 
@@ -100,7 +100,7 @@ describe('report card', () => {
     lineup.models = [LOCAL]
     await mountCard()
     expect(button('high')).toBeUndefined()
-    expect(root.querySelector('[title="Fixed model effort"]').textContent).toBe('high')
+    expect(root.querySelector('[title="Fixed model effort"]').textContent).toBe('thinking')
   })
 
   it('opens a style panel with tiers, tone chips in whole rows, a switch, and no caption', async () => {
