@@ -723,7 +723,7 @@ export function Chat() {
     })
   }
   const [model, setModel] = useState(
-    localStorage.getItem(modelStorageKey) || (IS_FAMILY_AI ? 'family-sonnet' : onWire ? 'agy-argon' : 'argon'),
+    IS_FAMILY_AI ? 'family-sonnet' : localStorage.getItem(modelStorageKey) || (onWire ? 'agy-argon' : 'argon'),
   )
   const [effort, setEffort] = useState(IS_FAMILY_AI ? 'medium' : localStorage.getItem('chat_effort') || 'auto')
   const [spend, setSpend] = useState(null)
@@ -828,6 +828,7 @@ export function Chat() {
     if (busyRef.current) return
     try {
       await startNewThread(historyRef.current)
+      if(IS_FAMILY_AI){setModel('family-sonnet');setEffort('medium')}
       historyRef.current = []
       activityRef.current = []
       setHistory([])
@@ -1276,6 +1277,7 @@ export function Chat() {
     if(busyRef.current)return
     try {
       await deleteActiveThread()
+      if(IS_FAMILY_AI){setModel('family-sonnet');setEffort('medium')}
       replaceHistory([]);replaceActivity([]);setLiveAnswer('')
       setError(null);setEditingMessage(null);setAtHome(true);setDrawer(null)
       await refreshThreads()

@@ -3,7 +3,7 @@ import claudeLogo from '../assets/claude.svg'
 import qwenLogo from '../assets/qwen.svg'
 import geminiLogo from '../assets/gemini.svg'
 import openaiLogo from '../assets/openai.svg'
-import {modelProvider} from '../lib/chatModels.js'
+import {modelProvider,fullModelName} from '../lib/chatModels.js'
 import { useEffect, useState } from 'preact/hooks'
 import { chatMetrics, metricDuration } from '../lib/chatMetrics.js'
 
@@ -36,7 +36,7 @@ export function ChatFooter({ model, effort, usage, startedAt, endedAt, busy = fa
     <span class="chat-token-model" title={effort ? `${model} · ${tl(effort)}` : model}>
       {mark
         ? <span class="chat-token-provider" data-provider={provider} aria-hidden="true" style={{maskImage:`url("${mark[0]}")`,WebkitMaskImage:`url("${mark[0]}")`,backgroundColor:mark[1]}} />
-        : <Icon kind="model" />}<span class="chat-token-model-name">{model || tl('Model')}</span>
+        : <Icon kind="model" />}<span class="chat-token-model-name"><span class="chat-model-short">{model || tl('Model')}</span><span class="chat-model-full">{fullModelName(model) || tl('Model')}</span></span>
       {effort && effort !== 'none' && <span class="chat-token-effort" title={`${tl('Reasoning')}: ${tl(effort)}`}><Icon kind="think" /></span>}
     </span>
     <span class="chat-token-stat chat-token-usage" title={tl('Largest reported input context; output summed across model calls')}>

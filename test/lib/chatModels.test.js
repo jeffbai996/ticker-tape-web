@@ -1,6 +1,6 @@
 // @vitest-environment node
 import {expect,it} from 'vitest'
-import {pickerModels,modelGroups} from '../../src/lib/chatModels.js'
+import {pickerModels,modelGroups,fullModelName} from '../../src/lib/chatModels.js'
 const models=[
  {key:'qwen-local',label:'Local',group:'Local'},
  {key:'agy-argon',label:'Argon',group:'Antigravity'},
@@ -31,4 +31,12 @@ it('recognizes model providers while leaving unknown models generic',async()=>{
  const {modelProvider}=await import('../../src/lib/chatModels.js')
  for(const [name,provider] of [['Qwen 3.8-27B','qwen'],['Gemini 4 Argon','gemini'],['GPT 6.1 Sol','openai'],['Claude Opus 5.5','claude']])expect(modelProvider(name)).toBe(provider)
  expect(modelProvider('Example local model')).toBeNull()
+})
+
+it('expands compact provider names without duplicating a full name',()=>{
+ expect(fullModelName('4 Argon')).toBe('Gemini 4 Argon')
+ expect(fullModelName('Opus 5.5')).toBe('Claude Opus 5.5')
+ expect(fullModelName('Sonnet 5.5')).toBe('Claude Sonnet 5.5')
+ expect(fullModelName('Claude Opus 5.5')).toBe('Claude Opus 5.5')
+ expect(fullModelName('Qwen 3.8-27B')).toBe('Qwen 3.8-27B')
 })

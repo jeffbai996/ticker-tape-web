@@ -1140,7 +1140,7 @@ const ECON_CHIP = (type) => {
 }
 
 const MONTH_LABEL = (iso) => new Date(`${iso}T12:00:00Z`)
-  .toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toLowerCase()
+  .toLocaleDateString(getLocale()==='zh'?'zh-CN':'en-US', { month: 'long', year: 'numeric',timeZone:'UTC' }).toLowerCase()
 
 function Calendar() {
   const today = new Date().toISOString().slice(0, 10)
@@ -1217,7 +1217,7 @@ function Calendar() {
                   class={`border-b border-line last:border-0 hover:bg-surface-3 group cursor-pointer${e.days >= 0 && e.days <= 7 ? ' bg-accent/[0.03]' : ''}${
                     isOpen ? ' bg-surface-3' : ''}${e.days < 0 ? ' is-past' : ''}${
                     i === firstFuture && firstFuture > 0 ? ' is-now' : ''}`}>
-                <td class="px-3 py-[3px] font-mono text-[11.5px] text-ink whitespace-nowrap">{new Date(`${e.date}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toLowerCase()}</td>
+                <td class="px-3 py-[3px] font-mono text-[11.5px] text-ink whitespace-nowrap">{new Date(`${e.date}T12:00:00Z`).toLocaleDateString(getLocale()==='zh'?'zh-CN':'en-US', { weekday: 'short', month: 'short', day: 'numeric',timeZone:'UTC' }).toLowerCase()}</td>
                 <td class="px-2 py-[3px]"><span class={`inline-block rounded border px-1.5 py-px font-anth text-[9px] font-bold ${e.user ? 'border-[#00c8ff]/50 text-[#00c8ff] bg-[#00c8ff]/10' : ECON_CHIP(e.type)}`}>{e.type}</span></td>
                 <td class="px-2 py-[3px] text-[12px] text-ink-2">
                   {e.user ? e.label : tl(e.label)}

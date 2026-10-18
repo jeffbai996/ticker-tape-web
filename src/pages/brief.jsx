@@ -14,7 +14,7 @@ import { Marquee } from '../components/Marquee.jsx'
 import { fmtPct } from '../lib/format.js'
 import {loadWatchlists,onWatchlistsChange} from '../lib/watchlists.js'
 import {loadPortfolios,onPortfoliosChange} from '../lib/myPortfolios.js'
-import {briefingSources,resolveBriefingSource,briefingSourceText,BRIEFING_FX} from '../lib/briefingSource.js'
+import {briefingSources,resolveBriefingSource,briefingSourceText,BRIEFING_FX,loadBriefingSource,saveBriefingSource} from '../lib/briefingSource.js'
 
 const INDEX_SYMBOLS = INDICES.map((i) => i.symbol)
 
@@ -136,7 +136,7 @@ function BriefData({ s }) {
     ...s.movers.losers.map((m) => ({ ...m, side: 'l' })),
   ]
   return (
-    <div data-briefing-data class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 items-start">
+    <div data-briefing-data class="briefing-data-grid">
       <Card title={tl('Macro tape')}>
         {s.macro.map((m) => (
           <div key={m.label} class={rowCls}>
@@ -148,6 +148,7 @@ function BriefData({ s }) {
 
       </Card>
 
+      <div class="briefing-data-detail">
       <div class="flex flex-col gap-3 min-w-0">
       <Card title={tl('Movers')}>
         {movers.length ? movers.map((m) => (
@@ -197,9 +198,9 @@ function BriefData({ s }) {
         )}
       </Card>
 
-      <Card wide title={tl('Technical flags')} sub={tl('held names first, then the tape — RSI, trend and volume extremes')}>
+      <div class="briefing-technicals"><Card title={tl('Technical flags')} sub={tl('held names first, then the tape — RSI, trend and volume extremes')}>
         {s.techNotes.length ? (
-          <div class="grid sm:grid-cols-2 xl:grid-cols-3 max-h-[26rem] overflow-y-auto">
+          <div class="grid sm:grid-cols-2 max-h-[26rem] overflow-y-auto">
             {s.techNotes.map((n) => (
               <div key={n.symbol} class="brief-technical-row px-3 py-2 border-b border-line/40 last:border-0 min-w-0">
                 <div class="flex items-center gap-2 min-w-0">
@@ -222,7 +223,8 @@ function BriefData({ s }) {
             ))}
           </div>
         ) : <Empty label={tl('nothing stretched')} />}
-      </Card>
+      </Card></div>
+      </div>
     </div>
   )
 }
@@ -231,7 +233,7 @@ export function Brief() {
   const current = useWatchlist()
   const [lists,setLists]=useState(loadWatchlists)
   const [portfolios,setPortfolios]=useState(loadPortfolios)
-  const [sourceId,setSourceId]=useState('current')
+  const [sourceId,setSourceId]=useState(loadBriefingSource)
   const [generating,setGenerating]=useState(false)
   useEffect(()=>onWatchlistsChange(setLists),[])
   useEffect(()=>onPortfoliosChange(setPortfolios),[])
@@ -267,7 +269,7 @@ export function Brief() {
         <span class="font-mono text-[11px] text-muted">{date}</span>
         <label class="ml-auto flex items-center gap-2 max-w-full font-anth text-[11px] text-muted">
           <span>{tl('Source')}</span>
-          <select aria-label={tl('Briefing source')} value={source.id} disabled={generating} onChange={e=>setSourceId(e.currentTarget.value)}
+          <select aria-label={tl('Briefing source')} value={source.id} disabled={generating} onChange={e=>{const id=e.currentTarget.value;setSourceId(id);saveBriefingSource(id)}}
             class="min-w-0 max-w-[16rem] bg-surface-2 border border-line rounded-md px-2 py-1.5 text-ink text-[11px] max-sm:text-[16px] disabled:opacity-50">
             <option value="current">{tl('Current watchlist')}</option>
             <optgroup label={tl('Watchlists')}>{sources.filter(s=>s.kind==='watchlist').map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</optgroup>

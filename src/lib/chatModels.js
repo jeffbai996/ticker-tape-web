@@ -25,3 +25,10 @@ export function modelProvider(model) {
   if(/gpt|codex|openai/i.test(name))return 'openai'
   return null
 }
+
+export function fullModelName(model) {
+ const name=String(model||'')
+ if(/^(claude|gemini)\b/i.test(name))return name
+ const provider=modelProvider(name)
+ return provider==='claude'?`Claude ${name}`:provider==='gemini'?`Gemini ${name}`:name
+}

@@ -1,6 +1,6 @@
 // @vitest-environment node
 import {expect,it} from 'vitest'
-import {briefingSources,resolveBriefingSource,briefingSourceText} from '../../src/lib/briefingSource.js'
+import {briefingSources,resolveBriefingSource,briefingSourceText,loadBriefingSource,saveBriefingSource} from '../../src/lib/briefingSource.js'
 const lists=[{id:'other',name:'Other list',symbols:['MSFT','MSFT']}]
 const portfolios=[{id:'p1',name:'Example portfolio',ccy:'USD',holdings:[{symbol:'GOOGL',shares:7,cost:80}],cash:[{ccy:'USD',amount:500}]}]
 const options={watchlist:['AAPL'],lists,portfolios,held:['GOOGL'],tape:['AAPL','MSFT']}
@@ -31,4 +31,13 @@ it('includes every selected quote and available FX without pulling in other watc
  expect(text).toContain('"currency":"USD"')
  expect(text).toContain('"CADUSD=X":0.75')
  expect(text).not.toContain('MSFT')
+})
+
+it('retains the requested source while saved lists hydrate and across refreshes',()=>{
+ const values=new Map(), storage={getItem:key=>values.get(key),setItem:(key,value)=>values.set(key,value)}
+ saveBriefingSource('portfolio:p1',storage)
+ expect(resolveBriefingSource(loadBriefingSource(storage),{}).id).toBe('current')
+ expect(resolveBriefingSource(loadBriefingSource(storage),options).id).toBe('portfolio:p1')
+ saveBriefingSource('watchlist:other',storage)
+ expect(resolveBriefingSource(loadBriefingSource(storage),options).id).toBe('watchlist:other')
 })

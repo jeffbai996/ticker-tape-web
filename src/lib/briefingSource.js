@@ -25,3 +25,11 @@ export function briefingSourceText(source,quotes={}) {
  }
  return lines.join('\n')
 }
+
+const SOURCE_KEY='briefing_source_v1'
+export function loadBriefingSource(storage=globalThis.localStorage) {
+ try { return storage?.getItem(SOURCE_KEY)||'current' } catch { return 'current' }
+}
+export function saveBriefingSource(id,storage=globalThis.localStorage) {
+ try { storage?.setItem(SOURCE_KEY,id) } catch {}
+}
