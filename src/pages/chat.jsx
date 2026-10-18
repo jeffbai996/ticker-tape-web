@@ -1,3 +1,6 @@
+import { earningsTone } from '../lib/earningsTone.js'
+import {submitTextKey} from '../lib/chatInput.js'
+import {mergeTurnUsage} from '../lib/chatMetrics.js'
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
 import { fetchChatModels, fetchSpend } from '../lib/chatClient.js'
 import { runAgentic, trimHistory } from '../lib/agent.js'
@@ -16,12 +19,12 @@ import { loadCatalysts, mergedEvents } from '../lib/catalysts.js'
 import { fmtPct } from '../lib/format.js'
 import { buildChatContext, hasLiveBook, fetchBookJson, savedChatBook } from '../lib/chatContext.js'
 import { pulseStats } from '../lib/pulse.js'
-import { loadMemories, addMemory, editMemory, removeMemory, applyMemoryTags } from '../lib/chatMemory.js'
+import { loadMemories, editMemory, removeMemory, applyMemoryTags, applyMemoryOperations, canUndoMemoryCompaction, undoMemoryCompaction } from '../lib/chatMemory.js'
 import { loadJournal, addJournalEntry, removeJournalEntry, searchJournal } from '../lib/journal.js'
-import { CHAT_HOME_EVENT, takeChatHomePending } from '../lib/chatnav.js'
+import { CHAT_HOME_EVENT, takeChatHomePending, CHAT_RETURN_EVENT, canResumeChat, markChatInteraction } from '../lib/chatnav.js'
 import { captureAnchor, restoreAnchor } from '../lib/scrollAnchor.js'
 import { CHATSTORE_SYNC_EVENT, chatstoreAvailable, syncNotes } from '../lib/chatstore.js'
-import { LANES, activeLanes, canRefresh, dynamicActions, visibleActions, promptLabel } from '../lib/launchpad.js'
+import { LANES, activeLanes, dynamicActions, visibleActions, promptLabel } from '../lib/launchpad.js'
 import {
   fetchThreadList, hydrateActiveThread, loadActiveHistory, migrateLegacy,
   openThread, removeThread, saveActiveHistory, startNewThread, currentThreadId,
@@ -113,7 +116,7 @@ function NoteRow({ id, text, meta, onSave, onDelete }) {
           class="flex-1 bg-surface-2 border border-accent/50 rounded-md px-2 py-1 text-ink outline-none resize-y font-anth text-[12px]"
         />
         <button onClick={() => { onSave(draft); setEditing(false) }}
-          class="text-up hover:brightness-125 shrink-0 pt-0.5">✓</button>
+          aria-label={tl('Save changes')} class="text-[#3fb950] hover:brightness-125 shrink-0 pt-0.5">✓</button>
         <button onClick={() => { setDraft(text); setEditing(false) }}
           class="text-muted hover:text-ink shrink-0 pt-0.5">✕</button>
       </div>
@@ -127,11 +130,11 @@ function NoteRow({ id, text, meta, onSave, onDelete }) {
       {/* touch has no hover — the controls stay visible on coarse pointers,
           which is why "no way to delete" read as true on the phone */}
       {onSave && (
-        <button onClick={() => setEditing(true)} title={tl('edit')}
-          class="opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100 text-muted hover:text-accent shrink-0">✎</button>
+        <button onClick={() => setEditing(true)} title={tl('edit')} aria-label={tl('edit')}
+          class="text-muted hover:text-accent shrink-0 rounded px-1 py-0.5">{tl('edit')}</button>
       )}
-      <button onClick={onDelete} title={tl('delete')}
-        class="opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100 text-muted hover:text-down shrink-0">✕</button>
+      <button onClick={onDelete} title={tl('delete')} aria-label={tl('delete')}
+        class="text-muted hover:text-[#f85149] hover:bg-[#f85149]/10 shrink-0 rounded px-1 py-0.5">{tl('delete')}</button>
     </div>
   )
 }
@@ -141,24 +144,13 @@ function NoteRow({ id, text, meta, onSave, onDelete }) {
  *  it into add/edit/delete ops applied through the normal memory mutators. */
 export function MemoryComposer({ memories, onApplied }) {
   const [v, setV] = useState('')
-  const [pendingContext,setPendingContext]=useState(takeChatContext)
-  useEffect(()=>{
-    const receive=()=>{
-      const question=sessionStorage.getItem('chat_prefill') || ''
-      sessionStorage.removeItem('chat_prefill')
-      if(question)setInput(question)
-      setPendingContext(takeChatContext());setAtHome(false)
-    }
-    window.addEventListener(CHAT_CONTEXT_EVENT,receive)
-    return ()=>window.removeEventListener(CHAT_CONTEXT_EVENT,receive)
-  },[])
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState(null)
-  const run = async (e) => {
+  const run = async (e, compact=false) => {
     e.preventDefault()
-    const ask = v.trim()
+    const ask = compact ? 'Consolidate duplicate or overlapping memories. Preserve all distinct facts, exact numbers, ticker symbols, prices, dates and preferences. Only remove obsolete information when a newer fact explicitly supersedes it. Keep retained IDs, use edit/delete operations only, and keep at least three entries. When uncertain, preserve the original fact.' : v.trim()
     if (!ask || busy) return
-    setBusy(true)
+    setBusy(compact ? 'compact' : 'apply')
     setNote(null)
     try {
       const listing = memories.map((m) => `#${m.id}: ${m.text}`).join('\n') || '(none)'
@@ -174,32 +166,34 @@ export function MemoryComposer({ memories, onApplied }) {
       })
       const match = (out.text || '').match(/\[[\s\S]*\]/)
       const ops = JSON.parse(match ? match[0] : '[]')
-      let applied = 0
-      for (const op of ops) {
-        if (op.op === 'add' && op.text) { if (addMemory(op.text)) applied += 1 }
-        else if (op.op === 'edit' && op.id != null && op.text) { if (editMemory(op.id, op.text)) applied += 1 }
-        else if (op.op === 'delete' && op.id != null) { if (removeMemory(op.id)) applied += 1 }
-      }
-      setNote(applied ? `${applied} ${tl('changes applied')}` : tl('no changes needed'))
+      const applied=applyMemoryOperations(ops,{compact,expected:memories})
+      setNote(applied ? (compact ? `${tl('Compacted')} ${memories.length} → ${loadMemories().length}` : `${applied} ${tl('changes applied')}`) : tl('no changes needed'))
       if (applied) setV('')
       onApplied()
     } catch (err) {
-      setNote(String(err.message || err))
+      setNote(tl(String(err.message || err)))
     } finally {
       setBusy(false)
     }
   }
   return (
-    <form onSubmit={run} class="pt-2 pb-1 border-b border-line">
+    <form onSubmit={e=>run(e)} class="pt-3 pb-1 border-t border-line">
+      <div class="mb-2 flex items-center justify-end gap-2">
+        {canUndoMemoryCompaction() && <button type="button" disabled={!!busy} onClick={()=>{try{undoMemoryCompaction();setNote(tl('Compaction undone'));onApplied()}catch(err){setNote(tl(err.message))}}} class="font-anth text-[10px] text-muted hover:text-ink">{tl('Undo')}</button>}
+        <button type="button" disabled={!!busy || memories.length<3} aria-busy={busy==='compact'} onClick={e=>run(e,true)} title={tl('Merge duplicate memories while keeping distinct facts')}
+          class="inline-flex min-w-[66px] h-[25px] items-center justify-center gap-1 rounded border border-line px-2 font-anth text-[10px] text-muted hover:text-ink disabled:opacity-40">
+          {busy==='compact' ? <BrandSpinner size={13} /> : tl('Compact')}
+        </button>
+      </div>
       <div class="flex items-end gap-2">
-        <textarea value={v} rows={1}
+        <textarea value={v} rows={2}
           onInput={(e) => { setV(e.currentTarget.value); autoGrow(e.currentTarget) }}
-          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); run(e) } }}
-          placeholder={`${tl('describe a change — add, rewrite, forget…')}`}
+          onKeyDown={(e) => { if (submitTextKey(e,'modified')) { e.preventDefault(); run(e) } }}
+          placeholder={tl('Describe what you want to remember…')} aria-label={tl('Describe what you want to remember…')}
           class="flex-1 bg-surface-2 border border-line rounded-lg px-2.5 py-1.5 font-anth text-[12px] text-ink outline-none focus:border-accent/60 placeholder:text-muted resize-none" />
-        <button type="submit" disabled={busy || !v.trim()}
-          class="font-mono text-[10px] px-2.5 py-1.5 rounded-lg border border-accent text-accent bg-accent-soft hover:bg-accent hover:text-black font-semibold disabled:opacity-40 disabled:pointer-events-none">
-          {busy ? '…' : tl('apply')}
+        <button type="submit" disabled={busy || !v.trim()} aria-busy={busy==='apply'} aria-label={tl(busy==='apply' ? 'Applying changes' : 'apply')} title={tl('Ctrl/Cmd+Enter to apply')}
+          class="inline-flex min-w-[56px] h-[30px] items-center justify-center font-mono text-[10px] px-2.5 py-1.5 rounded-lg border border-accent text-accent bg-accent-soft hover:bg-accent hover:text-black font-semibold disabled:opacity-40 disabled:pointer-events-none">
+          {busy==='apply' ? <BrandSpinner size={14} /> : tl('apply')}
         </button>
       </div>
       {note && <div class="font-anth text-[10.5px] text-muted pt-1">{note}</div>}
@@ -222,7 +216,7 @@ function NoteAdd({ placeholder, onAdd }) {
         class="flex-1 bg-surface-2 border border-line rounded-md px-2 py-1 font-anth text-[12px] text-ink outline-none focus:border-accent/60 placeholder:text-muted" />
       <button type="submit" disabled={!v.trim()}
         class="font-mono text-[10px] px-2 py-1 rounded-md border border-line text-muted hover:text-ink hover:border-accent/50 disabled:opacity-40">
-        add
+        {tl('add')}
       </button>
     </form>
   )
@@ -419,7 +413,7 @@ export function ActivityTrace({ steps, busy = false, startedAt, usage = null }) 
   ))
 
   return (
-    <div class={`chat-trace w-full max-w-[92%] self-start text-muted ${busy ? 'is-live' : ''}`}>
+    <div class={`chat-trace w-full max-w-[92%] self-start text-muted ${busy ? 'is-live' : !failed ? 'is-complete' : ''}`}>
       <button type="button" class="chat-trace-head" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
         <span class={`chat-trace-mark ${busy ? 'is-running' : failed ? 'is-error' : 'is-done'}`} aria-hidden="true">
           {busy ? <BrandSpinner size={19} /> : null}
@@ -448,6 +442,7 @@ export function ActivityTrace({ steps, busy = false, startedAt, usage = null }) 
               <section key={group.model?.key || index} class="chat-trace-phase">
                 {group.model && (
                   <div class="chat-trace-reason">
+                    <StepIcon kind="model" verb={group.model.label || group.model.verb} status={group.model.status} />
                     <span>{group.model.label}</span>
                     <span class="chat-trace-time">{group.model.startedAt ? durationLabel((group.model.endedAt || now)-group.model.startedAt) : ''}</span>
                     {group.model.detail && <details class="chat-trace-reason-detail">
@@ -510,21 +505,10 @@ export function ActivityTrace({ steps, busy = false, startedAt, usage = null }) 
 function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
                      threadLen, onResume, memN, journalN, journal,
                      onOpenMem, onOpenJournal, bookRevision = 0 }) {
-  const [,nameTick]=useState(0)
-  useEffect(()=>{
-    if(getLocale()!=='zh') return
-    loadZhTable().then(()=>watchlist.forEach(s=>loadMissingZhName(s)))
-    return onZhTable(()=>nameTick(n=>n+1))
-  },[watchlist.join(',')])
-  const names=getLocale()==='zh' ? Object.fromEntries(watchlist.map(s=>[s,zhName(s)])) : {}
   const book = hasLiveBook()
   const nextEvent = events[0] || null
-  const pool = dynamicActions({ watchlist, quotes, earnDays, nextEvent, book, journal })
   const [lane, setLane] = useState(null)
   const [page, setPage] = useState(0)
-  const lanes = activeLanes(pool)
-  const shown = visibleActions(pool, { lane, page })
-  const refreshable = canRefresh(pool, { lane })
   const movers = watchlist
     .map((s) => ({ s, pct: quotes[s]?.quote?.pct }))
     .filter((x) => x.pct != null)
@@ -541,6 +525,20 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
   useEffect(() => {
     if (book) fetchBookJson().then(setBk).catch(() => {})
   }, [book,bookRevision])
+  const suggestionSymbols=[...new Set([...(bk?.positions || []).map(p=>p.symbol),...watchlist])]
+  const [,nameTick]=useState(0)
+  useEffect(()=>{
+    if(getLocale()!=='zh') return
+    loadZhTable().then(()=>suggestionSymbols.forEach(s=>loadMissingZhName(s)))
+    return onZhTable(()=>nameTick(n=>n+1))
+  },[suggestionSymbols.join(',')])
+  const names=getLocale()==='zh' ? Object.fromEntries(suggestionSymbols.map(s=>[s,zhName(s)])) : {}
+  const pool=dynamicActions({watchlist:suggestionSymbols,quotes,earnDays,nextEvent,book,journal})
+  const lanes=activeLanes(pool)
+  const shown=visibleActions(pool,{lane,page,size:60,rotate:true})
+  const refreshable=shown.length>12
+  const suggestionRef=useRef(null)
+  useEffect(()=>{if(suggestionRef.current)suggestionRef.current.scrollLeft=0},[lane,page])
   const topPos = (bk?.positions || [])
     .filter((p) => bk?.manual || p.weight_pct != null)
     .sort((a, b) => (b.weight_pct || 0) - (a.weight_pct || 0))
@@ -551,7 +549,7 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
   const DOT = Object.fromEntries(LANES.map((l) => [l.k, l.dot]))
 
   return (
-    <div class="w-full max-w-3xl px-1 py-3 flex flex-col gap-3">
+    <div class="chat-launchpad w-full px-1 py-3 flex flex-col gap-3">
       <div class="flex items-start gap-3">
         <div class="min-w-0">
           <h2 class="font-anth text-[20px] leading-[1.25] font-semibold text-ink">
@@ -592,7 +590,7 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
             {nextEarn.length ? nextEarn.map((s) => (
               <a key={s} href={`#/research/${s.toLowerCase()}/earnings`} class="flex items-baseline justify-between font-mono text-[11.5px] py-px hover:no-underline">
                 <span class="text-ink font-[650]">{s}</span>
-                <span class={earnDays[s] === 0 ? 'text-imminent font-bold' : earnDays[s] <= 7 ? 'text-down' : 'text-accent'}>
+                <span class={earningsTone(earnDays[s])}>
                   {earnDays[s] === 0 ? tl('today') : tt('common.days', { days: earnDays[s] })}
                 </span>
               </a>
@@ -674,7 +672,7 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
           it only offers lanes the pool actually has so a tap can never empty
           the pad. Refresh rotates a page forward through the pool and is
           hidden outright when everything already fits on screen. */}
-      <div>
+      <div class="chat-suggestions">
         <div class="flex items-center gap-2 pb-1.5 flex-wrap">
           <span class="font-mono text-[9px] tracking-[0.16em] text-muted uppercase">{tl('start here')}</span>
           <div class="flex items-center gap-1 flex-wrap">
@@ -710,18 +708,21 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
             </button>
           )}
         </div>
-        <div class="flex flex-wrap gap-1.5">
+        <div class="chat-suggestion-scroll" ref={suggestionRef} tabIndex={0} aria-label={tl('start here')}>
+        <div class="chat-suggestion-grid">
           {shown.map((sug) => (
             <button
               key={sug.t}
               type="button"
               onClick={() => onPick(sug.t)}
-              class="flex items-center gap-1.5 font-anth text-[12px] text-ink-2 border border-line rounded-full pl-2.5 pr-3 py-1 hover:border-accent/60 hover:text-ink hover:bg-accent-soft transition-colors"
+              title={promptLabel(sug.t,names)}
+              class="chat-suggestion-pill flex items-center gap-1.5 font-anth text-[12px] text-ink-2 border border-line rounded-full pl-2.5 pr-3 py-1 hover:border-accent/60 hover:text-ink hover:bg-accent-soft transition-colors"
             >
               <span class={`w-1 h-1 rounded-full shrink-0 ${DOT[sug.k] || 'bg-muted'}`} />
-              {promptLabel(sug.t,names)}
+              <span class="truncate">{promptLabel(sug.t,names)}</span>
             </button>
           ))}
+        </div>
         </div>
       </div>
     </div>
@@ -767,6 +768,7 @@ export function Chat() {
       const question=sessionStorage.getItem('chat_prefill') || ''
       sessionStorage.removeItem('chat_prefill')
       if(question)setInput(question)
+      entryDraft.current=true
       setPendingContext(takeChatContext());setAtHome(false)
     }
     window.addEventListener(CHAT_CONTEXT_EVENT,receive)
@@ -784,9 +786,10 @@ export function Chat() {
   const [memories, setMemories] = useState(loadMemories)
   const [journal, setJournal] = useState(loadJournal)
   const [jrFilter, setJrFilter] = useState('')
-  // The launchpad is a place you can go back to, not just the zero state:
-  // pressing AI Chat in the nav returns here with the thread still parked.
-  const [atHome, setAtHome] = useState(takeChatHomePending)
+  const [initialHome]=useState(takeChatHomePending)
+  const forcedHome=useRef(initialHome)
+  const entryDraft=useRef(!!input || !!pendingContext)
+  const [atHome, setAtHome] = useState(()=>forcedHome.current || (!entryDraft.current && !canResumeChat(history)))
   const [threads, setThreads] = useState([])
   const scrollRef = useRef(null)
   const zoomAnchorRef = useRef(null)
@@ -810,7 +813,7 @@ export function Chat() {
   const quoteSymbols=IS_FAMILY_AI ? [...new Set([...watchlist,...(savedChatBook()?.positions || []).map(p=>p.symbol)])] : watchlist
   // the right rail is live even mid-thread, so the pad data polls always
   const quotes = useQuotes(quoteSymbols)
-  const earnDays = useEarningsDays(watchlist)
+  const earnDays = useEarningsDays(quoteSymbols)
   const upcoming = mergedEvents(ECON_EVENTS, loadCatalysts(),
     new Date().toISOString().slice(0, 10), 60).slice(0, 4)
 
@@ -832,6 +835,11 @@ export function Chat() {
         const messages = await hydrateActiveThread()
         historyRef.current = messages
         setHistory(messages)
+        if(!forcedHome.current && !entryDraft.current) {
+          const resume=canResumeChat(messages)
+          setAtHome(!resume)
+          if(resume)markChatInteraction()
+        }
         await refreshThreads()
       } catch (err) {
         sessionFailure(err)
@@ -859,6 +867,7 @@ export function Chat() {
   }
 
   const switchThread = async (id) => {
+    markChatInteraction()
     if (busyRef.current || id === currentThreadId()) {
       setDrawer(null)
       setAtHome(false)
@@ -901,9 +910,16 @@ export function Chat() {
 
   // Warm case: already on the chat page when AI Chat is pressed again.
   useEffect(() => {
-    const home = () => { setAtHome(true); setDrawer(null) }
+    const home = () => { forcedHome.current=true; takeChatHomePending(); setAtHome(true); setDrawer(null) }
+    const returning = () => {
+      forcedHome.current=false
+      const resume=canResumeChat(historyRef.current)
+      setAtHome(!resume);setDrawer(null)
+      if(resume)markChatInteraction()
+    }
     window.addEventListener(CHAT_HOME_EVENT, home)
-    return () => window.removeEventListener(CHAT_HOME_EVENT, home)
+    window.addEventListener(CHAT_RETURN_EVENT, returning)
+    return () => {window.removeEventListener(CHAT_HOME_EVENT, home);window.removeEventListener(CHAT_RETURN_EVENT, returning)}
   }, [])
 
   useEffect(() => {
@@ -1044,19 +1060,10 @@ export function Chat() {
         return
       }
       if (event.type === 'usage') {
-        // Cumulative for the turn: newsservice re-sends usage as output grows, and
-        // a multi-round tool loop reports per round, so keep the max seen for
-        // the prompt side and sum the output side across rounds.
-        setUsage((u) => {
-          const next = ({
-          in: Math.max(u?.in || 0, event.usage?.in || 0),
-          out: (u?.outByRound?.[event.round] != null
-                ? (u.out - u.outByRound[event.round]) : (u?.out || 0)) + (event.usage?.out || 0),
-          outByRound: { ...(u?.outByRound || {}), [event.round]: event.usage?.out || 0 },
-          })
-          usageRef.current = next
-          return next
-        })
+        // Update synchronously: a one-frame reply can finish before a state updater runs.
+        const next=mergeTurnUsage(usageRef.current,event.round,event.usage)
+        usageRef.current=next
+        setUsage(next)
         return
       }
       if (event.type === 'thinking_tokens') {
@@ -1202,6 +1209,7 @@ export function Chat() {
     const item = { text, model, effort, ts: Date.now(),context:pendingContext }
     setPendingContext(null)
     clearComposer()
+    markChatInteraction()
     setAtHome(false)   // asking a question is how you leave the launchpad
     if (busyRef.current) {
       queuedRef.current = [...queuedRef.current, item]
@@ -1302,7 +1310,8 @@ export function Chat() {
               autoGrow(e.currentTarget)
             }}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(e); return }
+              if (e.isComposing || e.keyCode===229) return
+              if (submitTextKey(e)) { e.preventDefault(); send(e); return }
               if (e.key === 'ArrowUp' && !input) {
                 const lastQ = [...historyRef.current].reverse().find((m) => m.role === 'user')
                 if (lastQ) { e.preventDefault(); setInput(lastQ.content); autoGrow(e.currentTarget) }
@@ -1447,7 +1456,11 @@ export function Chat() {
 
   return (
     <div class="flex-1 flex min-h-0 min-w-0">
-    <div class="relative flex-1 flex flex-col p-3 pt-16 min-h-0 min-w-0 select-text">
+    <div class="relative flex-1 flex flex-col p-3 pt-16 min-h-0 min-w-0 select-text"
+      onPointerDownCapture={()=>{if(!atHome && historyRef.current.length)markChatInteraction()}}
+      onKeyDownCapture={()=>{if(!atHome && historyRef.current.length)markChatInteraction()}}
+      onInputCapture={()=>{if(!atHome && historyRef.current.length)markChatInteraction()}}
+      onScrollCapture={()=>{if(!atHome && historyRef.current.length)markChatInteraction()}}>
       {/* The header row is gone — the dialog owns its vertical space. The
           wordmark tucks into the far top-left corner and the tool rail into
           the top-right, both floating transparent (Jeff 2026-08-06). Model
@@ -1567,7 +1580,6 @@ export function Chat() {
               <div class="font-anth text-[11px] text-muted">{tl('Details the assistant should remember in future chats.')}</div></div>
             <button class="ml-auto text-muted hover:text-ink" onClick={() => setDrawer(null)} aria-label={tl('close')}>✕</button>
           </div>
-          <MemoryComposer memories={memories} onApplied={() => setMemories(loadMemories())} />
           {memories.length === 0 && (
             <div class="font-anth text-[12px] text-muted py-1">{tl('nothing saved yet')}</div>
           )}
@@ -1577,8 +1589,7 @@ export function Chat() {
               onSave={(t) => { editMemory(m.id, t); setMemories(loadMemories()) }}
               onDelete={() => { removeMemory(m.id); setMemories(loadMemories()) }} />
           ))}
-          <NoteAdd placeholder={`${tl('add a memory')}…`}
-            onAdd={(t) => { addMemory(t); setMemories(loadMemories()) }} />
+          <MemoryComposer memories={memories} onApplied={() => setMemories(loadMemories())} />
         </Overlay>
       )}
 
@@ -1613,7 +1624,7 @@ export function Chat() {
           toward the end edge. */}
       {splash ? (
         <>
-        <div class="flex-1 min-h-0 overflow-y-auto flex flex-col [justify-content:safe_center]">
+        <div class="flex-1 min-h-0 overflow-y-auto flex flex-col">
           <Launchpad
             onWire={onWire}
             watchlist={watchlist}
@@ -1622,7 +1633,7 @@ export function Chat() {
             earnDays={earnDays}
             events={upcoming}
             threadLen={history.length}
-            onResume={() => setAtHome(false)}
+            onResume={() => {markChatInteraction();setAtHome(false)}}
             onPick={(text) => { setInput(text); inputRef.current?.focus() }}
             memN={memories.length}
             journalN={journal.length}
@@ -1757,7 +1768,7 @@ export function Chat() {
             {railEarn.map((sym) => (
               <a key={sym} href={`#/research/${sym.toLowerCase()}/earnings`} class="flex justify-between py-px hover:no-underline">
                 <span class="text-ink-2 font-tick">{sym}</span>
-                <span class={earnDays[sym] === 0 ? 'text-imminent font-bold' : earnDays[sym] <= 7 ? 'text-down' : 'text-accent'}>
+                <span class={earningsTone(earnDays[sym])}>
                   {tt('chat.earnings_due', {
                     when: earnDays[sym] === 0 ? tl('today') : tt('common.days', { days: earnDays[sym] }),
                   })}

@@ -824,6 +824,7 @@ html[data-pointer-hover] .tape-hot *:not(.text-up):not(.text-down):not([data-tap
 .chat-trace-head:hover { background: transparent; color: var(--color-ink); }
 .chat-trace-title { color: var(--color-ink-2); font-size: 11.5px; font-weight: 625; }
 .chat-trace.is-live .chat-trace-title { color: var(--color-ink); }
+.chat-trace.is-complete .chat-trace-title { color: #3fb950; }
 .chat-trace-count {
   margin-left: auto; color: var(--color-muted); font: 500 9px/1 "IBM Plex Mono", monospace;
 }
@@ -847,8 +848,9 @@ html[data-pointer-hover] .tape-hot *:not(.text-up):not(.text-down):not([data-tap
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5.2 12.9l4.5 4.5L18.8 7.4'/%3E%3C/svg%3E") center/100% no-repeat;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5.2 12.9l4.5 4.5L18.8 7.4'/%3E%3C/svg%3E") center/100% no-repeat;
 }
+.chat-trace-mark.is-done::before { background: #3fb950; }
 .chat-trace-mark.is-error::before {
-  background: var(--color-down);
+  background: #f85149;
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M7 7l10 10M17 7L7 17'/%3E%3C/svg%3E") center/92% no-repeat;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M7 7l10 10M17 7L7 17'/%3E%3C/svg%3E") center/92% no-repeat;
 }
@@ -884,6 +886,7 @@ html[data-pointer-hover] .tape-hot *:not(.text-up):not(.text-down):not([data-tap
   padding: .2rem 0; color: var(--color-muted);
   font: 450 9px/1.4 var(--font-sans);
 }
+.chat-trace-reason > .chat-trace-node { position:static; flex:none; align-self:center; padding:0; background:transparent; }
 .chat-trace-reason-detail { flex-basis: 100%; }
 .chat-trace-reason-detail summary { cursor: pointer; width: fit-content; }
 .chat-trace-tools { margin-left: .45rem; padding-left: .6rem; border-left: 1px solid var(--color-line); }
@@ -1019,7 +1022,7 @@ html[data-pointer-hover] .tape-hot *:not(.text-up):not(.text-down):not([data-tap
 .chat-token-footer { display:flex; flex-wrap:wrap; align-items:center; gap:7px 16px; padding:5px 2px 8px; max-width:92%; color:#92949b; font:11px/1.6 var(--font-mono, monospace); font-variant-numeric:tabular-nums; }
 .chat-token-footer svg { width:13px; height:13px; flex:none; opacity:.8; }
 .chat-token-model { display:inline-flex; align-items:center; gap:6px; max-width:100%; border-radius:6px; background:rgba(154,154,164,.08); padding:2px 7px; min-width:0; }
-.chat-token-model > span:first-of-type { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.chat-token-model-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .chat-token-effort { display:inline-flex; color:#b19055; }
 .chat-token-stat { display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }
 .chat-token-arrow { color:#73767e; }
@@ -1028,3 +1031,17 @@ html[data-pointer-hover] .tape-hot *:not(.text-up):not(.text-down):not([data-tap
    reads the mouse in on-screen pixels and draws in its own, so under the zoom
    its crosshair drifted right of the cursor (chartview.js chartHost). */
 .lwc-unzoom { position: absolute; inset: 0; zoom: calc(1 / var(--app-zoom)); }
+
+.chat-token-provider { display:inline-block; width:13px; height:13px; flex:none; background:#d97757; mask-repeat:no-repeat; mask-position:center; mask-size:contain; -webkit-mask-repeat:no-repeat; -webkit-mask-position:center; -webkit-mask-size:contain; }
+.chat-token-input { display:inline-flex; align-items:center; gap:4px; color:#58a6ff; }
+.chat-token-output, .chat-token-throughput { display:inline-flex; align-items:center; gap:4px; color:#3fb950; }
+.chat-token-input .chat-token-arrow, .chat-token-output .chat-token-arrow { color:inherit; }
+
+/* A bounded suggestion shelf uses spare height and leaves the composer docked. */
+.chat-launchpad { flex: 1; min-height: 100%; }
+.chat-suggestions { display: flex; flex-direction: column; flex: 1; min-height: 150px; }
+.chat-suggestion-scroll { overflow-x: auto; min-height: 130px; padding-bottom: 8px; overscroll-behavior-x: contain; }
+.chat-suggestion-grid { display: grid; grid-auto-flow: column; grid-template-rows: repeat(4, 32px); grid-auto-columns: minmax(240px, max-content); gap: 6px; width: max-content; min-width: 100%; }
+.chat-suggestion-pill { min-width: 0; max-width: min(440px, 80vw); text-align: left; }
+@media (min-height: 900px) { .chat-suggestion-grid { grid-template-rows: repeat(6, 32px); } }
+@media (max-height: 650px) { .chat-suggestion-grid { grid-template-rows: repeat(3, 32px); } }

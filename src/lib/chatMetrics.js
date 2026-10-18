@@ -14,3 +14,15 @@ export function metricDuration(seconds) {
   if (n < 3600) return `${Math.floor(n / 60)}m ${n % 60}s`
   return `${Math.floor(n / 3600)}h ${Math.floor(n % 3600 / 60)}m`
 }
+
+/** Providers may resend cumulative counters; only the latest per round counts. */
+export function mergeTurnUsage(previous, round, reported={}) {
+ const known=n=>typeof n==='number' && Number.isFinite(n) && n>=0
+ const byRound={...(previous?.byRound || {})}
+ byRound[round]={...(byRound[round] || {}),
+  ...(known(reported.in) ? {in:reported.in} : {}),...(known(reported.out) ? {out:reported.out} : {})}
+ const inputs=Object.values(byRound).map(u=>u.in).filter(known)
+ const outputs=Object.values(byRound).map(u=>u.out).filter(known)
+ return {byRound,...(inputs.length ? {in:Math.max(...inputs)} : {}),
+  ...(outputs.length ? {out:outputs.reduce((a,b)=>a+b,0)} : {})}
+}

@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
-import { chatMetrics, metricDuration } from '../../src/lib/chatMetrics.js'
+import { chatMetrics, metricDuration, mergeTurnUsage } from '../../src/lib/chatMetrics.js'
 
 describe('chat response footer', () => {
   it('distinguishes missing telemetry from measured zero', () => {
@@ -21,4 +21,13 @@ describe('chat response footer', () => {
     expect(metricDuration(null)).toBe('—')
     expect(metricDuration(3661)).toBe('1h 1m')
   })
+})
+
+it('replaces cumulative round counters and preserves unknown telemetry',()=>{
+ let u=mergeTurnUsage(null,0,{in:100,out:5})
+ u=mergeTurnUsage(u,0,{in:100,out:8})
+ u=mergeTurnUsage(u,1,{in:120,out:3})
+ expect(u.in).toBe(120);expect(u.out).toBe(11)
+ expect(mergeTurnUsage(null,0,{}).out).toBeUndefined()
+ expect(mergeTurnUsage(null,0,{out:0}).out).toBe(0)
 })

@@ -1,3 +1,4 @@
+import claudeLogo from '../assets/claude.svg'
 import { useEffect, useState } from 'preact/hooks'
 import { chatMetrics, metricDuration } from '../lib/chatMetrics.js'
 
@@ -25,13 +26,15 @@ export function ChatFooter({ model, effort, usage, startedAt, endedAt, busy = fa
   const tokens = (n) => n == null ? '—' : n.toLocaleString('en-US')
   return <div class="chat-token-footer" aria-label="Response statistics" data-live={busy || undefined}>
     <span class="chat-token-model" title={effort ? `${model} · ${effort}` : model}>
-      <Icon kind="model" /><span>{model || 'Model'}</span>
+      {/claude|sonnet|opus|haiku/i.test(model || '')
+        ? <span class="chat-token-provider" aria-hidden="true" style={{maskImage:`url("${claudeLogo}")`,WebkitMaskImage:`url("${claudeLogo}")`}} />
+        : <Icon kind="model" />}<span class="chat-token-model-name">{model || 'Model'}</span>
       {effort && effort !== 'none' && <span class="chat-token-effort" title={`Reasoning: ${effort}`}><Icon kind="think" /></span>}
     </span>
-    <span class="chat-token-stat" title="Largest reported input context; output summed across model calls">
-      <span class="chat-token-arrow">↑</span>{tokens(m.input)}<span class="chat-token-arrow">↓</span>{tokens(m.output)}<span>tokens</span>
+    <span class="chat-token-stat chat-token-usage" title="Largest reported input context; output summed across model calls">
+      <span class="chat-token-input"><span class="chat-token-arrow">↑</span>{tokens(m.input)}</span><span class="chat-token-output"><span class="chat-token-arrow">↓</span>{tokens(m.output)}</span><span>tokens</span>
     </span>
     <span class="chat-token-stat" title="Turn elapsed time"><Icon kind="clock" />{metricDuration(m.elapsed)}</span>
-    <span class="chat-token-stat" title="Average output tokens per second over the whole turn, including tools and waiting"><Icon kind="speed" />{m.rate == null ? '—' : m.rate.toFixed(1)} t/s</span>
+    <span class="chat-token-stat chat-token-throughput" title="Average output tokens per second over the whole turn, including tools and waiting"><Icon kind="speed" />{m.rate == null ? '—' : m.rate.toFixed(1)} t/s</span>
   </div>
 }

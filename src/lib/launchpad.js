@@ -38,17 +38,17 @@ export function dynamicActions({ watchlist, quotes, earnDays, nextEvent, book, j
   const acts = []
   const push = (t, k) => { if (!acts.some((a) => a.t === t)) acts.push({ t, k }) }
 
-  const reporting = watchlist.filter((s) => earnDays[s] === 0).slice(0, 2)
+  const reporting = watchlist.filter((s) => earnDays[s] === 0).slice(0, 6)
   for (const s of reporting) push(tt('chat.action_earnings_summary', { symbol: s }), 'earn')
-  const soon = watchlist.filter((s) => earnDays[s] > 0 && earnDays[s] <= 3)
-    .sort((a, b) => earnDays[a] - earnDays[b])[0]
-  if (soon) push(tt('chat.action_earnings_preview', { symbol: soon, days: earnDays[soon] }), 'earn')
+  const soon = watchlist.filter((s) => earnDays[s] > 0 && earnDays[s] <= 7)
+    .sort((a, b) => earnDays[a] - earnDays[b]).slice(0, 6)
+  for (const symbol of soon) push(tt('chat.action_earnings_preview', { symbol, days: earnDays[symbol] }), 'earn')
 
   const movers = watchlist
     .map((s) => ({ s, pct: quotes[s]?.quote?.pct, price: quotes[s]?.quote?.price }))
     .filter((x) => x.pct != null && Math.abs(x.pct) >= 3)
     .sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct))
-  for (const m of movers.slice(0, 2)) {
+  for (const m of movers.slice(0, 6)) {
     push(tt('chat.action_mover', {
       symbol: m.s, direction: tl(m.pct > 0 ? 'up' : 'down'), pct: Math.abs(m.pct).toFixed(1),
     }), 'mkt')
@@ -123,10 +123,10 @@ export function dynamicActions({ watchlist, quotes, earnDays, nextEvent, book, j
   push(tt('chat.action_heatmap'), 'app')
   // The generic tail. Symbol-bearing ones borrow a name from the watchlist so
   // the pad never asks about a ticker the reader does not follow.
-  const anySymbol = watchlist[0] || null
+  // Rotate through followed companies, including quiet markets and saved holdings.
   for (const s of SUGGESTIONS) {
-    if (s.needsSymbol && !anySymbol) continue
-    push(tt(s.key, s.needsSymbol ? { symbol: anySymbol } : undefined), s.k)
+    const symbols = s.needsSymbol ? watchlist.slice(0, 6) : [null]
+    for (const symbol of symbols) push(tt(s.key, symbol ? { symbol } : undefined), s.k)
   }
   // The FULL pool, uncapped. The pad shows a window onto it (visibleActions),
   // which is what gives refresh somewhere to go and the lane filter something
@@ -140,17 +140,16 @@ export const PAD_SIZE = 12
 
 /**
  * The lanes a prompt can belong to. `dot` is a tailwind background so the
- * filter chip and the pill agree on colour without a second lookup. Red is
- * deliberately absent apart from earnings urgency — in a P&L-coloured app a
- * red dot on "compare peers" reads as a loss, not a category.
+ * filter chip and the pill agree on colour without a second lookup.
+ * Category colours stay stable when the market gain/loss palette changes.
  */
 export const LANES = [
   { k: 'mkt', label: 'markets', dot: 'bg-accent' },
-  { k: 'earn', label: 'earnings', dot: 'bg-imminent' },
-  { k: 'macro', label: 'macro', dot: 'bg-accent-2' },
-  { k: 'idea', label: 'ideas', dot: 'bg-accent/50' },
-  { k: 'book', label: 'book', dot: 'bg-up' },
-  { k: 'app', label: 'app', dot: 'bg-muted' },
+  { k: 'earn', label: 'earnings', dot: 'bg-[#e89b72]' },
+  { k: 'macro', label: 'macro', dot: 'bg-[#58a6ff]' },
+  { k: 'idea', label: 'ideas', dot: 'bg-[#b392f0]' },
+  { k: 'book', label: 'book', dot: 'bg-[#3fb950]' },
+  { k: 'app', label: 'app', dot: 'bg-[#8b949e]' },
 ]
 
 /** Lanes actually represented in a pool, in LANES order — so the filter row
@@ -168,10 +167,10 @@ export function activeLanes(pool) {
  * twice never lands you back where you started. Rotation also keeps this a
  * pure function of (pool, lane, page) — no Math.random, so a test can pin it.
  */
-export function visibleActions(pool, { lane = null, page = 0, size = PAD_SIZE } = {}) {
+export function visibleActions(pool, { lane = null, page = 0, size = PAD_SIZE, rotate = false } = {}) {
   const pick = lane ? pool.filter((a) => a.k === lane) : pool
-  if (pick.length <= size) return pick
-  const start = (((page * size) % pick.length) + pick.length) % pick.length
+  if (!pick.length || (pick.length <= size && !rotate)) return pick
+  const start = (((page * (rotate ? PAD_SIZE : size)) % pick.length) + pick.length) % pick.length
   return [...pick.slice(start), ...pick.slice(0, start)].slice(0, size)
 }
 
@@ -185,5 +184,6 @@ export function promptLabel(text, names = {}) {
   const symbols=Object.keys(names).filter(s=>names[s]).sort((a,b)=>b.length-a.length)
   if(!symbols.length) return text
   const escaped=symbols.map(s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'))
-  return text.replace(new RegExp(`(?<![A-Z0-9.])(?:${escaped.join('|')})(?![A-Z0-9.])`,'g'),s=>names[s] || s)
+  return text.replace(new RegExp(`(?<![A-Z0-9.])(${escaped.join('|')})(?![A-Z0-9.])([ \t]*)`,'g'),
+    (_,symbol,space)=>names[symbol]+(/[\u3400-\u9fff]/.test(names[symbol]) ? '' : space))
 }

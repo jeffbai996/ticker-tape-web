@@ -175,5 +175,5 @@ export async function wireComplete({ model, effort, system, messages, signal }) 
   })
   const out = await resp.json().catch(() => ({}))
   if (!out.ok) throw new Error(out.error || `wire chat ${resp.status}`)
-  return { text: out.text || '', backend: out.backend || '' }
+  return { text: out.text || '', backend: out.backend || '', ...(out.usage ? {usage:out.usage} : {}) }
 }

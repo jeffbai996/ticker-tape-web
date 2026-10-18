@@ -83,7 +83,22 @@ describe('pad windowing', () => {
 it('uses Chinese company names only in display labels and preserves precise prompts',async()=>{
   const { promptLabel }=await import('../../src/lib/launchpad.js')
   const prompt='AAPL 的技术面如何？与 MSFT 相比？'
-  expect(promptLabel(prompt,{AAPL:'苹果',MSFT:'微软'})).toBe('苹果 的技术面如何？与 微软 相比？')
+  expect(promptLabel(prompt,{AAPL:'苹果',MSFT:'微软'})).toBe('苹果的技术面如何？与 微软相比？')
   expect(prompt).toBe('AAPL 的技术面如何？与 MSFT 相比？')
   expect(promptLabel('AAPLX 不是 AAPL',{AAPL:'苹果'})).toBe('AAPLX 不是 苹果')
+})
+
+ it('offers multiple followed companies even when markets are closed',()=>{
+  const pool=dynamicActions({watchlist:['AAPL','MSFT','GOOGL'],quotes:{},earnDays:{AAPL:1,MSFT:4},book:true,journal:[]})
+  expect(pool.filter(a=>a.k==='earn').length).toBe(2)
+  for(const symbol of ['AAPL','MSFT','GOOGL'])expect(pool.some(a=>a.t.includes(symbol))).toBe(true)
+  expect(new Set(pool.map(a=>a.t)).size).toBe(pool.length)
+ })
+
+it('rotates a swipeable full pool without dropping its available prompts',()=>{
+ const pool=Array.from({length:25},(_,i)=>({t:`q${i}`,k:'mkt'}))
+ const first=visibleActions(pool,{size:60,rotate:true})
+ const next=visibleActions(pool,{page:1,size:60,rotate:true})
+ expect(next[0]).not.toEqual(first[0])
+ expect(new Set(next.map(a=>a.t))).toEqual(new Set(first.map(a=>a.t)))
 })

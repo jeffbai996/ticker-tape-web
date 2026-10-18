@@ -196,3 +196,10 @@ it('restricts native contextual analysis to read tools',async()=>{
  expect(streamChat.mock.calls[0][0].tools.map(t=>t.name)).not.toContain('watch')
  expect(executeTool).not.toHaveBeenCalled()
 })
+
+it('keeps token usage when the wire falls back to a one-shot response',async()=>{
+ const trace=vi.fn()
+ await runAgenticOverWire({model:'family-sonnet',messages:[{role:'user',content:'Hello'}],system:'system',onTrace:trace},
+  {wireStream:vi.fn().mockRejectedValue(Error('stream unavailable')),wireComplete:vi.fn().mockResolvedValue({text:'Done',usage:{in:23,out:7}})})
+ expect(trace).toHaveBeenCalledWith({type:'usage',round:0,usage:{in:23,out:7}})
+})

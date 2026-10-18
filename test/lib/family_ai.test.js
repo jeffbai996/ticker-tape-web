@@ -98,6 +98,32 @@ it('uses the family transport for memory edits from the full chat UI', async () 
   } finally { await act(async () => render(null, root)); root.remove() }
 })
 
+it('keeps memory drafts editable during IME composition and submits only explicitly',async()=>{
+ await family()
+ let complete
+ const fetcher=vi.fn(()=>new Promise(resolve=>{complete=()=>resolve(Response.json({ok:true,text:'[{"op":"add","text":"Concise summaries."}]'}))}))
+ vi.stubGlobal('fetch',fetcher)
+ sessionStorage.setItem('chat_context_once',JSON.stringify({label:'article',data:{title:'Example'}}))
+ const {h,render}=await import('preact'),{act}=await import('preact/test-utils')
+ const {MemoryComposer}=await import('../../src/pages/chat.jsx')
+ const root=document.createElement('div');document.body.append(root)
+ try{
+  await act(()=>render(h(MemoryComposer,{memories:[],onApplied:()=>{}}),root))
+  expect(sessionStorage.getItem('chat_context_once')).not.toBeNull()
+  const input=root.querySelector('textarea')
+  expect(input.placeholder).toBe('Describe what you want to remember…')
+  await act(()=>{input.value='Remember concise summaries';input.dispatchEvent(new Event('input',{bubbles:true}))})
+  await act(()=>input.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',isComposing:true,bubbles:true})))
+  await act(()=>input.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true})))
+  expect(fetcher).not.toHaveBeenCalled()
+  await act(()=>input.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',ctrlKey:true,bubbles:true,cancelable:true})))
+  expect(fetcher).toHaveBeenCalledTimes(1)
+  expect(root.querySelector('button[aria-busy="true"] .brand-spinner')).not.toBeNull()
+  await act(async()=>complete())
+  await vi.waitFor(()=>expect(root.textContent).toContain('changes applied'))
+ }finally{await act(()=>render(null,root));root.remove();sessionStorage.clear()}
+})
+
 it('sends Opus through the family transport at its approved low effort',async()=>{
   const chat=await family()
   const fetcher=vi.fn(async()=>Response.json({ok:true,text:'Done'}));vi.stubGlobal('fetch',fetcher)
@@ -142,4 +168,24 @@ it('opens family at the shared portfolio and leaves the main default intact',asy
  vi.resetModules()
  await family(true,false)
  expect((await import('../../src/lib/nav.js')).DEFAULT_SECTION).toBe('dashboard')
+})
+
+it('compacts memories through the family transport and offers undo',async()=>{
+ await family()
+ const {addMemory,loadMemories}=await import('../../src/lib/chatMemory.js')
+ for(const t of ['Concise summaries.','Keep summaries concise.','Use USD.','Cite sources.'])addMemory(t)
+ const original=loadMemories()
+ const fetcher=vi.fn(async()=>Response.json({ok:true,text:'[{"op":"edit","id":1,"text":"Keep summaries concise."},{"op":"delete","id":2}]'}))
+ vi.stubGlobal('fetch',fetcher)
+ const {h,render}=await import('preact'),{act}=await import('preact/test-utils')
+ const {MemoryComposer}=await import('../../src/pages/chat.jsx')
+ const root=document.createElement('div');document.body.append(root)
+ try{
+  await act(()=>render(h(MemoryComposer,{memories:original,onApplied:()=>{}}),root))
+  await act(async()=>[...root.querySelectorAll('button')].find(b=>b.textContent==='Compact').click())
+  await vi.waitFor(()=>expect(loadMemories()).toHaveLength(3))
+  expect(JSON.parse(fetcher.mock.calls[0][1].body).messages[0].content).toContain('Preserve all distinct facts')
+  await act(()=>[...root.querySelectorAll('button')].find(b=>b.textContent==='Undo').click())
+  expect(loadMemories().map(m=>m.text).sort()).toEqual(original.map(m=>m.text).sort())
+ }finally{await act(()=>render(null,root));root.remove()}
 })

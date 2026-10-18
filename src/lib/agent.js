@@ -102,9 +102,11 @@ export async function runAgenticOverWire({
       }))
     } catch (err) {
       if (signal?.aborted) throw err        // a user stop is not a fallback case
-      ;({ text } = await completeTurn({
+      const completed = await completeTurn({
         model, effort, system: roundSystem, messages: contextualMessages(convo),
-      }))
+      })
+      text = completed.text
+      if (completed.usage) onTrace?.({type:'usage',round,usage:completed.usage})
     }
     if (signal?.aborted) throw new DOMException('stopped', 'AbortError')
     const call = last ? null : parseToolCall(text)

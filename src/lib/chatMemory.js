@@ -8,6 +8,59 @@ import { pushAdd, pushEdit, pushDelete } from './chatstore.js'
 
 const KEY = 'chat_memories_v1'
 const MAX_MEMORIES = 100
+const COMPACT_BACKUP = 'chat_memory_compact_backup_v1'
+const memoryVersion = list => JSON.stringify(list.map(m=>[m.id,m.text]))
+const memoryTexts = list => JSON.stringify(list.map(m=>m.text).sort())
+
+/** Validate the whole edit before applying any model-supplied operations. */
+export function applyMemoryOperations(ops,{compact=false,expected}={}) {
+  const before=loadMemories(),ids=new Set(before.map(m=>m.id)),seen=new Set()
+  if(expected && memoryVersion(expected)!==memoryVersion(before))throw Error('Memories changed. Please try again.')
+  if(!Array.isArray(ops) || ops.length>200)throw Error('Invalid memory changes. Please try again.')
+  const normalized=ops.map(op=>{
+    if(!op || !['add','edit','delete'].includes(op.op) || (compact && op.op==='add'))throw Error('Invalid memory changes. Please try again.')
+    if(op.op!=='add') {
+      if(!ids.has(Number(op.id)) || seen.has(Number(op.id)))throw Error('Invalid memory changes. Please try again.')
+      seen.add(Number(op.id))
+    }
+    const text=typeof op.text==='string' ? op.text.trim() : ''
+    if(op.op!=='delete' && (!text || text.length>4000))throw Error('Invalid memory changes. Please try again.')
+    return {...op,id:Number(op.id),text}
+  })
+  const removed=normalized.filter(op=>op.op==='delete').length
+  if(compact && (before.length<3 || before.length-removed<3))throw Error('Compaction must preserve the remaining facts.')
+  if(!normalized.length)return 0
+  if(compact) {
+    // Keep a recoverable snapshot before model-driven consolidation.
+    localStorage.setItem(COMPACT_BACKUP,JSON.stringify({before}))
+  }
+  let applied=0
+  for(const op of normalized.filter(op=>op.op!=='delete')) {
+    if(op.op==='add' ? addMemory(op.text) : editMemory(op.id,op.text))applied++
+  }
+  for(const op of normalized.filter(op=>op.op==='delete'))if(removeMemory(op.id))applied++
+  if(compact)localStorage.setItem(COMPACT_BACKUP,JSON.stringify({before,after:memoryTexts(loadMemories())}))
+  return applied
+}
+
+export function canUndoMemoryCompaction() {
+  try {
+    const saved=JSON.parse(localStorage.getItem(COMPACT_BACKUP))
+    return !!saved?.before?.length && saved.after===memoryTexts(loadMemories())
+  }catch{return false}
+}
+
+export function undoMemoryCompaction() {
+  if(!canUndoMemoryCompaction())throw Error('Memories changed. Please try again.')
+  const saved=JSON.parse(localStorage.getItem(COMPACT_BACKUP)),current=loadMemories()
+  const ids=new Set(saved.before.map(m=>m.id)),currentIds=new Set(current.map(m=>m.id))
+  for(const memory of current)if(!ids.has(memory.id))removeMemory(memory.id)
+  for(const memory of saved.before) {
+    if(currentIds.has(memory.id))editMemory(memory.id,memory.text)
+    else addMemory(memory.text)
+  }
+  localStorage.removeItem(COMPACT_BACKUP)
+}
 
 export function loadMemories() {
   try {

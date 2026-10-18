@@ -1,3 +1,4 @@
+import { earningsTone } from '../lib/earningsTone.js'
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { boundedTimeScale, chartFont, chartHost } from '../lib/chartview.js'
 import {
@@ -784,8 +785,7 @@ function EarningsPanel({ symbols, quotes = {} }) {
               {/* company name, quiet — the CLI's `[dim]{name}[/]`, sliding into
                   view on hover when the rail is too narrow to hold it */}
               <Marquee text={name} class="min-w-0 text-left text-[10px] text-muted font-anth font-light" />
-              <span class={`text-right ${d <= 0 ? 'text-imminent font-bold'
-                : d <= 7 ? 'text-down' : d <= 21 ? 'text-accent' : 'text-ink-2'}`}>{d}d</span>
+              <span class={`text-right ${earningsTone(d)}`}>{d}d</span>
             </a>
           )
         })}
