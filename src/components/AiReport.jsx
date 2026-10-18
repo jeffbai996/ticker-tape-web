@@ -470,7 +470,7 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
         </div>
       )}
       {(text || error) && (
-        <div ref={bodyRef} class="px-3 py-2 font-anth text-[13px] leading-relaxed select-text text-ink-2 max-h-[45vh] overflow-y-auto">
+        <div ref={bodyRef} class="ai-report-body px-4 sm:px-6 py-4 font-anth text-[13px] leading-relaxed select-text text-ink-2 max-h-[45vh] overflow-y-auto break-words">
           {text && <MdLite text={text} />}
           {error && <span class="block pt-2 font-mono text-[11px] text-danger">{error}</span>}
           {busy && <span class="text-accent">▌</span>}

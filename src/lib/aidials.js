@@ -51,6 +51,7 @@ export function applyDials(system, dials) {
   const lines = [
     LENGTHS.find((l) => l.key === d.length).rule,
     TONES.find((t) => t.key === d.tone).rule,
+    'Apply these settings silently. Do not include length targets, style labels, or formatting instructions in the report itself.',
   ]
   if (d.disconfirm) {
     lines.push('Close with a DISCONFIRMING EVIDENCE section: the strongest specific case against the read above, and what observable would settle it.')

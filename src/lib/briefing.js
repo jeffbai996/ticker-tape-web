@@ -139,7 +139,8 @@ export function briefingPrompt(briefingText) {
   return (
     `Here is my market briefing data:\n\n${briefingText}\n\n` +
     'Give me the 3 most important things to know right now, plus any notable ' +
-    'setups worth watching. Be direct and specific. Use short sections.'
+    'setups worth watching. Be direct and specific. Use short sections. ' +
+    'Begin with the first section, without a separate report title or introductory preamble.'
   )
 }
 
