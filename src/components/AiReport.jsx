@@ -167,7 +167,7 @@ function dialSummary(dials) {
  *  archive: optional {kind: 'briefing'|'memo', symbol?, title} — when set,
  *    every completed generation auto-saves to the report archive
  */
-export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI report', hint = '', archive = null }) {
+export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI report', hint = '', archive = null, onBusyChange }) {
   // No model service reaches the TV, and its output is copy and download
   // controls a remote cannot use. A build constant, so hook order is stable.
   if (IS_TV_BUILD) return null
@@ -177,6 +177,7 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
   const [dials, setDials] = useState(loadDials)
   const [showDials, setShowDials] = useState(false)
   const [busy, setBusy] = useState(false)
+  useEffect(()=>{onBusyChange?.(busy)},[busy,onBusyChange])
   const [error, setError] = useState(null)
   const [copied, setCopied] = useState(false)
   const [models, setModels] = useState([])

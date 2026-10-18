@@ -32,10 +32,10 @@ it('keeps family inference off until explicitly enabled', async () => {
   expect(NAV.some(s => s.id === 'brief')).toBe(true)
 })
 
-it('activates family chat without a preview badge', async () => {
+it('keeps the family demo badge in navigation while chat is active', async () => {
   await family()
   const { NAV } = await import('../../src/lib/nav.js')
-  expect(NAV.find(s => s.id === 'chat').badge).toBeUndefined()
+  expect(NAV.find(s => s.id === 'chat').badge).toBe('DEMO')
 })
 
 it('never enables inference in the public build', async () => {

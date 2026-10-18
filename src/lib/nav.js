@@ -11,13 +11,13 @@ const FAMILY_AI = FAMILY_BUILD && import.meta.env.VITE_FAMILY_AI === '1'
 
 const CHAT_SECTION = {
   id: 'chat', label: 'AI Chat', subs: [],
-  ...(PRIVATE_BUILD || FAMILY_AI ? {} : { badge: 'DEMO' }),
+  ...(PRIVATE_BUILD ? {} : { badge: 'DEMO' }),
 }
 
 export const NAV = [
   { id: 'dashboard', label: 'Dashboard', subs: [] },
   { id: 'watchlists', label: 'Watchlists', subs: [] },
-  { id: 'brief', label: 'Briefing', badge: 'AI', subs: [] },
+  { id: 'brief', label: 'Briefing', subs: [] },
   {
     id: 'markets',
     label: 'Markets',

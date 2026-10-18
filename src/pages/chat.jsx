@@ -1515,7 +1515,6 @@ export function Chat() {
         <h1 class="font-bold text-[17px] leading-tight text-ink" style="font-family: var(--font-sans)">{tl('AI Chat')}</h1>
         <span class={`w-1.5 h-1.5 rounded-full ${models.length ? 'bg-[#3fb950]' : 'bg-muted animate-pulse'}`}
               title={tl(onWire ? 'online — private wire' : 'online — public proxy')} />
-        {IS_FAMILY_BUILD && !IS_PRIVATE_BUILD && <span data-chat-demo class="font-mono text-[9px] uppercase tracking-wider text-muted border border-line rounded px-1.5 py-0.5">{tl('demo')}</span>}
       </div>
         <div class="absolute top-2.5 right-3 z-30 h-7 flex items-center gap-0.5 rounded-lg px-0.5">
           <button

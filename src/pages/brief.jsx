@@ -12,6 +12,9 @@ import { loadArchive, onArchiveChange, removeReport } from '../lib/archive.js'
 import { formatBriefTechnicalNote, getLocale, tl } from '../lib/i18n.js'
 import { Marquee } from '../components/Marquee.jsx'
 import { fmtPct } from '../lib/format.js'
+import {loadWatchlists,onWatchlistsChange} from '../lib/watchlists.js'
+import {loadPortfolios,onPortfoliosChange} from '../lib/myPortfolios.js'
+import {briefingSources,resolveBriefingSource,briefingSourceText} from '../lib/briefingSource.js'
 
 const INDEX_SYMBOLS = INDICES.map((i) => i.symbol)
 
@@ -133,7 +136,7 @@ function BriefData({ s }) {
     ...s.movers.losers.map((m) => ({ ...m, side: 'l' })),
   ]
   return (
-    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 items-start">
+    <div data-briefing-data class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 items-start">
       <Card title={tl('Macro tape')}>
         {s.macro.map((m) => (
           <div key={m.label} class={rowCls}>
@@ -225,10 +228,19 @@ function BriefData({ s }) {
 }
 
 export function Brief() {
-  const watchlist = useWatchlist()
+  const current = useWatchlist()
+  const [lists,setLists]=useState(loadWatchlists)
+  const [portfolios,setPortfolios]=useState(loadPortfolios)
+  const [sourceId,setSourceId]=useState('current')
+  const [generating,setGenerating]=useState(false)
+  useEffect(()=>onWatchlistsChange(setLists),[])
+  useEffect(()=>onPortfoliosChange(setPortfolios),[])
   const tape = useTapeSymbols()
-  const [held] = useState(heldSymbols)
-  const followed = [...new Set([...watchlist, ...held, ...tape])]
+  const sourceOptions={watchlist:current,lists,portfolios,held:heldSymbols({portfolios}),tape}
+  const source=resolveBriefingSource(sourceId,sourceOptions)
+  const sources=briefingSources(sourceOptions)
+  const watchlist=source.symbols,held=source.held
+  const followed = [...new Set([...watchlist, ...held, ...source.techUniverse])]
   const quotes = useQuotes(followed)
   useZhNames(followed)
   const indexQuotes = useQuotes(INDEX_SYMBOLS)
@@ -240,7 +252,7 @@ export function Brief() {
 
   const sections = assembleBriefing({
     watchlist, quotes, indices: INDICES, indexQuotes, earnDays, econEvents: econ,
-    held, techUniverse: tape,
+    held, techUniverse: source.techUniverse,
   })
   const text = renderBriefing(sections)
 
@@ -253,14 +265,23 @@ export function Brief() {
       <div class="flex items-baseline gap-3 px-1 pb-2 flex-wrap">
         <h1 class="font-mono font-bold text-lg text-ink">{tl('Briefing')}</h1>
         <span class="font-mono text-[11px] text-muted">{date}</span>
+        <label class="ml-auto flex items-center gap-2 max-w-full font-anth text-[11px] text-muted">
+          <span>{tl('Source')}</span>
+          <select aria-label={tl('Briefing source')} value={source.id} disabled={generating} onChange={e=>setSourceId(e.currentTarget.value)}
+            class="min-w-0 max-w-[16rem] bg-surface-2 border border-line rounded-md px-2 py-1.5 text-ink text-[11px] max-sm:text-[16px] disabled:opacity-50">
+            <option value="current">{tl('Current watchlist')}</option>
+            <optgroup label={tl('Watchlists')}>{sources.filter(s=>s.kind==='watchlist').map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</optgroup>
+            <optgroup label={tl('My Portfolios')}>{sources.filter(s=>s.kind==='portfolio').map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</optgroup>
+          </select>
+        </label>
       </div>
 
       <div class="flex flex-col gap-3">
-        <AiReport
+        <AiReport key={source.id} onBusyChange={setGenerating}
           label="AI synthesis"
           filename={`briefing-${new Date().toISOString().slice(0, 10)}.md`}
-          buildPrompt={async () => ({ system: BRIEFING_SYSTEM, prompt: briefingPrompt(text) })}
-          archive={{ kind: 'briefing', title: `Briefing ${new Date().toISOString().slice(0, 10)}` }}
+          buildPrompt={async () => ({ system: BRIEFING_SYSTEM, prompt: briefingSourceText(source)+'\n\n'+briefingPrompt(text) })}
+          archive={{ kind: 'briefing', title: `Briefing ${source.kind==='current'?'':source.name+' '}${new Date().toISOString().slice(0, 10)}` }}
         />
 
         <BriefData s={sections} />

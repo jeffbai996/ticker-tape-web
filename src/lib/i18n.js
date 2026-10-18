@@ -544,6 +544,7 @@ const LABELS = {
   'empty watchlist — add the first ticker below': '自选股为空 — 在下方添加第一只股票',
   'shared across Briefing, Wire, AI, and the tape': '在晨报、快讯、AI 和滚动行情中共享',
   'independent dashboard view': '独立看盘',
+  'Briefing source': '晨报来源', 'Current watchlist': '当前自选股',
   Declining: '下跌', 'Market pulse': '市场脉搏', thinking: '思考',
   Briefing: '晨报', Data: '数据', copy: '复制', generate: '生成', regenerate: '再生成',
   'AI synthesis': 'AI 综述', 'AI memo': 'AI 备忘录', 'AI report': 'AI 报告',

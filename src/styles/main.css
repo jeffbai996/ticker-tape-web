@@ -630,7 +630,7 @@ html[data-pointer-hover] .market-deck-row:hover {
 @keyframes chat-ellipsis-blink { 0%, 65%, 100% { opacity: .25; } 30% { opacity: 1; } }
 
 /* Live chain-of-thought: the model's reasoning as it streams, pinned to the
-   newest line with the older text fading out of the top of the window
+   newest line; the first visible line remains fully readable
    (Jeff 2026-08-07: "I want actual chain-of-thought material displayed"). */
 .chat-think {
   margin: .1rem 0 .3rem 1.42rem; padding: .3rem .55rem; max-height: 7.4rem;
@@ -639,8 +639,6 @@ html[data-pointer-hover] .market-deck-row:hover {
   color: var(--color-muted); scrollbar-width: none;
   font: 450 10.5px/1.5 var(--font-sans);
   white-space: pre-wrap; overflow-wrap: anywhere;
-  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 1.6rem);
-  mask-image: linear-gradient(to bottom, transparent, #000 1.6rem);
 }
 .chat-think::-webkit-scrollbar { display: none; }
 
