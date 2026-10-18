@@ -4,15 +4,15 @@ export function pickerModels(models,privateBuild=false) {
 }
 
 export function modelGroups(models,privateBuild=false) {
-  if(!privateBuild)return [{name:'',items:models}]
   const groups=[]
   for(const model of models){
-    const name=({'Claude Code':'claude',Codex:'codex',Antigravity:'gem'}[model.group]
+    const name=(!privateBuild && modelProvider(model.label||model.key)) || ({'Claude Code':'claude',Codex:'codex',Antigravity:'gem'}[model.group]
       ||(model.group||'models').toLowerCase())
     let group=groups.find(g=>g.name===name)
     if(!group){group={name,items:[]};groups.push(group)}
     group.items.push(model)
   }
+  if(!privateBuild)for(const group of groups)if(group.name==='claude')group.items.sort((a,b)=>Number(!/opus/i.test(a.label||a.key))-Number(!/opus/i.test(b.label||b.key)))
   return groups
 }
 

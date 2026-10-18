@@ -19,9 +19,13 @@ it('gives the private picker one gem group with Argon then Opus and removes reti
  expect(groups.find(g=>g.name==='gem').items.map(m=>m.key)).toEqual(['agy-argon','agy-opus'])
  expect(groups.find(g=>g.name==='gem').items[1].fixed_effort).toBe('low')
 })
-it('leaves family options ungrouped while retaining its full allowed selection',()=>{
- expect(pickerModels(models,false)).toEqual(models)
- expect(modelGroups(models,false)).toEqual([{name:'',items:models}])
+it('groups the family picker by provider with Opus before Sonnet without changing registry order',()=>{
+ const family=[{key:'family-sonnet',label:'Sonnet 5.5'},{key:'family-opus',label:'Opus 5.5'},{key:'family-flash',label:'Flash 3.8'}]
+ const groups=modelGroups(family,false)
+ expect(groups.map(g=>g.name)).toEqual(['claude','gemini'])
+ expect(groups[0].items.map(m=>m.key)).toEqual(['family-opus','family-sonnet'])
+ expect(groups[1].items.map(m=>m.key)).toEqual(['family-flash'])
+ expect(family[0].key).toBe('family-sonnet')
 })
 it('recognizes model providers while leaving unknown models generic',async()=>{
  const {modelProvider}=await import('../../src/lib/chatModels.js')

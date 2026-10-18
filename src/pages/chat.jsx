@@ -1698,8 +1698,7 @@ export function Chat() {
                 {m.trace?.length > 0 && (
                   <ActivityTrace steps={m.trace} startedAt={m.traceStartedAt} usage={m.traceUsage} />
                 )}
-                <div class="group self-start max-w-[92%] relative"
-                  title={m.ts ? `${m.model ? `${m.model} · ` : ''}${new Date(m.ts).toLocaleString()}` : undefined}>
+                <div class="group self-start max-w-[92%] relative">
                   <div class="chat-message-copy chat-assistant-bubble rounded-2xl border px-3.5 py-2.5 text-[1em] leading-relaxed bg-surface-1 border-line text-ink font-anth">
                     <MdLite text={m.content} />
                   </div>
