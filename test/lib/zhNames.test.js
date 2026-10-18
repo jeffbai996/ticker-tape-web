@@ -154,11 +154,13 @@ describe('tape short names', () => {
     expect(tapeName('AMD')).toBe('超威半导体')
     expect(tapeName('brk-b')).toBe('伯克希尔B')
     expect(tapeName('PLTR')).toBe('帕兰提尔')
+    expect(tapeName('UNH')).toBe('联合健康')
     setLocale('en')
   })
   it('leaves the full name everywhere else', () => {
     setLocale('zh')
     expect(localName('TSM', 'x')).toBe('台湾积体电路制造公司')
+    expect(localName('UNH', 'x')).toBe('美国联合健康集团')
     setLocale('en')
   })
   it('stays a symbol in English', () => {
