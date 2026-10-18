@@ -820,7 +820,7 @@ html[data-pointer-hover] .tape-hot *:not(.text-up):not(.text-down):not([data-tap
   animation: chat-rise-in .3s cubic-bezier(.16, 1, .3, 1) both;
 }
 .chat-trace-head {
-  width: 100%; min-height: 28px; display: flex; align-items: center; gap: var(--chat-trace-gap);
+  width: 100%; min-height: 28px; display: flex; align-items: flex-start; gap: var(--chat-trace-gap);
   padding: .2rem 0; color: var(--color-muted); text-align: left;
   background: transparent; border: 0; cursor: pointer;
   font-family: var(--font-sans);
@@ -830,7 +830,7 @@ html[data-pointer-hover] .tape-hot *:not(.text-up):not(.text-down):not([data-tap
 .chat-trace.is-live .chat-trace-title { color: var(--color-ink); }
 .chat-trace.is-complete .chat-trace-title { color: #3fb950; }
 .chat-trace-count {
-  margin-left: auto; color: var(--color-muted); font: 500 9px/1 "IBM Plex Mono", monospace;
+  display:block; color: var(--color-muted); font: 500 9px/1.4 "IBM Plex Mono", monospace;
 }
 .chat-trace-mark {
   position: relative; width: var(--chat-trace-gutter); height: 24px; flex: 0 0 var(--chat-trace-gutter);
@@ -865,14 +865,7 @@ html[data-pointer-hover] .tape-hot *:not(.text-up):not(.text-down):not([data-tap
   84% { transform: rotate(720deg) scale(.88); }
   100% { transform: rotate(720deg) scale(1); }
 }
-.chat-trace-caret {
-  /* 5px, down from 7 — it read oversized next to the step counter's 10px
-     type (Jeff 2026-08-10) */
-  width: 5px; height: 5px; flex: 0 0 5px; border-right: 1px solid currentColor;
-  border-bottom: 1px solid currentColor; transform: rotate(45deg) translate(-1px, 1px);
-  transition: transform .24s cubic-bezier(.2, 1, .3, 1);
-}
-.chat-trace-caret.is-open { transform: rotate(225deg) translate(-1px, -1px); }
+
 .chat-trace-reveal {
   display: grid; grid-template-rows: 0fr; opacity: 0;
   transition: grid-template-rows .3s cubic-bezier(.2, 1, .3, 1), opacity .2s ease;
@@ -935,7 +928,7 @@ html[data-pointer-hover] .tape-hot *:not(.text-up):not(.text-down):not([data-tap
   .chat-trace, .chat-trace-step { animation: none !important; }
   .chat-trace-mark svg path, .chat-trace-step.is-running .chat-trace-node { animation: none !important; }
   .brand-spinner circle, .chat-ellipsis i { animation: none !important; }
-  .chat-trace-reveal, .chat-trace-caret { transition: none !important; }
+  .chat-trace-reveal { transition: none !important; }
 }
 
 /* Tick flash — solid inverse video for 1.35s, then gone. The component owns
@@ -1038,7 +1031,7 @@ html[data-pointer-hover] .tape-hot *:not(.text-up):not(.text-down):not([data-tap
 
 .chat-token-provider { display:inline-block; width:13px; height:13px; flex:none; background:#d97757; mask-repeat:no-repeat; mask-position:center; mask-size:contain; -webkit-mask-repeat:no-repeat; -webkit-mask-position:center; -webkit-mask-size:contain; }
 .chat-token-input { display:inline-flex; align-items:center; gap:4px; color:#58a6ff; }
-.chat-token-output, .chat-token-throughput { display:inline-flex; align-items:center; gap:4px; color:#3fb950; }
+.chat-token-output { display:inline-flex; align-items:center; gap:4px; color:#3fb950; }
 .chat-token-input .chat-token-arrow, .chat-token-output .chat-token-arrow { color:inherit; }
 
 /* A bounded suggestion shelf uses spare height and leaves the composer docked. */
@@ -1053,3 +1046,6 @@ html[data-pointer-hover] .tape-hot *:not(.text-up):not(.text-down):not([data-tap
 .chat-suggestion-row[data-loop="true"] .chat-suggestion-copy { display:flex; }
 .chat-suggestion-pill { flex:none; white-space:nowrap; min-height:32px; text-align:left; }
 @media (prefers-reduced-motion: reduce) { .chat-suggestion-motion { display:none; } }
+
+.chat-trace-heading { display:flex; flex-direction:column; gap:1px; }
+.chat-trace-summary { display:flex; align-items:center; gap:6px; min-height:24px; }

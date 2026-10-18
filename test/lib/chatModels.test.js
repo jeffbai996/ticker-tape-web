@@ -23,3 +23,8 @@ it('preserves the family account label and its full allowed selection',()=>{
  expect(pickerModels(models,false)).toEqual(models)
  expect(modelGroups(models,false).find(g=>g.name==='jeffbai996').items.map(m=>m.key)).toEqual(['agy-argon','agy-flash','agy-opus'])
 })
+it('recognizes model providers while leaving unknown models generic',async()=>{
+ const {modelProvider}=await import('../../src/lib/chatModels.js')
+ for(const [name,provider] of [['Qwen 3.8-27B','qwen'],['Gemini 4 Argon','gemini'],['GPT 6.1 Sol','openai'],['Claude Opus 5.5','claude']])expect(modelProvider(name)).toBe(provider)
+ expect(modelProvider('Example local model')).toBeNull()
+})

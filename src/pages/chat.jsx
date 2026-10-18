@@ -420,13 +420,15 @@ export function ActivityTrace({ steps, busy = false, startedAt, usage = null }) 
         <span class={`chat-trace-mark ${busy ? 'is-running' : failed ? 'is-error' : 'is-done'}`} aria-hidden="true">
           {busy ? <BrandSpinner size={19} /> : null}
         </span>
+        <span class="chat-trace-heading"><span class="chat-trace-summary">
         <span class="chat-trace-title">{title}{busy ? <Ellipsis /> : ` ${elapsed}`}</span>
         {busy && <span class="font-mono text-[9px] tabular-nums text-muted">{elapsed}</span>}
         {liveDepth && !liveThinking && (
           <span class="font-mono text-[9px] tabular-nums text-muted/80">{liveDepth}</span>
         )}
+        </span>
         <span class="chat-trace-count">{steps.length} {steps.length === 1 ? 'step' : 'steps'}</span>
-        <span class={`chat-trace-caret ${open ? 'is-open' : ''}`} />
+        </span>
       </button>
       {/* live reasoning rides ABOVE the step list: it's the part you actually
           read while waiting, and it stays reachable per-step afterwards */}
@@ -1529,8 +1531,8 @@ export function Chat() {
             </button>
           )}
           {history.length > 0 && (
-            <button onClick={clear} class="w-6 h-6 grid place-items-center rounded-md text-muted hover:text-down hover:bg-surface-2" title={tl('clear')}>
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M9 3h6l1 4H8zM7 7l1 14h8l1-14M10 11v6M14 11v6"/></svg>
+            <button onClick={clear} class="w-6 h-6 grid place-items-center rounded-md text-muted hover:text-[#f85149] hover:bg-surface-2" title={tl('clear')} aria-label={tl('clear')}>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M5 6v14a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6M10 10v7M14 10v7"/></svg>
             </button>
           )}
         </div>

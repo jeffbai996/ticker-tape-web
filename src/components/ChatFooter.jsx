@@ -1,6 +1,12 @@
 import claudeLogo from '../assets/claude.svg'
+import qwenLogo from '../assets/qwen.svg'
+import geminiLogo from '../assets/gemini.svg'
+import openaiLogo from '../assets/openai.svg'
+import {modelProvider} from '../lib/chatModels.js'
 import { useEffect, useState } from 'preact/hooks'
 import { chatMetrics, metricDuration } from '../lib/chatMetrics.js'
+
+const PROVIDERS={claude:[claudeLogo,'#d97757'],qwen:[qwenLogo,'#8b7bf4'],gemini:[geminiLogo,'#58a6ff'],openai:[openaiLogo,'#d8dee9']}
 
 const paths = {
   model: 'm8 1 6 3.5v7L8 15l-6-3.5v-7L8 1Zm-6 3.5L8 8l6-3.5M8 8v7M5 2.8l6 3.5',
@@ -23,11 +29,12 @@ export function ChatFooter({ model, effort, usage, startedAt, endedAt, busy = fa
     return () => clearInterval(timer)
   }, [busy, startedAt])
   const m = chatMetrics({ usage, startedAt, endedAt, now })
+  const provider=modelProvider(model),mark=PROVIDERS[provider]
   const tokens = (n) => n == null ? '—' : n.toLocaleString('en-US')
   return <div class="chat-token-footer" aria-label="Response statistics" data-live={busy || undefined}>
     <span class="chat-token-model" title={effort ? `${model} · ${effort}` : model}>
-      {/claude|sonnet|opus|haiku/i.test(model || '')
-        ? <span class="chat-token-provider" aria-hidden="true" style={{maskImage:`url("${claudeLogo}")`,WebkitMaskImage:`url("${claudeLogo}")`}} />
+      {mark
+        ? <span class="chat-token-provider" data-provider={provider} aria-hidden="true" style={{maskImage:`url("${mark[0]}")`,WebkitMaskImage:`url("${mark[0]}")`,backgroundColor:mark[1]}} />
         : <Icon kind="model" />}<span class="chat-token-model-name">{model || 'Model'}</span>
       {effort && effort !== 'none' && <span class="chat-token-effort" title={`Reasoning: ${effort}`}><Icon kind="think" /></span>}
     </span>

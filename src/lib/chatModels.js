@@ -14,3 +14,13 @@ export function modelGroups(models,privateBuild=false) {
   }
   return groups
 }
+
+/** Match model families, independent of the account or runtime serving them. */
+export function modelProvider(model) {
+  const name=String(model||'')
+  if(/claude|sonnet|opus|haiku/i.test(name))return 'claude'
+  if(/qwen/i.test(name))return 'qwen'
+  if(/gemini/i.test(name))return 'gemini'
+  if(/gpt|codex|openai/i.test(name))return 'openai'
+  return null
+}
