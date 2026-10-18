@@ -83,9 +83,9 @@ describe('pad windowing', () => {
 it('uses Chinese company names only in display labels and preserves precise prompts',async()=>{
   const { promptLabel }=await import('../../src/lib/launchpad.js')
   const prompt='AAPL 的技术面如何？与 MSFT 相比？'
-  expect(promptLabel(prompt,{AAPL:'苹果',MSFT:'微软'})).toBe('苹果的技术面如何？与 微软相比？')
+  expect(promptLabel(prompt,{AAPL:'苹果',MSFT:'微软'})).toBe('苹果的技术面如何？与微软相比？')
   expect(prompt).toBe('AAPL 的技术面如何？与 MSFT 相比？')
-  expect(promptLabel('AAPLX 不是 AAPL',{AAPL:'苹果'})).toBe('AAPLX 不是 苹果')
+  expect(promptLabel('AAPLX 不是 AAPL',{AAPL:'苹果'})).toBe('AAPLX 不是苹果')
 })
 
  it('offers multiple followed companies even when markets are closed',()=>{
@@ -129,4 +129,11 @@ it('varies the wording of the same question between batches',()=>{
  const wording=edition=>dynamicActions({...context,edition}).find(a=>a.family==='chat.action_technical').t
  expect(new Set([0,1,2].map(wording)).size).toBe(3)
  expect([0,1,2].map(wording).every(t=>t.includes('AAPL'))).toBe(true)
+})
+
+
+it('closes Chinese word boundaries around substituted names while preserving Latin spacing',async()=>{
+ const {promptLabel}=await import('../../src/lib/launchpad.js')
+ expect(promptLabel('在 AAPL 到达 200 时设置提醒',{AAPL:'苹果'})).toBe('在苹果到达 200 时设置提醒')
+ expect(promptLabel('在 MSFT 到达 200 时设置提醒',{MSFT:'Microsoft'})).toBe('在 Microsoft 到达 200 时设置提醒')
 })

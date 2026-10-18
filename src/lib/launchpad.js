@@ -140,4 +140,5 @@ export function promptLabel(text, names = {}) {
   const escaped=symbols.map(s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'))
   return text.replace(new RegExp(`(?<![A-Z0-9.])(${escaped.join('|')})(?![A-Z0-9.])([ \t]*)`,'g'),
     (_,symbol,space)=>names[symbol]+(/[\u3400-\u9fff]/.test(names[symbol]) ? '' : space))
+    .replace(/(?<=[\u3400-\u9fff])[ \t]+(?=[\u3400-\u9fff])/g,'')
 }
