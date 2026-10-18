@@ -55,3 +55,10 @@ it('routes the approved Opus option with low effort and rejects arbitrary models
   expect((await handleFamilyAI(request('/api/chat',cap,{model:'arbitrary'}),env(),fetcher)).status).toBe(400)
   expect(fetcher).not.toHaveBeenCalled()
 })
+
+it('allows family Flash with fixed medium effort through the streaming proxy',async()=>{
+ const fetcher=vi.fn(async()=>new Response('event: done\ndata: {}\n\n'))
+ const response=await handleFamilyAI(request('/api/chat/stream',cap,{model:'family-flash',messages:[{role:'user',content:'Hello'}]}),env(),fetcher)
+ expect(response.status).toBe(200)
+ expect(JSON.parse(fetcher.mock.calls[0][1].body)).toMatchObject({model:'family-flash',effort:'medium'})
+})

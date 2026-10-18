@@ -33,7 +33,7 @@ async function boundedBody(request) {
   const body = JSON.parse(new TextDecoder().decode(bytes))
   if (!body || typeof body !== 'object' || Array.isArray(body)) throw new SyntaxError()
   const model=body.model || 'family-sonnet'
-  const profiles={'family-sonnet':'medium','family-opus':'low'}
+  const profiles={'family-sonnet':'medium','family-opus':'low','family-flash':'medium'}
   if (!Object.hasOwn(profiles,model)) throw new SyntaxError()
   const effort=profiles[model]
   if (body.effort && body.effort!==effort) throw new SyntaxError()
