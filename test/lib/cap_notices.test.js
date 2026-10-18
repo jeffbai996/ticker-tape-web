@@ -42,20 +42,20 @@ describe('watchlist cap notices', () => {
 
   it('surfaces a refused add from the toolbar search dropdown', () => {
     expect(dashboard).toContain('const [notice, setNotice] = useState(\'\')')
-    expect(dashboard).toMatch(/notice && \([\s\S]{0,200}text-down/)
+    expect(dashboard).toMatch(/notice && \([\s\S]{0,200}text-danger/)
   })
 
   it('gives the sidebar rail its own refusal line', () => {
     expect(sidebar).toContain('function AddSymbol({ onAdd, isFull, cap })')
     expect(sidebar).toContain("tt('watchlists.full', { max: cap })")
-    expect(sidebar).toMatch(/err && <span[^>]*text-down/)
+    expect(sidebar).toMatch(/err && <span[^>]*text-danger/)
   })
 
   it('keeps a symbol on its source list when the destination is full', () => {
     // send() used to add-then-remove unconditionally: a full destination ate
     // the add and the remove still fired, deleting the ticker outright.
     expect(watchlists).toContain('if (!addTo(destId, symbol) && destFull())')
-    expect(watchlists).toMatch(/notice && <div[^>]*text-down/)
+    expect(watchlists).toMatch(/notice && <div[^>]*text-danger/)
   })
 })
 
