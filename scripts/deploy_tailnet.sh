@@ -4,8 +4,14 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MODE="${1:---build-only}"
 SOURCE_SHA="${2:-}"
+# The licensed face is not in Git; a release without it 404s on every route.
+FONT_FILE="${TTW_PRIVATE_FONT_FILE:-${HOME}/repos/newsservice/static/fonts/AnthropicSansVariable-TextRegular.woff2}"
 if [[ "$MODE" != "--build-only" && "$MODE" != "--deploy" ]]; then
   echo "usage: scripts/deploy_tailnet.sh [--build-only|--deploy] FULL_SOURCE_SHA" >&2
+  exit 2
+fi
+if [[ ! -f "$FONT_FILE" ]]; then
+  echo "private UI font file is missing" >&2
   exit 2
 fi
 # shellcheck source=private_release.sh
@@ -21,9 +27,7 @@ release="$RELEASES/$SOURCE_SHA-$(date +%Y%m%d-%H%M%S)-$$"
 mkdir -p "$release"
 VITE_PRIVATE=1 TTW_BASE=/ TTW_OUT_DIR="$release" npm run build
 mkdir -p "$release/fonts"
-if [[ -d "$ROOT/private/fonts" ]]; then
-  cp "$ROOT"/private/fonts/*.woff2 "$release/fonts/" 2>/dev/null || true
-fi
+install -m 0644 "$FONT_FILE" "$release/fonts/AnthropicSansVariable-TextRegular.woff2"
 release_probe "$release" tailnet
 if [[ "$MODE" == "--build-only" ]]; then
   echo "tailnet release validated: $release; source $SOURCE_SHA; deploy not requested"

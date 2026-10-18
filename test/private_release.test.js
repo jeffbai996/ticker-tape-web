@@ -66,6 +66,13 @@ describe.each(['family', 'tailnet'])('%s release admission', variant => {
     expect(f.run(variant, '--deploy', f.sha, { TTW_TEST_RUNNER: join(f.base, 'missing-runner') }).status).not.toBe(0)
     expect(f.steps()).toEqual([])
   })
+  it('refuses to build without the private UI font', () => {
+    const f = fixture()
+    const result = f.run(variant, '--deploy', f.sha, { TTW_PRIVATE_FONT_FILE: join(f.base, 'missing-font') })
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toMatch(/private .*font file is missing/)
+    expect(f.steps()).toEqual([])
+  })
   it('rejects dirty tracked source and untracked source', () => {
     const f = fixture()
     writeFileSync(join(f.repo, 'source.txt'), 'dirty')
