@@ -1,8 +1,8 @@
 import { defineConfig } from 'vitest/config'
 import preact from '@preact/preset-vite'
-import { assertFocusedVitest } from './scripts/testScope.mjs'
+import { assertFocusedVitest, focusedVitestPool } from './scripts/testScope.mjs'
 
-assertFocusedVitest(process.argv.slice(2))
+const files = assertFocusedVitest(process.argv.slice(2))
 
 export default defineConfig({
   // Most suites only read source text, but the ones that mount a component
@@ -12,6 +12,8 @@ export default defineConfig({
   test: {
     // Bound focused invocations as well as the full/fast helper.
     maxWorkers: 2,
+    pool: focusedVitestPool(files),
+    vmMemoryLimit: '512MB',
     include: ['test/**/*.test.js'],
     environment: 'jsdom',
     globals: true,

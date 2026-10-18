@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { assertFocusedVitest } from '../scripts/testScope.mjs'
+import { assertFocusedVitest, focusedVitestPool } from '../scripts/testScope.mjs'
 
 const created = []
 afterEach(() => { for (const root of created.splice(0)) rmSync(root, { recursive: true, force: true }) })
@@ -25,8 +25,22 @@ describe('Vitest collection scope', () => {
   it('uses the runner parser so option values cannot masquerade as filenames', () => {
     const root = project()
     expect(assertFocusedVitest(['run', '--maxWorkers', '2', '-t', 'example', 'test/example.test.js'], root))
-      .toEqual(['test/example.test.js'])
+      .toEqual([join(root, 'test/example.test.js')])
     expect(() => assertFocusedVitest(['run', '--config', 'test/example.test.js'], root)).toThrow(/explicit test files/)
+    expect(focusedVitestPool(['test/example.test.js'], root)).toBe('vmThreads')
+    expect(focusedVitestPool(assertFocusedVitest(
+      ['run', '--root', 'test', 'example.test.js'], root,
+    ), root)).toBe('vmThreads')
+    for (const native of ['lib/private_font_build', 'worker/security_log']) {
+      const path = join(root, `test/${native}.test.js`)
+      mkdirSync(join(path, '..'), { recursive: true })
+      writeFileSync(path, '')
+      expect(focusedVitestPool([path], root)).toBe('forks')
+      expect(focusedVitestPool(['test/example.test.js', path], root)).toBe('forks')
+      symlinkSync(path, join(root, 'test/alias.test.js'))
+      expect(focusedVitestPool(['test/alias.test.js'], root)).toBe('forks')
+      rmSync(join(root, 'test/alias.test.js'))
+    }
   })
   it('refuses directories with test filename extensions', () => {
     const root = project()

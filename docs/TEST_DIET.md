@@ -530,3 +530,50 @@ passes. The navigation test now asserts the URL has not changed one millisecond
 before each deadline and has changed exactly at it. Overlay assertions run
 after the actual render/effect queue has drained, including unmount cleanup;
 no effect, focus, keyboard, scroll-lock or reduced-motion assertion is dropped.
+
+## Focused-run startup overhead
+
+At `3480575`, 236 files collect 2,072 cases: 139 files select Node and 97
+construct jsdom. A complete native run takes 27.56 s, including 26.52 s of
+accumulated environment work across two workers and 8.02 s of test bodies.
+The existing VM-local preset's non-exception group takes 8.45 s, with only
+1.57 s environment work and 7.53 s test bodies. Its 2,061 cases exclude the
+same 11 native-only cases already named in the local preset.
+
+Both baselines have the same five pre-existing failures: four assertions still
+expect the old `down` palette after the status-color change `27a8024`; the i18n
+coverage assertion finds three newly untranslated labels. No assertion is
+removed to hide them. A representative eight-file UI invocation passes all
+58 cases in 3.06 s before configuration changes.
+
+The bounded change makes the established VM pool automatic for ordinary
+explicit-file iteration. Files needing native build-module loading or
+WebCrypto remain in native forks, including mixed and absolute-path selections.
+The full/fast wrapper explicitly selects native forks unless an existing local
+preset supplies its VM pool. Per-file isolation, two workers, a 512 MB VM
+recycling limit, collection guards and all native full-gate coverage remain.
+All test files are **keep**; no cases, inputs, assertions or tiers are pruned.
+The existing scope-parser test will also pin native-exception selection.
+
+The representative eight-file invocation retains all 58 cases and falls from
+3.06 to 1.89 s (38% less elapsed); accumulated environment work falls from
+2.17 to 0.578 s. Test-body time is essentially unchanged (1.63 -> 1.56 s).
+Focused native-exception, scope and status-color checks pass. The four stale
+palette assertions now require the production `danger` token instead of the
+retired financial-direction `down` token; failure-state conditions, feedback
+bindings, retry wiring and source-list preservation checks all remain.
+
+This makes the already-established VM local strategy automatic for small
+commands; it does not claim to shorten complete native validation. The shared
+landing selector still narrows the configured wrapper to related files. Full
+native validation remains a separate required pre-landing command, and the
+test procedure now states that limitation explicitly.
+
+After integrating `d28bde4`, complete native validation retains 2,075 cases:
+2,074 pass and only the pre-existing missing-label assertion fails, in
+27.12 s. The count increase is from the integrated main revision, not this
+change. No source text or label dictionary was changed in this runtime pass.
+The scope selection and both native exception suites also pass together via
+the normal npm command (20 cases), including canonical paths, alternate root
+selection, mixed lists and in-tree symlinks. Web landing remains pending the
+translation repair approval so a red full suite is not pushed as green.
