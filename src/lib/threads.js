@@ -169,6 +169,10 @@ export async function startNewThread(currentMessages) {
 }
 
 export async function removeThread(id) {
+  if(id===currentThreadId()) {
+    clearTimeout(saveTimer);saveTimer=null;pendingMessages=null
+    await saveChain.catch(()=>{})
+  }
   if (!chatstoreAvailable()) {
     saveLocalThreads(loadLocalThreads().filter((item) => item.id !== id))
     if (currentThreadId() === id) resetActiveThread()
@@ -176,6 +180,15 @@ export async function removeThread(id) {
   }
   await deleteThread(id)
   if (currentThreadId() === id) resetActiveThread()
+}
+
+/** Delete, rather than archive or empty, the active conversation. */
+export async function deleteActiveThread() {
+  clearTimeout(saveTimer);saveTimer=null;pendingMessages=null
+  await saveChain.catch(()=>{})
+  const id=currentThreadId()
+  if(id!=null)await removeThread(id)
+  else resetActiveThread()
 }
 
 /** One-time migration: a legacy local conversation with no server threads

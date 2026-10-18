@@ -211,3 +211,16 @@ it('surfaces a failed partial stream instead of silently generating a second ans
   {wireStream:vi.fn().mockRejectedValue(error),wireComplete:complete})).rejects.toThrow('stream interrupted')
  expect(complete).not.toHaveBeenCalled()
 })
+
+it('refreshes app access after stale conversation claims before asking the model',async()=>{
+ const execute=vi.fn(async()=>JSON.stringify({portfolios:[{id:'p1',name:'Long term'},{id:'p2',name:'Income'}]}))
+ const stream=vi.fn(async()=>({text:'Both portfolios are available.'})),trace=vi.fn()
+ await runAgenticOverWire({model:'family-sonnet',system:'current context',
+  messages:[{role:'assistant',content:'I can only see the selected portfolio.'},{role:'user',content:'You should see the others now.'}],
+  initialTools:[{name:'get_portfolios',args:{}}],onTrace:trace},
+  {wireStream:stream,executeTool:execute})
+ expect(execute).toHaveBeenCalledWith('get_portfolios',{})
+ expect(stream.mock.calls[0][0].messages.at(-1).content).toContain('TOOL_RESULT get_portfolios:')
+ expect(stream.mock.calls[0][0].messages.at(-1).content).toContain('Long term')
+ expect(trace).toHaveBeenCalledWith(expect.objectContaining({type:'tool_done',name:'get_portfolios'}))
+})

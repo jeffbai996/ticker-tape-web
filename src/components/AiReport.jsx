@@ -250,7 +250,8 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
           // an empty answer about one run in four, and a dropped SSE pipe
           // looks identical. Both recover on the one-shot twin below.
           if (!acc.trim()) throw new Error('empty stream')
-        } catch {
+        } catch (error) {
+          if (acc.trim()) throw error
           // The one-shot twin preserves the selected model and effort when a
           // stream is interrupted before it emits any content.
           const out = await wireComplete({
@@ -391,7 +392,7 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
           {/* fixed effort is a fact about the model, not a control — plain
               text, so it does not read as one more button */}
           {selectedWriter?.fixed_effort && (
-            <span class="font-mono text-[9px] text-muted" title={tl('Fixed model effort')}>
+            <span class="h-6 inline-flex items-center rounded-md border border-line bg-surface-0 px-2 font-anth text-[10px] text-ink-2" title={tl('Fixed model effort')}>
               {tl('thinking')}
             </span>
           )}
@@ -407,7 +408,7 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
             aria-expanded={showDials}
             aria-label={tl('Style & analysis')}
             title={tl('Style & analysis')}
-            class={`h-6 flex items-center gap-1 px-1 rounded font-mono text-[10px] whitespace-nowrap disabled:opacity-45 disabled:cursor-not-allowed ${
+            class={`h-6 flex items-center gap-1.5 px-2 rounded-md border border-line bg-surface-0 font-anth text-[10px] whitespace-nowrap disabled:opacity-45 disabled:cursor-not-allowed ${
               showDials ? 'text-accent' : 'text-muted hover:text-ink'}`}
           >
             <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h10m4 0h2M4 12h4m4 0h8M4 18h13m3 0h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="19" cy="18" r="2"/></svg>
@@ -470,7 +471,8 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
       )}
       {(text || error) && (
         <div ref={bodyRef} class="px-3 py-2 font-anth text-[13px] leading-relaxed select-text text-ink-2 max-h-[45vh] overflow-y-auto">
-          {error ? <span class="font-mono text-[11px] text-down">{error}</span> : <MdLite text={text} />}
+          {text && <MdLite text={text} />}
+          {error && <span class="block pt-2 font-mono text-[11px] text-danger">{error}</span>}
           {busy && <span class="text-accent">▌</span>}
         </div>
       )}

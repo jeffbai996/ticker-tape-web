@@ -163,7 +163,7 @@ export function FinancialsView({ symbol }) {
     // not a table). Same period shape, same rows, same growth math.
     ;(isCnListing(symbol) ? fetchCnFinancials(symbol) : fetchFinancials(symbol)).then(setFa).catch((e) => setErr(String(e.message || e)))
   }, [symbol])
-  if (err) return <div class="px-1 font-mono text-[11px] text-down">{err}</div>
+  if (err) return <div class="px-1 font-mono text-[11px] text-danger">{err}</div>
   if (fa === null) return <Loading label={tt('common.loading')} minH={320} />
   return (
     <div class="flex flex-col gap-3 max-w-6xl">

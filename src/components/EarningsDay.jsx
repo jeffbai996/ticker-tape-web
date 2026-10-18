@@ -241,7 +241,7 @@ export function EarningsDay({ symbols }) {
           {docket.map((e) => {
             const on = active?.sym === e.sym
             const urgent = e.days <= 0 ? 'text-imminent font-bold'
-              : e.days <= 1 ? 'text-down' : e.days <= 7 ? 'text-accent' : 'text-muted'
+              : e.days <= 1 ? 'text-danger' : e.days <= 7 ? 'text-accent' : 'text-muted'
             const bucket = bucketOf(e.days)
             const divider = bucket !== lastBucket
             lastBucket = bucket

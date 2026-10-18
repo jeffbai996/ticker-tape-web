@@ -130,7 +130,7 @@ function ScreenTable({ symbols, hist }) {
                 <tr key={sym} class="border-b border-line last:border-0">
                   <WatchCell sym={sym} />
                   <td class="px-3 py-[3px] font-bold text-accent">{sym}</td>
-                  <td colSpan={6} class="px-2 py-[3px] text-down text-[11px]">{tl('no data')}</td>
+                  <td colSpan={6} class="px-2 py-[3px] text-danger text-[11px]">{tl('no data')}</td>
                 </tr>
               )
             }
@@ -500,7 +500,7 @@ function PresetRow({ current, onLoad }) {
           <button onClick={() => onLoad(s.symbols)} class="text-accent hover:brightness-125">{s.name}</button>
           <button onClick={() => { deleteScreen(s.name); setScreens(loadScreens()) }}
             title={tl('delete')}
-            class="opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100 text-muted hover:text-down">✕</button>
+            class="opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100 text-muted hover:text-danger">✕</button>
         </span>
       ))}
       {naming ? (

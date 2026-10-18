@@ -320,7 +320,7 @@ export function StatusBar() {
         <button type="button"
           onClick={() => { location.href = location.href.replace(/[?&]freeze[^&#]*/, '') }}
           title={tl('live updates are frozen by ?freeze in the URL — tap to unfreeze')}
-          class="h-5 inline-flex items-center rounded border border-down bg-down/20 px-1.5 font-anth text-[8.5px] font-bold uppercase tracking-wider text-down">
+          class="h-5 inline-flex items-center rounded border border-danger bg-danger/20 px-1.5 font-anth text-[8.5px] font-bold uppercase tracking-wider text-danger">
           {tl('FROZEN')}
         </button>
       )}
@@ -335,7 +335,7 @@ export function StatusBar() {
           <button type="button"
             onClick={() => { if (confirm(tl('Remove the custom data-proxy override and reload?'))) { try { localStorage.removeItem('proxy_url') } catch { /* fine */ } location.reload() } }}
             title={`proxy_url = ${saved}`}
-            class="h-5 inline-flex items-center rounded border border-down/50 bg-down/10 px-1.5 font-anth text-[8.5px] font-bold uppercase tracking-wider text-down/90 hover:bg-down/20">
+            class="h-5 inline-flex items-center rounded border border-danger/50 bg-danger/10 px-1.5 font-anth text-[8.5px] font-bold uppercase tracking-wider text-danger/90 hover:bg-danger/20">
             {tl('custom proxy')}
           </button>
         )

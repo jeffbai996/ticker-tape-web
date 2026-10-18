@@ -506,7 +506,7 @@ function Positions({ priceMap, positions, margin, accountId, book, broker }) {
             {margin.maintenance != null && <div class="flex justify-between"><span class="text-muted">{tl('Maintenance')}</span><span class="text-ink-2">{dollars(margin.maintenance, units)}</span></div>}
             {margin.above_maintenance != null && <div class="flex justify-between"><span class="text-muted">{tl('Above maintenance')}</span><span class="text-ink-2">{dollars(margin.above_maintenance, units)}</span></div>}
             {margin.cushion_pct != null && <div class="flex justify-between"><span class="text-muted">{tl('Cushion')}</span>
-              <span class={`font-semibold ${margin.cushion_pct < 8 ? 'text-down' : 'text-up'}`}>{fmtPctPlain(margin.cushion_pct, 2)}</span></div>}
+              <span class={`font-semibold ${margin.cushion_pct < 8 ? 'text-danger' : 'text-success'}`}>{fmtPctPlain(margin.cushion_pct, 2)}</span></div>}
           </div>
         </section>
       )}
@@ -550,7 +550,7 @@ function Account({ priceMap, positions, margin, account, book, broker }) {
         <AccountStat label={tl('Maintenance')} value={dollars(margin?.maintenance ?? s.maintenance, units)} />
         <AccountStat label={tl('Excess liquidity')} value={dollars(margin?.above_maintenance ?? s.excessLiq, units)} />
         <AccountStat label={tl('Cushion')} value={fmtPctPlain(margin?.cushion_pct ?? s.cushionPct)}
-          cls={(margin?.cushion_pct ?? s.cushionPct) != null && (margin?.cushion_pct ?? s.cushionPct) < 15 ? 'text-down' : 'text-up'} />
+          cls={(margin?.cushion_pct ?? s.cushionPct) != null && (margin?.cushion_pct ?? s.cushionPct) < 15 ? 'text-danger' : 'text-success'} />
         <AccountStat label={tl('Day P&L')} value={signedMoney(dayPnl, units)} cls={pnlCls(dayPnl)} />
         <AccountStat label={tl('Unreal P&L')} value={signedMoney(unrealPnl, units)} cls={pnlCls(unrealPnl)} />
       </div>
@@ -692,7 +692,7 @@ function Cockpit({ priceMap, positions, book, broker }) {
         <AccountStat label={tl('Top position')} value={fmtPctPlain(top)} />
         <AccountStat label={tl('Concentration (HHI)')} value={hhi != null ? hhi.toFixed(3) : '—'} />
         <AccountStat label={tl('Cushion')} value={fmtPctPlain(s.cushionPct)}
-          cls={s.cushionPct != null && s.cushionPct < 15 ? 'text-down' : 'text-up'} />
+          cls={s.cushionPct != null && s.cushionPct < 15 ? 'text-danger' : 'text-success'} />
       </div>
 
       <section class="bg-surface-1 border border-line rounded-xl p-3 font-mono text-[11px]">
@@ -1079,7 +1079,7 @@ function Backtest({ accountId }) {
         <Loading label={tt('common.loading')} minH={220} />
       )}
 
-      {error && <div class="px-1 font-mono text-[11px] text-down">{error}</div>}
+      {error && <div class="px-1 font-mono text-[11px] text-danger">{error}</div>}
 
       {result && result.dates.length > 0 && (
         <section class="bg-surface-1 border border-line rounded-xl p-3 flex flex-col gap-3 min-w-0">
@@ -1117,7 +1117,7 @@ function IbkrMd({ url, empty }) {
     return () => { dead = true }
   }, [url])
   if (state.status === 'loading') return <Loading label={tt('portfolio.gateway_loading')} minH={120} />
-  if (state.status === 'err') return <div class="px-1 py-2 font-mono text-[11px] text-down">{state.md}</div>
+  if (state.status === 'err') return <div class="px-1 py-2 font-mono text-[11px] text-danger">{state.md}</div>
   if (!state.md.trim()) return <Empty label={empty || tt('portfolio.gateway_empty')} />
   return (
     <section class="bg-surface-1 border border-line rounded-xl px-3 py-2 font-anth text-[12.5px] leading-relaxed text-ink-2 max-w-3xl overflow-x-auto">
@@ -1234,7 +1234,7 @@ function Trades({ accountId }) {
             class="w-20 bg-surface-2 border border-line rounded-md px-2 py-0.5 text-ink uppercase outline-none focus:border-accent placeholder:text-muted" />
           {applied && (
             <button type="button" onClick={() => { setFilter(''); setApplied('') }}
-              class="text-muted hover:text-down text-[10px]">✕ {applied}</button>
+              class="text-muted hover:text-danger text-[10px]">✕ {applied}</button>
           )}
         </form>
       </div>
@@ -1340,7 +1340,7 @@ function ManualEntry({ breaker, onDone }) {
         {[[false, tl('condition holds')], [true, tl('condition breached')]].map(([value, label]) => (
           <button key={String(value)} type="button" onClick={() => setFired(value)}
             class={`border rounded-md px-2 py-0.5 font-semibold ${fired === value
-              ? (value ? 'bg-down border-down text-black' : 'bg-up/20 border-up/50 text-up')
+              ? (value ? 'bg-danger border-danger text-black' : 'bg-success/20 border-success/50 text-success')
               : 'border-line text-ink-2 hover:text-ink'}`}>{label}</button>
         ))}
       </div>
@@ -1354,7 +1354,7 @@ function ManualEntry({ breaker, onDone }) {
         </button>
         <button type="button" onClick={() => { setOpen(false); setErr('') }}
           class="font-mono text-[10px] uppercase tracking-wider text-muted hover:text-ink">{tl('cancel')}</button>
-        {err && <span class="font-mono text-[10px] text-down">{err}</span>}
+        {err && <span class="font-mono text-[10px] text-danger">{err}</span>}
         {!note.trim() && <span class="font-mono text-[9px] text-muted">{tl('a note is required')}</span>}
       </div>
     </div>
@@ -1507,16 +1507,16 @@ function CandidateRow({ candidate, canWrite, onSettled, onUnsupported }) {
           ) : (
             <>
               <button type="button" disabled={busy} onClick={() => setNoting(true)}
-                class="font-mono text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-md border border-up/50 text-up hover:bg-up/10">
+                class="font-mono text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-md border border-success/50 text-success hover:bg-success/10">
                 {tl('confirm')}
               </button>
               <button type="button" disabled={busy} onClick={() => send('dismiss')}
-                class="font-mono text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-md border border-line text-muted hover:text-down">
+                class="font-mono text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-md border border-line text-muted hover:text-danger">
                 {tl('dismiss')}
               </button>
             </>
           )}
-          {err && <span class="font-mono text-[10px] text-down">{err}</span>}
+          {err && <span class="font-mono text-[10px] text-danger">{err}</span>}
         </div>
       )}
     </div>
@@ -1577,12 +1577,12 @@ function Thesis() {
         </header>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 p-2">
           <AccountStat label={thesisTerm('FIRED')} value={String(health.fired)}
-            cls={health.fired ? 'text-down' : 'text-muted'} />
+            cls={health.fired ? 'text-danger' : 'text-muted'} />
           <AccountStat label={thesisTerm('NO DATA')} value={String(health.noData)}
             cls={health.noData ? 'text-accent' : 'text-muted'} />
           <AccountStat label={thesisTerm('AWAITING REVIEW')} value={String(health.awaiting)} cls="text-ink-2" />
           <AccountStat label={thesisTerm('CLEAR')} value={String(health.clear)}
-            cls={health.clear ? 'text-up' : 'text-muted'} />
+            cls={health.clear ? 'text-success' : 'text-muted'} />
         </div>
       </section>
 
@@ -1669,7 +1669,7 @@ function Thesis() {
         {signals.length ? signals.map((signal) => (
           <div key={signal.id} class="border-t border-line/50 px-3 py-1.5 first:border-0">
             <div class="flex items-center gap-2 font-mono text-[9px] uppercase tracking-wider text-muted">
-              <span class={`rounded px-1 font-bold ${signal.meta?.thesis >= 3 ? 'bg-down text-black' : 'bg-accent text-black'}`}>T{signal.meta?.thesis}</span>
+              <span class={`rounded px-1 font-bold ${signal.meta?.thesis >= 3 ? 'bg-danger text-black' : 'bg-accent text-black'}`}>T{signal.meta?.thesis}</span>
               <span>{signal.source || 'wire'}</span>
               <span>{signal.type?.replaceAll('_', ' ')}</span>
             </div>
@@ -1931,7 +1931,7 @@ export function PortfolioHeader({ accounts, account, onChange, book, wired }) {
         <div class="min-w-0">
           <div class="flex items-center gap-2">
             <h1 class="font-anth text-[13px] font-bold tracking-wide text-ink">{tl('Portfolio')}</h1>
-            {live && <span class="h-1.5 w-1.5 rounded-full bg-up" title={tt('portfolio.live')} />}
+            {live && <span class="h-1.5 w-1.5 rounded-full bg-success" title={tt('portfolio.live')} />}
           </div>
           <div class="truncate font-anth text-[9.5px] text-muted">{detail}</div>
         </div>

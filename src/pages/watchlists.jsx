@@ -29,9 +29,9 @@ function CloudChip() {
     : tl('cloud offline')
   return (
     <span class={`rounded border px-1.5 py-px font-anth text-[8px] font-bold tracking-wider uppercase ${
-      st.state === 'synced' ? 'border-up/40 text-up'
+      st.state === 'synced' ? 'border-success/40 text-success'
       : st.state === 'syncing' ? 'border-line text-muted'
-      : 'border-down/40 text-down'}`}>
+      : 'border-danger/40 text-danger'}`}>
       {label}
     </span>
   )
@@ -105,7 +105,7 @@ function SymbolPreview({ symbols, quotes, managing, onSend, onRemove }) {
                 <button onClick={() => onSend(symbol)} title={tl('send to destination')}
                   class="text-muted hover:text-accent px-0.5">→</button>
                 <button onClick={() => onRemove(symbol)} title={tl('remove')}
-                  class="text-muted hover:text-down">✕</button>
+                  class="text-muted hover:text-danger">✕</button>
               </>
             )}
           </span>
@@ -257,7 +257,7 @@ function WatchlistCard({ item, quotes, earnDays, allLists, primary = false }) {
           <span class="text-[9px]">{tl('→ moves · ✕ removes')}</span>
         </div>
       )}
-      {notice && <div class="font-anth text-[10px] text-down">{notice}</div>}
+      {notice && <div class="font-anth text-[10px] text-danger">{notice}</div>}
       <SymbolPreview symbols={item.symbols} quotes={quotes} managing={managing}
         onSend={send} onRemove={dropFrom} />
 
@@ -265,7 +265,7 @@ function WatchlistCard({ item, quotes, earnDays, allLists, primary = false }) {
           row read as labels, not things to tap (Jeff 2026-08-22) */}
       <div class="flex flex-wrap items-center gap-1.5 border-t border-line pt-2.5 font-anth text-[11px] font-semibold">
         <a href={href} data-watchlist-open
-          class={`${ctl} border-up/50 bg-up/10 text-up hover:bg-up hover:text-black hover:no-underline`}>
+          class={`${ctl} border-success/50 bg-success/10 text-success hover:bg-success hover:text-black hover:no-underline`}>
           {tt('watchlists.open')}
         </a>
         <button onClick={() => setManaging((v) => !v)} class={managing ? ctlOn : ctlOff}>
@@ -288,7 +288,7 @@ function WatchlistCard({ item, quotes, earnDays, allLists, primary = false }) {
               <button onClick={() => { setName(item.name); setEditing((value) => !value) }} class={ctlOff}>{tl('rename')}</button>
               <button onClick={() => {
                 if (confirm(tt('watchlists.delete_confirm', { name: item.name }))) removeWatchlist(item.id)
-              }} class={`${ctl} border-down/40 bg-down/10 text-down hover:bg-down hover:text-black`}>{tl('delete')}</button>
+              }} class={`${ctl} border-danger/40 bg-danger/10 text-danger hover:bg-danger hover:text-black`}>{tl('delete')}</button>
             </>
           )}
         </div>
@@ -349,7 +349,7 @@ export function WatchlistsPage() {
             </form>
           )}
         </header>
-        {error && <div class="px-1 pt-2 font-anth text-[10px] text-down">{error}</div>}
+        {error && <div class="px-1 pt-2 font-anth text-[10px] text-danger">{error}</div>}
 
         <div class="grid md:grid-cols-2 gap-3 pt-4">
           <WatchlistCard item={{ id: 'main', name: tl('Default'), symbols: main }}

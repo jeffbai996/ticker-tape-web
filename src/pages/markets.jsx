@@ -719,7 +719,7 @@ function Earnings() {
         <tbody>
           {upcoming.map((e) => {
             const cls = e.days <= 0 ? 'text-imminent font-bold'
-              : e.days <= 7 ? 'text-down' : e.days <= 21 ? 'text-accent' : 'text-ink-2'
+              : e.days <= 7 ? 'text-danger' : e.days <= 21 ? 'text-accent' : 'text-ink-2'
             return (
               <tr
                 key={e.sym}
@@ -746,7 +746,7 @@ function Earnings() {
 }
 
 const URGENCY = [
-  { max: 3, cls: 'text-down' },
+  { max: 3, cls: 'text-danger' },
   { max: 10, cls: 'text-accent' },
   { max: Infinity, cls: 'text-ink-2' },
 ]
@@ -809,7 +809,7 @@ function CatalystAdd({ today }) {
           class="font-mono text-[11px] px-2 py-1 rounded-md border border-line text-muted hover:text-ink hover:border-line-2">
           {tl('cancel')}
         </button>
-        {error && <span class="font-mono text-[10px] text-down">{error}</span>}
+        {error && <span class="font-mono text-[10px] text-danger">{error}</span>}
       </form>
     </footer>
   )
@@ -1133,9 +1133,9 @@ function EventWorkspace({ event, details }) {
 // market-structure muted; user catalysts keep their cyan.
 const ECON_CHIP = (type) => {
   if (/^(FED|FOMC|MINS)$/.test(type)) return 'border-accent/50 text-accent bg-accent/10'
-  if (/^(CPI|PPI|PCE)$/.test(type)) return 'border-down/40 text-down/90 bg-down/10'
+  if (/^(CPI|PPI|PCE)$/.test(type)) return 'border-danger/40 text-danger/90 bg-danger/10'
   if (/^(NFP|CLMS|JOLT)$/.test(type)) return 'border-accent-2/50 text-accent-2 bg-accent-2/10'
-  if (/^(ISM|ISMS|UMCH|RET|GDP)$/.test(type)) return 'border-up/40 text-up bg-up/10'
+  if (/^(ISM|ISMS|UMCH|RET|GDP)$/.test(type)) return 'border-success/40 text-success bg-success/10'
   return 'border-line-2 text-ink-2 bg-surface-2'
 }
 
@@ -1228,7 +1228,7 @@ function Calendar() {
                         if (isOpen) setOpenKey('')
                         removeCatalyst(e.id)
                       }}
-                      class="ml-2 font-mono text-[10px] text-muted opacity-0 group-hover:opacity-100 max-md:opacity-100 hover:text-down"
+                      class="ml-2 font-mono text-[10px] text-muted opacity-0 group-hover:opacity-100 max-md:opacity-100 hover:text-danger"
                       title={tl('remove catalyst')}
                     >
                       ✕

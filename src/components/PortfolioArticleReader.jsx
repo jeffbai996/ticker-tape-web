@@ -39,7 +39,7 @@ export function PortfolioArticleReader({ item, onClose, dialog=false }) {
       </header>
       <div class="reader-prose min-h-0 flex-1 overflow-y-auto px-4 py-3">
         {readable && !art && !err && <div class="font-anth text-[11px] text-muted">{tl('Reading')}…</div>}
-        {readable && err && <div class="font-anth text-[11px] text-down">{tl('Could not load the story — open the original instead.')}</div>}
+        {readable && err && <div class="font-anth text-[11px] text-danger">{tl('Could not load the story — open the original instead.')}</div>}
         {art?.paras?.map((p, i) => (
           <p key={i} class="mb-3 font-anth text-[13.5px] leading-[1.85] text-ink-2">{p}</p>
         ))}

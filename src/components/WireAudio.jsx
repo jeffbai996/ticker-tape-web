@@ -62,7 +62,7 @@ export function WireAudio({ endpoint }) {
         <h2 class="text-[12px] font-semibold text-ink">{zh ? '音频与文字稿' : 'Audio & transcripts'}</h2>
         <button aria-label={zh ? '刷新' : 'Refresh'} class="px-2 text-muted hover:text-accent" onClick={() => setRetry(n => n + 1)}>↻</button>
       </div>
-      {error && <p role="alert" class="p-3 text-[11px] text-down">{zh ? '无法加载录音，请重试。' : 'Could not load sessions. Retry.'}</p>}
+      {error && <p role="alert" class="p-3 text-[11px] text-danger">{zh ? '无法加载录音，请重试。' : 'Could not load sessions. Retry.'}</p>}
       {!sessions && !error && <p class="p-3 text-[11px] text-muted">{zh ? '加载中…' : 'Loading sessions…'}</p>}
       {sessions?.length === 0 && <p class="p-3 text-[11px] text-muted">{zh ? '暂无录音。' : 'No sessions yet.'}</p>}
       {sessions?.map(s => <button key={s.id} data-audio-session={s.id} aria-pressed={selected === s.id}
@@ -70,7 +70,7 @@ export function WireAudio({ endpoint }) {
         <span class="block text-[12px] font-semibold text-ink">{s.label || s.symbol}</span>
         <span class="mt-1 flex justify-between gap-2 font-mono text-[10px] text-muted">
           <span>{new Date(s.starts_at * 1000).toLocaleDateString(zh ? 'zh-CN' : 'en-US')}</span>
-          <span class={s.status === 'capturing' ? 'text-up' : s.status === 'failed' ? 'text-down' : ''}>{s.status}</span>
+          <span class={s.status === 'capturing' ? 'text-success' : s.status === 'failed' ? 'text-danger' : ''}>{s.status}</span>
         </span>
       </button>)}
     </div>

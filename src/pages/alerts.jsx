@@ -171,7 +171,7 @@ function AlertForm({ destinations, prefs, editing, recipe, onDone }) {
           {tl('cancel')}
         </button>
       )}
-      {error && <span class="font-mono text-[11px] text-down pb-1.5">{error}</span>}
+      {error && <span class="font-mono text-[11px] text-danger pb-1.5">{error}</span>}
     </form>
   )
 }
@@ -380,7 +380,7 @@ export function Alerts() {
                           if (a.id === editingId) setEditingId(null)
                           removeAlert(a.id)
                         }}
-                          class="text-down hover:underline">{tl('delete')}</button>
+                          class="text-danger hover:underline">{tl('delete')}</button>
                       </td>
                     </tr>
                   )

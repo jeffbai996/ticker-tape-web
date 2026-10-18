@@ -2,7 +2,7 @@ import { h, render } from 'preact'
 import { act } from 'preact/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const lineup = vi.hoisted(() => ({ models: [], calls: 0 }))
+const lineup = vi.hoisted(() => ({ models: [], calls: 0, stream: null }))
 
 vi.mock('../../src/lib/nav.js', async (importOriginal) => ({
   ...await importOriginal(),
@@ -19,7 +19,7 @@ vi.mock('../../src/lib/wirechat.js', async (importOriginal) => ({
     lineup.calls += 1
     return lineup.models.map((m) => ({ ...m }))
   },
-  wireStream: async ({ onDelta }) => { onDelta('**Setup**\nFlat.') },
+  wireStream: async (options) => { if(lineup.stream)return lineup.stream(options);options.onDelta('**Setup**\nFlat.') },
 }))
 
 const { AiReport } = await import('../../src/components/AiReport.jsx')
@@ -33,6 +33,7 @@ Element.prototype.scrollTo ||= () => {}
 beforeEach(() => {
   localStorage.clear()
   lineup.calls = 0
+  lineup.stream = null
   root = document.createElement('div')
   document.body.append(root)
 })
@@ -117,4 +118,21 @@ describe('report card', () => {
     expect(root.textContent).not.toContain('Controls the shape')
     expect(root.querySelector('textarea').rows).toBe(1)
   })
+})
+
+
+it('paints report deltas while generation is still running',async()=>{
+ lineup.models=[CLOUD]
+ let finish,startedResolve
+ const started=new Promise(resolve=>{startedResolve=resolve})
+ const gate=new Promise(resolve=>{finish=resolve})
+ lineup.stream=async({onDelta})=>{onDelta('First paragraph.');startedResolve();await gate;onDelta(' Second paragraph.')}
+ await mountCard()
+ await act(async()=>{button('generate').click();await started})
+ expect(root.textContent).toContain('First paragraph.')
+ expect(button('regenerate').disabled).toBe(true)
+ await act(async()=>{finish();await gate})
+ await act(async()=>{})
+ expect(root.textContent).toContain('Second paragraph.')
+ expect(button('regenerate').disabled).toBe(false)
 })

@@ -138,7 +138,7 @@ export function CashActivity({ portfolio, rates }) {
                 </span>
                 {['deposit', 'withdrawal', 'adjustment'].includes(entry.kind) ? (
                   <button type="button" onClick={() => remove(entry.id)} aria-label={tl('Remove cash activity')}
-                    class="font-mono text-[10px] text-muted hover:text-down">×</button>
+                    class="font-mono text-[10px] text-muted hover:text-danger">×</button>
                 ) : <span class="w-2" />}
               </div>
             ))}

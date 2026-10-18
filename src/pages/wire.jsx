@@ -109,7 +109,7 @@ function CaptureControl({ endpoint, onArmed }) {
         class="h-[30px] border border-accent rounded-md bg-accent-soft px-3 font-sans text-[11px] font-semibold text-accent hover:bg-accent hover:text-black disabled:opacity-50">
         {tl(state === 'arming' ? 'arming…' : 'arm capture')}
       </button>
-      <span class={`basis-full font-mono text-[10px] ${state === 'armed' ? 'text-up' : state === 'invalid' || state === 'idle' || state === 'arming' ? 'text-muted' : 'text-down'}`}>
+      <span class={`basis-full font-mono text-[10px] ${state === 'armed' ? 'text-success' : state === 'invalid' || state === 'idle' || state === 'arming' ? 'text-muted' : 'text-danger'}`}>
         {state === 'armed' ? tl('capture armed — waiting for audio')
           : state === 'invalid' ? tl('enter a symbol and official webcast URL')
             : state === 'idle' ? tl('no active capture') : state === 'arming' ? tl('arming…') : state}
@@ -329,7 +329,7 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
                 hot ? 'border-black/40 text-black' : 'border-line-2 text-muted hover:text-accent hover:border-accent/60'}`}>↗</a>
           )}
         </span>
-        <span class={`text-[10.5px] text-right px-0.5 tabular-nums max-sm:row-start-1 max-sm:col-start-4 max-sm:justify-self-end ${hot ? '' : lat < 60 ? 'text-up' : 'text-muted'}`}>{latTxt}</span>
+        <span class={`text-[10.5px] text-right px-0.5 tabular-nums max-sm:row-start-1 max-sm:col-start-4 max-sm:justify-self-end ${hot ? '' : lat < 60 ? 'text-success' : 'text-muted'}`}>{latTxt}</span>
       </div>
       {open && ev.live_call && ev.story_cluster && (
         <div class="px-2.5 pb-2 pl-[168px] max-sm:pl-2.5 flex flex-col gap-0.5">
@@ -345,7 +345,7 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
       {open && ev.live_call && (
         <div data-wire-session-document class="ml-[168px] mr-2.5 mb-2 max-sm:mx-2.5 max-w-[80ch] border-l-2 border-up/70 pl-3">
           <div class="flex items-baseline gap-2 pb-2">
-            <span class="font-mono text-[8.5px] uppercase tracking-wider text-up">{tt(ev.is_live ? 'wire.live_transcript' : 'wire.call_transcript')}</span>
+            <span class="font-mono text-[8.5px] uppercase tracking-wider text-success">{tt(ev.is_live ? 'wire.live_transcript' : 'wire.call_transcript')}</span>
             <span class="font-mono text-[9px] text-muted">{tt('wire.segment_count', { n: ev.live_call.transcript.length })}</span>
           </div>
           {ev.live_call.digests.map((dg) => (
@@ -552,7 +552,7 @@ function Rail({ today, now, events, watchset, onHide, onSource }) {
           {sessions.slice(0, 6).map((s) => (
             <div key={s.id} class="flex items-baseline gap-2 py-[2.5px] font-mono text-[11px]">
               <span class={`text-[9px] uppercase tracking-wider whitespace-nowrap ${
-                s.status === 'capturing' ? 'text-accent' : s.status === 'done' ? 'text-up' : 'text-muted'
+                s.status === 'capturing' ? 'text-accent' : s.status === 'done' ? 'text-success' : 'text-muted'
               }`}>{tl(s.status)}</span>
               <span class="text-ink-2 truncate" title={s.label}>
                 {s.symbol ? <SymbolLink sym={s.symbol} /> : null}{s.label ? ` · ${s.label}` : ''}
@@ -952,7 +952,7 @@ export function Wire({ route }) {
     saveWireOrder(m)
   }
 
-  const stateTone = { demo: 'text-muted', connecting: 'text-muted', live: 'text-accent', error: 'text-down' }
+  const stateTone = { demo: 'text-muted', connecting: 'text-muted', live: 'text-accent', error: 'text-danger' }
   const wireHome = newsserviceHome()      // re-reads on endpoint change via `endpoint` state
   const calendarUrl = calendarSubscriptionUrl()
   const embeddedWire = IS_FAMILY_BUILD || isMirrorBase(endpoint)
@@ -971,8 +971,8 @@ export function Wire({ route }) {
     : state === 'mirror' ? 'mirror'
     : state === 'connecting' ? 'connecting' : 'demo'
   const CONN_TONE = {
-    live: 'text-up', mirror: 'text-accent', connecting: 'text-accent',
-    down: 'text-down', demo: 'text-muted',
+    live: 'text-success', mirror: 'text-accent', connecting: 'text-accent',
+    down: 'text-danger', demo: 'text-muted',
   }
   // Solid dots, no glow (Jeff 2026-08-07). The colour already carries the
   // state; a halo on top of a 6px dot just reads as a smudge at this size.
@@ -1040,11 +1040,11 @@ export function Wire({ route }) {
             </a>
           </nav>
         )}
-        {error && <span class="font-mono text-[11px] text-down truncate">{error}</span>}
+        {error && <span class="font-mono text-[11px] text-danger truncate">{error}</span>}
         {state === 'error' && (
           <button data-wire-retry onClick={retryNow}
             title={tl('reconnecting on its own — click to try now')}
-            class="shrink-0 px-2 py-0.5 rounded-md border border-down/50 font-sans font-semibold text-[11px] text-down hover:text-ink hover:border-down">
+            class="shrink-0 px-2 py-0.5 rounded-md border border-danger/50 font-sans font-semibold text-[11px] text-danger hover:text-ink hover:border-danger">
             {tl('retry')}
           </button>
         )}
@@ -1112,11 +1112,11 @@ export function Wire({ route }) {
         {!IS_FAMILY_BUILD && <button data-thesis-filter onClick={() => setThesisOnly(!thesisOnly)}
           title={tl('only thesis-tagged stories')}
           class={`border rounded-md px-2.5 py-0.5 text-[11px] font-semibold transition-colors ${
-            thesisOnly ? 'bg-up border-up text-black' : 'bg-up/5 border-up/25 text-up/70 hover:text-up hover:border-up/50'
+            thesisOnly ? 'bg-success border-success text-black' : 'bg-success/5 border-success/25 text-success/70 hover:text-success hover:border-success/50'
           }`}>{tl('thesis')}</button>}
         <button data-prime-filter onClick={() => setPrimeOnly(!primeOnly)}
           title={tl('top-tier sources only')} aria-label={tl('top-tier sources only')}
-          class={`box-border inline-flex items-center justify-center w-[28px] h-[22px] shrink-0 border rounded-md px-[6px] py-0 leading-none text-up transition-colors ${
+          class={`box-border inline-flex items-center justify-center w-[28px] h-[22px] shrink-0 border rounded-md px-[6px] py-0 leading-none text-success transition-colors ${
             primeOnly ? 'bg-[#3fb950] border-[#3fb950] text-black' : 'border-[#3fb950]/40 hover:bg-[#3fb950]/10 hover:border-[#3fb950]'
           }`}><SourceSignal tier={1.25} className={primeOnly ? 'text-black' : 'text-[#3fb950]'} /></button>
         <input
@@ -1140,7 +1140,7 @@ export function Wire({ route }) {
               : <div class="px-3 py-6 font-mono text-[12px] text-muted">{tl('no events')}</div>
           )}
           {armedSession && filter === 'transcript_chunk,digest' && (
-            <div class="mx-3 mt-3 rounded-md border border-up/35 bg-up/5 px-2.5 py-1.5 font-mono text-[10.5px] text-up">
+            <div class="mx-3 mt-3 rounded-md border border-success/35 bg-success/5 px-2.5 py-1.5 font-mono text-[10.5px] text-success">
               {tl('capture armed — waiting for audio')} · #{armedSession.id}
             </div>
           )}

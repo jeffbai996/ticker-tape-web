@@ -67,7 +67,7 @@ function PredicateLine({ predicate, index, isRank, onChange, onRemove }) {
       )}
       {field?.unit && field.kind !== 'side' && <span class="text-muted">{field.unit}</span>}
       <button onClick={() => onRemove(index)} title={tl('remove filter')}
-        class="ml-auto text-muted hover:text-down px-1">✕</button>
+        class="ml-auto text-muted hover:text-danger px-1">✕</button>
     </div>
   )
 }
@@ -200,7 +200,7 @@ export function ScreenBoard() {
               class={`hover:brightness-125 ${s.id === draft.id ? 'text-accent' : 'text-ink-2'}`}>{s.name}</button>
             <button onClick={() => { deleteScreenDef(s.id); setDefs(loadScreenDefs()) }}
               title={tl('delete')}
-              class="opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100 text-muted hover:text-down">✕</button>
+              class="opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100 text-muted hover:text-danger">✕</button>
           </span>
         ))}
         <button onClick={() => patch(newScreenDef(tl('new screen')))}

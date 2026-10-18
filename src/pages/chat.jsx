@@ -2,6 +2,7 @@ import {pickerModels,modelGroups} from '../lib/chatModels.js'
 import {SuggestionRows} from '../components/SuggestionRows.jsx'
 import { earningsTone } from '../lib/earningsTone.js'
 import {submitTextKey} from '../lib/chatInput.js'
+import {chatRailData} from '../lib/chatRail.js'
 import {replayRequest} from '../lib/chatReplay.js'
 import {mergeTurnUsage} from '../lib/chatMetrics.js'
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
@@ -30,7 +31,7 @@ import { CHATSTORE_SYNC_EVENT, chatstoreAvailable, syncNotes } from '../lib/chat
 import { LANES, activeLanes, dynamicActions, visibleActions, promptLabel } from '../lib/launchpad.js'
 import {
   fetchThreadList, hydrateActiveThread, loadActiveHistory, migrateLegacy,
-  openThread, removeThread, saveActiveHistory, flushActiveHistory, startNewThread, currentThreadId,
+  openThread, removeThread, saveActiveHistory, flushActiveHistory, startNewThread, deleteActiveThread, currentThreadId,
 } from '../lib/threads.js'
 import { wireServiceUrl } from '../lib/wire.js'
 import { plainTraceText, hasTurnActivity, activityGroups } from '../lib/chatTrace.js'
@@ -238,7 +239,7 @@ function SpendMeter({ spend }) {
     <span class="flex items-center gap-2 font-mono text-[10px] text-muted" title={tt('chat.cap_note')}>
       <span>${spend.spent.toFixed(2)} / ${spend.cap}</span>
       <span class="w-20 h-1.5 bg-surface-2 rounded-full overflow-hidden inline-block">
-        <span class={`block h-full ${pct > 80 ? 'bg-down' : 'bg-accent'}`} style={{ width: `${pct}%` }} />
+        <span class={`block h-full ${pct > 80 ? 'bg-danger' : 'bg-accent'}`} style={{ width: `${pct}%` }} />
       </span>
     </span>
   )
@@ -306,7 +307,7 @@ function SessionRow({ thread, active, busy, onOpen, onDelete }) {
       {arming ? (
         <span class="flex items-center gap-1 shrink-0">
           <button type="button" disabled={busy} onClick={() => { setArming(false); onDelete() }}
-            class="font-anth text-[10px] px-1.5 py-0.5 rounded border border-down/50 text-down hover:bg-down/10 disabled:opacity-40">
+            class="font-anth text-[10px] px-1.5 py-0.5 rounded border border-danger/50 text-danger hover:bg-danger/10 disabled:opacity-40">
             {tl('delete')}
           </button>
           <button type="button" onClick={() => setArming(false)}
@@ -317,7 +318,7 @@ function SessionRow({ thread, active, busy, onOpen, onDelete }) {
       ) : (
         <button type="button" disabled={busy} onClick={() => setArming(true)} title={tl('delete session')}
           aria-label={tl('delete session')}
-          class="shrink-0 w-6 h-6 grid place-items-center rounded-md text-muted hover:text-down hover:bg-surface-2 disabled:opacity-30">
+          class="shrink-0 w-6 h-6 grid place-items-center rounded-md text-muted hover:text-danger hover:bg-surface-2 disabled:opacity-30">
           <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
             <path d="M3 4.5h10M6.5 4.5V3.2h3v1.3M4.4 4.5l.6 8.1h6l.6-8.1M6.6 7v3.4M9.4 7v3.4" />
           </svg>
@@ -604,7 +605,7 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
             {events.length ? events.slice(0, 4).map((ev) => (
               <a key={ev.label + ev.days} href="#/markets/calendar" class="flex items-baseline justify-between gap-2 font-mono text-[11.5px] py-px hover:no-underline">
                 <span class="text-ink truncate">{tl(ev.rawLabel || ev.label)}</span>
-                <span class={ev.days <= 1 ? 'text-imminent font-bold' : ev.days <= 7 ? 'text-down' : 'text-accent'}>
+                <span class={ev.days <= 1 ? 'text-imminent font-bold' : ev.days <= 7 ? 'text-danger' : 'text-accent'}>
                   {ev.days === 0 ? tl('today') : tt('common.days', { days: ev.days })}
                 </span>
               </a>
@@ -643,7 +644,7 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
                   {bk?.margin?.cushion_pct != null && (
                     <div class="flex justify-between pt-px border-t border-line-2/60 mt-px">
                       <span class="text-muted">{tl('Cushion')}</span>
-                      <span class={bk.margin.cushion_pct < 8 ? 'text-down' : 'text-ink-2'}>{bk.margin.cushion_pct.toFixed(1)}%</span>
+                      <span class={bk.margin.cushion_pct < 8 ? 'text-danger' : 'text-ink-2'}>{bk.margin.cushion_pct.toFixed(1)}%</span>
                     </div>
                   )}
                 </div>
@@ -661,7 +662,7 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
               </button>
               <div class="flex justify-between"><span class="text-muted">{tl('watching')}</span><span class="text-ink-2">{watchlist.length}</span></div>
               <div class="flex justify-between"><span class="text-muted">{tl('book')}</span>
-                <span class={book ? 'text-up' : 'text-muted'}>{tl(book ? (IS_FAMILY_AI ? 'saved' : 'live') : 'demo')}</span></div>
+                <span class={book ? 'text-success' : 'text-muted'}>{tl(book ? (IS_FAMILY_AI ? 'saved' : 'live') : 'demo')}</span></div>
             </div>
           </div>
         </div>
@@ -814,7 +815,7 @@ export function Chat() {
   const quotes = useQuotes(quoteSymbols)
   const earnDays = useEarningsDays(quoteSymbols)
   const upcoming = mergedEvents(ECON_EVENTS, loadCatalysts(),
-    new Date().toISOString().slice(0, 10), 60).slice(0, 4)
+    new Date().toISOString().slice(0, 10), 60).slice(0, 6)
 
   // Boot: pull the shared brain from the wire (server wins), adopt a legacy
   // local conversation as thread #1, and list the threads for the rail.
@@ -1158,6 +1159,7 @@ export function Chat() {
         effort: runEffort,
         system,
         messages: trimHistory(base, MODEL_WINDOW),
+        initialTools: IS_FAMILY_AI ? [{name:'get_portfolios',args:{}}] : [],
         takeFollowUps: drainFollowUps,
         onDelta: (d) => {
           live += d
@@ -1285,10 +1287,14 @@ export function Chat() {
     }
   }
 
-  const clear = () => {
-    replaceHistory([], true)
-    replaceActivity([])
-    setLiveAnswer('')
+  const clear = async () => {
+    if(busyRef.current)return
+    try {
+      await deleteActiveThread()
+      replaceHistory([]);replaceActivity([]);setLiveAnswer('')
+      setError(null);setEditingMessage(null);setAtHome(true);setDrawer(null)
+      await refreshThreads()
+    } catch(err) {sessionFailure(err)}
   }
 
   // Tool results by call id, for chip status/tooltips.
@@ -1358,7 +1364,7 @@ export function Chat() {
               onClick={mic}
               title={rec ? 'stop recording' : 'dictate (whisper on the wire)'}
               class={`shrink-0 w-8 h-8 grid place-items-center rounded-md border transition-colors ${
-                rec ? 'border-down text-down animate-pulse' : 'border-line-2 text-muted hover:text-ink'}`}
+                rec ? 'border-danger text-danger animate-pulse' : 'border-line-2 text-muted hover:text-ink'}`}
             >
               <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
             </button>
@@ -1371,7 +1377,7 @@ export function Chat() {
               type="button"
               onClick={stop}
               title={tl('stop generating')}
-              class="shrink-0 w-8 h-8 grid place-items-center rounded-md bg-[#f85149] text-white hover:bg-[#e6453d] transition-colors"
+              class="shrink-0 w-8 h-8 grid place-items-center rounded-md bg-danger text-white hover:bg-danger/80 transition-colors"
             >
               <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
             </button>
@@ -1471,15 +1477,9 @@ export function Chat() {
       </form>
   )
 
-  const railMovers = watchlist
-    .map((sym) => ({ sym, pct: quotes[sym]?.quote?.pct }))
-    .filter((x) => x.pct != null)
-    .sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct))
-    .slice(0, 4)
-  const railEarn = watchlist
-    .filter((sym) => earnDays[sym] != null && earnDays[sym] >= 0)
-    .sort((a, b) => earnDays[a] - earnDays[b])
-    .slice(0, 3)
+  const rail=chatRailData({symbols:quoteSymbols,quotes,earnDays,events:upcoming})
+  const railMovers=rail.movers
+
 
   return (
     <div class="flex-1 flex min-h-0 min-w-0">
@@ -1568,7 +1568,7 @@ export function Chat() {
             </button>
           )}
           {history.length > 0 && (
-            <button onClick={clear} class="w-6 h-6 grid place-items-center rounded-md text-muted hover:text-[#f85149] hover:bg-surface-2" title={tl('clear')} aria-label={tl('clear')}>
+            <button onClick={clear} disabled={busy} class="w-6 h-6 grid place-items-center rounded-md text-muted hover:text-[#f85149] hover:bg-surface-2" title={tl('clear')} aria-label={tl('clear')}>
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M5 6v14a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6M10 10v7M14 10v7"/></svg>
             </button>
           )}
@@ -1742,7 +1742,7 @@ export function Chat() {
             )
           }
           return (
-            <div key={i} class="chat-message-enter self-end max-w-[85%] flex flex-col items-end gap-1">
+            <div key={i} class="chat-user-message chat-message-enter self-end max-w-[85%] flex flex-col items-end gap-1">
               {editingMessage?.index===i ? <form class="w-full" onSubmit={e=>{e.preventDefault();replay(i,editingMessage.text)}}>
                 <textarea aria-label={getLocale()==='zh'?'编辑消息':'Edit message'} class="chat-edit-message w-full min-h-24 rounded-xl border border-accent bg-surface-2 p-3 font-anth text-ink" value={editingMessage.text}
                   onInput={e=>setEditingMessage({index:i,text:e.currentTarget.value})}
@@ -1753,9 +1753,13 @@ export function Chat() {
                 </div>
               </form> : <>
                 <div class="chat-message-copy rounded-2xl px-3.5 py-2.5 text-[1em] leading-relaxed whitespace-pre-wrap bg-accent-soft border border-accent/40 text-ink font-anth">{m.content}</div>
-                <div class="flex gap-3 text-[10px] text-muted">
-                  <button type="button" disabled={busy} onClick={()=>setEditingMessage({index:i,text:m.content})}>{getLocale()==='zh'?'编辑':'Edit'}</button>
-                  {m.failure && <button type="button" disabled={busy} onClick={()=>replay(i,m.content)} class="text-accent">{getLocale()==='zh'?'重试':'Retry'}</button>}
+                <div class="chat-user-actions">
+                  <button type="button" disabled={busy} onClick={()=>setEditingMessage({index:i,text:m.content})} aria-label={getLocale()==='zh'?'编辑':'Edit'} title={getLocale()==='zh'?'编辑':'Edit'}>
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="5" width="14" height="16" rx="2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
+                  </button>
+                  <button type="button" disabled={busy} onClick={()=>replay(i,m.content)} aria-label={getLocale()==='zh'?'重试':'Retry'} title={getLocale()==='zh'?'重试':'Retry'}>
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5M20 12a8 8 0 1 0-2.3 5.6"/></svg>
+                  </button>
                 </div>
                 {m.failure && <div class="chat-message-copy text-[11px] text-red-400">{m.failure}</div>}
               </>}
@@ -1782,7 +1786,7 @@ export function Chat() {
           </div>
         ))}
         {notice && (
-          <div class="self-start font-mono text-[10px] text-up px-1">{notice}</div>
+          <div class="self-start font-mono text-[10px] text-success px-1">{notice}</div>
         )}
         {error && !history.some(m=>m.failure===error) && (
           <div class="self-start font-mono text-[11px] text-red-400 px-1">{error}</div>
@@ -1807,18 +1811,7 @@ export function Chat() {
               <span class={pct >= 0 ? 'text-up' : 'text-down'}>{fmtPct(pct)}</span>
             </a>
           ))}
-          {railEarn.length > 0 && <div class="border-t border-line/50 mt-1 pt-1">
-            {railEarn.map((sym) => (
-              <a key={sym} href={`#/research/${sym.toLowerCase()}/earnings`} class="flex justify-between py-px hover:no-underline">
-                <span class="text-ink-2 font-tick">{sym}</span>
-                <span class={earningsTone(earnDays[sym])}>
-                  {tt('chat.earnings_due', {
-                    when: earnDays[sym] === 0 ? tl('today') : tt('common.days', { days: earnDays[sym] }),
-                  })}
-                </span>
-              </a>
-            ))}
-          </div>}
+
         </div>
       </section>
 
@@ -1839,11 +1832,51 @@ export function Chat() {
                 <span class="font-mono text-[8.5px] text-muted shrink-0">{t.n}</span>
                 <button onClick={() => deleteSession(t.id)} disabled={busy}
                   title={tl('delete session')} aria-label={tl('delete session')}
-                  class="text-muted/70 hover:text-down shrink-0 font-mono text-[10px]">✕</button>
+                  class="text-muted/70 hover:text-danger shrink-0 font-mono text-[10px]">✕</button>
               </div>
             ))}
           </div>
       </section>
+
+      {rail.earnings.length>0 && <section data-chat-rail="earnings" class="chat-rail-section bg-surface-1 border border-line rounded-xl overflow-hidden shrink-0">
+        <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2 flex items-baseline justify-between">
+          <h2 class="font-anth font-bold text-[10px] tracking-wider text-accent uppercase">{tl('Earnings')}</h2>
+          <a href="#/markets/earnings" class="text-[9px] text-muted hover:text-accent">{getLocale()==='zh'?'全部':'All'}</a>
+        </header>
+        <div class="px-2.5 py-1 font-mono text-[10.5px]">
+          {rail.earnings.map(({symbol,days})=><a key={symbol} href={`#/research/${symbol.toLowerCase()}/earnings`} class="flex items-baseline justify-between gap-2 py-0.5 hover:no-underline">
+            <span class="text-ink-2 font-tick">{symbol}</span>
+            <span class={earningsTone(days)}>{days===0?tl('today'):tt('common.days',{days})}</span>
+          </a>)}
+        </div>
+      </section>}
+
+      {rail.signals.length>0 && <section data-chat-rail="signals" class="chat-rail-section bg-surface-1 border border-line rounded-xl overflow-hidden shrink-0">
+        <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
+          <h2 class="font-anth font-bold text-[10px] tracking-wider text-accent uppercase">{tl('Technicals')}</h2>
+        </header>
+        <div class="px-2.5 py-1 font-mono text-[10px]">
+          {rail.signals.map(signal=><a key={signal.symbol} href={`#/research/${signal.symbol.toLowerCase()}`} class="flex flex-wrap items-baseline justify-between gap-1 py-0.5 hover:no-underline">
+            <span class="text-ink-2 font-tick">{signal.symbol}</span>
+            <span class="flex gap-2 text-[#58a6ff]">
+              {Number.isFinite(signal.rsi)&&<span>RSI {Math.round(signal.rsi)}</span>}
+              {signal.volume>=2&&<span class="text-accent">{signal.volume.toFixed(1)}× {getLocale()==='zh'?'量':'vol'}</span>}
+            </span>
+          </a>)}
+        </div>
+      </section>}
+
+      {rail.events.length>0 && <section data-chat-rail="calendar" class="chat-rail-section bg-surface-1 border border-line rounded-xl overflow-hidden shrink-0">
+        <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
+          <h2 class="font-anth font-bold text-[10px] tracking-wider text-accent uppercase">{tl('Calendar')}</h2>
+        </header>
+        <div class="px-2.5 py-1">
+          {rail.events.map((event,index)=><a key={`${event.date}-${index}`} href="#/markets/calendar" class="flex items-baseline justify-between gap-2 py-1 hover:no-underline">
+            <span class="min-w-0 truncate text-[10.5px] text-ink-2 font-anth">{tl(event.label)}</span>
+            <span class="shrink-0 font-mono text-[9px] text-muted">{event.date?.slice(5)}</span>
+          </a>)}
+        </div>
+      </section>}
 
       <section class="chat-rail-section bg-surface-1 border border-line rounded-xl overflow-hidden shrink-0">
         <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">

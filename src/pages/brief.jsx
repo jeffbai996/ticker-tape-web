@@ -65,7 +65,7 @@ function ArchivePanel() {
                   undeletable on desktop */}
               <button
                 onClick={() => removeReport(r.id)}
-                class="w-5 h-5 grid place-items-center rounded border border-down/40 bg-down/10 text-down hover:bg-down hover:text-white shrink-0 text-[10px] font-bold"
+                class="w-5 h-5 grid place-items-center rounded border border-danger/40 bg-danger/10 text-danger hover:bg-danger hover:text-white shrink-0 text-[10px] font-bold"
                 title={tl('delete')}
                 aria-label={tl('delete')}
               >
@@ -84,9 +84,9 @@ function ArchivePanel() {
   )
 }
 
-function Card({ title, children, aside, sub }) {
+function Card({ title, children, aside, sub, wide = false }) {
   return (
-    <section class="bg-surface-1 border border-line rounded-xl overflow-hidden min-w-0">
+    <section class={`bg-surface-1 border border-line rounded-xl overflow-hidden min-w-0 ${wide ? 'sm:col-span-2 xl:col-span-3' : ''}`}>
       <header class="flex items-baseline gap-2 px-3 py-[3px] border-b border-line-2 bg-surface-2">
         <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{title}</h2>
         {aside && <span class="ml-auto font-mono text-[10px] text-muted">{aside}</span>}
@@ -106,15 +106,15 @@ function RsiMeter({ value }) {
     <span class="relative inline-block h-[5px] w-16 shrink-0 rounded-full bg-line/70" title={`RSI ${Math.round(value)}`}>
       <span class="absolute inset-y-0 left-[30%] right-[30%] bg-surface-3 rounded-sm" />
       <span class={`absolute top-1/2 -translate-y-1/2 h-[9px] w-[3px] rounded-sm ${
-        value >= 70 ? 'bg-down' : value <= 30 ? 'bg-up' : 'bg-accent-2'}`}
+        value >= 70 ? 'bg-danger' : value <= 30 ? 'bg-success' : 'bg-accent-2'}`}
         style={{ left: `calc(${pos}% - 1.5px)` }} />
     </span>
   )
 }
 
 const TECH_NOTE_TONE = {
-  overbought: 'border-down/40 text-down/90 bg-down/10',
-  oversold: 'border-up/40 text-up bg-up/10',
+  overbought: 'border-danger/40 text-danger/90 bg-danger/10',
+  oversold: 'border-success/40 text-success bg-success/10',
   volume: 'border-accent/40 text-accent bg-accent/10',
   downtrend: 'border-down/30 text-ink-2 bg-down/5',
 }
@@ -142,13 +142,7 @@ function BriefData({ s }) {
             <span class={`w-16 text-right ${upDown(m.pct)}`}>{fmtPct(m.pct)}</span>
           </div>
         ))}
-        {s.pulse && (
-          <div class="px-3 py-1.5 font-mono text-[10.5px] text-muted border-t border-line">
-            {tl('breadth')} <span class="text-up">{s.pulse.adv}</span>/<span class="text-down">{s.pulse.dec}</span>
-            {' · '}{tl('avg')} <span class={upDown(s.pulse.avg)}>{fmtPct(s.pulse.avg)}</span>
-            {' · '}{tl('>2% movers')} <span class="text-ink-2">{s.pulse.movers}/{s.pulse.total}</span>
-          </div>
-        )}
+
       </Card>
 
       <div class="flex flex-col gap-3 min-w-0">
@@ -166,56 +160,65 @@ function BriefData({ s }) {
         )) : <Empty label={tl('flat tape')} />}
       </Card>
 
-      <Card title={tl('Technical flags')} sub={tl('held names first, then the tape — RSI, trend and volume extremes')}>
-        {s.techNotes.length ? (
-          <div class="max-h-[26rem] overflow-y-auto">
-            {s.techNotes.map((n) => (
-              <div key={n.symbol} class="grid grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-x-2.5 px-3 py-1.5 border-b border-line/40 last:border-0">
-                <span class="flex items-center gap-1.5 min-w-0">
-                  <span class={`h-1.5 w-1.5 shrink-0 rounded-full ${n.held ? 'bg-accent' : 'bg-transparent'}`} title={n.held ? tl('held') : undefined} aria-hidden="true" />
-                  <a href={`#/research/${n.symbol.toLowerCase()}`} class="font-[650] font-tick text-ink hover:no-underline">{n.symbol}</a>
-                </span>
-                <span class="flex min-w-0 items-center gap-1.5">
-                  <span class="truncate font-anth text-[10px] text-muted">{localName(n.symbol, n.name)}</span>
-                  <span class="ml-auto flex shrink-0 gap-1">
-                    {n.notes.map((note) => (
-                      <span key={note.text || note} class={`whitespace-nowrap rounded border px-1.5 py-px font-mono text-[9.5px] ${
-                        TECH_NOTE_TONE[note.kind] || 'border-line text-ink-2'}`}>
-                        {formatBriefTechnicalNote(note)}
-                      </span>
-                    ))}
-                  </span>
-                </span>
-                <RsiMeter value={n.rsi} />
-                <span class={`w-14 text-right font-mono text-[10px] ${n.pct == null ? 'text-muted' : upDown(n.pct)}`}>{n.pct == null ? '—' : fmtPct(n.pct)}</span>
-              </div>
-            ))}
-          </div>
-        ) : <Empty label={tl('nothing stretched')} />}
-      </Card>
 
+
+      {s.pulse && <Card title={tl('Market pulse')}>
+        <div class={rowCls}><span class="font-anth text-ink-2">{tl('Advancing')}</span><span class="text-up">{s.pulse.adv}</span></div>
+        <div class={rowCls}><span class="font-anth text-ink-2">{tl('Declining')}</span><span class="text-down">{s.pulse.dec}</span></div>
+        <div class={rowCls}><span class="font-anth text-ink-2">{tl('avg')}</span><span class={upDown(s.pulse.avg)}>{fmtPct(s.pulse.avg)}</span></div>
+        <div class={rowCls}><span class="font-anth text-ink-2">{tl('>2% movers')}</span><span class="text-ink-2">{s.pulse.movers}/{s.pulse.total}</span></div>
+      </Card>}
       </div>
 
       <Card title={tl('Ahead')}>
+        <div class="max-h-48 overflow-y-auto">
         {s.earnings.map((e) => (
           <div key={e.symbol} class={rowCls}>
             <a href={`#/research/${e.symbol.toLowerCase()}/earnings`} class="font-[650] font-tick text-ink hover:no-underline">{e.symbol}</a>
             <span class="font-anth text-[11px] text-muted">{tl('earnings')}</span>
-            <span class={`w-14 text-right ${e.days === 0 ? 'text-imminent font-bold' : e.days <= 7 ? 'text-down' : 'text-accent'}`}>
+            <span class={`w-14 text-right ${e.days === 0 ? 'text-imminent font-bold' : e.days <= 7 ? 'text-danger' : 'text-accent'}`}>
               {fmtDays(e.days)}
             </span>
           </div>
         ))}
+        </div>
         {s.calendar.map((e) => (
           <div key={e.type + e.days} class={rowCls}>
             <span class="font-mono text-[10px] text-accent font-bold w-10">{e.type}</span>
             <span class="font-anth text-[11px] text-ink-2 min-w-0 truncate">{tl(e.label)}</span>
-            <span class={`w-14 text-right ${e.days <= 7 ? 'text-down' : 'text-muted'}`}>{fmtDays(e.days)}</span>
+            <span class={`w-14 text-right ${e.days <= 7 ? 'text-danger' : 'text-muted'}`}>{fmtDays(e.days)}</span>
           </div>
         ))}
         {!s.earnings.length && !s.calendar.length && (
           <div class="px-3 py-2 font-mono text-[11px] text-muted">{tl('clear runway')}</div>
         )}
+      </Card>
+
+      <Card wide title={tl('Technical flags')} sub={tl('held names first, then the tape — RSI, trend and volume extremes')}>
+        {s.techNotes.length ? (
+          <div class="grid sm:grid-cols-2 xl:grid-cols-3 max-h-[26rem] overflow-y-auto">
+            {s.techNotes.map((n) => (
+              <div key={n.symbol} class="brief-technical-row px-3 py-2 border-b border-line/40 last:border-0 min-w-0">
+                <div class="flex items-center gap-2 min-w-0">
+                  <span class={`h-1.5 w-1.5 shrink-0 rounded-full ${n.held ? 'bg-accent' : 'bg-transparent'}`} title={n.held ? tl('held') : undefined} aria-hidden="true" />
+                  <a href={`#/research/${n.symbol.toLowerCase()}`} class="shrink-0 font-[650] font-tick text-ink hover:no-underline">{n.symbol}</a>
+                  <span class="truncate min-w-0 flex-1 font-anth text-[10px] text-muted">{localName(n.symbol, n.name)}</span>
+                  <span class="flex shrink-0 items-center gap-2">
+                    <RsiMeter value={n.rsi} />
+                    <span class={`w-14 text-right font-mono text-[10px] ${n.pct == null ? 'text-muted' : upDown(n.pct)}`}>{n.pct == null ? '—' : fmtPct(n.pct)}</span>
+                  </span>
+                </div>
+                <div class="flex flex-wrap gap-1 mt-1.5 min-w-0">
+                  {n.notes.map((note) => (
+                    <span key={note.text || note} class={`max-w-full whitespace-normal break-words rounded border px-1.5 py-px font-anth text-[10px] leading-relaxed ${TECH_NOTE_TONE[note.kind] || 'border-line text-ink-2'}`}>
+                      {formatBriefTechnicalNote(note)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : <Empty label={tl('nothing stretched')} />}
       </Card>
     </div>
   )

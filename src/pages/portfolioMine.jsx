@@ -186,8 +186,8 @@ function ConfirmRemove({ label, onConfirm }) {
       onBlur={() => setArmed(false)}
       class={`inline-flex min-w-[3.25rem] items-center justify-center rounded px-1.5 py-1 transition-colors ${
         armed
-          ? 'border border-down/50 bg-down/10 font-anth text-[9px] font-semibold uppercase tracking-wider text-down'
-          : 'text-muted hover:text-down'}`}>
+          ? 'border border-danger/50 bg-danger/10 font-anth text-[9px] font-semibold uppercase tracking-wider text-danger'
+          : 'text-muted hover:text-danger'}`}>
       {armed ? tl('Sure?') : '×'}
     </button>
   )
@@ -625,7 +625,7 @@ const CAPITAL_MIX = {
   cn: { label: 'A-shares', short: 'A', cls: 'bg-accent' },
   hk: { label: 'HK stocks', short: 'HK', cls: 'bg-accent-2' },
   other: { label: 'Other equities', short: 'Other', cls: 'bg-ink-2/65' },
-  cash: { label: 'Cash', short: 'Cash', cls: 'bg-up/70' },
+  cash: { label: 'Cash', short: 'Cash', cls: 'bg-success/70' },
 }
 
 /** The compact allocation rail in the hero's final grid slot. It answers a
@@ -780,7 +780,7 @@ export function SummaryStrip({ portfolio, quotes, rates, ccys, fxLive, bench }) 
                     const ss = marketSession(v)
                     return (
                       <span key={v} class="inline-flex items-center gap-1 whitespace-nowrap">
-                        <span class={`inline-block h-1.5 w-1.5 rounded-full ${ss.state === 'open' ? 'bg-up' : ss.state === 'closed' ? 'bg-muted/50' : 'bg-accent'}`} />
+                        <span class={`inline-block h-1.5 w-1.5 rounded-full ${ss.state === 'open' ? 'bg-success' : ss.state === 'closed' ? 'bg-muted/50' : 'bg-accent'}`} />
                         <span class="text-ink-2">{tl(VENUE_SHORT[v])}</span>
                         <span class={sessionTone[ss.state]}>{tl(ss.state === 'closed' ? 'closed' : `market ${ss.state}`)}{ss.opensAt ? ` ${ss.opensAt}` : ''}</span>
                       </span>
@@ -870,7 +870,7 @@ const BENCH = [
 ]
 const SESSION_VENUES = ['HK', 'CN', 'US']
 const VENUE_SHORT = { HK: 'HK stocks', CN: 'A-shares', US: 'US stocks', CA: 'Canada', OTHER: 'Other' }
-const sessionTone = { open: 'text-up', lunch: 'text-accent', pre: 'text-accent', closed: 'text-muted' }
+const sessionTone = { open: 'text-success', lunch: 'text-accent', pre: 'text-accent', closed: 'text-muted' }
 
 /** The next 30 days of results dates and ex-dividends across the book —
  *  the events page's data, cached, trickled in with provider spacing. */
@@ -1344,7 +1344,7 @@ function BookTools({ portfolio, quotes, rates }) {
       </div>
       <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-line bg-surface-2/40 px-3 py-1.5 font-anth text-[9.5px] text-muted">
         <span class="inline-flex items-center gap-1.5 whitespace-nowrap">
-          <span class="h-1.5 w-1.5 rounded-full bg-up/80" aria-hidden="true" />
+          <span class="h-1.5 w-1.5 rounded-full bg-success/80" aria-hidden="true" />
           {tl('Saved automatically')}
         </span>
         <span class="flex flex-wrap items-center justify-end gap-x-2 tabular-nums">
@@ -1452,7 +1452,7 @@ export function MyPortfolios({ view = 'overview' } = {}) {
             <span class="ml-1 h-4 w-px bg-line-2 max-sm:hidden" />
             <CcySelect value={selected.ccy} onChange={(c) => setPortfolioCcy(selected.id, c)} />
             <button type="button" onClick={rename} class={btn}>{tl('Rename')}</button>
-            <button type="button" onClick={remove} class={`${btn} border-down/45 bg-down/10 text-down hover:border-down/70 hover:bg-down/15`}>{tl('Delete')}</button>
+            <button type="button" onClick={remove} class={`${btn} border-danger/45 bg-danger/10 text-danger hover:border-danger/70 hover:bg-danger/15`}>{tl('Delete')}</button>
           </>
         )}
       </>,

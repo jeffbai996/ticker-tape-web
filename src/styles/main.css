@@ -52,6 +52,8 @@ select:not([multiple]):not([size]):not(.appearance-none) {
 
   --color-up: #3fb950;
   --color-down: #f85149;
+  --color-danger: #f85149;
+  --color-success: #3fb950;
   /* Status (healthy / alarm) keeps fixed colors: the market-color switch
      below swaps gain/loss only, and a fired alarm must stay red in either. */
   --color-good: #3fb950;
@@ -828,7 +830,7 @@ html[data-pointer-hover] .tape-hot *:not(.text-up):not(.text-down):not([data-tap
 .chat-trace-head:hover { background: transparent; color: var(--color-ink); }
 .chat-trace-title { color: var(--color-ink-2); font-size: 11.5px; font-weight: 625; }
 .chat-trace.is-live .chat-trace-title { color: var(--color-ink); }
-.chat-trace.is-complete .chat-trace-title { color: #3fb950; }
+.chat-trace.is-complete .chat-trace-title { color: var(--color-ink); }
 .chat-trace-count {
   display:block; color: var(--color-muted); font: 500 9px/1.4 "IBM Plex Mono", monospace;
 }
@@ -1053,3 +1055,11 @@ html[data-pointer-hover] .tape-hot *:not(.text-up):not(.text-down):not([data-tap
 
 /* Message prose remains selectable without making the application chrome draggable. */
 .chat-message-copy, .chat-message-copy * { user-select: text; -webkit-user-select: text; }
+
+.chat-user-actions { display:flex; gap:3px; padding-right:6px; opacity:0; transform:translateY(-7px); transition:opacity .16s ease, transform .16s ease; }
+.chat-user-actions button { display:grid; place-items:center; width:25px; height:25px; border:1px solid var(--color-line); border-radius:6px; background:var(--color-surface-1); color:var(--color-muted); }
+.chat-user-actions button:hover { color:var(--color-ink); background:var(--color-surface-2); }
+.chat-user-actions button:disabled { opacity:.35; }
+.chat-user-message:hover .chat-user-actions, .chat-user-message:focus-within .chat-user-actions { opacity:1; transform:translateY(0); }
+@media (hover:none) { .chat-user-actions { opacity:1; transform:none; } }
+@media (prefers-reduced-motion:reduce) { .chat-user-actions { transition:none; } }

@@ -43,7 +43,7 @@ export function Research({ route }) {
       <ResearchHeader symbol={symbol} q={q} route={route} />
 
       {chart.err && (
-        <div class="mx-1 mb-2 px-3 py-2 bg-surface-1 border border-down/40 rounded-lg font-mono text-[11px] text-down">
+        <div class="mx-1 mb-2 px-3 py-2 bg-surface-1 border border-danger/40 rounded-lg font-mono text-[11px] text-danger">
           {chart.err} — check the symbol or try again
         </div>
       )}

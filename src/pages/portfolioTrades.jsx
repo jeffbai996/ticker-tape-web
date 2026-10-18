@@ -96,7 +96,7 @@ export function AddTradeForm({ portfolio }) {
             {tl(buy ? 'Record buy' : 'Record sell')}{symbol ? ` · ${symbol}` : ''}
           </button>
           {tried && missing.length > 0 && (
-            <span class="font-anth text-[10.5px] text-down">{tl('Still needed')}: {missing.join(' · ')}</span>
+            <span class="font-anth text-[10.5px] text-danger">{tl('Still needed')}: {missing.join(' · ')}</span>
           )}
           {offLot(symbol, qty) && (
             <span class="font-anth text-[10.5px] text-muted">{tl('A-shares trade in lots of 100')}</span>
@@ -146,7 +146,7 @@ function ImportPanel({ portfolio }) {
           {tl('Choose file')}<input type="file" accept=".csv,.tsv,.txt,text/csv" class="hidden" onChange={onFile} />
         </label>
         {text && <button type="button" onClick={() => { setText(''); setDone(null) }} class="font-anth text-[10.5px] text-muted hover:text-ink">{tl('Clear')}</button>}
-        {done && <span class="font-anth text-[10.5px] text-up">+{done.added} · {tl('{n} rows could not be read').replace('{n}', done.rejected)}</span>}
+        {done && <span class="font-anth text-[10.5px] text-success">+{done.added} · {tl('{n} rows could not be read').replace('{n}', done.rejected)}</span>}
       </div>
       <textarea value={text} onInput={(e) => { setText(e.currentTarget.value); setDone(null) }} rows={4} spellcheck={false}
         placeholder="代码,方向,成交数量,成交价格,成交时间&#10;HK.00700,买入,100,457.00,2026-08-20"
@@ -155,7 +155,7 @@ function ImportPanel({ portfolio }) {
         <div class="rounded-lg border border-line bg-surface-2/60 px-2.5 py-2">
           <div class="flex flex-wrap items-center gap-3 font-anth text-[10.5px]">
             <span class="text-muted">{tl('Preview')} · {parsed.rows.length}</span>
-            {parsed.errors.length > 0 && <span class="text-down">{tl('{n} rows could not be read').replace('{n}', parsed.errors.length)}: {parsed.errors.slice(0, 4).map((e) => `${tl('line')} ${e.line} (${e.reason})`).join(', ')}{parsed.errors.length > 4 ? '…' : ''}</span>}
+            {parsed.errors.length > 0 && <span class="text-danger">{tl('{n} rows could not be read').replace('{n}', parsed.errors.length)}: {parsed.errors.slice(0, 4).map((e) => `${tl('line')} ${e.line} (${e.reason})`).join(', ')}{parsed.errors.length > 4 ? '…' : ''}</span>}
             <button type="button" onClick={commit} disabled={!parsed.rows.length}
               class="ml-auto rounded border border-accent/40 bg-accent/10 px-3 py-1 font-anth text-[11px] font-semibold text-accent hover:bg-accent/20 disabled:opacity-40">
               {tl('Import {n} trades').replace('{n}', parsed.rows.length)}
@@ -228,7 +228,7 @@ export function BookTrades({ portfolio, quotes }) {
                     <td class={`px-2.5 py-[3px] text-right ${tradeCashDelta(t) == null ? 'text-muted' : tradeCashDelta(t) >= 0 ? 'text-up' : 'text-down'}`}>
                       {t.opening ? tl('Opening') : tradeCashDelta(t) == null ? '—' : `${tradeCashDelta(t) >= 0 ? '+' : '-'}${fmtCcy(Math.abs(tradeCashDelta(t)), t.ccy, 2)}`}
                     </td>
-                    <td class="px-2.5 py-[3px] text-right"><button type="button" onClick={() => removeTxn(portfolio.id, t.id)} title={tl('Remove trade')} aria-label={tl('Remove trade')} class="text-muted hover:text-down">✕</button></td>
+                    <td class="px-2.5 py-[3px] text-right"><button type="button" onClick={() => removeTxn(portfolio.id, t.id)} title={tl('Remove trade')} aria-label={tl('Remove trade')} class="text-muted hover:text-danger">✕</button></td>
                   </tr>
                 ))}
               </tbody>

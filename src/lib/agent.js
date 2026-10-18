@@ -56,7 +56,7 @@ function receiveFollowUps(takeFollowUps, added, onRound) {
 
 export async function runAgenticOverWire({
   model, effort, system, messages, onDelta, onThinking, onRound, onTrace,
-  takeFollowUps, signal,
+  takeFollowUps, signal, initialTools = [],
 }, services = {}) {
   const streamTurn = services.wireStream || wireStream
   const completeTurn = services.wireComplete || wireComplete
@@ -66,6 +66,19 @@ export async function runAgenticOverWire({
   // only what belongs in the user's visible/persisted conversation.
   const contextAdded = []
   let readOnly = analysisRequest(messages)
+  // Refresh visible state after historical replies so earlier access claims
+  // cannot masquerade as the current browser's capabilities.
+  for(const [index,call] of initialTools.entries()) {
+    if(!APP_READ_TOOLS.includes(call.name))throw new Error('Initial context tools must be read-only.')
+    const id=`context-${index}`
+    onTrace?.({type:'tool_start',round:-1,id,name:call.name,args:call.args||{}})
+    const result=await runTool(call.name,call.args||{})
+    const entries=[{role:'assistant',content:'',toolCalls:[{id,name:call.name,args:call.args||{}}]},
+      {role:'tool',id,name:call.name,content:result}]
+    added.push(...entries);contextAdded.push(...entries)
+    onTrace?.({type:'tool_done',round:-1,id,name:call.name})
+    onRound?.([...added])
+  }
   for (let round = 0; round < MAX_ROUNDS; round++) {
     // A follow-up is a polite queue, not a barge-in: only splice it into the
     // transcript between provider rounds, when no request is in flight.
@@ -165,14 +178,14 @@ export async function runAgenticOverWire({
 
 export async function runAgentic({
   model, effort, system, messages, onDelta, onThinking, onRound, onTrace,
-  takeFollowUps, signal,
+  takeFollowUps, signal, initialTools = [],
 }) {
   // Private build talks to the user's own router; the metered API is the
   // fallback for anyone without one.
   if (wireChatAvailable()) {
     return runAgenticOverWire({
       model, effort, system, messages, onDelta, onThinking, onRound, onTrace,
-      takeFollowUps, signal,
+      takeFollowUps, signal, initialTools,
     })
   }
   const added = []

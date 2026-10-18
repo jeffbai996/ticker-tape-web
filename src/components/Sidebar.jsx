@@ -31,7 +31,7 @@ function WatchRow({ symbol, q, onRemove }) {
       <button
         onClick={() => onRemove(symbol)}
         title={`unwatch ${symbol}`}
-        class="w-0 overflow-hidden group-hover:w-4 text-right text-muted hover:text-down"
+        class="w-0 overflow-hidden group-hover:w-4 text-right text-muted hover:text-danger"
       >
         ×
       </button>
@@ -61,7 +61,7 @@ function AddSymbol({ onAdd, isFull, cap }) {
           class="w-14 bg-transparent border border-dashed border-line-2 rounded px-1 text-[10px] font-mono text-ink uppercase outline-none text-center hover:border-accent/60 focus:border-solid focus:border-accent placeholder:text-ink-2 placeholder:normal-case"
         />
       </form>
-      {err && <span class="pt-0.5 font-anth text-[9px] normal-case tracking-normal text-down">{err}</span>}
+      {err && <span class="pt-0.5 font-anth text-[9px] normal-case tracking-normal text-danger">{err}</span>}
     </div>
   )
 }
@@ -87,7 +87,7 @@ function UpdatedLine({ onCollapse }) {
           class="rail-toggle grid h-5 w-5 shrink-0 place-items-center"><RailChevron direction="left" /></button>
       </div>
       {staleMin >= 5 && (
-        <div class="text-down font-bold not-italic pt-0.5">
+        <div class="text-danger font-bold not-italic pt-0.5">
           ⚠ {tl('STALE')} {staleMin < 60 ? `${staleMin}m` : `${Math.floor(staleMin / 60)}h`}
         </div>
       )}

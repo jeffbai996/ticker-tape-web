@@ -110,4 +110,44 @@ describe('chat sessions', () => {
     await expect(hydrateActiveThread()).rejects.toThrow('network down')
     expect(currentThreadId()).toBe(52)
   })
+
+it('deleting the active local chat removes its saved title and cancels deferred saves',async()=>{
+ store.available=false
+ const {deleteActiveThread,flushActiveHistory}=await import('../../src/lib/threads.js')
+ const messages=[{role:'user',content:'remove this conversation'}]
+ await flushActiveHistory(messages)
+ saveActiveHistory([...messages,{role:'assistant',content:'last reply'}])
+ await deleteActiveThread()
+ await vi.advanceTimersByTimeAsync(2000)
+ expect(await fetchThreadList()).toEqual([])
+ expect(currentThreadId()).toBeNull()
+ expect(localStorage.getItem('chat_history_v1')).toBe('[]')
+})
+
+it('deleting an active server chat waits for accepted writes and then removes the record',async()=>{
+ store.available=true;localStorage.setItem('chat_thread_id','41')
+ const {deleteActiveThread}=await import('../../src/lib/threads.js')
+ saveActiveHistory([{role:'user',content:'remove this conversation'}])
+ await deleteActiveThread()
+ await vi.advanceTimersByTimeAsync(2000)
+ expect(store.deleteThread).toHaveBeenCalledWith(41)
+ expect(currentThreadId()).toBeNull()
+ expect(store.updateThread).not.toHaveBeenCalled()
+})
+
+it('deletion waits for an in-flight first save so it cannot recreate the title',async()=>{
+ const {deleteActiveThread,flushActiveHistory}=await import('../../src/lib/threads.js')
+ let complete,signalStarted
+ const started=new Promise(resolve=>{signalStarted=resolve})
+ store.createThread.mockImplementationOnce(()=>new Promise(resolve=>{complete=resolve;signalStarted()}))
+ const writing=flushActiveHistory([{role:'user',content:'remove this conversation'}])
+ await started
+ const deleting=deleteActiveThread()
+ expect(store.deleteThread).not.toHaveBeenCalled()
+ complete({id:41})
+ await Promise.all([writing,deleting])
+ expect(store.deleteThread).toHaveBeenCalledWith(41)
+ expect(currentThreadId()).toBeNull()
+})
+
 })

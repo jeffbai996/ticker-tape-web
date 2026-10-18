@@ -13,12 +13,12 @@ export const CUSHION_LOW = 8
 /** Text class for a cushion figure: muted when unknown, never a safe color. */
 export function cushionCls(cushion) {
   if (cushion == null || Number.isNaN(cushion)) return 'text-muted'
-  return cushion < CUSHION_LOW ? 'text-down' : 'text-up'
+  return cushion < CUSHION_LOW ? 'text-danger' : 'text-success'
 }
 
 /** Fill class for the runway bar: neutral gray when unknown — the bar still
  *  shows where maintenance sits, but claims neither safe nor danger. */
 export function cushionBarCls(cushion) {
   if (cushion == null || Number.isNaN(cushion)) return 'bg-ink-2/40'
-  return cushion < CUSHION_LOW ? 'bg-down' : 'bg-up/70'
+  return cushion < CUSHION_LOW ? 'bg-danger' : 'bg-success/70'
 }

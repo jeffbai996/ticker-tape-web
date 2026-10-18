@@ -12,11 +12,11 @@ const FAMILIES = [
   { key: 'event', label: 'Events', match: /^8-K/,
     chip: 'border-line-2 text-ink bg-surface-2' },
   { key: 'ownership', label: 'Insiders', match: /^(4|3|5)(\/|$)|^(SC 13|13F|13D|13G)/,
-    chip: 'border-up/40 text-up bg-up/10' },
+    chip: 'border-success/40 text-success bg-success/10' },
   { key: 'proxy', label: 'Proxy', match: /14A/,
     chip: 'border-accent-2/50 text-accent-2 bg-accent-2/10' },
   { key: 'registration', label: 'Registrations', match: /^(S-|F-|424)/,
-    chip: 'border-down/30 text-down/90 bg-down/10' },
+    chip: 'border-danger/30 text-danger/90 bg-danger/10' },
 ]
 const OTHER = { key: 'other', label: 'Other', chip: 'border-line text-muted bg-surface-2' }
 

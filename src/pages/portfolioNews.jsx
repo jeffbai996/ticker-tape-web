@@ -124,7 +124,7 @@ export function BookNews({ portfolio, quotes }) {
           <button data-news-refresh type="button" onClick={() => setRefresh(n=>n+1)} disabled={!done}
             aria-label={tl('Refresh news')} class="shrink-0 rounded border border-line px-2 py-1 text-muted hover:text-accent disabled:opacity-40">↻</button>
         </div>
-        {error && <p role="alert" class="pb-2 font-anth text-[11px] text-down">{zh ? '部分新闻无法刷新，请重试。' : 'Some news could not be refreshed. Please retry.'}</p>}
+        {error && <p role="alert" class="pb-2 font-anth text-[11px] text-danger">{zh ? '部分新闻无法刷新，请重试。' : 'Some news could not be refreshed. Please retry.'}</p>}
         <div class="rounded-xl border border-line bg-surface-1 overflow-hidden">
           {shown.length === 0 && (
             <div class="px-3 py-6 text-center font-anth text-[10.5px] text-muted">{done ? tl('No matching headlines.') : `${tl('loading')}…`}</div>

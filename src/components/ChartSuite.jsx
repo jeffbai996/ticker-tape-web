@@ -595,7 +595,7 @@ export function ChartSuite({ symbol }) {
         <div style={{ height: `${fillH}px` }} class="flex items-center justify-center font-mono text-[11px] text-muted">{tl('loading…')}</div>
       )}
       {state === 'error' && (
-        <div style={{ height: `${fillH}px` }} class="flex items-center justify-center font-mono text-[11px] text-down">{tl('chart unavailable')}</div>
+        <div style={{ height: `${fillH}px` }} class="flex items-center justify-center font-mono text-[11px] text-danger">{tl('chart unavailable')}</div>
       )}
       {/* touch-action: pan-y is what makes pinch-zoom work on a tablet. The
           default `auto` lets the browser claim every gesture, so on iOS the

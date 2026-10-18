@@ -345,7 +345,7 @@ export function OptionsView({ symbol }) {
 
   if (err) {
     return (
-      <div class="mx-1 px-3 py-2 bg-surface-1 border border-down/40 rounded-lg font-mono text-[11px] text-down">
+      <div class="mx-1 px-3 py-2 bg-surface-1 border border-danger/40 rounded-lg font-mono text-[11px] text-danger">
         {tt('research.no_options_chain', { error: err })}
       </div>
     )

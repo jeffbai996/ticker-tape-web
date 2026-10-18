@@ -661,7 +661,7 @@ function PulsePanel({ quotes }) {
 }
 
 const ECON_COLORS = {
-  FOMC: 'text-down', CPI: 'text-accent', NFP: 'text-accent',
+  FOMC: 'text-danger', CPI: 'text-accent', NFP: 'text-accent',
   GDP: 'text-[#00c8ff]', PCE: 'text-[#c084fc]',
   // second/third tier keep a quieter shade so the rate-and-inflation prints
   // still win the row at a glance
@@ -680,7 +680,7 @@ function MacroCalPanel() {
   const dayCls = (d) =>
     d < 0 ? 'text-muted/60'                       // already happened — present, not shouting
       : d === 0 ? 'text-imminent font-bold'
-      : d <= 3 ? 'text-down font-bold' : d <= 7 ? 'text-down'
+      : d <= 3 ? 'text-danger font-bold' : d <= 7 ? 'text-danger'
       : d <= 30 ? 'text-accent' : 'text-muted'
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden flex flex-col max-h-[42vh]">
@@ -874,7 +874,7 @@ function WidgetFrame({ id, children }) {
       <div class="absolute top-1 right-1.5 z-10 hidden group-hover:flex gap-0.5 bg-surface-2 rounded px-0.5">
         <button onClick={() => moveWidget(id, -1)} class="font-mono text-[10px] text-muted hover:text-ink px-0.5">↑</button>
         <button onClick={() => moveWidget(id, 1)} class="font-mono text-[10px] text-muted hover:text-ink px-0.5">↓</button>
-        <button onClick={() => removeWidget(id)} class="font-mono text-[10px] text-muted hover:text-down px-0.5">✕</button>
+        <button onClick={() => removeWidget(id)} class="font-mono text-[10px] text-muted hover:text-danger px-0.5">✕</button>
       </div>
       {children}
     </div>
@@ -1058,7 +1058,7 @@ function AddSymbolRow({ onAdd, isPresent, isFull, cap }) {
       <button type="button" onClick={close} class="font-mono text-[10px] text-muted hover:text-ink">
         {tl('cancel')}
       </button>
-      {err && <span class="font-mono text-[10px] text-down">{err}</span>}
+      {err && <span class="font-mono text-[10px] text-danger">{err}</span>}
     </form>
   )
 }
@@ -1599,7 +1599,7 @@ function TickerSearch({ filter, setFilter, activeList }) {
             )
           })}
           {notice && (
-            <div class="border-t border-line/60 px-2.5 py-1 font-anth text-[10px] text-down">{notice}</div>
+            <div class="border-t border-line/60 px-2.5 py-1 font-anth text-[10px] text-danger">{notice}</div>
           )}
         </div>
       )}
@@ -1932,7 +1932,7 @@ export function Dashboard({ listId = null }) {
             {tl('top')}
           </button>
           <button onClick={batchRemove} disabled={!selected.size}
-            class="px-2 py-0.5 rounded border border-line text-ink-2 hover:border-down hover:text-down disabled:opacity-40 disabled:pointer-events-none">
+            class="px-2 py-0.5 rounded border border-line text-ink-2 hover:border-danger hover:text-danger disabled:opacity-40 disabled:pointer-events-none">
             {tl('remove')}
           </button>
           <button onClick={endSelect}
