@@ -1059,9 +1059,12 @@ html[data-pointer-hover] .tape-hot *:not(.text-up):not(.text-down):not([data-tap
 .chat-trace-mark.is-error::before { width:14px; height:14px; }
 .chat-token-footer[data-live] { flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; min-height:31px; }
 
-.briefing-data-grid,.briefing-data-detail{display:grid;gap:.75rem;align-items:start;min-width:0}
-@media(min-width:640px){.briefing-data-detail{grid-template-columns:repeat(2,minmax(0,1fr))}.briefing-technicals{grid-column:1/-1}}
-@media(min-width:1280px){.briefing-data-grid{grid-template-columns:minmax(0,1fr) minmax(0,2fr)}}
+.briefing-data-grid,.briefing-summary{display:grid;gap:.75rem;min-width:0}
+@media(min-width:1280px){
+ .briefing-summary{grid-template-columns:repeat(3,minmax(0,1fr));align-items:start}
+ .briefing-summary>*{max-height:24rem;overflow-y:auto;scrollbar-width:thin}
+ .briefing-summary>section>header{position:sticky;top:0;z-index:1}
+}
 .chat-token-footer{container-type:inline-size;container-name:chat-metrics}
 .chat-model-full{display:none}
 @container chat-metrics (min-width:640px){.chat-model-short{display:none}.chat-model-full{display:inline}}

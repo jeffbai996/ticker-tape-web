@@ -137,6 +137,7 @@ function BriefData({ s }) {
   ]
   return (
     <div data-briefing-data class="briefing-data-grid">
+      <div class="briefing-summary">
       <Card title={tl('Macro tape')}>
         {s.macro.map((m) => (
           <div key={m.label} class={rowCls}>
@@ -148,7 +149,6 @@ function BriefData({ s }) {
 
       </Card>
 
-      <div class="briefing-data-detail">
       <div class="flex flex-col gap-3 min-w-0">
       <Card title={tl('Movers')}>
         {movers.length ? movers.map((m) => (
@@ -198,9 +198,10 @@ function BriefData({ s }) {
         )}
       </Card>
 
+      </div>
       <div class="briefing-technicals"><Card title={tl('Technical flags')} sub={tl('held names first, then the tape — RSI, trend and volume extremes')}>
         {s.techNotes.length ? (
-          <div class="grid sm:grid-cols-2 max-h-[26rem] overflow-y-auto">
+          <div class="grid sm:grid-cols-2 xl:grid-cols-3 max-h-[26rem] overflow-y-auto">
             {s.techNotes.map((n) => (
               <div key={n.symbol} class="brief-technical-row px-3 py-2 border-b border-line/40 last:border-0 min-w-0">
                 <div class="flex items-center gap-2 min-w-0">
@@ -224,7 +225,6 @@ function BriefData({ s }) {
           </div>
         ) : <Empty label={tl('nothing stretched')} />}
       </Card></div>
-      </div>
     </div>
   )
 }
