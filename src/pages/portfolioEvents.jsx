@@ -12,6 +12,23 @@ import { loadZhTable, onZhTable, zhName } from '../lib/zhNames.js'
 
 const within = (d, today, days) => d && d >= today && (Date.parse(d) - Date.parse(today)) / 86400000 <= days
 
+// The next 14 days of dated events across the book. Every entry is today or
+// later, so a payment row is an upcoming pay date, never a recorded receipt.
+export function upcomingEvents(holdings, ev, today) {
+  return holdings.flatMap((h) => {
+    const e = ev[h.symbol]
+    if (!e) return []
+    const out = []
+    const last = e.dividends?.[0]
+    const amt = last?.perShare != null ? fmtCcy(last.perShare * h.shares, last.ccy, 0) : null
+    const base = { symbol: h.symbol, shares: h.shares }
+    if (within(e.nextResults, today, 14)) out.push({ ...base, d: e.nextResults, what: tl('Next results'), detail: e.resultsPeriod || null })
+    if (within(e.exDate, today, 14)) out.push({ ...base, d: e.exDate, what: tl('Ex-dividend'), detail: amt })
+    if (within(e.payDate, today, 14)) out.push({ ...base, d: e.payDate, what: tl('Pay date'), detail: amt })
+    return out
+  }).sort((a, b) => a.d.localeCompare(b.d)).map((u) => ({ ...u, days: daysUntil(u.d, today) }))
+}
+
 export function BookEvents({ portfolio, quotes }) {
   const holdings = portfolio.holdings || []
   const key = holdings.map((h) => h.symbol).join(',')
@@ -44,18 +61,7 @@ export function BookEvents({ portfolio, quotes }) {
     return onZhTable(() => zhTick((t) => t + 1))
   }, [zh])
   const name = (s) => (zh && zhName(s)) || quotes?.[s]?.name || ''
-  const upcoming = holdings.flatMap((h) => {
-    const e = ev[h.symbol]
-    if (!e) return []
-    const out = []
-    const last = e.dividends?.[0]
-    const amt = last?.perShare != null ? fmtCcy(last.perShare * h.shares, last.ccy, 0) : null
-    const base = { symbol: h.symbol, shares: h.shares }
-    if (within(e.nextResults, today, 14)) out.push({ ...base, d: e.nextResults, what: tl('Next results'), detail: e.resultsPeriod || null })
-    if (within(e.exDate, today, 14)) out.push({ ...base, d: e.exDate, what: tl('Ex-dividend'), detail: amt })
-    if (within(e.payDate, today, 14)) out.push({ ...base, d: e.payDate, what: tl('paid'), detail: amt })
-    return out
-  }).sort((a, b) => a.d.localeCompare(b.d)).map((u) => ({ ...u, days: daysUntil(u.d, today) }))
+  const upcoming = upcomingEvents(holdings, ev, today)
   const income = (h, e) => {
     const last = e?.dividends?.[0]
     return last?.perShare != null ? fmtCcy(last.perShare * h.shares, last.ccy, 0) : '—'
