@@ -1,4 +1,5 @@
 import { buildPerformance, hasUnconvertedFlow } from './performance.js'
+import { sessionBaseline } from './tradingSession.js'
 
 const DAY=86400000
 const DAYS={'1M':30,'3M':90,'6M':180,'1Y':365}
@@ -28,8 +29,12 @@ export function historySeries(snapshots, currency, cashTxns=[], range='ALL') {
     if(i && hasUnconvertedFlow(cashTxns,currency,marks[i-1].d,m.d)) flowGap=true
     const index=!flowGap && origin>0 && Number.isFinite(adjusted[i]) ? adjusted[i] : null
     if(index!=null) peak=peak==null ? index : Math.max(peak,index)
-    return {...m,flowGap,change:i ? delta(m.v,marks[i-1].v) : null,
-      changePct:i && marks[i-1].v>0 ? delta(m.v,marks[i-1].v)/marks[i-1].v*100 : null,
+    // Day change is measured against the prior session's last mark, not the
+    // adjacent record: weekend and repeat captures are not trading days.
+    const {base,adjacent}=sessionBaseline(marks.slice(0,i),m.d)
+    return {...m,flowGap,change:base ? delta(m.v,base.v) : null,
+      changePct:base && base.v>0 ? delta(m.v,base.v)/base.v*100 : null,
+      changeFrom:base?.d ?? null,changeAdjacent:adjacent,
       valueChange:delta(m.v,origin),returnPct:index==null ? null : index-100,
       drawdownPct:index!=null && peak>0 ? (index/peak-1)*100 : null}
   })

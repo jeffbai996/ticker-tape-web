@@ -17,6 +17,7 @@ import {
 } from './cashLedger.js'
 
 import { declareDeleteIntent } from './syncIntent.js'
+import { sessionBaseline } from './tradingSession.js'
 import { demoStorageKey, IS_PUBLIC_DEMO, PUBLIC_DEMO_PORTFOLIOS } from './publicDemo.js'
 
 const KEY = demoStorageKey('my_portfolios_v1')
@@ -485,9 +486,10 @@ export function recordSnapshot(id, value, ccy, date = localDate()) {
 }
 
 /** The last mark filed BEFORE `date` in `ccy` — "since yesterday" reads off this. */
+/** The last mark from the trading session before `date`'s, in `ccy`. */
 export function previousSnapshot(p, ccy, date = localDate()) {
-  const snaps = (p?.snapshots || []).filter((x) => x.c === ccy && x.d < date)
-  return snaps[snaps.length - 1] || null
+  const snaps = (p?.snapshots || []).filter((x) => x.c === ccy).sort((a, b) => a.d.localeCompare(b.d))
+  return sessionBaseline(snaps, date).base
 }
 
 let nextTxn = 1

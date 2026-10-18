@@ -275,10 +275,17 @@ describe('daily value marks (snapshots)', () => {
     expect(loadBooks()[0].snapshots).toEqual([{ d: '2026-08-21', v: 1, c: 'CNY' }, { d: '2026-08-22', v: 3, c: 'CNY' }])
   })
 
-  it('"since last" reads the last mark before today in the display currency', () => {
+  it('"since last" reads the previous trading session\'s last mark in the display currency', () => {
+    // Wed 2026-08-19 .. Mon 08-24
     const p = { snapshots: [{ d: '2026-08-20', v: 5, c: 'CNY' }, { d: '2026-08-21', v: 7, c: 'USD' }, { d: '2026-08-21', v: 9, c: 'CNY' }, { d: '2026-08-22', v: 11, c: 'CNY' }] }
-    expect(previousSnapshot(p, 'CNY', '2026-08-22')).toEqual({ d: '2026-08-21', v: 9, c: 'CNY' })
-    expect(previousSnapshot(p, 'HKD', '2026-08-22')).toBeNull()
+    expect(previousSnapshot(p, 'CNY', '2026-08-21')).toEqual({ d: '2026-08-20', v: 5, c: 'CNY' })
+    expect(previousSnapshot(p, 'HKD', '2026-08-21')).toBeNull()
+  })
+
+  it('"since last" on a weekend or Monday skips weekend captures', () => {
+    const p = { snapshots: [{ d: '2026-08-20', v: 5, c: 'CNY' }, { d: '2026-08-21', v: 9, c: 'CNY' }, { d: '2026-08-22', v: 9, c: 'CNY' }] }
+    expect(previousSnapshot(p, 'CNY', '2026-08-23')).toEqual({ d: '2026-08-20', v: 5, c: 'CNY' })
+    expect(previousSnapshot(p, 'CNY', '2026-08-24')).toEqual({ d: '2026-08-22', v: 9, c: 'CNY' })
   })
 })
 
