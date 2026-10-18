@@ -1321,6 +1321,7 @@ export function Chat() {
     }
   }
 
+  const composerButton = "shrink-0 w-8 h-8 box-border grid place-items-center rounded-md border transition-colors"
   const composer = (
       <form onSubmit={send} class="max-w-[46rem] w-full mx-auto pt-2">
         {pendingContext && <div data-chat-context class="mb-2 flex items-center gap-2 rounded-md border border-line px-2 py-1 font-anth text-[10px] text-muted">
@@ -1357,7 +1358,7 @@ export function Chat() {
               type="button"
               onClick={mic}
               title={tl(rec ? 'stop recording' : 'dictate (whisper on the wire)')}
-              class={`shrink-0 w-8 h-8 grid place-items-center rounded-md border transition-colors ${
+              class={`${composerButton} ${
                 rec ? 'border-danger text-danger animate-pulse' : 'border-line-2 text-muted hover:text-ink'}`}
             >
               <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
@@ -1371,9 +1372,9 @@ export function Chat() {
               type="button"
               onClick={stop}
               title={tl('stop generating')}
-              class="shrink-0 w-8 h-8 grid place-items-center rounded-md bg-danger text-white hover:bg-danger/80 transition-colors"
+              class={`${composerButton} border-transparent bg-danger text-white hover:bg-danger/80`}
             >
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
             </button>
           ) : (
             <button
