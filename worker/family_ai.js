@@ -4,13 +4,13 @@ const HEADERS = {
   'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff',
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Authorization,Content-Type',
-  'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+  'Access-Control-Allow-Methods': 'GET,POST,OPTIONS', 'Access-Control-Expose-Headers':'Retry-After',
 }
 const MAX_BYTES = 65536
 const METHODS = new Map([
   ['/api/chat/models', 'GET'], ['/api/chat', 'POST'], ['/api/chat/stream', 'POST'],
 ])
-const out = (error, status) => Response.json({ ok: false, error }, { status, headers: HEADERS })
+const out = (error, status,extra={}) => Response.json({ok:false,error,...extra}, {status,headers:{...HEADERS,...(extra.retry_after?{'Retry-After':String(extra.retry_after)}:{})}})
 
 async function boundedBody(request) {
   if (Number(request.headers.get('Content-Length')) > MAX_BYTES) throw new RangeError()
@@ -62,19 +62,28 @@ export async function handleFamilyAI(request, env, fetcher = fetch) {
     catch (error) { return out(error instanceof RangeError ? 'Request too large' : 'Invalid request', error instanceof RangeError ? 413 : 400) }
   }
   try {
-    const quota = await env.READER_QUOTA.get(env.READER_QUOTA.idFromName('family-ai')).fetch('https://quota/')
-    if (quota.status !== 204) return out('Assistant request limit reached.', 429)
+    if(request.method==='POST'){
+      const quota=await env.READER_QUOTA.get(env.READER_QUOTA.idFromName('family-ai')).fetch('https://quota/family-ai')
+      if(quota.status!==204)return out('Assistant request limit reached.',429,{code:'rate_limited',retry_after:Number(quota.headers.get('Retry-After'))||60})
+    }
     const response = await fetcher(`${origin.origin}${path}`, {
       method: request.method, redirect: 'manual', signal: AbortSignal.timeout(95_000),
       headers: { Authorization: `Bearer ${env.FAMILY_AI_GATEWAY_TOKEN}`, 'Content-Type': 'application/json' },
       ...(body ? { body } : {}),
     })
     if (!response.ok) {
+      if(response.status===429){
+        const info=await response.json().catch(()=>({}))
+        const busy=info.code==='assistant_busy'
+        const retry=Math.min(86400,Math.max(1,Number(info.retry_after)||Number(response.headers.get('Retry-After'))||(busy?2:60)))
+        return out(busy?'Assistant is busy. Please try again.':'Assistant request limit reached.',429,{code:busy?'assistant_busy':'rate_limited',retry_after:retry})
+      }
       await response.body?.cancel()
       return out(response.status === 429 ? 'Assistant request limit reached.' : 'Assistant unavailable. Please try again.',
         [400, 413, 429, 503].includes(response.status) ? response.status : 502)
     }
     return new Response(response.body, { headers: { ...HEADERS,
-      'Content-Type': path.endsWith('/stream') ? 'text/event-stream' : 'application/json' } })
+      'Content-Type': path.endsWith('/stream') ? 'text/event-stream' : 'application/json',
+      ...(path.endsWith('/stream')?{'Cache-Control':'no-store, no-transform','X-Accel-Buffering':'no'}:{}) } })
   } catch { return out('Assistant unavailable. Please try again.', 503) }
 }

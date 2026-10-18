@@ -84,16 +84,19 @@ async function fetchArticle(url, fetcher) {
 // A global, serialized quota bounds damage even when the shared link leaks.
 export class ReaderQuota {
   constructor(state) { this.state = state }
-  async fetch() {
+  async fetch(request) {
+    const family=request && new URL(typeof request==='string'?request:request.url).pathname==='/family-ai'
+    const limits=family?{minute:60,day:2000}:{minute:20,day:500}
     const now = Date.now()
-    const ok = await this.state.storage.transaction(async storage => {
+    const wait = await this.state.storage.transaction(async storage => {
       let v = await storage.get('quota') || {}
       const minute = Math.floor(now / 60000), day = Math.floor(now / 86400000)
       v = { minute, day, m: v.minute === minute ? v.m : 0, d: v.day === day ? v.d : 0 }
-      if (v.m >= 20 || v.d >= 500) return false
-      v.m++; v.d++; await storage.put('quota', v); return true
+      const retry=Math.max(v.m>=limits.minute?(minute+1)*60000-now:0,v.d>=limits.day?(day+1)*86400000-now:0)
+      if(retry>0)return Math.ceil(retry/1000)
+      v.m++; v.d++; await storage.put('quota', v); return 0
     })
-    return new Response(null, { status: ok ? 204 : 429 })
+    return wait?Response.json({retry_after:wait},{status:429,headers:{'Retry-After':String(wait)}}):new Response(null,{status:204})
   }
 }
 

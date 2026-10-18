@@ -19,9 +19,9 @@ it('moves adjacent rows in opposite directions and pauses for reading and reduce
  const advance=t=>{const pending=[...frames.values()];frames.clear();pending.forEach(f=>f(t))}
  advance(0);const before=rows.map(r=>r.scrollLeft);advance(100)
  expect(rows[0].scrollLeft).toBeGreaterThan(before[0]);expect(rows[1].scrollLeft).toBeLessThan(before[1])
- rows[0].dispatchEvent(new MouseEvent('mouseenter'));const held=rows[0].scrollLeft;advance(200)
+ const enter=new Event('pointerenter');Object.defineProperty(enter,'pointerType',{value:'mouse'});rows[0].dispatchEvent(enter);const held=rows[0].scrollLeft;advance(200)
  expect(rows[0].scrollLeft).toBe(held)
- rows[0].dispatchEvent(new MouseEvent('mouseleave'));advance(300);advance(400)
+ rows[0].dispatchEvent(new Event('pointerleave'));advance(300);advance(400)
  expect(rows[0].scrollLeft).not.toBe(held)
  mediaChanges.forEach(f=>f({matches:true}));const still=rows.map(r=>r.scrollLeft);advance(500)
  expect(rows.map(r=>r.scrollLeft)).toEqual(still)

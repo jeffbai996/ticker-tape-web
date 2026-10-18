@@ -62,3 +62,15 @@ it('allows family Flash with fixed medium effort through the streaming proxy',as
  expect(response.status).toBe(200)
  expect(JSON.parse(fetcher.mock.calls[0][1].body)).toMatchObject({model:'family-flash',effort:'medium'})
 })
+
+it('does not charge model-list reads against inference quota',async()=>{
+ const config=env();const quota=vi.fn(async()=>new Response(null,{status:429}));config.READER_QUOTA.get=()=>({fetch:quota})
+ const response=await handleFamilyAI(request('/api/chat/models'),config,async()=>Response.json({ok:true,models:[]}))
+ expect(response.status).toBe(200);expect(quota).not.toHaveBeenCalled()
+})
+it('preserves retry information and disables stream transformations',async()=>{
+ const limited=await handleFamilyAI(request(),env(),async()=>Response.json({ok:false,code:'rate_limited',retry_after:12},{status:429,headers:{'Retry-After':'12'}}))
+ expect(limited.headers.get('Retry-After')).toBe('12');expect((await limited.json()).retry_after).toBe(12)
+ const stream=await handleFamilyAI(request('/api/chat/stream'),env(),async()=>new Response('event: done\ndata: {}\n\n'))
+ expect(stream.headers.get('Cache-Control')).toContain('no-transform');expect(stream.headers.get('X-Accel-Buffering')).toBe('no')
+})
