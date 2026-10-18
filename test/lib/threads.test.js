@@ -20,7 +20,7 @@ vi.mock('../../src/lib/chatstore.js', () => ({
 
 import {
   currentThreadId, fetchThreadList, hydrateActiveThread, openThread,
-  saveActiveHistory, startNewThread,
+  saveActiveHistory, startNewThread, removeThread, onThreadsChange,
 } from '../../src/lib/threads.js'
 
 describe('chat sessions', () => {
@@ -101,6 +101,37 @@ describe('chat sessions', () => {
     await expect(hydrateActiveThread()).resolves.toEqual(cached)
     expect(currentThreadId()).toBeNull()
     expect(JSON.parse(localStorage.getItem('chat_history_v1'))).toEqual(cached)
+  })
+
+  it('notifies mounted lists after a server deletion with the removed id', async () => {
+    localStorage.setItem('chat_thread_id', '41')
+    const changed = vi.fn()
+    const unsubscribe = onThreadsChange(changed)
+    try {
+      await removeThread(41)
+      expect(changed).toHaveBeenCalledExactlyOnceWith({ deletedId: 41 })
+      expect(currentThreadId()).toBeNull()
+    } finally { unsubscribe() }
+  })
+
+  it('notifies mounted lists after a local deletion', async () => {
+    store.available = false
+    const changed = vi.fn()
+    const unsubscribe = onThreadsChange(changed)
+    try {
+      await removeThread(41)
+      expect(changed).toHaveBeenCalledExactlyOnceWith({ deletedId: 41 })
+    } finally { unsubscribe() }
+  })
+
+  it('keeps the displayed session when the server rejects deletion', async () => {
+    const changed = vi.fn()
+    const unsubscribe = onThreadsChange(changed)
+    store.deleteThread.mockRejectedValueOnce(new Error('network down'))
+    try {
+      await expect(removeThread(41)).rejects.toThrow('network down')
+      expect(changed).not.toHaveBeenCalled()
+    } finally { unsubscribe() }
   })
 
   it('reports transport failures without discarding the active pointer', async () => {

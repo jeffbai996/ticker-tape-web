@@ -797,7 +797,15 @@ export function Chat() {
   }
   const threadRead=useRef(0)
   const refreshThreads = () => {const revision=++threadRead.current;return fetchThreadList().then(rows=>{if(revision===threadRead.current)setThreads(rows)}).catch(sessionFailure)}
-  useEffect(()=>onThreadsChange(refreshThreads),[])
+  useEffect(() => onThreadsChange((mutation) => {
+    if (mutation?.deletedId != null) {
+      // A read started before deletion must not put the removed row back.
+      threadRead.current += 1
+      setThreads(rows => rows.filter(row => String(row.id) !== String(mutation.deletedId)))
+    } else {
+      refreshThreads()
+    }
+  }), [])
   useEffect(() => {
     const onSync = () => { setMemories(loadMemories()); setJournal(loadJournal()) }
     if (chatstoreAvailable()) {
@@ -882,7 +890,6 @@ export function Chat() {
         setLiveAnswer('')
         setAtHome(true)
       }
-      await refreshThreads()
     } catch (err) {
       sessionFailure(err)
     }

@@ -22,7 +22,7 @@ const titleOf = (messages) => {
 
 const listeners=new Set()
 export function onThreadsChange(callback){listeners.add(callback);return ()=>listeners.delete(callback)}
-const changed=()=>{for(const callback of listeners)callback()}
+const changed=(mutation)=>{for(const callback of listeners)callback(mutation)}
 
 /** Local active state leads the index while a durable save is in flight. */
 export function liveThreadList(threads,id,messages,{streaming=false}={}) {
@@ -189,10 +189,12 @@ export async function removeThread(id) {
   if (!chatstoreAvailable()) {
     saveLocalThreads(loadLocalThreads().filter((item) => item.id !== id))
     if (currentThreadId() === id) resetActiveThread()
+    changed({ deletedId: id })
     return
   }
   await deleteThread(id)
   if (currentThreadId() === id) resetActiveThread()
+  changed({ deletedId: id })
 }
 
 /** Delete, rather than archive or empty, the active conversation. */
