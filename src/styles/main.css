@@ -1065,3 +1065,5 @@ html[data-pointer-hover] .tape-hot *:not(.text-up):not(.text-down):not([data-tap
 .chat-token-footer{container-type:inline-size;container-name:chat-metrics}
 .chat-model-full{display:none}
 @container chat-metrics (min-width:640px){.chat-model-short{display:none}.chat-model-full{display:inline}}
+
+.briefing-data-grid section{border-radius:0}
