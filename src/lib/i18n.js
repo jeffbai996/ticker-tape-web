@@ -46,13 +46,21 @@ export function onLocaleChange(fn) {
 // Sentences and parameterized chrome. {name} placeholders interpolate.
 const STRINGS = {
   'palette.placeholder': {
-    en: 'symbol or section… (esc to close)',
-    zh: '输入代码或版块…（esc 关闭）',
+    en: 'Search symbols, pages or commands…',
+    zh: '搜索代码、页面或命令…',
   },
   'palette.no_match': {
-    en: 'no matches — Enter opens {q} in research',
-    zh: '无匹配 — 回车直接打开 {q} 的研究页',
+    en: 'No matches found.',
+    zh: '未找到匹配结果。',
   },
+  'palette.title': {en:'Search and commands',zh:'搜索与命令'},
+  'palette.nav': {en:'Pages',zh:'页面'},
+  'palette.symbol': {en:'Symbols',zh:'证券'},
+  'palette.list': {en:'Watchlists',zh:'自选列表'},
+  'palette.command': {en:'Command',zh:'命令'},
+  'palette.navigate': {en:'Navigate',zh:'选择'},
+  'palette.open': {en:'Open',zh:'打开'},
+  'palette.hint': {en:'Search or run a command',zh:'搜索或执行命令'},
   'palette.close': { en: 'close search', zh: '关闭搜索' },
   'alerts.subtitle': {
     en: 'live conditions · one-shot until re-armed',

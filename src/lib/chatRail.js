@@ -10,3 +10,9 @@ export function chatRailData({symbols=[],quotes={},earnDays={},events=[]}={}) {
   .sort((a,b)=>Math.abs((b.rsi??50)-50)-Math.abs((a.rsi??50)-50)).slice(0,8)
  return {movers,earnings,signals,events:events.slice(0,6)}
 }
+
+/** RSI thresholds describe signal conditions, independent of market color order. */
+export function rsiTone(value) {
+ if(!Number.isFinite(value))return 'text-muted'
+ return value<=30?'text-success':value>=70?'text-danger':'text-ink-2'
+}

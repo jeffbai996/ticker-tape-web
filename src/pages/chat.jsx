@@ -2,9 +2,9 @@ import {pickerModels,modelGroups} from '../lib/chatModels.js'
 import {SuggestionRows} from '../components/SuggestionRows.jsx'
 import { earningsTone } from '../lib/earningsTone.js'
 import {submitTextKey} from '../lib/chatInput.js'
-import {chatRailData} from '../lib/chatRail.js'
+import {chatRailData,rsiTone} from '../lib/chatRail.js'
 import {replayRequest} from '../lib/chatReplay.js'
-import {mergeTurnUsage} from '../lib/chatMetrics.js'
+import {mergeTurnUsage,metricDuration} from '../lib/chatMetrics.js'
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
 import { fetchChatModels, fetchSpend } from '../lib/chatClient.js'
 import { runAgentic, trimHistory } from '../lib/agent.js'
@@ -34,7 +34,7 @@ import {
   openThread, removeThread, saveActiveHistory, flushActiveHistory, startNewThread, deleteActiveThread, currentThreadId,
 } from '../lib/threads.js'
 import { wireServiceUrl } from '../lib/wire.js'
-import { plainTraceText, hasTurnActivity, activityGroups } from '../lib/chatTrace.js'
+import { plainTraceText, hasTurnActivity, activityGroups, traceIcon, completionLabel } from '../lib/chatTrace.js'
 import { ChatFooter } from '../components/ChatFooter.jsx'
 import { loadZhTable, loadMissingZhName, onZhTable, zhName } from '../lib/zhNames.js'
 import { onPortfoliosChange } from '../lib/myPortfolios.js'
@@ -269,9 +269,7 @@ function ToolChips({ calls, results }) {
 }
 
 function durationLabel(ms) {
-  const sec = Math.max(0, Math.floor(ms / 1000))
-  if (sec < 60) return `${sec}s`
-  return `${Math.floor(sec / 60)}m ${sec % 60}s`
+  return metricDuration(Math.max(0,ms)/1000)
 }
 
 function traceArgs(args) {
@@ -358,31 +356,20 @@ function ThinkingPane({ text }) {
 /** Per-step glyph. Grey, 12px, stroked — the label already says what happened,
  *  so the icon is a scanning aid, not decoration, and it stays monochrome so a
  *  list of steps reads as one column rather than a row of colours. */
-function StepIcon({ kind, verb, status }) {
-  // Keyed off the word actually SHOWN, not the step's original verb: a model
-  // step starts life as "Thinking" and ends as "Answered", and pairing the
-  // finished row with a lamp said the wrong thing about a row that reads
-  // "Answered".
-  const v = String(verb || '').toLowerCase()
-  const p = { fill: 'none', stroke: 'currentColor', 'stroke-width': 1.6,
-              'stroke-linecap': 'round', 'stroke-linejoin': 'round' }
-  let d
-  if (kind === 'tool' || v.includes('search') || v.includes('look')) {
-    d = <g {...p}><circle cx="7" cy="7" r="4.5" /><path d="M10.5 10.5 14 14" /></g>
-  } else if (v.includes('read') || v.includes('brows')) {
-    d = <g {...p}><path d="M2.5 3.5h4a2 2 0 0 1 2 2v8a1.6 1.6 0 0 0-1.6-1.4H2.5zM13.5 3.5h-4a2 2 0 0 0-2 2v8a1.6 1.6 0 0 1 1.6-1.4h4.4z" /></g>
-  } else if (v.includes('answer')) {
-    d = <g {...p}><path d="M3 8.5 6.5 12 13 4.5" /></g>
-  } else {
-    // reasoning / thinking — a lamp, the one glyph everyone reads as "thought"
-    d = <g {...p}><path d="M6 12.5h4M6.5 14.2h3" /><path d="M8 1.8a4.4 4.4 0 0 0-2.6 7.9c.4.3.6.8.6 1.3h4c0-.5.2-1 .6-1.3A4.4 4.4 0 0 0 8 1.8z" /></g>
+function StepIcon({ kind, name, verb, status }) {
+  const icon=traceIcon({kind,name,label:verb})
+  const p={fill:'none',stroke:'currentColor','stroke-width':1.5,'stroke-linecap':'round','stroke-linejoin':'round'}
+  const paths={
+    portfolio:<g {...p}><rect x="2" y="5" width="12" height="9" rx="1.5"/><path d="M5 5V3h6v2M2 9h12M7 9v2h2V9"/></g>,
+    calendar:<g {...p}><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M5 1.5v3M11 1.5v3M2 7h12M5 10h1M10 10h1"/></g>,
+    market:<g {...p}><path d="M2 2v12h12M4 10l3-4 3 2 4-5"/></g>,
+    read:<g {...p}><path d="M2 3h4a2 2 0 0 1 2 2v9a2 2 0 0 0-2-2H2zM14 3h-4a2 2 0 0 0-2 2v9a2 2 0 0 1 2-2h4z"/></g>,
+    search:<g {...p}><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></g>,
+    answer:<g {...p}><path d="M3 8.5 6.5 12 13 4.5"/></g>,
+    thinking:<g {...p}><path d="M6 12.5h4M6.5 14h3M8 2a4 4 0 0 0-2.5 7.1c.5.4.5.8.5 1.4h4c0-.6 0-1 .5-1.4A4 4 0 0 0 8 2Z"/></g>,
   }
-  return (
-    <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"
-         class={`chat-trace-node is-${status || 'done'}`}>
-      {d}
-    </svg>
-  )
+  return <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" data-trace-icon={icon}
+    class={`chat-trace-node is-${status||'done'}`}>{paths[icon]}</svg>
 }
 
 export function ActivityTrace({ steps, busy = false, startedAt, usage = null }) {
@@ -401,7 +388,7 @@ export function ActivityTrace({ steps, busy = false, startedAt, usage = null }) 
   const last = busy ? now : Math.max(...steps.map((step) => step.endedAt || step.startedAt || first))
   const running = [...steps].reverse().find((step) => step.status === 'running')
   const failed = steps.some((step) => step.status === 'error')
-  const title = busy ? (running?.verb || running?.label || 'Working') : failed ? 'Stopped after' : 'Worked for'
+  const title = busy ? (running?.verb || running?.label || 'Working') : failed ? 'Stopped after' : completionLabel(steps)
   const elapsed = durationLabel(last - first)
   // the reasoning of whichever model step is live — shown as it arrives
   // rather than only inside the folded step list (Jeff 2026-08-07)
@@ -448,14 +435,16 @@ export function ActivityTrace({ steps, busy = false, startedAt, usage = null }) 
               <section key={group.model?.key || index} class="chat-trace-phase">
                 {group.model && (
                   <div class="chat-trace-reason">
-                    <StepIcon kind="model" verb={group.model.label || group.model.verb} status={group.model.status} />
-                    <span>{group.model.label}</span>
-                    <span class="chat-trace-time">{group.model.startedAt ? durationLabel((group.model.endedAt || now)-group.model.startedAt) : ''}</span>
+                    <div class="chat-trace-row">
+                      <span class="chat-trace-icon"><StepIcon kind="model" verb={group.model.label || group.model.verb} status={group.model.status} /></span>
+                      <span>{group.model.label}</span>
+                      <span class="chat-trace-time">{group.model.startedAt ? durationLabel((group.model.endedAt || now)-group.model.startedAt) : ''}</span>
+                      {!group.model.detail && group.model.thinkTokens ? <span class="chat-trace-time">{thinkDepth(group.model.thinkTokens)}</span> : null}
+                    </div>
                     {group.model.detail && <details class="chat-trace-reason-detail">
                       <summary>{tl('details')}</summary>
                       <div class="chat-trace-detail">{plainTraceText(group.model.detail)}</div>
                     </details>}
-                    {!group.model.detail && group.model.thinkTokens ? <span class="chat-trace-time">{thinkDepth(group.model.thinkTokens)}</span> : null}
                   </div>
                 )}
                 {group.tools.length > 0 && <div class="chat-trace-tools">
@@ -464,9 +453,9 @@ export function ActivityTrace({ steps, busy = false, startedAt, usage = null }) 
                     const stepElapsed=step.startedAt ? durationLabel(end-step.startedAt) : ''
                     return (
                 <div key={step.key} class={`chat-trace-step is-tool is-${step.status || 'done'}`}>
-                  <StepIcon kind={step.kind} verb={step.label || step.verb} status={step.status} />
                   <div class="min-w-0 flex-1">
-                    <div class="flex items-baseline gap-2">
+                    <div class="chat-trace-row">
+                      <span class="chat-trace-icon"><StepIcon kind={step.kind} name={step.name} verb={step.label || step.verb} status={step.status} /></span>
                       <span class="chat-trace-label">
                         {step.label}{step.status === 'running' && <Ellipsis />}
                       </span>
@@ -1090,7 +1079,7 @@ export function Chat() {
       if (event.type === 'tool_start') {
         const call = { name: event.name, args: event.args }
         updateActivity((steps) => [...steps, {
-          key: `tool-${event.id}`, kind: 'tool', label: toolRunLabel(call),
+          key: `tool-${event.id}`, kind: 'tool', name:event.name, label: toolRunLabel(call),
           verb: toolRunLabel(call), detail: traceArgs(event.args),
           status: 'running', startedAt: now,
         }])
@@ -1858,8 +1847,8 @@ export function Chat() {
         <div class="px-2.5 py-1 font-mono text-[10px]">
           {rail.signals.map(signal=><a key={signal.symbol} href={`#/research/${signal.symbol.toLowerCase()}`} class="flex flex-wrap items-baseline justify-between gap-1 py-0.5 hover:no-underline">
             <span class="text-ink-2 font-tick">{signal.symbol}</span>
-            <span class="flex gap-2 text-[#58a6ff]">
-              {Number.isFinite(signal.rsi)&&<span>RSI {Math.round(signal.rsi)}</span>}
+            <span class="flex gap-2">
+              {Number.isFinite(signal.rsi)&&<span class={rsiTone(signal.rsi)}>RSI {Math.round(signal.rsi)}</span>}
               {signal.volume>=2&&<span class="text-accent">{signal.volume.toFixed(1)}× {getLocale()==='zh'?'量':'vol'}</span>}
             </span>
           </a>)}

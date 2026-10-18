@@ -42,6 +42,6 @@ export function ChatFooter({ model, effort, usage, startedAt, endedAt, busy = fa
       <span class="chat-token-input"><span class="chat-token-arrow">↑</span>{tokens(m.input)}</span><span class="chat-token-output"><span class="chat-token-arrow">↓</span>{tokens(m.output)}</span><span>tok</span>
     </span>
     <span class="chat-token-stat" title="Turn elapsed time"><Icon kind="clock" />{metricDuration(m.elapsed)}</span>
-    <span class="chat-token-stat chat-token-throughput" title="Provider-reported generation speed, excluding prompt processing and tool time"><Icon kind="speed" />{m.rate == null ? '—' : m.rate.toFixed(1)} tok/s</span>
+    <span class="chat-token-stat chat-token-throughput" title={m.rateSource==='stream' ? 'Observed answer streaming speed, excluding prompt processing, reasoning and tool time' : 'Provider-reported generation speed, excluding prompt processing and tool time'}><Icon kind="speed" />{m.rate == null ? '—' : m.rate.toFixed(1)} tok/s</span>
   </div>
 }

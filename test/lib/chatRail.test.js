@@ -12,3 +12,11 @@ it('shows more useful live rows without inventing missing quotes or earnings',()
  expect(data.events).toHaveLength(6)
  expect(data.movers.some(m=>m.sym==='MISSING')).toBe(false)
 })
+
+it('keeps RSI threshold colors semantic even when market gain colors swap',async()=>{
+ const {rsiTone}=await import('../../src/lib/chatRail.js')
+ expect(rsiTone(21)).toBe('text-success')
+ expect(rsiTone(75)).toBe('text-danger')
+ expect(rsiTone(50)).toBe('text-ink-2')
+ expect(rsiTone(null)).toBe('text-muted')
+})

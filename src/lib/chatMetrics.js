@@ -1,4 +1,4 @@
-/** Reported usage only. Decode rate excludes prompt processing, tools and waiting. */
+/** Reported counts only; timing excludes prompt processing and tool execution. */
 export function chatMetrics({ usage, startedAt, endedAt, now = Date.now() }) {
   const count = (n) => typeof n === 'number' && Number.isFinite(n) && n >= 0 ? n : null
   const input = count(usage?.in)
@@ -6,11 +6,14 @@ export function chatMetrics({ usage, startedAt, endedAt, now = Date.now() }) {
   const elapsed = startedAt > 0 ? Math.max(0, (endedAt ?? now) - startedAt) / 1000 : null
   const seconds = count(usage?.decode_seconds)
   const tokens = count(usage?.decode_tokens)
-  return { input, output, elapsed, rate: tokens != null && seconds > 0 ? tokens / seconds : null }
+  const streamSeconds=count(usage?.stream_seconds), streamTokens=count(usage?.stream_tokens)
+  const totalSeconds=(seconds||0)+(streamSeconds||0), totalTokens=(tokens||0)+(streamTokens||0)
+  return {input,output,elapsed,rate: totalSeconds>0 ? totalTokens/totalSeconds : null,rateSource:streamSeconds>0?'stream':'decoder'}
 }
 
 export function metricDuration(seconds) {
-  if (seconds == null) return '—'
+  if (seconds == null || !Number.isFinite(seconds)) return '—'
+  if (seconds < 1) return `${Math.max(0, Math.round(seconds * 1000))}ms`
   const n = Math.floor(seconds)
   if (n < 60) return `${n}s`
   if (n < 3600) return `${Math.floor(n / 60)}m ${n % 60}s`
@@ -22,11 +25,13 @@ export function mergeTurnUsage(previous, round, reported={}) {
  const known=n=>typeof n==='number' && Number.isFinite(n) && n>=0
  const byRound={...(previous?.byRound || {})}
  byRound[round]={...(byRound[round] || {}),
+  ...(known(reported.stream_seconds) ? {stream_seconds:reported.stream_seconds} : {}),
   ...(known(reported.decode_seconds) ? {decode_seconds:reported.decode_seconds} : {}),
   ...(known(reported.in) ? {in:reported.in} : {}),...(known(reported.out) ? {out:reported.out} : {})}
  const measured=Object.values(byRound).filter(u=>known(u.out) && known(u.decode_seconds) && u.decode_seconds>0)
+ const streamed=Object.values(byRound).filter(u=>known(u.out) && !known(u.decode_seconds) && u.stream_seconds>0)
  const inputs=Object.values(byRound).map(u=>u.in).filter(known)
  const outputs=Object.values(byRound).map(u=>u.out).filter(known)
- return {byRound,...(measured.length ? {decode_seconds:measured.reduce((a,u)=>a+u.decode_seconds,0),decode_tokens:measured.reduce((a,u)=>a+u.out,0)} : {}),...(inputs.length ? {in:Math.max(...inputs)} : {}),
+ return {byRound,...(streamed.length ? {stream_seconds:streamed.reduce((a,u)=>a+u.stream_seconds,0),stream_tokens:streamed.reduce((a,u)=>a+u.out,0)} : {}),...(measured.length ? {decode_seconds:measured.reduce((a,u)=>a+u.decode_seconds,0),decode_tokens:measured.reduce((a,u)=>a+u.out,0)} : {}),...(inputs.length ? {in:Math.max(...inputs)} : {}),
   ...(outputs.length ? {out:outputs.reduce((a,b)=>a+b,0)} : {})}
 }

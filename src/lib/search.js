@@ -22,14 +22,14 @@ function recentSymbols() {
  * instead of 250ms of debounced nothing. Yahoo hits merge in afterwards.
  * Returns [{kind:'symbol'|'list', symbol|id, label, source, href}].
  */
-export function searchLocal(query) {
+export function searchLocal(query, nameFor = () => null) {
   const q = (query || '').trim().toUpperCase()
   if (!q) return []
   const out = []
   const seen = new Set()
   const pushSymbol = (symbol, source) => {
     const sym = String(symbol || '').toUpperCase()
-    if (!sym || seen.has(sym) || !sym.includes(q)) return
+    if (!sym || seen.has(sym) || !(sym.includes(q) || String(nameFor(sym)||'').toUpperCase().includes(q))) return
     seen.add(sym)
     out.push({
       kind: 'symbol',
@@ -61,17 +61,18 @@ export function searchLocal(query) {
 }
 
 /** Nav sections/sub-tabs whose label matches the query. Empty query → all sections. */
-export function filterNav(query) {
+export function filterNav(query, translate = label => label) {
   const q = (query || '').trim().toLowerCase()
   const out = []
   for (const section of NAV) {
     if (section.phoneOnly) continue   // the console page is chin-only, not a palette destination
-    if (!q || section.label.toLowerCase().includes(q)) {
-      out.push({ kind: 'nav', label: section.label, href: hrefFor(section.id) })
+    const label = translate(section.label)
+    if (!q || section.label.toLowerCase().includes(q) || label.toLowerCase().includes(q)) {
+      out.push({ kind: 'nav', label, section:section.id, href: hrefFor(section.id) })
     }
     for (const sub of section.subs) {
-      if (q && sub.label.toLowerCase().includes(q)) {
-        out.push({ kind: 'nav', label: `${section.label} / ${sub.label}`, href: hrefFor(section.id, sub.id) })
+      if (q && (sub.label.toLowerCase().includes(q) || translate(sub.label).toLowerCase().includes(q))) {
+        out.push({ kind: 'nav', label: `${label} / ${translate(sub.label)}`, section:section.id, href: hrefFor(section.id, sub.id) })
       }
     }
   }

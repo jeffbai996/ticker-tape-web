@@ -28,3 +28,22 @@ export function activityGroups(steps) {
   }
   return groups
 }
+
+/** Native tool identity wins; older saved traces still have their visible label. */
+export function traceIcon(step={}) {
+ const text=String(step.name||step.label||step.verb||'').toLowerCase()
+ if(step.kind==='model')return /answer/.test(text)?'answer':'thinking'
+ if(/portfolio|holding/.test(text))return 'portfolio'
+ if(/calendar|earnings|events/.test(text))return 'calendar'
+ if(/market|tape|technical|quotes/.test(text))return 'market'
+ if(/article|research|news|read|brows/.test(text))return 'read'
+ return 'search'
+}
+
+/** A small, stable vocabulary describes the work actually present in the trace. */
+export function completionLabel(steps=[]) {
+ const tools=steps.filter(s=>s.kind==='tool')
+ if(tools.some(s=>/market_pulse|the tape/i.test(s.name||s.label||'')))return 'Read the tape for'
+ if(tools.some(s=>/technical|research|quotes/i.test(s.name||s.label||'')))return 'Analyzed for'
+ return tools.length?'Reviewed for':'Worked for'
+}

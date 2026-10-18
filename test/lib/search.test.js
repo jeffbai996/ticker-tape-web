@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
+import { replaceWatchlist } from '../../src/lib/watchlist.js'
 import { filterNav, searchLocal } from '../../src/lib/search.js'
 
 describe('searchLocal', () => {
@@ -56,4 +57,15 @@ describe('filterNav', () => {
   it('returns empty for a no-match query', () => {
     expect(filterNav('zzzznope')).toEqual([])
   })
+})
+
+it('matches and displays translated destinations while retaining English search terms',()=>{
+ const translated=label=>({'Markets':'市场','Heatmap':'热力图'}[label]||label)
+ expect(filterNav('市场',translated)).toEqual(expect.arrayContaining([expect.objectContaining({label:'市场',href:'#/markets'})]))
+ expect(filterNav('heat',translated)).toEqual(expect.arrayContaining([expect.objectContaining({label:'市场 / 热力图',href:'#/markets/heatmap'})]))
+})
+
+it('finds watched symbols by their company name',()=>{
+ replaceWatchlist(['MSFT'])
+ expect(searchLocal('微软',symbol=>symbol==='MSFT'?'微软':null)).toEqual(expect.arrayContaining([expect.objectContaining({symbol:'MSFT'})]))
 })

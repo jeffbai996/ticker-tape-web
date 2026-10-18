@@ -27,3 +27,15 @@ it('groups tools under the model round that requested them',async()=>{
   expect(groups.map(g=>g.tools.map(t=>t.key))).toEqual([['t1','t2'],['t3']])
   expect(groups.map(g=>g.model.key)).toEqual(['m1','m2'])
 })
+
+it('gives portfolio calendar and market tools distinct glyphs while keeping reasoning separate',async()=>{
+ const {traceIcon,completionLabel}=await import('../../src/lib/chatTrace.js')
+ expect(traceIcon({kind:'tool',name:'get_portfolios'})).toBe('portfolio')
+ expect(traceIcon({kind:'tool',label:'Reading the calendar'})).toBe('calendar')
+ expect(traceIcon({kind:'tool',label:'Reading the tape'})).toBe('market')
+ expect(traceIcon({kind:'model',label:'Reasoned'})).toBe('thinking')
+ expect(completionLabel([{kind:'tool',name:'get_market_pulse'}])).toBe('Read the tape for')
+ expect(completionLabel([{kind:'tool',name:'get_technicals'}])).toBe('Analyzed for')
+ expect(completionLabel([{kind:'tool',name:'get_portfolios'}])).toBe('Reviewed for')
+ expect(completionLabel([])).toBe('Worked for')
+})

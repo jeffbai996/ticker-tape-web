@@ -41,3 +41,20 @@ it('does not turn prompt processing and tool waiting into a decode rate',()=>{
  u=mergeTurnUsage(u,2,{out:100})
  expect(chatMetrics({usage:u}).rate).toBe(50)
 })
+
+it('uses milliseconds for sub-second work instead of rounding it down to zero',()=>{
+ expect(metricDuration(0.042)).toBe('42ms')
+ expect(metricDuration(0)).toBe('0ms')
+ expect(metricDuration(0.999)).toBe('999ms')
+ expect(metricDuration(1)).toBe('1s')
+})
+
+it('uses measured subscription streaming time without treating it as decoder telemetry',()=>{
+ const usage=mergeTurnUsage(null,1,{in:100,out:80,stream_seconds:2})
+ expect(chatMetrics({usage}).rate).toBe(40)
+ expect(chatMetrics({usage}).rateSource).toBe('stream')
+ expect(usage.decode_seconds).toBeUndefined()
+ const mixed=mergeTurnUsage(usage,2,{in:120,out:20,decode_seconds:1})
+ expect(chatMetrics({usage:mixed}).rate).toBeCloseTo(100/3)
+ expect(chatMetrics({usage:mixed}).rateSource).toBe('stream')
+})
