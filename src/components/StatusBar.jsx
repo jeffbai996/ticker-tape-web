@@ -253,7 +253,7 @@ export function StatusBar() {
           on hover and everything to its right (the status chip first) glides
           over as the width animates (Jeff 2026-08-06) */}
       <a
-        href="#/"
+        href={hrefFor('dashboard')}
         title={tl('Dashboard')}
         class="brand-morph flex items-center -mx-1 px-1 py-0.5 rounded border border-transparent
                hover:no-underline hover:bg-accent-soft hover:border-accent/40 transition-colors"
