@@ -137,3 +137,12 @@ it('closes Chinese word boundaries around substituted names while preserving Lat
  expect(promptLabel('在 AAPL 到达 200 时设置提醒',{AAPL:'苹果'})).toBe('在苹果到达 200 时设置提醒')
  expect(promptLabel('在 MSFT 到达 200 时设置提醒',{MSFT:'Microsoft'})).toBe('在 Microsoft 到达 200 时设置提醒')
 })
+
+it('states the listing currency in alert thresholds in both locales',async()=>{
+ const {setLocale}=await import('../../src/lib/i18n.js')
+ const context={watchlist:['AAPL'],quotes:{AAPL:{quote:{price:100,pct:4,currency:'HKD'}}},earnDays:{},journal:[]}
+ setLocale('zh')
+ expect(dynamicActions(context).find(a=>a.family==='chat.action_alert').t).toContain('港元')
+ setLocale('en')
+ expect(dynamicActions(context).find(a=>a.family==='chat.action_alert').t).toContain('HKD')
+})

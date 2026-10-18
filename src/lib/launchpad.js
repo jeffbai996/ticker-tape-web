@@ -1,5 +1,11 @@
 /** Contextual prompt suggestions, balanced by topic before presentation. */
-import { t as tt, tl } from './i18n.js'
+import { t as tt, tl, getLocale } from './i18n.js'
+import {holdingCurrency} from './fx.js'
+
+function alertPrice(value,currency) {
+ if(!/^[A-Z]{3}$/.test(currency))return `${value} ${currency}`
+ try{return new Intl.NumberFormat(getLocale()==='zh'?'zh-CN':'en-US',{style:'currency',currency,currencyDisplay:getLocale()==='zh'?'name':'code',minimumFractionDigits:0,maximumFractionDigits:8}).format(value)}catch{return `${value} ${currency}`}
+}
 
 const VARIED = new Set(["technical", "mover", "earnings_preview", "book_position", "book_risk", "calendar", "rates", "heatmap", "compare", "valuation", "watchlist_review", "strongest"])
 
@@ -40,8 +46,10 @@ export function dynamicActions({ watchlist, quotes, earnDays, nextEvent, book, j
     when:nextEvent.days===0?tl('today'):tt('common.days',{days:nextEvent.days}),
     target:tl(book?'my book':'the market')})
   const top=movers[0]
-  if(top?.price)add('alert','app',{symbol:top.symbol,level:top.pct>0
-    ?Math.ceil(top.price*1.03/5)*5:Math.floor(top.price*.97/5)*5})
+  if(top?.price){
+    const level=top.pct>0?Math.ceil(top.price*1.03/5)*5:Math.floor(top.price*.97/5)*5
+    add('alert','app',{symbol:top.symbol,level:alertPrice(level,holdingCurrency(top.symbol,top))})
+  }
   const badges=watchlist.map(symbol=>({symbol,...quotes[symbol]?.tech}))
   const stretched=badges.filter(b=>b.rsi!=null&&(b.rsi>=70||b.rsi<=30))
     .sort((a,b)=>Math.abs(b.rsi-50)-Math.abs(a.rsi-50))[0]
