@@ -1370,7 +1370,7 @@ export function Chat() {
             >
               {(() => {
                 const live = models.length ? models : [{ key: model, label: model }]
-                const label = (g) => ({ 'Claude Code': 'claude', Codex: 'codex', Antigravity: 'agy' }[g] || (g || 'models').toLowerCase())
+                const label = (g) => ({ 'Claude Code': 'claude', Codex: 'codex', Antigravity: 'jeffbai996' }[g] || (g || 'models').toLowerCase())
                 const groups = []
                 live.forEach((m) => {
                   const g = label(m.group)
