@@ -608,6 +608,7 @@ const LABELS = {
   "max": "最高",
   "Assistant request limit reached.": "助手请求已达上限，请稍后重试。",
   "Assistant unavailable. Please try again.": "助手暂不可用，请重试。",
+  'Confirm delete conversation': '确认删除对话',
   'Briefing source': '晨报来源', 'Current watchlist': '当前自选股',
   Declining: '下跌', 'Market pulse': '市场脉搏', thinking: '思考',
   Briefing: '晨报', Data: '数据', copy: '复制', generate: '生成', regenerate: '再生成',

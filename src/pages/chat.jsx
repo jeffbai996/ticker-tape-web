@@ -1,3 +1,4 @@
+import {ConversationDelete} from '../components/ConversationDelete.jsx'
 import {pickerModels,modelGroups} from '../lib/chatModels.js'
 import {SuggestionRows} from '../components/SuggestionRows.jsx'
 import { earningsTone } from '../lib/earningsTone.js'
@@ -293,11 +294,7 @@ function traceArgs(args) {
  *  didn't exist on touch, and Jeff couldn't find it at all — 2026-08-07), and
  *  arming it flips the row into a confirm rather than firing on one tap. */
 function SessionRow({ thread, active, busy, onOpen, onDelete }) {
-  const [arming, setArming] = useState(false)
-  useEffect(() => {
-    if (!arming) return
-    const t = setTimeout(() => setArming(false), 4000)
-    return () => clearTimeout(t)
+  return () => clearTimeout(t)
   }, [arming])
   return (
     <div class={`flex items-center gap-2 rounded-lg px-2 py-1.5 ${active ? 'bg-accent-soft' : 'hover:bg-surface-2'}`}>
@@ -307,26 +304,7 @@ function SessionRow({ thread, active, busy, onOpen, onDelete }) {
         </span>
         <span class="block font-mono text-[9px] text-muted">{tt('chat.session_messages', { n: thread.n })}</span>
       </button>
-      {arming ? (
-        <span class="flex items-center gap-1 shrink-0">
-          <button type="button" disabled={busy} onClick={() => { setArming(false); onDelete() }}
-            class="font-anth text-[10px] px-1.5 py-0.5 rounded border border-danger/50 text-danger hover:bg-danger/10 disabled:opacity-40">
-            {tl('delete')}
-          </button>
-          <button type="button" onClick={() => setArming(false)}
-            class="font-anth text-[10px] px-1.5 py-0.5 rounded border border-line text-muted hover:text-ink">
-            {tl('cancel')}
-          </button>
-        </span>
-      ) : (
-        <button type="button" disabled={busy} onClick={() => setArming(true)} title={tl('delete session')}
-          aria-label={tl('delete session')}
-          class="shrink-0 w-6 h-6 grid place-items-center rounded-md text-muted hover:text-danger hover:bg-surface-2 disabled:opacity-30">
-          <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 4.5h10M6.5 4.5V3.2h3v1.3M4.4 4.5l.6 8.1h6l.6-8.1M6.6 7v3.4M9.4 7v3.4" />
-          </svg>
-        </button>
-      )}
+      <ConversationDelete disabled={busy} onDelete={onDelete} />
     </div>
   )
 }
@@ -1562,9 +1540,7 @@ export function Chat() {
             </button>
           )}
           {history.length > 0 && (
-            <button onClick={clear} disabled={busy} class="w-6 h-6 grid place-items-center rounded-md text-muted hover:text-[#f85149] hover:bg-surface-2" title={tl('clear')} aria-label={tl('clear')}>
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M5 6v14a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6M10 10v7M14 10v7"/></svg>
-            </button>
+            <ConversationDelete onDelete={clear} disabled={busy} label={tl('clear')} />
           )}
         </div>
 
@@ -1823,9 +1799,7 @@ export function Chat() {
                   <span class={`block truncate font-anth text-[11px] ${t.id === currentThreadId() ? 'text-accent' : 'text-ink-2'}`}>{t.title || tl('untitled')}</span>
                 </button>
                 <span class="font-mono text-[8.5px] text-muted shrink-0">{t.n}</span>
-                <button onClick={() => deleteSession(t.id)} disabled={busy}
-                  title={tl('delete session')} aria-label={tl('delete session')}
-                  class="text-muted/70 hover:text-danger shrink-0 font-mono text-[10px]">✕</button>
+                <ConversationDelete onDelete={() => deleteSession(t.id)} disabled={busy} />
               </div>
             ))}
           </div>
