@@ -1020,7 +1020,8 @@ html[data-pointer-hover] .tape-hot *:not(.text-up):not(.text-down):not([data-tap
 .chat-token-footer svg { width:13px; height:13px; flex:none; opacity:.8; }
 .chat-token-model { display:inline-flex; align-items:center; gap:6px; max-width:100%; border-radius:6px; background:rgba(154,154,164,.08); padding:2px 7px; min-width:0; }
 .chat-token-model-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.chat-token-effort { display:inline-flex; color:#b19055; }
+.chat-token-effort { display:inline-flex; color:#d3b35c; }
+.chat-token-effort svg { width:12px; height:12px; }
 .chat-token-stat { display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }
 .chat-token-arrow { color:#73767e; }
 
@@ -1029,7 +1030,7 @@ html[data-pointer-hover] .tape-hot *:not(.text-up):not(.text-down):not([data-tap
    its crosshair drifted right of the cursor (chartview.js chartHost). */
 .lwc-unzoom { position: absolute; inset: 0; zoom: calc(1 / var(--app-zoom)); }
 
-.chat-token-provider { display:inline-block; width:13px; height:13px; flex:none; background:#d97757; mask-repeat:no-repeat; mask-position:center; mask-size:contain; -webkit-mask-repeat:no-repeat; -webkit-mask-position:center; -webkit-mask-size:contain; }
+.chat-token-provider { display:inline-block; width:12px; height:12px; flex:none; background:#d97757; mask-repeat:no-repeat; mask-position:center; mask-size:contain; -webkit-mask-repeat:no-repeat; -webkit-mask-position:center; -webkit-mask-size:contain; }
 .chat-token-input { display:inline-flex; align-items:center; gap:4px; color:#58a6ff; }
 .chat-token-output { display:inline-flex; align-items:center; gap:4px; color:#3fb950; }
 .chat-token-input .chat-token-arrow, .chat-token-output .chat-token-arrow { color:inherit; }
@@ -1049,3 +1050,6 @@ html[data-pointer-hover] .tape-hot *:not(.text-up):not(.text-down):not([data-tap
 
 .chat-trace-heading { display:flex; flex-direction:column; gap:1px; }
 .chat-trace-summary { display:flex; align-items:center; gap:6px; min-height:24px; }
+
+/* Message prose remains selectable without making the application chrome draggable. */
+.chat-message-copy, .chat-message-copy * { user-select: text; -webkit-user-select: text; }

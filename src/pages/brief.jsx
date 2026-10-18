@@ -133,7 +133,7 @@ function BriefData({ s }) {
     ...s.movers.losers.map((m) => ({ ...m, side: 'l' })),
   ]
   return (
-    <div class="grid gap-3 sm:grid-cols-2">
+    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 items-start">
       <Card title={tl('Macro tape')}>
         {s.macro.map((m) => (
           <div key={m.label} class={rowCls}>
@@ -151,6 +151,7 @@ function BriefData({ s }) {
         )}
       </Card>
 
+      <div class="flex flex-col gap-3 min-w-0">
       <Card title={tl('Movers')}>
         {movers.length ? movers.map((m) => (
           <div key={m.symbol} class={rowCls}>
@@ -192,6 +193,8 @@ function BriefData({ s }) {
           </div>
         ) : <Empty label={tl('nothing stretched')} />}
       </Card>
+
+      </div>
 
       <Card title={tl('Ahead')}>
         {s.earnings.map((e) => (
@@ -243,7 +246,7 @@ export function Brief() {
   })
 
   return (
-    <div class="flex-1 p-3 select-text min-w-0 max-w-3xl">
+    <div class="flex-1 p-3 select-text min-w-0 w-full">
       <div class="flex items-baseline gap-3 px-1 pb-2 flex-wrap">
         <h1 class="font-mono font-bold text-lg text-ink">{tl('Briefing')}</h1>
         <span class="font-mono text-[11px] text-muted">{date}</span>

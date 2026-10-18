@@ -6,6 +6,7 @@ import { IS_PRIVATE_BUILD, IS_FAMILY_AI, IS_TV_BUILD } from '../lib/nav.js'
 import { saveReport } from '../lib/archive.js'
 import { getLocale, tl } from '../lib/i18n.js'
 import { LENGTHS, TONES, applyAiPreferences, loadDials, saveDials } from '../lib/aidials.js'
+import {pickerModels} from '../lib/chatModels.js'
 import { reportModelLabel } from '../lib/modelLabel.js'
 
 // One-click AI synthesis panel: build a prompt, stream the answer, offer
@@ -191,7 +192,8 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
   useEffect(() => {
     if (!serviceAvailable || !onWire) return
     fetchWireChatModels()
-      .then((live) => {
+      .then((available) => {
+        const live=pickerModels(available,IS_PRIVATE_BUILD)
         setModels(live)
         const cur = localStorage.getItem(WRITER_KEY)
         const picked = live.find((m) => m.key === cur) || live[0]
@@ -208,7 +210,7 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
   // The wire marks a model busy while another program holds it (the local
   // model has one slot); re-read that before the menu opens and before a run.
   const refreshModels = () => fetchWireChatModels()
-    .then((live) => { setModels(live); return live })
+    .then((live) => { setModels(pickerModels(live,IS_PRIVATE_BUILD)); return live })
     .catch(() => null)
 
   // While generating, the panel used to push the whole page down line by
@@ -336,9 +338,9 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
                   if (open) refreshModels()
                 }}
                 aria-label={tl('Report model')} title={writerBusy ? tl('Busy with another request') : tl('Report model')}
-                class="h-6 inline-flex items-center gap-1 rounded-md bg-surface-3 px-2 font-anth text-[10px] font-semibold text-ink cursor-pointer hover:bg-line">
+                class="h-6 inline-flex items-center gap-1 rounded-md border border-line bg-surface-2 px-2 font-anth text-[10px] font-semibold text-ink cursor-pointer hover:bg-line">
                 <span class={`max-w-[130px] truncate ${writerBusy ? 'text-muted' : ''}`}>{reportModelLabel(selectedWriter?.label || writer)}</span>
-                {writerBusy && <span class="font-mono text-[9px] font-normal text-muted">{tl('busy')}</span>}
+
                 <span aria-hidden="true" class="text-[7px] text-muted">▼</span>
               </button>
               {modelMenu && (
@@ -358,7 +360,7 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
                         m.busy ? 'text-muted/50 cursor-not-allowed'
                           : m.key === writer ? 'text-accent bg-accent-soft' : 'text-ink-2 hover:bg-accent-soft hover:text-ink'}`}>
                       <span>{reportModelLabel(m.label)}</span>
-                      {m.busy && <span class="font-mono text-[9px] font-normal">{tl('busy')}</span>}
+
                     </button>
                   ))}
                 </div>
@@ -390,7 +392,7 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
               text, so it does not read as one more button */}
           {selectedWriter?.fixed_effort && (
             <span class="font-mono text-[9px] text-muted" title={tl('Fixed model effort')}>
-              {selectedWriter.fixed_effort}
+              {tl('thinking')}
             </span>
           )}
         </div>
@@ -462,7 +464,7 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
             rows={1}
             aria-label={tl('Custom instructions')}
             placeholder={tl('Custom instructions')}
-            class="col-span-2 block w-full min-h-7 max-h-40 resize-y [field-sizing:content] rounded border border-line bg-surface-0 px-2.5 py-1 font-anth text-[11px] leading-relaxed text-ink outline-none placeholder:text-muted/70 focus:border-accent/60"
+            class="col-span-2 block w-full min-h-10 max-h-40 resize-y [field-sizing:content] rounded-xl border border-line-2 bg-surface-2 px-3 py-2 font-anth text-[12px] leading-relaxed text-ink outline-none placeholder:text-muted/70 focus:border-accent/70"
           />
         </div>
       )}

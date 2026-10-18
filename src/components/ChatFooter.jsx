@@ -39,9 +39,9 @@ export function ChatFooter({ model, effort, usage, startedAt, endedAt, busy = fa
       {effort && effort !== 'none' && <span class="chat-token-effort" title={`Reasoning: ${effort}`}><Icon kind="think" /></span>}
     </span>
     <span class="chat-token-stat chat-token-usage" title="Largest reported input context; output summed across model calls">
-      <span class="chat-token-input"><span class="chat-token-arrow">↑</span>{tokens(m.input)}</span><span class="chat-token-output"><span class="chat-token-arrow">↓</span>{tokens(m.output)}</span><span>tokens</span>
+      <span class="chat-token-input"><span class="chat-token-arrow">↑</span>{tokens(m.input)}</span><span class="chat-token-output"><span class="chat-token-arrow">↓</span>{tokens(m.output)}</span><span>tok</span>
     </span>
     <span class="chat-token-stat" title="Turn elapsed time"><Icon kind="clock" />{metricDuration(m.elapsed)}</span>
-    <span class="chat-token-stat chat-token-throughput" title="Average output tokens per second over the whole turn, including tools and waiting"><Icon kind="speed" />{m.rate == null ? '—' : m.rate.toFixed(1)} t/s</span>
+    <span class="chat-token-stat chat-token-throughput" title="Provider-reported generation speed, excluding prompt processing and tool time"><Icon kind="speed" />{m.rate == null ? '—' : m.rate.toFixed(1)} tok/s</span>
   </div>
 }

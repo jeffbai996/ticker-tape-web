@@ -2,6 +2,7 @@ import {pickerModels,modelGroups} from '../lib/chatModels.js'
 import {SuggestionRows} from '../components/SuggestionRows.jsx'
 import { earningsTone } from '../lib/earningsTone.js'
 import {submitTextKey} from '../lib/chatInput.js'
+import {replayRequest} from '../lib/chatReplay.js'
 import {mergeTurnUsage} from '../lib/chatMetrics.js'
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
 import { fetchChatModels, fetchSpend } from '../lib/chatClient.js'
@@ -29,7 +30,7 @@ import { CHATSTORE_SYNC_EVENT, chatstoreAvailable, syncNotes } from '../lib/chat
 import { LANES, activeLanes, dynamicActions, visibleActions, promptLabel } from '../lib/launchpad.js'
 import {
   fetchThreadList, hydrateActiveThread, loadActiveHistory, migrateLegacy,
-  openThread, removeThread, saveActiveHistory, startNewThread, currentThreadId,
+  openThread, removeThread, saveActiveHistory, flushActiveHistory, startNewThread, currentThreadId,
 } from '../lib/threads.js'
 import { wireServiceUrl } from '../lib/wire.js'
 import { plainTraceText, hasTurnActivity, activityGroups } from '../lib/chatTrace.js'
@@ -37,7 +38,7 @@ import { ChatFooter } from '../components/ChatFooter.jsx'
 import { loadZhTable, loadMissingZhName, onZhTable, zhName } from '../lib/zhNames.js'
 import { onPortfoliosChange } from '../lib/myPortfolios.js'
 import { CHAT_CONTEXT_EVENT, takeChatContext } from '../lib/chatHandoff.js'
-import { IS_FAMILY_AI, IS_PRIVATE_BUILD } from '../lib/nav.js'
+import { IS_FAMILY_AI, IS_FAMILY_BUILD, IS_PRIVATE_BUILD } from '../lib/nav.js'
 
 // Base prompt stays generic in source. Whether the assistant has a real book
 // is decided at runtime by whether the viewer wired in their own newsservice —
@@ -72,7 +73,7 @@ function baseSystem() {
       'portfolio section is a clearly-labeled synthetic demo. '
   if (IS_FAMILY_AI) return common +
     'This family edition uses the selected subscription model. ' +
-    'Only context supplied by this browser is available. A SAVED PORTFOLIO block contains the selected user-entered holdings. Use those for portfolio questions. There is no broker connection ' +
+    'Only context supplied by this browser is available. An ALL SAVED PORTFOLIOS catalog lists every book the user can view. A SAVED PORTFOLIO block describes the selected view only. Use get_portfolio to inspect any named or unselected book, including separate currency books. Do not claim you lack access just because a tab is not selected. Read cash, trades, history, research and other app data using the available tools. There is no broker connection ' +
     'or access to the subscription owner\'s accounts, files, or chat history. '
   return common + infrastructure + book
 }
@@ -778,6 +779,7 @@ export function Chat() {
   const [usage, setUsage] = useState(null)   // live {in, out} token counter
   const usageRef = useRef(null)              // same value, readable at turn end
   const [error, setError] = useState(null)
+  const [editingMessage,setEditingMessage] = useState(null)
   const [notice, setNotice] = useState(null)          // memory-tag confirmations
   const [drawer, setDrawer] = useState(null)          // 'sessions' | 'mem' | 'journal' | null
   const [memories, setMemories] = useState(loadMemories)
@@ -855,6 +857,8 @@ export function Chat() {
       setHistory([])
       setActivity([])
       setLiveAnswer('')
+      setError(null)
+      setEditingMessage(null)
       setAtHome(true)
       setDrawer(null)
       await refreshThreads()
@@ -877,6 +881,8 @@ export function Chat() {
       activityRef.current = []
       setActivity([])
       setLiveAnswer('')
+      setError(null)
+      setEditingMessage(null)
       setAtHome(false)
       setDrawer(null)
       await refreshThreads()
@@ -1166,7 +1172,11 @@ export function Chat() {
       })
       finish()
     } catch (err) {
-      if (err?.name !== 'AbortError') setError(String(err.message || err))
+      if (err?.name !== 'AbortError') {
+        const message=String(err.message || err)
+        setError(message)
+        base[base.length-1]={...base.at(-1),failure:message}
+      }
       const stopped = err?.name === 'AbortError'
       updateActivity((steps) => steps.map((step) => step.status === 'running'
         ? {
@@ -1198,6 +1208,22 @@ export function Chat() {
       setBusy(false)
       if (!onWire) fetchSpend().then(setSpend).catch(() => {})
     }
+  }
+
+  const replay = async (index,text) => {
+    if(busyRef.current)return
+    const branch=replayRequest(historyRef.current,index,text,{model,effort})
+    busyRef.current=true;setBusy(true)
+    try {
+      await startNewThread(historyRef.current)
+      replaceHistory(branch.prefix)
+      replaceActivity([]);setLiveAnswer('');setError(null);setEditingMessage(null)
+      setAtHome(false);markChatInteraction()
+      await runTurns(branch.request)
+      await flushActiveHistory(historyRef.current)
+      await refreshThreads()
+    } catch(err) { sessionFailure(err) }
+    finally {busyRef.current=false;setBusy(false)}
   }
 
   const send = (e) => {
@@ -1272,6 +1298,14 @@ export function Chat() {
     ? (selectedModel?.efforts || [])
     : ['auto', 'off', 'low', 'medium', 'high']
 
+  const refreshModelAvailability = () => {
+    if(onWire)fetchWireChatModels().then(items=>setModels(pickerModels(items,IS_PRIVATE_BUILD))).catch(()=>{})
+  }
+  useEffect(()=>{
+    window.addEventListener('focus',refreshModelAvailability)
+    return ()=>window.removeEventListener('focus',refreshModelAvailability)
+  },[onWire])
+
   const chooseModel = (key) => {
     setModel(key)
     localStorage.setItem(modelStorageKey, key)
@@ -1337,9 +1371,9 @@ export function Chat() {
               type="button"
               onClick={stop}
               title={tl('stop generating')}
-              class="shrink-0 w-8 h-8 grid place-items-center rounded-md bg-down text-white hover:bg-down/80 transition-colors"
+              class="shrink-0 w-8 h-8 grid place-items-center rounded-md bg-[#f85149] text-white hover:bg-[#e6453d] transition-colors"
             >
-              <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
             </button>
           ) : (
             <button
@@ -1364,6 +1398,8 @@ export function Chat() {
               value={model}
               onChange={(e) => chooseModel(e.currentTarget.value)}
               title={tl('model')}
+              onPointerDown={refreshModelAvailability}
+              onFocus={refreshModelAvailability}
               class="appearance-none bg-surface-2 border border-line rounded-md pl-2 pr-5 py-[3px] font-anth text-[10.5px] text-ink-2 outline-none cursor-pointer hover:border-line-2 focus:border-accent/70 transition-colors"
             >
               {(() => {
@@ -1371,7 +1407,7 @@ export function Chat() {
                 const groups=modelGroups(live,IS_PRIVATE_BUILD)
                 return groups.map((g) => (
                   <optgroup key={g.name} label={`— ${g.name} —`}>
-                    {g.items.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
+                    {g.items.map((m) => <option key={m.key} value={m.key} disabled={m.busy || m.available === false}>{m.label}</option>)}
                   </optgroup>
                 ))
               })()}
@@ -1486,6 +1522,7 @@ export function Chat() {
         <h1 class="font-bold text-[17px] leading-tight text-ink" style="font-family: var(--font-sans)">{tl('AI Chat')}</h1>
         <span class={`w-1.5 h-1.5 rounded-full ${models.length ? 'bg-[#3fb950]' : 'bg-muted animate-pulse'}`}
               title={tl(onWire ? 'online — private wire' : 'online — public proxy')} />
+        {IS_FAMILY_BUILD && !IS_PRIVATE_BUILD && <span data-chat-demo class="font-mono text-[9px] uppercase tracking-wider text-muted border border-line rounded px-1.5 py-0.5">{tl('demo')}</span>}
       </div>
         <div class="absolute top-2.5 right-3 z-30 h-7 flex items-center gap-0.5 rounded-lg px-0.5">
           <button
@@ -1653,7 +1690,7 @@ export function Chat() {
             return (
               <div key={i} class="chat-message-enter self-start flex flex-col gap-1 max-w-[92%]">
                 {m.content && (
-                  <div class="rounded-xl border px-3 py-2 font-anth text-[0.96em] leading-relaxed bg-surface-1 border-line text-ink">
+                  <div class="chat-message-copy rounded-xl border px-3 py-2 font-anth text-[0.96em] leading-relaxed bg-surface-1 border-line text-ink">
                     <MdLite text={m.content} />
                   </div>
                 )}
@@ -1670,7 +1707,7 @@ export function Chat() {
                 )}
                 <div class="group self-start max-w-[92%] relative"
                   title={m.ts ? `${m.model ? `${m.model} · ` : ''}${new Date(m.ts).toLocaleString()}` : undefined}>
-                  <div class="chat-assistant-bubble rounded-2xl border px-3.5 py-2.5 text-[1em] leading-relaxed bg-surface-1 border-line text-ink font-anth">
+                  <div class="chat-message-copy chat-assistant-bubble rounded-2xl border px-3.5 py-2.5 text-[1em] leading-relaxed bg-surface-1 border-line text-ink font-anth">
                     <MdLite text={m.content} />
                   </div>
                   <div class="absolute -top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
@@ -1705,8 +1742,23 @@ export function Chat() {
             )
           }
           return (
-            <div key={i} class="chat-message-enter self-end rounded-2xl px-3.5 py-2.5 text-[1em] leading-relaxed whitespace-pre-wrap bg-accent-soft border border-accent/40 text-ink max-w-[85%] font-anth">
-              {m.content}
+            <div key={i} class="chat-message-enter self-end max-w-[85%] flex flex-col items-end gap-1">
+              {editingMessage?.index===i ? <form class="w-full" onSubmit={e=>{e.preventDefault();replay(i,editingMessage.text)}}>
+                <textarea aria-label={getLocale()==='zh'?'编辑消息':'Edit message'} class="chat-edit-message w-full min-h-24 rounded-xl border border-accent bg-surface-2 p-3 font-anth text-ink" value={editingMessage.text}
+                  onInput={e=>setEditingMessage({index:i,text:e.currentTarget.value})}
+                  onKeyDown={e=>{if(submitTextKey(e,'modified')){e.preventDefault();replay(i,editingMessage.text)}}} />
+                <div class="flex justify-end gap-2 text-[11px]">
+                  <button type="button" onClick={()=>setEditingMessage(null)}>{getLocale()==='zh'?'取消':'Cancel'}</button>
+                  <button type="submit" disabled={busy||!editingMessage.text.trim()} class="text-accent">{getLocale()==='zh'?'编辑并重新发送':'Edit and resend'}</button>
+                </div>
+              </form> : <>
+                <div class="chat-message-copy rounded-2xl px-3.5 py-2.5 text-[1em] leading-relaxed whitespace-pre-wrap bg-accent-soft border border-accent/40 text-ink font-anth">{m.content}</div>
+                <div class="flex gap-3 text-[10px] text-muted">
+                  <button type="button" disabled={busy} onClick={()=>setEditingMessage({index:i,text:m.content})}>{getLocale()==='zh'?'编辑':'Edit'}</button>
+                  {m.failure && <button type="button" disabled={busy} onClick={()=>replay(i,m.content)} class="text-accent">{getLocale()==='zh'?'重试':'Retry'}</button>}
+                </div>
+                {m.failure && <div class="chat-message-copy text-[11px] text-red-400">{m.failure}</div>}
+              </>}
             </div>
           )
         })}
@@ -1714,7 +1766,7 @@ export function Chat() {
           <ActivityTrace steps={activity} busy={busy} startedAt={turnStartedRef.current} usage={usage} />
         )}
         {liveAnswer && (
-          <div class="chat-assistant-bubble chat-message-live self-start max-w-[92%] rounded-2xl border px-3.5 py-2.5 text-[1em] leading-relaxed bg-surface-1 border-line text-ink font-anth">
+          <div class="chat-message-copy chat-assistant-bubble chat-message-live self-start max-w-[92%] rounded-2xl border px-3.5 py-2.5 text-[1em] leading-relaxed bg-surface-1 border-line text-ink font-anth">
             <MdLite text={liveAnswer} />
           </div>
         )}
@@ -1732,7 +1784,7 @@ export function Chat() {
         {notice && (
           <div class="self-start font-mono text-[10px] text-up px-1">{notice}</div>
         )}
-        {error && (
+        {error && !history.some(m=>m.failure===error) && (
           <div class="self-start font-mono text-[11px] text-red-400 px-1">{error}</div>
         )}
           </div>

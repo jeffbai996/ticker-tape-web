@@ -92,7 +92,6 @@ if (PRIVATE_BUILD) {
   const manual = portfolio.subs.find((sub) => sub.id === 'mine')
   if (manual) manual.label = 'Manual'
 }
-if (FAMILY_BUILD) NAV.splice(NAV.findIndex((s) => s.id === 'brief'), 1)
 if (FAMILY_BUILD) {
   delete NAV.find((s) => s.id === 'wire').badge
   // no brokerage will ever be wired here — the broker-book tabs (account,

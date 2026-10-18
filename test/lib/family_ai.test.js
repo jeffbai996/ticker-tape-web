@@ -29,7 +29,7 @@ it('keeps family inference off until explicitly enabled', async () => {
   expect(chat.wireChatAvailable()).toBe(false)
   const { NAV } = await import('../../src/lib/nav.js')
   expect(NAV.find(s => s.id === 'chat').badge).toBe('DEMO')
-  expect(NAV.some(s => s.id === 'brief')).toBe(false)
+  expect(NAV.some(s => s.id === 'brief')).toBe(true)
 })
 
 it('activates family chat without a preview badge', async () => {
@@ -188,4 +188,17 @@ it('compacts memories through the family transport and offers undo',async()=>{
   await act(()=>[...root.querySelectorAll('button')].find(b=>b.textContent==='Undo').click())
   expect(loadMemories().map(m=>m.text).sort()).toEqual(original.map(m=>m.text).sort())
  }finally{await act(()=>render(null,root));root.remove()}
+})
+it('supplies a catalog of every saved portfolio without restricting chat to the selected tab',async()=>{
+ await family();vi.stubGlobal('fetch',vi.fn())
+ const {replacePortfolios}=await import('../../src/lib/myPortfolios.js')
+ replacePortfolios([{id:'p1',name:'Long term',ccy:'HKD',holdings:[{symbol:'AAPL',shares:10,cost:100}],cash:[{ccy:'HKD',amount:500}]},
+ {id:'p2',name:'Income',ccy:'CNY',holdings:[{symbol:'MSFT',shares:20,cost:200}]},
+ {id:'p3',name:'Long term USD',ccy:'USD',holdings:[{symbol:'GOOGL',shares:5,cost:50}]}])
+ localStorage.setItem('my_portfolio_sel_v1','p2')
+ const block=await (await import('../../src/lib/chatContext.js')).buildChatContext('Which portfolios can you see?')
+ expect(block).toContain('ALL SAVED PORTFOLIOS')
+ for(const name of ['Long term','Income','Long term USD'])expect(block).toContain(name)
+ expect(block).toContain('get_portfolio')
+ expect(block).not.toContain('AAPL: 10 shares')
 })

@@ -49,3 +49,11 @@ describe('wire chat model selection', () => {
     })
   })
 })
+
+it('marks a stream that failed after visible output as partial',async()=>{
+ const {wireStream}=await import('../../src/lib/wirechat.js')
+ localStorage.setItem('tape-wire-url','https://wire.example')
+ const frames='event: delta\ndata: {"t":"text","d":"partial"}\n\nevent: error\ndata: {"error":"interrupted"}\n\n'
+ vi.stubGlobal('fetch',vi.fn(async()=>new Response(frames,{status:200})))
+ await expect(wireStream({model:'qwen-local',messages:[{role:'user',content:'hello'}]})).rejects.toMatchObject({partial:true,message:'interrupted'})
+})

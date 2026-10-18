@@ -6,14 +6,14 @@
 
 import { contextualMessages } from './chatHandoff.js'
 import { streamChat } from './chatClient.js'
-import { TOOL_DEFS, executeTool } from './tools.js'
+import { TOOL_DEFS, executeTool, APP_READ_TOOLS } from './tools.js'
 import {
   isPlanningStub, parseToolCall, toolProtocol, wireChatAvailable, wireComplete,
   wireStream,
 } from './wirechat.js'
 
 const MAX_ROUNDS = 6
-const ANALYSIS_TOOLS = new Set(['wire_search','get_quotes','get_technicals','get_earnings','get_market_pulse','get_watchlist','get_calendar','journal_search'])
+const ANALYSIS_TOOLS = new Set([...APP_READ_TOOLS,'wire_search','get_quotes','get_technicals','get_earnings','get_market_pulse','get_watchlist','get_calendar','journal_search'])
 const analysisRequest = messages => !!messages.findLast(m=>m.role==='user')?.context
 const analysisResult = () => JSON.stringify({error:'This contextual analysis can only read data. Request changes in a separate chat message.'})
 
@@ -101,7 +101,7 @@ export async function runAgenticOverWire({
         signal,
       }))
     } catch (err) {
-      if (signal?.aborted) throw err        // a user stop is not a fallback case
+      if (signal?.aborted || err?.partial) throw err // never restart after visible output
       const completed = await completeTurn({
         model, effort, system: roundSystem, messages: contextualMessages(convo),
       })

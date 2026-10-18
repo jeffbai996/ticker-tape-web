@@ -12,7 +12,8 @@ import { fetchNews } from './history.js'
 import { memoriesForPrompt, MEMORY_PROMPT } from './chatMemory.js'
 import { IS_FAMILY_AI } from './nav.js'
 import { loadPortfolios } from './myPortfolios.js'
-import { manualBookSnapshot, manualPortfolioContext } from './manualChatBook.js'
+import { manualBookSnapshot, manualPortfolioContext, manualPortfolioCatalog } from './manualChatBook.js'
+import {waitForChatPortfolioSync} from './chatAppData.js'
 import { wireServiceUrl } from './wire.js'
 
 // ── portfolio snapshot, cached so chat turns don't hammer the gateway ──
@@ -26,7 +27,14 @@ export function savedChatBook() {
 }
 
 async function portfolioBlock() {
-  if(IS_FAMILY_AI) return manualPortfolioContext(savedChatBook())
+  if(IS_FAMILY_AI) {
+    await waitForChatPortfolioSync()
+    const books=loadPortfolios(),selected=savedChatBook()
+    return ['ALL SAVED PORTFOLIOS (all are readable, whether selected or not):',
+      JSON.stringify(manualPortfolioCatalog(books,selected?.id)),
+      'Use get_portfolios for the current catalog and get_portfolio with an id/name for any book. Do not combine owners or currencies without an explicit request. The selected tab is only a view preference.',
+      manualPortfolioContext(selected)].join('\n')
+  }
   const base = wireServiceUrl()
   if (!base) return ''
   if (Date.now() - bookCache.ts < BOOK_TTL) return bookCache.block
@@ -77,6 +85,7 @@ async function mentionedNews(question, watchlist) {
  * only mentioned-symbol news may fetch (and it's TTL-cached too).
  */
 export async function buildChatContext(question) {
+  if (IS_FAMILY_AI) await waitForChatPortfolioSync()
   const watchlist = [...new Set([...getWatchlist(),...(IS_FAMILY_AI ? savedChatBook()?.positions.map(p=>p.symbol) || [] : [])])]
   const now = new Date()
   const parts = [
@@ -86,6 +95,7 @@ export async function buildChatContext(question) {
     })} ET`,
   ]
 
+  if(IS_FAMILY_AI)parts.push('APP DATA ACCESS: get_app_data reads watchlists, alerts, saved screens, memories and journal; get_portfolio reads cash, trades, lots, history and app valuations; get_research reads company data, corporate dates, dividends, price history and options; get_news/read_article read app news. These are read-only and available without switching pages.')
   const mem = memoriesForPrompt()
   if (mem) parts.push('', mem)
   parts.push('', MEMORY_PROMPT)

@@ -126,7 +126,7 @@ export async function wireStream({ model, effort, system, messages, onDelta, onT
   let backend = ''
   let failed = null
   for (;;) {
-    const { done, value } = await reader.read()
+    const { done, value } = await reader.read().catch(err=>{err.partial=!!text;throw err})
     if (done) break
     buf += decoder.decode(value, { stream: true })
     // SSE frames are blank-line separated; keep the trailing partial in buf
@@ -160,7 +160,7 @@ export async function wireStream({ model, effort, system, messages, onDelta, onT
       }
     }
   }
-  if (failed && !text) throw failed
+  if (failed) { failed.partial=!!text; throw failed }
   return { text, backend }
 }
 

@@ -5,6 +5,7 @@ vi.mock('../../src/lib/chatClient.js', () => ({
 }))
 
 vi.mock('../../src/lib/tools.js', () => ({
+  APP_READ_TOOLS: ['get_portfolios','get_portfolio','get_app_data','get_research','get_news','read_article'],
   TOOL_DEFS: [{ name: 'get_watchlist', description: 'watchlist', parameters: {} }, {name:'watch',description:'add symbol',parameters:{}}],
   executeTool: vi.fn().mockResolvedValue('{"symbols":["AAPL"]}'),
 }))
@@ -202,4 +203,11 @@ it('keeps token usage when the wire falls back to a one-shot response',async()=>
  await runAgenticOverWire({model:'family-sonnet',messages:[{role:'user',content:'Hello'}],system:'system',onTrace:trace},
   {wireStream:vi.fn().mockRejectedValue(Error('stream unavailable')),wireComplete:vi.fn().mockResolvedValue({text:'Done',usage:{in:23,out:7}})})
  expect(trace).toHaveBeenCalledWith({type:'usage',round:0,usage:{in:23,out:7}})
+})
+
+it('surfaces a failed partial stream instead of silently generating a second answer',async()=>{
+ const complete=vi.fn(),error=Object.assign(Error('stream interrupted'),{partial:true})
+ await expect(runAgenticOverWire({model:'qwen-local',messages:[{role:'user',content:'Hello'}],system:'system'},
+  {wireStream:vi.fn().mockRejectedValue(error),wireComplete:complete})).rejects.toThrow('stream interrupted')
+ expect(complete).not.toHaveBeenCalled()
 })

@@ -5,13 +5,13 @@ import { chatMetrics, metricDuration, mergeTurnUsage } from '../../src/lib/chatM
 describe('chat response footer', () => {
   it('distinguishes missing telemetry from measured zero', () => {
     expect(chatMetrics({}).output).toBeNull()
-    expect(chatMetrics({ usage: { in: 0, out: 0 }, startedAt: 1000, now: 2000 }).rate).toBe(0)
+    expect(chatMetrics({ usage: { in: 0, out: 0, decode_seconds: 1, decode_tokens: 0 }, startedAt: 1000, now: 2000 }).rate).toBe(0)
     expect(chatMetrics({ usage: { out: NaN } }).output).toBeNull()
   })
-  it('freezes completed timing on history reload and counts whole-turn throughput', () => {
-    const m = chatMetrics({ usage: { in: 100, out: 4977 }, startedAt: 1000, endedAt: 189000, now: 999999 })
+  it('freezes completed timing on history reload and uses reported decode timing independently of turn time', () => {
+    const m = chatMetrics({ usage: { in: 100, out: 4977, decode_seconds: 80, decode_tokens: 4977 }, startedAt: 1000, endedAt: 189000, now: 999999 })
     expect(m.elapsed).toBe(188)
-    expect(m.rate).toBeCloseTo(26.47, 2)
+    expect(m.rate).toBeCloseTo(62.2125, 4)
     expect(metricDuration(m.elapsed)).toBe('3m 8s')
   })
   it('avoids infinity, negative durations and fabricated rates', () => {
@@ -30,4 +30,14 @@ it('replaces cumulative round counters and preserves unknown telemetry',()=>{
  expect(u.in).toBe(120);expect(u.out).toBe(11)
  expect(mergeTurnUsage(null,0,{}).out).toBeUndefined()
  expect(mergeTurnUsage(null,0,{out:0}).out).toBe(0)
+})
+
+it('does not turn prompt processing and tool waiting into a decode rate',()=>{
+ expect(chatMetrics({usage:{out:20},startedAt:1000,now:11000}).rate).toBeNull()
+ let u=mergeTurnUsage(null,0,{out:60,decode_seconds:1})
+ u=mergeTurnUsage(u,0,{out:120,decode_seconds:2})
+ u=mergeTurnUsage(u,1,{out:30,decode_seconds:1})
+ expect(chatMetrics({usage:u}).rate).toBe(50)
+ u=mergeTurnUsage(u,2,{out:100})
+ expect(chatMetrics({usage:u}).rate).toBe(50)
 })

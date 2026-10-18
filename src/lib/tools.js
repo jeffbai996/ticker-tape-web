@@ -1,9 +1,10 @@
+import {listChatPortfolios,readChatPortfolio,readChatAppData} from './chatAppData.js'
+import {readChatResearch,readChatNews,readChatArticle} from './chatResearch.js'
 // Chat tool registry: JSON-Schema defs sent to the worker, and the
 // client-side executors backing them. Everything executes in the browser
 // against data paths the app already uses (feed cache, Yahoo via the proxy,
-// localStorage watchlist/alerts) — the worker never runs a tool, so tools add
-// no new attack surface and no personal data: this is the same public market
-// data and per-browser state the UI shows.
+// saved portfolios and notes). The model receives explicit projections of
+// app-visible records; credentials and arbitrary storage stay in the browser.
 
 import { getCached, proxyBase } from './feed.js'
 import { quoteFromV7 } from './yahoo.js'
@@ -262,7 +263,17 @@ function navigateTool({ view, symbol, sub }) {
 
 const sym = { type: 'string', description: 'Ticker symbol, e.g. NVDA' }
 
+const readPage={offset:{type:'integer',description:'Next offset returned by this tool'},limit:{type:'integer',description:'Rows per page, 1–50'}}
+export const APP_READ_TOOLS=['get_portfolios','get_portfolio','get_app_data','get_research','get_news','read_article']
+
 export const TOOL_DEFS = [
+  {name:'get_portfolios',description:'List ALL saved portfolios, names, ids, currencies, cash and data counts. The selected UI portfolio is not an access limit. Never merge separate portfolios implicitly.',parameters:{type:'object',properties:{}}},
+  {name:'get_portfolio',description:'Read any saved portfolio by id or exact name, selected or unselected. Summary and holdings use the same valuation as the app, with missing prices/FX flagged; cash, trades, lots and collected history are also available. Omit portfolio only for the selected default. Paginate using next_offset.',parameters:{type:'object',properties:{portfolio:{type:'string'},section:{type:'string',enum:['summary','holdings','cash','trades','lots','history']},symbol:sym,from:{type:'string',description:'YYYY-MM-DD'},through:{type:'string',description:'YYYY-MM-DD'},...readPage}}},
+  {name:'get_app_data',description:'Read app-visible state: all named watchlists, alert conditions, memories, journal or saved screens. Overview lists available information. For a full memory/journal entry supply id; offset then counts characters instead of rows. This does not modify anything.',parameters:{type:'object',properties:{topic:{type:'string',enum:['overview','watchlists','alerts','memories','journal','screens']},id:{type:'integer'},query:{type:'string'},...readPage}}},
+  {name:'get_research',description:'Read the same company research providers as the app: fundamentals, profile, analysts, insiders, holders, corporate events (including HK/A-share results/dividends), dividends, historical prices or options. Options expiration is a Unix timestamp. Fetch further pages using next_offset.',parameters:{type:'object',properties:{symbol:sym,section:{type:'string',enum:['fundamentals','profile','analysts','insiders','holders','events','dividends','history','options']},range:{type:'string',enum:['1M','3M','6M','1Y','2Y','5Y','MAX']},expiration:{type:'integer'},side:{type:'string',enum:['calls','puts']},...readPage},required:['symbol']}},
+  {name:'get_news',description:'Read app wire headlines, or news for a saved portfolio or symbol, including targeted Chinese company coverage. q filters text. Returns ids usable by read_article; all data is read-only.',parameters:{type:'object',properties:{portfolio:{type:'string'},symbol:sym,q:{type:'string'},...readPage}}},
+  {name:'read_article',description:'Read full text for an article id returned by get_news. Only known app-visible articles can be read. offset is a character offset; continue using next_offset.',parameters:{type:'object',properties:{id:{type:'string'},symbol:sym,portfolio:{type:'string'},offset:{type:'integer'}},required:['id']}},
+
   {
     name: 'wire_search',
     description: 'Search the connected news wire: q = full-text search over the archive (headlines+bodies), or symbol = the latest wire events for one ticker. Returns headlines with timestamps and types.',
@@ -409,6 +420,12 @@ export const TOOL_DEFS = [
 ]
 
 const EXECUTORS = {
+  get_portfolios:listChatPortfolios,
+  get_portfolio:args=>readChatPortfolio(args,{fetchQuotes:fetchQuoteBatch}),
+  get_app_data:readChatAppData,
+  get_research:readChatResearch,
+  get_news:readChatNews,
+  read_article:readChatArticle,
   wire_search: async ({ q, symbol }) => {
     const base = wireServiceUrl()
     if (!base) return { error: 'no wire connected in this browser' }
@@ -469,6 +486,7 @@ const EXECUTORS = {
 // Short human verbs for the chat's tool chips — "quotes AAPL, TSLA" reads
 // better than get_quotes({"symbols":…}).
 const TOOL_VERBS = {
+  get_portfolios:'portfolios',get_portfolio:'portfolio',get_app_data:'app data',get_research:'research',get_news:'news',read_article:'article',
   get_quotes: 'quotes',
   get_technicals: 'technicals',
   get_earnings: 'earnings',
@@ -491,6 +509,7 @@ const TOOL_VERBS = {
  *  "Reading quotes AAPL" while it happens rather than naming the endpoint
  *  (Jeff 2026-08-07: "like Searching, Reading, Browsing"). */
 const TOOL_GERUNDS = {
+  get_portfolios:'Reading portfolios',get_portfolio:'Reading portfolio',get_app_data:'Reading app data',get_research:'Reading research',get_news:'Reading news',read_article:'Reading article',
   get_quotes: 'Reading quotes',
   get_technicals: 'Reading technicals',
   get_earnings: 'Checking earnings',
@@ -511,7 +530,7 @@ const TOOL_GERUNDS = {
 
 function toolArg(tc) {
   const a = tc.args || {}
-  return a.symbols?.join?.(', ') ?? a.symbol ?? a.view ?? a.label ?? ''
+  return a.symbols?.join?.(', ') ?? a.symbol ?? a.portfolio ?? a.topic ?? a.view ?? a.label ?? ''
 }
 
 /** Human-readable chip label for a tool call. Exported for the UI. */
@@ -540,6 +559,7 @@ export async function executeTool(name, args) {
   try {
     const result = await fn(args || {})
     const s = JSON.stringify(result)
+    if(APP_READ_TOOLS.includes(name))return s.length<=16000?s:JSON.stringify({error:'Result exceeds the page budget; request a smaller limit or a specific section.'})
     return s.length > MAX_RESULT_CHARS ? s.slice(0, MAX_RESULT_CHARS) + '…(truncated)' : s
   } catch (err) {
     return JSON.stringify({ error: String(err?.message || err) })
