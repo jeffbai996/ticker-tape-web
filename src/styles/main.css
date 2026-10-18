@@ -1055,3 +1055,6 @@ html[data-pointer-hover] .tape-hot *:not(.text-up):not(.text-down):not([data-tap
 .command-palette { max-height: min(34rem, 80dvh); }
 .command-palette-results { flex: 1; }
 @media (max-width: 639px) { .command-palette { max-height: 100dvh; } }
+
+.chat-drawer-close, .chat-drawer-close:hover, .chat-drawer-close:focus, .chat-drawer-close:active { background:transparent; outline:none; box-shadow:none; }
+.chat-drawer-close:focus-visible { color:var(--color-ink); }

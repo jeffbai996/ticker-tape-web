@@ -146,7 +146,7 @@ function NoteRow({ id, text, meta, onSave, onDelete }) {
 /** claude.ai-style memory composer: type what should change in plain words
  *  ("forget the SGOV note", "merge #2 and #5") — a one-shot model call turns
  *  it into add/edit/delete ops applied through the normal memory mutators. */
-export function MemoryComposer({ memories, onApplied }) {
+export function MemoryComposer({ memories, onApplied, children }) {
   const [v, setV] = useState('')
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState(null)
@@ -181,14 +181,17 @@ export function MemoryComposer({ memories, onApplied }) {
     }
   }
   return (
-    <form onSubmit={e=>run(e)} class="pt-3 pb-1 border-t border-line">
-      <div class="mb-2 flex items-center justify-end gap-2">
+    <>
+      <div class="flex items-center gap-3 pb-3 border-b border-line" data-memory-toolbar>
+        <p class="min-w-0 flex-1 font-anth text-[11px] text-muted">{tl('Details the assistant should remember in future chats.')}</p>
         {canUndoMemoryCompaction() && <button type="button" disabled={!!busy} onClick={()=>{try{undoMemoryCompaction();setNote(tl('Compaction undone'));onApplied()}catch(err){setNote(tl(err.message))}}} class="font-anth text-[10px] text-muted hover:text-ink">{tl('Undo')}</button>}
         <button type="button" disabled={!!busy || memories.length<3} aria-busy={busy==='compact'} onClick={e=>run(e,true)} title={tl('Merge duplicate memories while keeping distinct facts')}
           class="inline-flex min-w-[66px] h-[25px] items-center justify-center gap-1 rounded border border-line px-2 font-anth text-[10px] text-muted hover:text-ink disabled:opacity-40">
           {busy==='compact' ? <BrandSpinner size={13} /> : tl('Compact')}
         </button>
       </div>
+      {children}
+      <form onSubmit={e=>run(e)} class="pt-3 pb-1 border-t border-line">
       <div class="flex items-end gap-2">
         <textarea value={v} rows={2}
           onInput={(e) => { setV(e.currentTarget.value); autoGrow(e.currentTarget) }}
@@ -201,7 +204,8 @@ export function MemoryComposer({ memories, onApplied }) {
         </button>
       </div>
       {note && <div class="font-anth text-[10.5px] text-muted pt-1">{note}</div>}
-    </form>
+      </form>
+    </>
   )
 }
 
@@ -1575,7 +1579,7 @@ export function Chat() {
               class="ml-auto font-anth text-[11px] text-accent border border-accent/40 rounded-md px-2 py-1 hover:bg-accent-soft disabled:opacity-40">
               {tl('+ new session')}
             </button>
-            <button class="text-muted hover:text-ink" onClick={() => setDrawer(null)} aria-label={tl('close')}>✕</button>
+            <button class="chat-drawer-close text-muted hover:text-ink" onClick={() => setDrawer(null)} aria-label={tl('close')}>✕</button>
           </div>
           <div class="py-2 flex flex-col gap-1">
             {threads.length === 0 && <div class="font-anth text-[12px] text-muted py-1">{tl('no saved sessions yet')}</div>}
@@ -1592,11 +1596,11 @@ export function Chat() {
       {drawer === 'mem' && (
         <Overlay onClose={() => setDrawer(null)} label={tl('Memories')}
           class="max-w-xl w-full bg-surface-1 border border-line rounded-2xl px-4 py-3 max-h-[72vh] overflow-y-auto">
-          <div class="flex items-start gap-3 pb-3 border-b border-line">
-            <div><div class="font-anth text-[15px] font-semibold text-ink">{tl('Memories')}</div>
-              <div class="font-anth text-[11px] text-muted">{tl('Details the assistant should remember in future chats.')}</div></div>
-            <button class="ml-auto text-muted hover:text-ink" onClick={() => setDrawer(null)} aria-label={tl('close')}>✕</button>
+          <div class="flex items-start gap-3 pb-1">
+            <div class="font-anth text-[15px] font-semibold text-ink">{tl('Memories')}</div>
+            <button class="chat-drawer-close ml-auto text-muted hover:text-ink" onClick={() => setDrawer(null)} aria-label={tl('close')}>✕</button>
           </div>
+          <MemoryComposer memories={memories} onApplied={() => setMemories(loadMemories())}>
           {memories.length === 0 && (
             <div class="font-anth text-[12px] text-muted py-1">{tl('nothing saved yet')}</div>
           )}
@@ -1606,7 +1610,7 @@ export function Chat() {
               onSave={(t) => { editMemory(m.id, t); setMemories(loadMemories()) }}
               onDelete={() => { removeMemory(m.id); setMemories(loadMemories()) }} />
           ))}
-          <MemoryComposer memories={memories} onApplied={() => setMemories(loadMemories())} />
+          </MemoryComposer>
         </Overlay>
       )}
 
@@ -1619,7 +1623,7 @@ export function Chat() {
             <input value={jrFilter} onInput={(e) => setJrFilter(e.currentTarget.value)}
               placeholder={`${tl('Search')}…`}
               class="ml-auto bg-surface-2 border border-line rounded-md px-2 py-0.5 font-mono text-[10px] text-ink outline-none focus:border-accent/60 w-32 placeholder:text-muted" />
-            <button class="text-muted hover:text-ink" onClick={() => setDrawer(null)} aria-label={tl('close')}>✕</button>
+            <button class="chat-drawer-close text-muted hover:text-ink" onClick={() => setDrawer(null)} aria-label={tl('close')}>✕</button>
           </div>
           {(jrFilter ? searchJournal(jrFilter) : journal).slice(-30).reverse().map((e) => (
             <NoteRow key={e.id} id={e.id} text={e.text}
