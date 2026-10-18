@@ -206,7 +206,7 @@ export function Sidebar({ route, width, onWidthCommit, onCollapse }) {
               {tl(section.label)}
               {section.badge && (
                 <span class="text-[8px] font-mono font-bold px-1 py-px rounded border border-line-2 text-muted">
-                  {section.badge}
+                  {section.badge==='DEMO'?tl('demo'):tl(section.badge)}
                 </span>
               )}
             </a>
