@@ -142,13 +142,13 @@ export function applyMemoryTags(text) {
   const notes = []
   for (const m of text.matchAll(/\[MEMORY:\s*([^\]]+)\]/g)) {
     const mem = addMemory(m[1])
-    if (mem) notes.push(`✓ memory #${mem.id} saved`)
+    if (mem) notes.push({action:'saved',id:mem.id})
   }
   for (const m of text.matchAll(/\[MEMORY_EDIT:\s*(\d+)\s*\|\s*([^\]]+)\]/g)) {
-    notes.push(editMemory(m[1], m[2]) ? `✓ memory #${m[1]} updated` : `memory #${m[1]} not found`)
+    notes.push({action:editMemory(m[1],m[2])?'updated':'missing',id:Number(m[1])})
   }
   for (const m of text.matchAll(/\[MEMORY_DELETE:\s*(\d+)\s*\]/g)) {
-    notes.push(removeMemory(m[1]) ? `✓ memory #${m[1]} deleted` : `memory #${m[1]} not found`)
+    notes.push({action:removeMemory(m[1])?'deleted':'missing',id:Number(m[1])})
   }
   return { text: text.replace(TAG_RE, '').replace(/[ \t]+\n/g, '\n').trim(), notes }
 }

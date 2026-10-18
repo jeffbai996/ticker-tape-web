@@ -1,3 +1,4 @@
+import {ChatNotice} from '../components/ChatNotice.jsx'
 import {ChatFailure} from '../components/ChatFailure.jsx'
 import {ConversationDelete} from '../components/ConversationDelete.jsx'
 import {pickerModels,modelGroups} from '../lib/chatModels.js'
@@ -1115,7 +1116,7 @@ export function Chat() {
         }
       }
       if (notes.length) {
-        setNotice(notes.join(' · '))
+        setNotice({kind:'memory',items:notes})
         setMemories(loadMemories())
       }
       const done = [...base, ...stamped]
@@ -1692,33 +1693,33 @@ export function Chat() {
                 {m.trace?.length > 0 && (
                   <ActivityTrace steps={m.trace} startedAt={m.traceStartedAt} usage={m.traceUsage} />
                 )}
-                <div class="group self-start max-w-[92%] relative">
-                  <div class="chat-message-copy chat-assistant-bubble rounded-2xl border px-3.5 py-2.5 text-[1em] leading-relaxed bg-surface-1 border-line text-ink font-anth">
+                <div class="group self-start max-w-[92%] flex items-center gap-1.5">
+                  <div class="chat-message-copy chat-assistant-bubble min-w-0 rounded-2xl border px-3.5 py-2.5 text-[1em] leading-relaxed bg-surface-1 border-line text-ink font-anth">
                     <MdLite text={m.content} />
                   </div>
-                  <div class="absolute -top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                  <div class="chat-assistant-actions shrink-0 flex flex-nowrap gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 max-md:opacity-100 transition-opacity">
                       <button
                         type="button"
                         onClick={() => navigator.clipboard?.writeText(m.content)}
-                        title={tl('copy')}
-                        class="bg-surface-2 border border-line rounded-md px-1.5 py-0.5 font-mono text-[9px] text-muted hover:text-ink"
+                        title={tl('copy')} aria-label={tl('copy')}
+                        class="w-6 h-6 shrink-0 grid place-items-center rounded-md text-muted hover:text-ink hover:bg-surface-2"
                       >
-                        {tl('copy')}
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h4"/></svg>
                       </button>
-                      <button
+                      {m.content.trim().length>=160 && <button
                         type="button"
                         onClick={() => {
                           // CLI `journal save` parity: the exchange, not just the answer
                           const q = history[i - 1]?.role === 'user' ? history[i - 1].content : ''
                           const e = addJournalEntry(`${q ? `Q: ${q}\n\n` : ''}A: ${m.content}`)
                           setJournal(loadJournal())
-                          setNotice(e ? tt('chat.exchange_saved', { id: e.id }) : null)
+                          setNotice(e ? {kind:'journal'} : null)
                         }}
-                        title={tl('save exchange to journal')}
-                        class="bg-surface-2 border border-line rounded-md px-1.5 py-0.5 font-mono text-[9px] text-muted hover:text-accent"
+                        title={tl('save exchange to journal')} aria-label={tl('save exchange to journal')}
+                        class="w-6 h-6 shrink-0 grid place-items-center rounded-md text-muted hover:text-accent hover:bg-surface-2"
                       >
-                        → {tl('journal')}
-                      </button>
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg>
+                      </button>}
                     </div>
                 </div>
                 <ChatFooter model={m.modelLabel || models.find((item) => item.key === m.model)?.label || m.model}
@@ -1771,9 +1772,7 @@ export function Chat() {
             <span class="font-mono text-[9px] text-muted pr-1">{tl('queued follow-up')}</span>
           </div>
         ))}
-        {notice && (
-          <div class="self-start font-mono text-[10px] text-success px-1">{notice}</div>
-        )}
+        <ChatNotice notice={notice} onMemory={()=>{setMemories(loadMemories());setDrawer('mem')}} onJournal={()=>{setJournal(loadJournal());setDrawer('journal')}} />
         {error && !history.some(m=>(m.failure?.message||m.failure)===(error?.message||error)) && <ChatFailure error={error} />}
           </div>
           {composer}
