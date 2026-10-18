@@ -174,7 +174,7 @@ describe('tape short names', () => {
 describe('Chinese tape name coverage',()=>{
   it('uses common company abbreviations without changing full research names',()=>{
     setLocale('zh')
-    for(const [symbol,name] of Object.entries({DIS:'迪士尼',MU:'美光',ON:'安森美',ARM:'安谋',GFS:'格芯',TMO:'赛默飞',ASX:'日月光',MKSI:'万机仪器',MSTR:'微策略'}))expect(tapeName(symbol)).toBe(name)
+    for(const [symbol,name] of Object.entries({DIS:'迪士尼',MU:'美光',ON:'安森美',ARM:'安谋',GFS:'格芯',TMO:'赛默飞',ASX:'日月光',MKSI:'万机仪器',MSTR:'微策略',EDU:'新东方',VIPS:'唯品会'}))expect(tapeName(symbol)).toBe(name)
     expect(zhName('TMO')).toBe('赛默飞世尔科技公司')
     expect(tapeName('BRK.B')).toBe(tapeName('BRK-B'))
     setLocale('en')
