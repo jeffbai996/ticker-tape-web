@@ -1399,7 +1399,13 @@ export function MyPortfolios({ view = 'overview' } = {}) {
     setSelId(id)
     try { localStorage.setItem('my_portfolio_sel_v1', id) } catch { /* best-effort */ }
   }
-  const [creating, setCreating] = useState(items.length === 0)
+  // 'empty' marks the form the page opened by itself because there were no
+  // books. Saved books can sync in after first paint (a fresh browser), and
+  // that implicit form closes when they do; a form the user opened stays.
+  const [creating, setCreating] = useState(items.length === 0 ? 'empty' : false)
+  useEffect(() => {
+    if (creating === 'empty' && items.length > 0) setCreating(false)
+  }, [items.length])
 
   // Follow the holdings plus every FX pair the mix needs. The pair set can
   // grow once quotes land (a quote's own currency wins over the suffix
@@ -1440,7 +1446,7 @@ export function MyPortfolios({ view = 'overview' } = {}) {
   useEffect(() => {
     setHeaderActions(
       <>
-        <button type="button" onClick={() => setCreating((v) => !v)} class={`${btn} border-dashed text-muted hover:border-accent/40 hover:text-accent`} aria-label={tl('New portfolio')} aria-expanded={creating}>+<span class="max-sm:hidden"> {tl('New portfolio')}</span></button>
+        <button type="button" onClick={() => setCreating((v) => !v)} class={`${btn} border-dashed text-muted hover:border-accent/40 hover:text-accent`} aria-label={tl('New portfolio')} aria-expanded={!!creating}>+<span class="max-sm:hidden"> {tl('New portfolio')}</span></button>
         {selected && (
           <>
             <span class="ml-1 h-4 w-px bg-line-2 max-sm:hidden" />
