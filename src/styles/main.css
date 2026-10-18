@@ -885,7 +885,7 @@ html[data-pointer-hover] .tape-hot *:not(.text-up):not(.text-down):not([data-tap
 .chat-trace-reason { padding:.12rem 0; color:var(--color-muted); font:450 9px/1.4 var(--font-sans); }
 .chat-trace-reason .chat-trace-node { width:11px; height:11px; color:inherit; }
 .chat-trace-reason-detail { margin-left:calc(var(--chat-trace-gutter) + .5rem); }
-.chat-trace-reason-detail summary { cursor:pointer; width:fit-content; }
+.chat-trace-reason-detail summary { cursor:pointer; width:fit-content; margin-bottom:.4rem; }
 .chat-trace-tools { margin:0; padding:0; border:0; }
 .chat-trace-step { position:relative; display:block; padding:.12rem 0; animation:chat-rise-in .24s cubic-bezier(.16,1,.3,1) both; }
 .chat-trace-step + .chat-trace-step { border:0; }

@@ -1,3 +1,4 @@
+import {TOOL_GERUNDS} from './chatActivityLabels.js'
 import {listChatPortfolios,readChatPortfolio,readChatAppData} from './chatAppData.js'
 import {readChatResearch,readChatNews,readChatArticle} from './chatResearch.js'
 // Chat tool registry: JSON-Schema defs sent to the worker, and the
@@ -508,25 +509,7 @@ const TOOL_VERBS = {
 /** What the assistant is DOING, in the present tense — the trace says
  *  "Reading quotes AAPL" while it happens rather than naming the endpoint
  *  (Jeff 2026-08-07: "like Searching, Reading, Browsing"). */
-const TOOL_GERUNDS = {
-  get_portfolios:'Reading portfolios',get_portfolio:'Reading portfolio',get_app_data:'Reading app data',get_research:'Reading research',get_news:'Reading news',read_article:'Reading article',
-  get_quotes: 'Reading quotes',
-  get_technicals: 'Reading technicals',
-  get_earnings: 'Checking earnings',
-  get_market_pulse: 'Reading the tape',
-  get_watchlist: 'Reading the watchlist',
-  watch: 'Adding to the watchlist',
-  unwatch: 'Removing from the watchlist',
-  set_alert: 'Arming an alert',
-  get_calendar: 'Reading the calendar',
-  add_catalyst: 'Adding a catalyst',
-  memory_add: 'Remembering',
-  memory_edit: 'Revising a memory',
-  memory_delete: 'Forgetting',
-  journal_add: 'Writing to the journal',
-  journal_search: 'Searching the journal',
-  navigate: 'Opening',
-}
+
 
 function toolArg(tc) {
   const a = tc.args || {}
@@ -534,10 +517,10 @@ function toolArg(tc) {
 }
 
 /** Human-readable chip label for a tool call. Exported for the UI. */
-export function toolLabel(tc) {
+export function toolLabel(tc,translate=value=>value) {
   const arg = toolArg(tc)
-  if (tc.name === 'get_earnings' && arg) return `${arg} earnings`
-  const verb = TOOL_VERBS[tc.name] || tc.name
+  if (tc.name === 'get_earnings' && arg) return `${arg} ${translate('earnings')}`
+  const verb = translate(TOOL_VERBS[tc.name] || tc.name)
   return arg ? `${verb} ${arg}` : verb
 }
 

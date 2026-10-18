@@ -8,6 +8,7 @@ import {mergeTurnUsage,metricDuration} from '../lib/chatMetrics.js'
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
 import { fetchChatModels, fetchSpend } from '../lib/chatClient.js'
 import { runAgentic, trimHistory } from '../lib/agent.js'
+import {activityLabel} from '../lib/chatActivityLabels.js'
 import { toolLabel, toolRunLabel } from '../lib/tools.js'
 import { BrandSpinner } from '../components/BrandSpinner.jsx'
 import { Loading } from '../components/Loading.jsx'
@@ -264,7 +265,7 @@ function ToolChips({ calls, results }) {
             <span class={failed ? 'text-red-400' : res == null ? 'text-accent animate-pulse' : 'text-muted'}>
               {failed ? '✕' : res == null ? '◌' : '✓'}
             </span>
-            {toolLabel(tc)}
+            {toolLabel(tc,tl)}
           </span>
         )
       })}
@@ -336,7 +337,7 @@ function SessionRow({ thread, active, busy, onOpen, onDelete }) {
  *  is what the backend actually exposes). */
 function thinkDepth(tokens) {
   if (!tokens) return ''
-  return tokens >= 1000 ? `~${(tokens / 1000).toFixed(1)}k tokens` : `~${tokens} tokens`
+  return tokens >= 1000 ? `~${(tokens / 1000).toFixed(1)}k tok` : `~${tokens} tok`
 }
 
 /** Three dots that keep breathing while a step runs. */
@@ -414,13 +415,13 @@ export function ActivityTrace({ steps, busy = false, startedAt, usage = null }) 
           {busy ? <BrandSpinner size={19} /> : null}
         </span>
         <span class="chat-trace-heading"><span class="chat-trace-summary">
-        <span class="chat-trace-title">{title}{busy ? <Ellipsis /> : ` ${elapsed}`}</span>
+        <span class="chat-trace-title">{activityLabel(title,tl)}{busy ? <Ellipsis /> : ` ${elapsed}`}</span>
         {busy && <span class="font-mono text-[9px] tabular-nums text-muted">{elapsed}</span>}
         {liveDepth && !liveThinking && (
           <span class="font-mono text-[9px] tabular-nums text-muted/80">{liveDepth}</span>
         )}
         </span>
-        <span class="chat-trace-count">{steps.length} {steps.length === 1 ? 'step' : 'steps'}</span>
+        <span class="chat-trace-count">{tt(steps.length===1?'chat.step':'chat.steps',{n:steps.length})}</span>
         </span>
       </button>
       {/* live reasoning rides ABOVE the step list: it's the part you actually
@@ -441,7 +442,7 @@ export function ActivityTrace({ steps, busy = false, startedAt, usage = null }) 
                   <div class="chat-trace-reason">
                     <div class="chat-trace-row">
                       <span class="chat-trace-icon"><StepIcon kind="model" verb={group.model.label || group.model.verb} status={group.model.status} /></span>
-                      <span>{group.model.label}</span>
+                      <span>{activityLabel(group.model.label,tl)}</span>
                       <span class="chat-trace-time">{group.model.startedAt ? durationLabel((group.model.endedAt || now)-group.model.startedAt) : ''}</span>
                       {!group.model.detail && group.model.thinkTokens ? <span class="chat-trace-time">{thinkDepth(group.model.thinkTokens)}</span> : null}
                     </div>
@@ -461,7 +462,7 @@ export function ActivityTrace({ steps, busy = false, startedAt, usage = null }) 
                     <div class="chat-trace-row">
                       <span class="chat-trace-icon"><StepIcon kind={step.kind} name={step.name} verb={step.label || step.verb} status={step.status} /></span>
                       <span class="chat-trace-label">
-                        {step.label}{step.status === 'running' && <Ellipsis />}
+                        {activityLabel(step.label,tl)}{step.status === 'running' && <Ellipsis />}
                       </span>
                       {stepElapsed && <span class="chat-trace-time">{stepElapsed}</span>}
                     </div>
@@ -1169,8 +1170,8 @@ export function Chat() {
     } catch (err) {
       if (err?.name !== 'AbortError') {
         const message=String(err.message || err)
-        setError(message)
-        base[base.length-1]={...base.at(-1),failure:message}
+        setError(tl(message))
+        base[base.length-1]={...base.at(-1),failure:tl(message)}
       }
       const stopped = err?.name === 'AbortError'
       updateActivity((steps) => steps.map((step) => step.status === 'running'
@@ -1355,7 +1356,7 @@ export function Chat() {
             <button
               type="button"
               onClick={mic}
-              title={rec ? 'stop recording' : 'dictate (whisper on the wire)'}
+              title={tl(rec ? 'stop recording' : 'dictate (whisper on the wire)')}
               class={`shrink-0 w-8 h-8 grid place-items-center rounded-md border transition-colors ${
                 rec ? 'border-danger text-danger animate-pulse' : 'border-line-2 text-muted hover:text-ink'}`}
             >
@@ -1378,7 +1379,7 @@ export function Chat() {
             <button
               type="submit"
               disabled={!input.trim()}
-              title="send  ⏎"
+              title={`${tl('send')}  ⏎`}
               class="shrink-0 w-8 h-8 grid place-items-center rounded-md bg-white text-black disabled:bg-surface-3 disabled:text-muted transition-colors"
             >
               <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
@@ -1413,7 +1414,7 @@ export function Chat() {
             </select>
             <span class="pointer-events-none absolute right-1.5 text-[7px] leading-none text-muted">▾</span>
           </span>
-          <span class="flex items-center gap-0.5 bg-surface-2 border border-line rounded-md px-0.5 py-px" title="transcript text size">
+          <span class="flex items-center gap-0.5 bg-surface-2 border border-line rounded-md px-0.5 py-px" title={tl('transcript text size')}>
             <button type="button" onClick={() => bumpChatZoom(-0.1)}
               class="px-1.5 py-px font-mono text-[10px] rounded text-muted hover:text-ink hover:bg-surface-3">−</button>
             <button type="button" onClick={() => bumpChatZoom(0.1)}
@@ -1441,7 +1442,7 @@ export function Chat() {
                       something different from the thing it sets (Jeff
                       2026-08-07). Model names beside it aren't translated
                       either, for the same reason. */}
-                  {lv}
+                  {tl(lv)}
                 </button>
               ))}
             </span>
@@ -1449,7 +1450,7 @@ export function Chat() {
           {onWire && selectedModel?.fixed_effort && (
             <span class="font-mono text-[9px] text-muted border border-line rounded-md px-1.5 py-px"
                   title={tl('fixed thinking tier')}>
-              thinking
+              {tl('thinking')}
             </span>
           )}
           <span class="composer-shortcuts ml-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
@@ -1463,7 +1464,7 @@ export function Chat() {
               <kbd class="text-ink-2">⌘/Ctrl</kbd><span aria-hidden="true">+</span><kbd class="text-ink-2">K</kbd>
               <span>{tl('commands')}</span>
             </span>
-            {queued.length > 0 && <span class="text-accent">{queued.length} queued</span>}
+            {queued.length > 0 && <span class="text-accent">{tt('chat.queued',{n:queued.length})}</span>}
             {!onWire && <SpendMeter spend={spend} />}
           </span>
         </div>

@@ -1,3 +1,4 @@
+import {tl} from '../lib/i18n.js'
 import claudeLogo from '../assets/claude.svg'
 import qwenLogo from '../assets/qwen.svg'
 import geminiLogo from '../assets/gemini.svg'
@@ -31,17 +32,17 @@ export function ChatFooter({ model, effort, usage, startedAt, endedAt, busy = fa
   const m = chatMetrics({ usage, startedAt, endedAt, now })
   const provider=modelProvider(model),mark=PROVIDERS[provider]
   const tokens = (n) => n == null ? '—' : n.toLocaleString('en-US')
-  return <div class="chat-token-footer" aria-label="Response statistics" data-live={busy || undefined}>
-    <span class="chat-token-model" title={effort ? `${model} · ${effort}` : model}>
+  return <div class="chat-token-footer" aria-label={tl('Response statistics')} data-live={busy || undefined}>
+    <span class="chat-token-model" title={effort ? `${model} · ${tl(effort)}` : model}>
       {mark
         ? <span class="chat-token-provider" data-provider={provider} aria-hidden="true" style={{maskImage:`url("${mark[0]}")`,WebkitMaskImage:`url("${mark[0]}")`,backgroundColor:mark[1]}} />
-        : <Icon kind="model" />}<span class="chat-token-model-name">{model || 'Model'}</span>
-      {effort && effort !== 'none' && <span class="chat-token-effort" title={`Reasoning: ${effort}`}><Icon kind="think" /></span>}
+        : <Icon kind="model" />}<span class="chat-token-model-name">{model || tl('Model')}</span>
+      {effort && effort !== 'none' && <span class="chat-token-effort" title={`${tl('Reasoning')}: ${tl(effort)}`}><Icon kind="think" /></span>}
     </span>
-    <span class="chat-token-stat chat-token-usage" title="Largest reported input context; output summed across model calls">
+    <span class="chat-token-stat chat-token-usage" title={tl('Largest reported input context; output summed across model calls')}>
       <span class="chat-token-input"><span class="chat-token-arrow">↑</span>{tokens(m.input)}</span><span class="chat-token-output"><span class="chat-token-arrow">↓</span>{tokens(m.output)}</span><span>tok</span>
     </span>
-    <span class="chat-token-stat" title="Turn elapsed time"><Icon kind="clock" />{metricDuration(m.elapsed)}</span>
-    <span class="chat-token-stat chat-token-throughput" title={m.rateSource==='inference' ? 'Reported output tokens per provider inference second, including prompt processing and reasoning; excluding application tool time' : 'Provider-reported generation speed, excluding prompt processing and tool time'}><Icon kind="speed" />{m.rate == null ? '—' : m.rate.toFixed(1)} tok/s</span>
+    <span class="chat-token-stat" title={tl('Turn elapsed time')}><Icon kind="clock" />{metricDuration(m.elapsed)}</span>
+    <span class="chat-token-stat chat-token-throughput" title={tl(m.rateSource==='inference' ? 'Reported output tokens per provider inference second, including prompt processing and reasoning; excluding application tool time' : 'Provider-reported generation speed, excluding prompt processing and tool time')}><Icon kind="speed" />{m.rate == null ? '—' : m.rate.toFixed(1)} tok/s</span>
   </div>
 }
