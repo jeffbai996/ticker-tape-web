@@ -1040,8 +1040,14 @@ html[data-pointer-hover] .tape-hot *:not(.text-up):not(.text-down):not([data-tap
 /* A bounded suggestion shelf uses spare height and leaves the composer docked. */
 .chat-launchpad { flex: 1; min-height: 100%; }
 .chat-suggestions { display: flex; flex-direction: column; flex: 1; min-height: 150px; }
-.chat-suggestion-scroll { overflow-x: auto; min-height: 130px; padding-bottom: 8px; overscroll-behavior-x: contain; }
-.chat-suggestion-grid { display: grid; grid-auto-flow: column; grid-template-rows: repeat(4, 32px); grid-auto-columns: minmax(240px, max-content); gap: 6px; width: max-content; min-width: 100%; }
-.chat-suggestion-pill { min-width: 0; max-width: min(440px, 80vw); text-align: left; }
-@media (min-height: 900px) { .chat-suggestion-grid { grid-template-rows: repeat(6, 32px); } }
-@media (max-height: 650px) { .chat-suggestion-grid { grid-template-rows: repeat(3, 32px); } }
+.chat-suggestion-rows { display:flex; flex-direction:column; gap:8px; padding:4px 0 12px; }
+.chat-suggestion-row { overflow-x:auto; scrollbar-width:none; overscroll-behavior-x:contain; overflow-anchor:none; }
+.chat-suggestion-row::-webkit-scrollbar { display:none; }
+.chat-suggestion-track,.chat-suggestion-group { display:flex; align-items:center; gap:8px; width:max-content; }
+.chat-suggestion-group { flex:none; padding-block:5px; }
+.chat-suggestion-copy { display:none; }
+.chat-suggestion-row[data-loop="true"] .chat-suggestion-copy { display:flex; }
+.chat-suggestion-pill { flex:none; white-space:nowrap; min-height:32px; text-align:left; }
+@media (prefers-reduced-motion: reduce) { .chat-suggestion-motion { display:none; } }
+.chat-suggestion-pill:nth-child(4n+2) { margin-inline-end:18px; transform:translateY(3px); }
+.chat-suggestion-pill:nth-child(3n) { margin-inline-end:7px; transform:translateY(-2px); }

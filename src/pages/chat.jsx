@@ -1,3 +1,5 @@
+import {pickerModels,modelGroups} from '../lib/chatModels.js'
+import {SuggestionRows} from '../components/SuggestionRows.jsx'
 import { earningsTone } from '../lib/earningsTone.js'
 import {submitTextKey} from '../lib/chatInput.js'
 import {mergeTurnUsage} from '../lib/chatMetrics.js'
@@ -35,7 +37,7 @@ import { ChatFooter } from '../components/ChatFooter.jsx'
 import { loadZhTable, loadMissingZhName, onZhTable, zhName } from '../lib/zhNames.js'
 import { onPortfoliosChange } from '../lib/myPortfolios.js'
 import { CHAT_CONTEXT_EVENT, takeChatContext } from '../lib/chatHandoff.js'
-import { IS_FAMILY_AI } from '../lib/nav.js'
+import { IS_FAMILY_AI, IS_PRIVATE_BUILD } from '../lib/nav.js'
 
 // Base prompt stays generic in source. Whether the assistant has a real book
 // is decided at runtime by whether the viewer wired in their own newsservice —
@@ -533,12 +535,11 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
     return onZhTable(()=>nameTick(n=>n+1))
   },[suggestionSymbols.join(',')])
   const names=getLocale()==='zh' ? Object.fromEntries(suggestionSymbols.map(s=>[s,zhName(s)])) : {}
-  const pool=dynamicActions({watchlist:suggestionSymbols,quotes,earnDays,nextEvent,book,journal})
+  const pool=dynamicActions({watchlist:suggestionSymbols,quotes,earnDays,nextEvent,book,journal,edition:page})
   const lanes=activeLanes(pool)
-  const shown=visibleActions(pool,{lane,page,size:60,rotate:true})
+  const shown=visibleActions(pool,{lane,page,size:40,rotate:true})
   const refreshable=shown.length>12
-  const suggestionRef=useRef(null)
-  useEffect(()=>{if(suggestionRef.current)suggestionRef.current.scrollLeft=0},[lane,page])
+  const [suggestionsPaused,setSuggestionsPaused]=useState(false)
   const topPos = (bk?.positions || [])
     .filter((p) => bk?.manual || p.weight_pct != null)
     .sort((a, b) => (b.weight_pct || 0) - (a.weight_pct || 0))
@@ -546,7 +547,6 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
 
   const cell = "px-3 py-2 min-w-0"
   const eyebrow = "font-mono text-[9px] tracking-[0.16em] text-muted uppercase pb-1"
-  const DOT = Object.fromEntries(LANES.map((l) => [l.k, l.dot]))
 
   return (
     <div class="chat-launchpad w-full px-1 py-3 flex flex-col gap-3">
@@ -692,11 +692,19 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
               </button>
             ))}
           </div>
+          <button type="button" class="chat-suggestion-motion ml-auto text-muted hover:text-ink"
+            onClick={()=>setSuggestionsPaused(v=>!v)} aria-pressed={suggestionsPaused}
+            aria-label={tl(suggestionsPaused?'Resume suggestions':'Pause suggestions')}
+            title={tl(suggestionsPaused?'Resume suggestions':'Pause suggestions')}>
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              {suggestionsPaused?<path d="m5 3 8 5-8 5z"/>:<path d="M4 3h3v10H4zm5 0h3v10H9z"/>}
+            </svg>
+          </button>
           {refreshable && (
             <button
               type="button"
               onClick={() => setPage((n) => n + 1)}
-              class="ml-auto flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.1em] text-muted hover:text-ink transition-colors"
+              class="flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.1em] text-muted hover:text-ink transition-colors"
               title={tl('show other prompts')}
               aria-label={tl('refresh prompts')}
             >
@@ -708,22 +716,9 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
             </button>
           )}
         </div>
-        <div class="chat-suggestion-scroll" ref={suggestionRef} tabIndex={0} aria-label={tl('start here')}>
-        <div class="chat-suggestion-grid">
-          {shown.map((sug) => (
-            <button
-              key={sug.t}
-              type="button"
-              onClick={() => onPick(sug.t)}
-              title={promptLabel(sug.t,names)}
-              class="chat-suggestion-pill flex items-center gap-1.5 font-anth text-[12px] text-ink-2 border border-line rounded-full pl-2.5 pr-3 py-1 hover:border-accent/60 hover:text-ink hover:bg-accent-soft transition-colors"
-            >
-              <span class={`w-1 h-1 rounded-full shrink-0 ${DOT[sug.k] || 'bg-muted'}`} />
-              <span class="truncate">{promptLabel(sug.t,names)}</span>
-            </button>
-          ))}
-        </div>
-        </div>
+        <SuggestionRows key={`${lane||'all'}-${page}`} items={shown} onPick={onPick}
+          label={a=>promptLabel(a.t,names)} paused={suggestionsPaused}/>
+
       </div>
     </div>
   )
@@ -926,7 +921,8 @@ export function Chat() {
     const load = onWire
       ? fetchWireChatModels()
       : fetchChatModels().then((data) => data.models)
-    load.then((liveModels) => {
+    load.then((available) => {
+      const liveModels=pickerModels(available,IS_PRIVATE_BUILD)
       setModels(liveModels)
       const current = liveModels.find((candidate) => candidate.key === model)
       if (!current) {
@@ -1370,14 +1366,7 @@ export function Chat() {
             >
               {(() => {
                 const live = models.length ? models : [{ key: model, label: model }]
-                const label = (g) => ({ 'Claude Code': 'claude', Codex: 'codex', Antigravity: 'jeffbai996' }[g] || (g || 'models').toLowerCase())
-                const groups = []
-                live.forEach((m) => {
-                  const g = label(m.group)
-                  const cur = groups[groups.length - 1]
-                  if (cur && cur.name === g) cur.items.push(m)
-                  else groups.push({ name: g, items: [m] })
-                })
+                const groups=modelGroups(live,IS_PRIVATE_BUILD)
                 return groups.map((g) => (
                   <optgroup key={g.name} label={`— ${g.name} —`}>
                     {g.items.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}

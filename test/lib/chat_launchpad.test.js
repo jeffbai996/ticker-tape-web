@@ -90,7 +90,7 @@ it('uses Chinese company names only in display labels and preserves precise prom
 
  it('offers multiple followed companies even when markets are closed',()=>{
   const pool=dynamicActions({watchlist:['AAPL','MSFT','GOOGL'],quotes:{},earnDays:{AAPL:1,MSFT:4},book:true,journal:[]})
-  expect(pool.filter(a=>a.k==='earn').length).toBe(2)
+  expect(pool.filter(a=>['chat.action_earnings_preview','chat.action_earnings_expectations'].includes(a.family)).length).toBe(2)
   for(const symbol of ['AAPL','MSFT','GOOGL'])expect(pool.some(a=>a.t.includes(symbol))).toBe(true)
   expect(new Set(pool.map(a=>a.t)).size).toBe(pool.length)
  })
@@ -101,4 +101,32 @@ it('rotates a swipeable full pool without dropping its available prompts',()=>{
  const next=visibleActions(pool,{page:1,size:60,rotate:true})
  expect(next[0]).not.toEqual(first[0])
  expect(new Set(next.map(a=>a.t))).toEqual(new Set(first.map(a=>a.t)))
+})
+
+it('balances the first screen even with many movers and upcoming reports',()=>{
+ const watchlist=Array.from({length:30},(_,i)=>`SYM${i}`)
+ const pool=dynamicActions({watchlist,quotes:Object.fromEntries(watchlist.map(s=>[s,{quote:{pct:-5,price:100}}])),earnDays:Object.fromEntries(watchlist.map(s=>[s,2])),book:true,journal:[]})
+ const first=visibleActions(pool)
+ expect(new Set(first.map(a=>a.k)).size).toBe(6)
+ expect(Math.max(...LANES.map(l=>first.filter(a=>a.k===l.k).length))).toBeLessThanOrEqual(3)
+ const families=pool.reduce((m,a)=>(m[a.family]=(m[a.family]||0)+1,m),{})
+ expect(Math.max(...Object.values(families))).toBeLessThanOrEqual(2)
+ expect(Math.max(...LANES.map(l=>pool.filter(a=>a.k===l.k).length))).toBeLessThanOrEqual(6)
+})
+
+it('mixes topics within each moving row and preserves every prompt',async()=>{
+ const {actionRows}=await import('../../src/lib/launchpad.js')
+ const pool=dynamicActions({watchlist:['AAPL','MSFT','GOOGL'],quotes:{},earnDays:{AAPL:1,MSFT:4},book:true,journal:[]})
+ const rows=actionRows(visibleActions(pool,{size:40}))
+ expect(rows).toHaveLength(4)
+ expect(rows.every(row=>new Set(row.map(a=>a.k)).size>=4)).toBe(true)
+ expect(rows.flat()).toEqual(visibleActions(pool,{size:40}))
+ expect(actionRows([{t:'Only',k:'app'}])).toEqual([[{t:'Only',k:'app'}]])
+})
+
+it('varies the wording of the same question between batches',()=>{
+ const context={watchlist:['AAPL'],quotes:{},earnDays:{AAPL:2},book:true,journal:[]}
+ const wording=edition=>dynamicActions({...context,edition}).find(a=>a.family==='chat.action_technical').t
+ expect(new Set([0,1,2].map(wording)).size).toBe(3)
+ expect([0,1,2].map(wording).every(t=>t.includes('AAPL'))).toBe(true)
 })

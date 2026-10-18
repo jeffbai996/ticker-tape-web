@@ -1,139 +1,93 @@
-/**
- * Launchpad quick actions — the prompt pills on chat's home screen.
- *
- * Pure logic, so it lives here rather than in the page: the pad's floor (it
- * must still look built when the market is shut) is a property worth pinning
- * in a test, and the page component cannot be imported by one.
- */
+/** Contextual prompt suggestions, balanced by topic before presentation. */
 import { t as tt, tl } from './i18n.js'
 
-// The live branches above all key off market activity — a print today, a 3%
-// mover, an RSI extreme. On a closed weekend none of them fire, so the tail IS
-// the pad, and four entries left it looking half-built (Jeff 2026-08-09). It
-// now carries enough to fill the 12 slots on the deadest Sunday.
+const VARIED = new Set(["technical", "mover", "earnings_preview", "book_position", "book_risk", "calendar", "rates", "heatmap", "compare", "valuation", "watchlist_review", "strongest"])
+
 const SUGGESTIONS = [
-  { key: 'chat.action_moving', k: 'mkt' },
-  { key: 'chat.action_technical', k: 'mkt', needsSymbol: true },
-  { key: 'chat.action_calendar', k: 'macro' },
-  { key: 'chat.action_week_ahead', k: 'macro' },
-  { key: 'chat.action_sector', k: 'mkt' },
-  { key: 'chat.action_compare', k: 'idea', needsSymbol: true },
-  { key: 'chat.action_thesis_check', k: 'idea', needsSymbol: true },
-  { key: 'chat.action_valuation', k: 'idea', needsSymbol: true },
-  { key: 'chat.action_rates', k: 'macro' },
-  { key: 'chat.action_last_week', k: 'idea' },
-  { key: 'chat.action_bear_case', k: 'idea', needsSymbol: true },
-  { key: 'chat.action_research', k: 'app', needsSymbol: true },
-  { key: 'chat.action_watchlist_review', k: 'app' },
-  { key: 'chat.action_explain', k: 'app' },
+  ['moving','mkt'], ['sector','mkt'], ['breadth','mkt'], ['cross_market','mkt'],
+  ['technical','mkt',true], ['strongest','mkt'],
+  ['calendar','macro'], ['week_ahead','macro'], ['rates','macro'],
+  ['macro_priority','macro'], ['oil_bonds','macro'], ['dollar_effect','macro'],
+  ['compare','idea',true], ['thesis_check','idea',true], ['valuation','idea',true],
+  ['bear_case','idea',true], ['scenarios','idea'], ['decision_review','idea'],
+  ['earnings_calendar','earn'], ['earnings_quality','earn'], ['earnings_signals','earn'],
+  ['book_position','book'], ['book_risk','book'], ['book_concentration','book'],
+  ['book_drivers','book'], ['book_currency','book'], ['book_cash','book'],
+  ['heatmap','app'], ['research','app',true], ['watchlist_review','app'],
+  ['explain','app'], ['last_week','app'],
 ]
 
-/**
- * Launchpad quick actions, computed from live data so the pad stays current:
- * an earnings print today suggests its own summary, a big mover suggests its
- * own "why", the next macro event suggests its own read, the journal suggests
- * its own recall. Typed (mkt / book / app) so the chips can wear their lane.
- */
-export function dynamicActions({ watchlist, quotes, earnDays, nextEvent, book, journal }) {
-  const acts = []
-  const push = (t, k) => { if (!acts.some((a) => a.t === t)) acts.push({ t, k }) }
-
-  const reporting = watchlist.filter((s) => earnDays[s] === 0).slice(0, 6)
-  for (const s of reporting) push(tt('chat.action_earnings_summary', { symbol: s }), 'earn')
-  const soon = watchlist.filter((s) => earnDays[s] > 0 && earnDays[s] <= 7)
-    .sort((a, b) => earnDays[a] - earnDays[b]).slice(0, 6)
-  for (const symbol of soon) push(tt('chat.action_earnings_preview', { symbol, days: earnDays[symbol] }), 'earn')
-
-  const movers = watchlist
-    .map((s) => ({ s, pct: quotes[s]?.quote?.pct, price: quotes[s]?.quote?.price }))
-    .filter((x) => x.pct != null && Math.abs(x.pct) >= 3)
-    .sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct))
-  for (const m of movers.slice(0, 6)) {
-    push(tt('chat.action_mover', {
-      symbol: m.s, direction: tl(m.pct > 0 ? 'up' : 'down'), pct: Math.abs(m.pct).toFixed(1),
-    }), 'mkt')
+export function dynamicActions({ watchlist, quotes, earnDays, nextEvent, book, journal, edition=0 }) {
+  const acts=[], families=new Map()
+  const add=(name,k,params)=>{
+    const family=`chat.action_${name}`
+    const variation=VARIED.has(name)?(edition+(families.get(family)||0))%3:0
+    const t=tt(family+(variation?'_'+(variation+1):''),params)
+    // A second company can be useful; a wall of the same question is not.
+    if((families.get(family)||0)>=2 || acts.some(a=>a.t===t))return
+    acts.push({t,k,family});families.set(family,(families.get(family)||0)+1)
   }
-
-  if (nextEvent && nextEvent.days <= 7) {
-    push(tt('chat.action_event', {
-      event: tl(nextEvent.rawLabel || nextEvent.label),
-      when: nextEvent.days === 0 ? tl('today') : tt('common.days', { days: nextEvent.days }),
-      target: tl(book ? 'my book' : 'the market'),
-    }), book ? 'book' : 'macro')
+  for(const symbol of watchlist.filter(s=>earnDays[s]===0).slice(0,2))add('earnings_summary','earn',{symbol})
+  watchlist.filter(s=>earnDays[s]>0 && earnDays[s]<=7)
+    .sort((a,b)=>earnDays[a]-earnDays[b]).slice(0,3).forEach((symbol,i)=>
+      add(['earnings_preview','earnings_expectations','earnings_risks'][i],'earn',{symbol,days:earnDays[symbol]}))
+  const movers=watchlist.map(symbol=>({symbol,...quotes[symbol]?.quote}))
+    .filter(q=>q.pct!=null && Math.abs(q.pct)>=3).sort((a,b)=>Math.abs(b.pct)-Math.abs(a.pct))
+  movers.slice(0,3).forEach((m,i)=>add(['mover','mover_sector','mover_news'][i],'mkt',{
+    symbol:m.symbol,direction:tl(m.pct>0?'up':'down'),pct:Math.abs(m.pct).toFixed(1)}))
+  if(nextEvent && nextEvent.days<=7)add('event','macro',{
+    event:tl(nextEvent.rawLabel||nextEvent.label),
+    when:nextEvent.days===0?tl('today'):tt('common.days',{days:nextEvent.days}),
+    target:tl(book?'my book':'the market')})
+  const top=movers[0]
+  if(top?.price)add('alert','app',{symbol:top.symbol,level:top.pct>0
+    ?Math.ceil(top.price*1.03/5)*5:Math.floor(top.price*.97/5)*5})
+  const badges=watchlist.map(symbol=>({symbol,...quotes[symbol]?.tech}))
+  const stretched=badges.filter(b=>b.rsi!=null&&(b.rsi>=70||b.rsi<=30))
+    .sort((a,b)=>Math.abs(b.rsi-50)-Math.abs(a.rsi-50))[0]
+  if(stretched)add('stretched','mkt',{symbol:stretched.symbol,rsi:Math.round(stretched.rsi)})
+  const spike=badges.filter(b=>b.volRatio>=2).sort((a,b)=>b.volRatio-a.volRatio)[0]
+  if(spike)add('vol_spike','mkt',{symbol:spike.symbol,mult:spike.volRatio.toFixed(1)})
+  const overnight=watchlist.map(symbol=>({symbol,pct:quotes[symbol]?.quote?.extPct}))
+    .filter(q=>q.pct!=null&&Math.abs(q.pct)>=1.5).sort((a,b)=>Math.abs(b.pct)-Math.abs(a.pct))[0]
+  if(overnight)add('overnight','mkt',{symbol:overnight.symbol,pct:overnight.pct.toFixed(1)})
+  const leader=badges.filter(b=>b.rs!=null&&Math.abs(b.rs)>=5).sort((a,b)=>Math.abs(b.rs)-Math.abs(a.rs))[0]
+  if(leader)add('rs','mkt',{symbol:leader.symbol,pct:leader.rs.toFixed(1)})
+  const nearHigh=badges.filter(b=>b.offHigh!=null&&b.offHigh<=3).sort((a,b)=>a.offHigh-b.offHigh)[0]
+  if(nearHigh)add('near_high','mkt',{symbol:nearHigh.symbol,pct:nearHigh.offHigh.toFixed(1)})
+  const tagged=[...(journal||[])].reverse().find(e=>e.symbols?.length)
+  if(tagged)add('journal','app',{symbol:tagged.symbols[0]})
+  let cursor=edition
+  for(const [name,k,needsSymbol] of SUGGESTIONS){
+    if(k==='book'&&!book)continue
+    if(needsSymbol&&!watchlist.length)continue
+    const symbol=needsSymbol?watchlist[(cursor++)%watchlist.length]:null
+    add(name,k,symbol?{symbol}:undefined)
   }
-
-  if (book) {
-    push(tt('chat.action_book_position'), 'book')
-    push(tt('chat.action_book_risk'), 'book')
-  }
-
-  // a live alert suggestion off the top mover — the arm tool is real
-  const top = movers[0]
-  if (top?.price) {
-    const lvl = top.pct > 0
-      ? Math.ceil((top.price * 1.03) / 5) * 5
-      : Math.floor((top.price * 0.97) / 5) * 5
-    push(tt('chat.action_alert', { symbol: top.s, level: lvl }), 'app')
-  }
-
-  // Anomalies off the badges the feed already computes for every symbol. These
-  // rank above the generic prompts because they name the thing that is
-  // genuinely unusual right now, which is what you'd actually want to ask.
-  const badge = (s) => quotes[s]?.tech || null
-  const overnight = watchlist
-    .map((s) => ({ s, pct: quotes[s]?.quote?.extPct }))
-    .filter((x) => x.pct != null && Math.abs(x.pct) >= 1.5)
-    .sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct))[0]
-  if (overnight) {
-    push(tt('chat.action_overnight', {
-      symbol: overnight.s, pct: overnight.pct.toFixed(1),
-    }), 'mkt')
-  }
-
-  const spike = watchlist
-    .map((s) => ({ s, r: badge(s)?.volRatio }))
-    .filter((x) => x.r != null && x.r >= 2)
-    .sort((a, b) => b.r - a.r)[0]
-  if (spike) push(tt('chat.action_vol_spike', { symbol: spike.s, mult: spike.r.toFixed(1) }), 'mkt')
-
-  const stretched = watchlist
-    .map((s) => ({ s, rsi: badge(s)?.rsi }))
-    .filter((x) => x.rsi != null && (x.rsi >= 70 || x.rsi <= 30))
-    .sort((a, b) => Math.abs(b.rsi - 50) - Math.abs(a.rsi - 50))[0]
-  if (stretched) push(tt('chat.action_stretched', { symbol: stretched.s, rsi: Math.round(stretched.rsi) }), 'mkt')
-
-  const leader = watchlist
-    .map((s) => ({ s, rs: badge(s)?.rs }))
-    .filter((x) => x.rs != null && Math.abs(x.rs) >= 5)
-    .sort((a, b) => Math.abs(b.rs) - Math.abs(a.rs))[0]
-  if (leader) push(tt('chat.action_rs', { symbol: leader.s, pct: leader.rs.toFixed(1) }), 'mkt')
-
-  const nearHigh = watchlist
-    .map((s) => ({ s, off: badge(s)?.offHigh }))
-    .filter((x) => x.off != null && x.off <= 3)
-    .sort((a, b) => a.off - b.off)[0]
-  if (nearHigh) push(tt('chat.action_near_high', { symbol: nearHigh.s, pct: nearHigh.off.toFixed(1) }), 'mkt')
-
-  push(tt('chat.action_strongest'), 'mkt')
-
-  // journal recall — only when there is a journal to recall from
-  const lastTagged = [...(journal || [])].reverse().find((e) => e.symbols?.length)
-  if (lastTagged) push(tt('chat.action_journal', { symbol: lastTagged.symbols[0] }), 'app')
-
-  push(tt('chat.action_heatmap'), 'app')
-  // The generic tail. Symbol-bearing ones borrow a name from the watchlist so
-  // the pad never asks about a ticker the reader does not follow.
-  // Rotate through followed companies, including quiet markets and saved holdings.
-  for (const s of SUGGESTIONS) {
-    const symbols = s.needsSymbol ? watchlist.slice(0, 6) : [null]
-    for (const symbol of symbols) push(tt(s.key, symbol ? { symbol } : undefined), s.k)
-  }
-  // The FULL pool, uncapped. The pad shows a window onto it (visibleActions),
-  // which is what gives refresh somewhere to go and the lane filter something
-  // to filter.
-  return acts
+  return balanceActions(acts,edition)
 }
 
+/** Round-robin topics so a large watchlist cannot bury macro or portfolio prompts. */
+function balanceActions(actions,edition){
+  const lanes=[...new Set(actions.map(a=>a.k))]
+  const queues=lanes.map(k=>{
+    const lane=actions.filter(a=>a.k===k),rest=lane.slice(2)
+    const start=rest.length?(edition*2)%rest.length:0
+    return [...lane.slice(0,2),...rest.slice(start),...rest.slice(0,start)].slice(0,6)
+  }),out=[]
+  let round=0
+  while(queues.some(q=>q.length)){
+    for(let i=0;i<queues.length;i++){const queue=queues[(round*2+i)%queues.length];if(queue.length)out.push(queue.shift())}
+    round++
+  }
+  return out
+}
+
+/** Contiguous slices of an interleaved pool keep each row mixed. */
+export function actionRows(actions,count=4){
+  const n=Math.min(count,Math.ceil(actions.length/4))
+  return Array.from({length:n},(_,i)=>actions.slice(Math.floor(i*actions.length/n),Math.floor((i+1)*actions.length/n)))
+}
 
 /** How many pills the pad shows at once. */
 export const PAD_SIZE = 12
