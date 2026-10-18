@@ -4,9 +4,11 @@
 // callers say what a thing IS, the pill decides how loud it looks.
 
 const TONES = {
-  // a fired breaker is the one thing on this page that shouts
-  fired: 'bg-down text-black border-down',
-  clear: 'bg-up/15 text-up border-up/40',
+  // a fired breaker is the one thing on this page that shouts. Status tones
+  // use the fixed good/bad palette, never up/down, which the Chinese
+  // gain/loss convention swaps.
+  fired: 'bg-bad text-black border-bad',
+  clear: 'bg-good/15 text-good border-good/40',
   // amber: a detector that cannot see is a risk, not a neutral state
   warn: 'bg-accent-soft text-accent border-accent/40',
   muted: 'bg-surface-3 text-muted border-line',

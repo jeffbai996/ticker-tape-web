@@ -52,6 +52,10 @@ select:not([multiple]):not([size]):not(.appearance-none) {
 
   --color-up: #3fb950;
   --color-down: #f85149;
+  /* Status (healthy / alarm) keeps fixed colors: the market-color switch
+     below swaps gain/loss only, and a fired alarm must stay red in either. */
+  --color-good: #3fb950;
+  --color-bad: #f85149;
 
   --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", system-ui, sans-serif;
   /* IBM Plex Mono: terminal-heritage data face, closest open match to the
