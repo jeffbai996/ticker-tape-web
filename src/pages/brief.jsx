@@ -14,7 +14,7 @@ import { Marquee } from '../components/Marquee.jsx'
 import { fmtPct } from '../lib/format.js'
 import {loadWatchlists,onWatchlistsChange} from '../lib/watchlists.js'
 import {loadPortfolios,onPortfoliosChange} from '../lib/myPortfolios.js'
-import {briefingSources,resolveBriefingSource,briefingSourceText} from '../lib/briefingSource.js'
+import {briefingSources,resolveBriefingSource,briefingSourceText,BRIEFING_FX} from '../lib/briefingSource.js'
 
 const INDEX_SYMBOLS = INDICES.map((i) => i.symbol)
 
@@ -243,7 +243,7 @@ export function Brief() {
   const followed = [...new Set([...watchlist, ...held, ...source.techUniverse])]
   const quotes = useQuotes(followed)
   useZhNames(followed)
-  const indexQuotes = useQuotes(INDEX_SYMBOLS)
+  const indexQuotes = useQuotes([...INDEX_SYMBOLS,...(source.portfolio?BRIEFING_FX:[])])
   const earnDays = useEarningsDays(watchlist)
 
   const econ = upcomingEvents(ECON_EVENTS, new Date().toISOString().slice(0, 10), 60)
@@ -280,7 +280,7 @@ export function Brief() {
         <AiReport key={source.id} onBusyChange={setGenerating}
           label="AI synthesis"
           filename={`briefing-${new Date().toISOString().slice(0, 10)}.md`}
-          buildPrompt={async () => ({ system: BRIEFING_SYSTEM, prompt: briefingSourceText(source)+'\n\n'+briefingPrompt(text) })}
+          buildPrompt={async () => ({ system: BRIEFING_SYSTEM, prompt: briefingSourceText(source,{...indexQuotes,...quotes})+'\n\n'+briefingPrompt(text) })}
           archive={{ kind: 'briefing', title: `Briefing ${source.kind==='current'?'':source.name+' '}${new Date().toISOString().slice(0, 10)}` }}
         />
 

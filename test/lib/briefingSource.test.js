@@ -20,3 +20,15 @@ it('falls back to the current watchlist if a saved source disappears',()=>{
  expect(source.id).toBe('current');expect(source.symbols).toEqual(['AAPL'])
  expect(source.held).toEqual(['GOOGL']);expect(source.techUniverse).toEqual(['AAPL','MSFT'])
 })
+it('includes every selected quote and available FX without pulling in other watchlist names',()=>{
+ const book=resolveBriefingSource('portfolio:p1',options)
+ const text=briefingSourceText(book,{
+  GOOGL:{quote:{price:120,pct:1,currency:'USD'},ts:1000},
+  MSFT:{quote:{price:200,pct:2,currency:'USD'}},
+  'CADUSD=X':{quote:{price:.75}},
+ })
+ expect(text).toContain('"symbol":"GOOGL","price":120')
+ expect(text).toContain('"currency":"USD"')
+ expect(text).toContain('"CADUSD=X":0.75')
+ expect(text).not.toContain('MSFT')
+})
