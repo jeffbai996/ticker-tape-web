@@ -20,6 +20,17 @@ const titleOf = (messages) => {
   return (q?.content || 'new thread').slice(0, 60)
 }
 
+const listeners=new Set()
+export function onThreadsChange(callback){listeners.add(callback);return ()=>listeners.delete(callback)}
+const changed=()=>{for(const callback of listeners)callback()}
+
+/** Local active state leads the index while a durable save is in flight. */
+export function liveThreadList(threads,id,messages,{streaming=false}={}) {
+ if(id==null||!messages.length)return threads
+ const row={...(threads.find(t=>String(t.id)===String(id))||{}),id,title:titleOf(messages),n:messages.length+(streaming?1:0)}
+ return threads.some(t=>String(t.id)===String(id))?threads.map(t=>String(t.id)===String(id)?row:t):[row,...threads]
+}
+
 export function currentThreadId() {
   const raw = localStorage.getItem(chatstoreAvailable() ? CUR_KEY : LOCAL_CUR_KEY)
   return raw ? Number(raw) : null
@@ -91,6 +102,7 @@ export async function flushActiveHistory(messages = pendingMessages) {
   if (!trimmed.length && currentThreadId() == null) return
   if (!chatstoreAvailable()) {
     persistLocalThread(trimmed)
+    changed()
     return
   }
 
@@ -104,6 +116,7 @@ export async function flushActiveHistory(messages = pendingMessages) {
     }
   })
   await saveChain
+  changed()
 }
 
 /** Persist the active conversation: cache immediately, server debounced. */

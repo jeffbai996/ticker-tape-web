@@ -93,6 +93,8 @@ export async function readChatPortfolio(args={},services={}) {
   catch{warning='History service unavailable; local saved marks only'}
   const marks=mergeHistory(p.snapshots,remote?.marks||[]),series=historySeries(marks,p.ccy,p.cashTxns)
   return {...base,history_source:remote?'collected history plus local marks':'local saved marks',warning,
+   metric_definitions:{value:'raw account value in portfolio currency',returnPct:'cash-flow-adjusted return index from the first mark',drawdownPct:'cash-flow-adjusted return index relative to its prior peak',high_low:'raw account-value marks, including external cash flows'},
+   capture_notes:'Marks are calendar-day captures, not necessarily trading sessions. Repeated values can reflect unchanged last-known quotes. Raw balance drawdown and flow-adjusted drawdown measure different things.',
    stats:historyStats(series),...chatPage(filter(series).reverse(),args)}
  }
  if(!['summary','holdings'].includes(section))return {error:'unknown portfolio section'}

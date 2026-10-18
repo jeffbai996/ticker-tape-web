@@ -25,6 +25,16 @@ function chatBody({ model, effort, system, messages }) {
   return JSON.stringify({model:chosen,effort:IS_FAMILY_AI ? (chosen==='family-opus' ? 'low' : 'medium') : effort,system,messages})
 }
 
+/** Preserve admission metadata so the UI can offer a timed retry. */
+function transportError(response,details={}) {
+ const error=new Error(details.error||`wire chat ${response.status}`)
+ error.status=response.status
+ error.code=details.code||(response.status===429?'rate_limited':null)
+ error.retryAfter=Math.max(0,Number(details.retry_after)||Number(response.headers?.get('Retry-After'))||0)
+ error.retryAt=Date.now()+error.retryAfter*1000
+ return error
+}
+
 /** Is the private, subscription-backed path available in this browser? */
 export function wireChatAvailable() {
   return IS_FAMILY_AI ? !!getWatchlistCapability() : !!wireServiceUrl()
@@ -56,6 +66,8 @@ export function toolProtocol(defs = TOOL_DEFS) {
     'and nothing else: {"tool": "<name>", "args": {…}}. You will then receive a',
     'line beginning TOOL_RESULT and may either call another tool or answer.',
     'Do not narrate what data you still need: call the relevant tool instead.',
+    'For portfolio reviews, inspect every account or currency book requested by the user or their saved preferences.',
+    'Finish relevant reads before answering instead of offering to perform those reads afterward.',
     'After a TOOL_RESULT, keep calling tools until you can answer the original',
     'request. Only stop with prose when that prose is the complete answer, not',
     'a plan, status update, or promise to fetch more data.',
@@ -118,7 +130,8 @@ export async function wireStream({ model, effort, system, messages, onDelta, onT
     body: chatBody({ model, effort, system, messages }),
     signal,
   })
-  if (!resp.ok || !resp.body) throw new Error(`wire stream ${resp.status}`)
+  if(!resp.ok)throw transportError(resp,await resp.json().catch(()=>({})))
+  if(!resp.body)throw new Error('Streaming is unavailable. Please try again.')
   const reader = resp.body.getReader()
   const decoder = new TextDecoder()
   let buf = ''
@@ -174,6 +187,6 @@ export async function wireComplete({ model, effort, system, messages, signal }) 
     signal: signal || AbortSignal.timeout(180_000),
   })
   const out = await resp.json().catch(() => ({}))
-  if (!out.ok) throw new Error(out.error || `wire chat ${resp.status}`)
+  if (!out.ok) throw transportError(resp,out)
   return { text: out.text || '', backend: out.backend || '', ...(out.usage ? {usage:out.usage} : {}) }
 }

@@ -1,4 +1,4 @@
-import {useEffect,useRef} from 'preact/hooks'
+import {useEffect,useRef,useState} from 'preact/hooks'
 import {actionRows,LANES} from '../lib/launchpad.js'
 
 const DOT=Object.fromEntries(LANES.map(l=>[l.k,l.dot]))
@@ -86,6 +86,13 @@ function SuggestionRow({items,index,onPick,label,paused}) {
 }
 
 export function SuggestionRows({items,onPick,label,paused=false}) {
-  return <div class="chat-suggestion-rows">{actionRows(items).map((row,i)=>
+  const query='(min-width: 1024px) and (min-height: 540px)'
+  const [rows,setRows]=useState(()=>window.matchMedia?.(query)?.matches?5:4)
+  useEffect(()=>{
+    const media=window.matchMedia?.(query),change=e=>setRows(e.matches?5:4)
+    media?.addEventListener('change',change)
+    return ()=>media?.removeEventListener('change',change)
+  },[])
+  return <div class="chat-suggestion-rows">{actionRows(items,rows).map((row,i)=>
     <SuggestionRow key={i} items={row} index={i} onPick={onPick} label={label} paused={paused}/>)}</div>
 }

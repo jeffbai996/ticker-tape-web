@@ -1,3 +1,4 @@
+import {ChatFailure} from './ChatFailure.jsx'
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { streamChat } from '../lib/chatClient.js'
 import { fetchWireChatModels, wireComplete, wireStream, wireChatAvailable } from '../lib/wirechat.js'
@@ -252,7 +253,7 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
           // looks identical. Both recover on the one-shot twin below.
           if (!acc.trim()) throw new Error('empty stream')
         } catch (error) {
-          if (acc.trim()) throw error
+          if (IS_FAMILY_AI || acc.trim()) throw error
           // The one-shot twin preserves the selected model and effort when a
           // stream is interrupted before it emits any content.
           const out = await wireComplete({
@@ -277,7 +278,7 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
       }
       if (archive) saveReport({ ...archive, text: acc })
     } catch (err) {
-      setError(String(err.message || err))
+      setError(err.status===429?{message:String(err.message||err),status:429,code:err.code,retryAt:err.retryAt}:String(err.message||err))
     } finally {
       setBusy(false)
     }
@@ -473,7 +474,7 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
       {(text || error) && (
         <div ref={bodyRef} class="ai-report-body px-4 sm:px-6 py-4 font-anth text-[13px] leading-relaxed select-text text-ink-2 max-h-[45vh] overflow-y-auto break-words">
           {text && <MdLite text={text} />}
-          {error && <span class="block pt-2 font-mono text-[11px] text-danger">{error}</span>}
+          {error && <div class="pt-2"><ChatFailure error={error} onRetry={generate} busy={busy} /></div>}
           {busy && <span class="text-accent">▌</span>}
         </div>
       )}

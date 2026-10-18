@@ -1,3 +1,4 @@
+import {ChatFailure} from '../components/ChatFailure.jsx'
 import {ConversationDelete} from '../components/ConversationDelete.jsx'
 import {pickerModels,modelGroups} from '../lib/chatModels.js'
 import {SuggestionRows} from '../components/SuggestionRows.jsx'
@@ -32,7 +33,7 @@ import { captureAnchor, restoreAnchor } from '../lib/scrollAnchor.js'
 import { CHATSTORE_SYNC_EVENT, chatstoreAvailable, syncNotes } from '../lib/chatstore.js'
 import { LANES, activeLanes, dynamicActions, visibleActions, promptLabel } from '../lib/launchpad.js'
 import {
-  fetchThreadList, hydrateActiveThread, loadActiveHistory, migrateLegacy,
+  liveThreadList, onThreadsChange, fetchThreadList, hydrateActiveThread, loadActiveHistory, migrateLegacy,
   openThread, removeThread, saveActiveHistory, flushActiveHistory, startNewThread, deleteActiveThread, currentThreadId,
 } from '../lib/threads.js'
 import { wireServiceUrl } from '../lib/wire.js'
@@ -54,7 +55,7 @@ function baseSystem() {
     'pulse, the macro calendar (plus adding user catalysts to it), watchlist ' +
     'read/write, alert arming, persistent memory, and app navigation. Use them for ' +
     'anything involving current prices, technicals, or the watchlist instead of ' +
-    'answering from memory; call several in one round when that is faster. ' +
+    'answering from memory; complete the relevant reads before answering. ' +
     'Answer like a sharp desk colleague: lead with the direct call, then the ' +
     'numbers behind it. Always quote the actual figures your tools returned ' +
     '(price, %, levels, dates) — never vague direction words where a number ' +
@@ -792,7 +793,9 @@ export function Chat() {
   const sessionFailure = (err) => {
     setError(`${tl('session sync failed')}: ${String(err?.message || err)}`)
   }
-  const refreshThreads = () => fetchThreadList().then(setThreads).catch(sessionFailure)
+  const threadRead=useRef(0)
+  const refreshThreads = () => {const revision=++threadRead.current;return fetchThreadList().then(rows=>{if(revision===threadRead.current)setThreads(rows)}).catch(sessionFailure)}
+  useEffect(()=>onThreadsChange(refreshThreads),[])
   useEffect(() => {
     const onSync = () => { setMemories(loadMemories()); setJournal(loadJournal()) }
     if (chatstoreAvailable()) {
@@ -929,9 +932,9 @@ export function Chat() {
 
   // follow the stream only when the user is already at the tail — scrolling
   // up to reread mustn't get yanked back down on every delta
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (stickRef.current) scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight)
-  }, [history])
+  }, [history,liveAnswer,activity,usage])
 
   // A text-size change reflows every bubble, so the transcript slides out
   // from under the reader unless we put them back. useLayoutEffect, not
@@ -954,7 +957,6 @@ export function Chat() {
     setHistory(next)
     if (persist) {
       saveHistory(next)
-      if (chatstoreAvailable()) setTimeout(refreshThreads, 1500)
     }
   }
 
@@ -1146,8 +1148,9 @@ export function Chat() {
     } catch (err) {
       if (err?.name !== 'AbortError') {
         const message=String(err.message || err)
-        setError(tl(message))
-        base[base.length-1]={...base.at(-1),failure:tl(message)}
+        const failure=err.status===429?{message:tl(message),status:429,code:err.code,retryAt:err.retryAt||Date.now()+(err.retryAfter||0)*1000}:tl(message)
+        setError(failure)
+        base[base.length-1]={...base.at(-1),failure}
       }
       const stopped = err?.name === 'AbortError'
       updateActivity((steps) => steps.map((step) => step.status === 'running'
@@ -1448,6 +1451,7 @@ export function Chat() {
       </form>
   )
 
+  const liveThreads=liveThreadList(threads,currentThreadId(),history,{streaming:!!liveAnswer})
   const rail=chatRailData({symbols:quoteSymbols,quotes,earnDays,events:upcoming})
   const railMovers=rail.movers
 
@@ -1504,7 +1508,7 @@ export function Chat() {
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
               <path d="M5 5h14v11H9l-4 3V5z"/><path d="M8 9h8M8 12h5"/>
             </svg>
-            {threads.length > 0 && <span class="absolute -top-1 -right-1 min-w-[13px] h-[13px] px-0.5 grid place-items-center rounded-full bg-surface-3 border border-line-2 font-mono text-[7.5px] text-ink-2 leading-none">{threads.length}</span>}
+            {liveThreads.length > 0 && <span class="absolute -top-1 -right-1 min-w-[13px] h-[13px] px-0.5 grid place-items-center rounded-full bg-surface-3 border border-line-2 font-mono text-[7.5px] text-ink-2 leading-none">{liveThreads.length}</span>}
           </button>
           <button
             onClick={() => { setMemories(loadMemories()); setDrawer(drawer === 'mem' ? null : 'mem') }}
@@ -1557,8 +1561,8 @@ export function Chat() {
             <button class="chat-drawer-close text-muted hover:text-ink" onClick={() => setDrawer(null)} aria-label={tl('close')}>✕</button>
           </div>
           <div class="py-2 flex flex-col gap-1">
-            {threads.length === 0 && <div class="font-anth text-[12px] text-muted py-1">{tl('no saved sessions yet')}</div>}
-            {threads.map((thread) => (
+            {liveThreads.length === 0 && <div class="font-anth text-[12px] text-muted py-1">{tl('no saved sessions yet')}</div>}
+            {liveThreads.map((thread) => (
               <SessionRow key={thread.id} thread={thread} busy={busy}
                 active={thread.id === currentThreadId()}
                 onOpen={() => switchThread(thread.id)}
@@ -1728,7 +1732,7 @@ export function Chat() {
                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5M20 12a8 8 0 1 0-2.3 5.6"/></svg>
                   </button>
                 </div>
-                {m.failure && <div class="chat-message-copy text-[11px] text-red-400">{m.failure}</div>}
+                {m.failure && <ChatFailure error={m.failure} busy={busy} onRetry={()=>replay(i,m.content)} />}
               </>}
             </div>
           )
@@ -1755,9 +1759,7 @@ export function Chat() {
         {notice && (
           <div class="self-start font-mono text-[10px] text-success px-1">{notice}</div>
         )}
-        {error && !history.some(m=>m.failure===error) && (
-          <div class="self-start font-mono text-[11px] text-red-400 px-1">{error}</div>
-        )}
+        {error && !history.some(m=>(m.failure?.message||m.failure)===(error?.message||error)) && <ChatFailure error={error} />}
           </div>
           {composer}
         </>
@@ -1785,13 +1787,13 @@ export function Chat() {
       <section class="chat-rail-section bg-surface-1 border border-line rounded-xl overflow-hidden shrink-0">
           <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2 flex items-baseline gap-1.5">
             <h2 class="font-anth font-bold text-[10px] tracking-wider text-accent uppercase">{tl('sessions')}</h2>
-            <span class="font-mono text-[9px] text-muted">{threads.length}</span>
+            <span class="font-mono text-[9px] text-muted">{liveThreads.length}</span>
             <button onClick={newThread} disabled={busy} title={tl('new session')}
               class="ml-auto font-mono text-[10px] text-muted hover:text-accent">{tl('+ new')}</button>
           </header>
           <div class="px-1 py-1 max-h-[34vh] overflow-y-auto">
-            {threads.length === 0 && <div class="px-1.5 font-anth text-[11px] text-muted py-0.5">{tl('no saved threads')}</div>}
-            {threads.map((t) => (
+            {liveThreads.length === 0 && <div class="px-1.5 font-anth text-[11px] text-muted py-0.5">{tl('no saved threads')}</div>}
+            {liveThreads.map((t) => (
               <div key={t.id} class={`group flex items-baseline gap-1.5 px-1.5 py-0.5 rounded-md ${t.id === currentThreadId() ? 'bg-accent-soft' : 'hover:bg-surface-2'}`}>
                 <button onClick={() => switchThread(t.id)} class="flex-1 min-w-0 text-left">
                   <span class={`block truncate font-anth text-[11px] ${t.id === currentThreadId() ? 'text-accent' : 'text-ink-2'}`}>{t.title || tl('untitled')}</span>

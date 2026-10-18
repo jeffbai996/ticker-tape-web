@@ -209,3 +209,14 @@ it('routes family Flash to its own model instead of silently choosing Sonnet',as
  await chat.wireComplete({model:'family-flash',effort:'high',messages:[{role:'user',content:'Hello'}]})
  expect(JSON.parse(fetcher.mock.calls[0][1].body)).toMatchObject({model:'family-flash',effort:'medium'})
 })
+
+it('retains rate-limit retry metadata from a failed stream',async()=>{
+ const chat=await family();vi.stubGlobal('fetch',vi.fn(async()=>Response.json({ok:false,error:'Assistant request limit reached.',code:'rate_limited',retry_after:9},{status:429})))
+ await expect(chat.wireStream({model:'family-flash',messages:[]})).rejects.toMatchObject({status:429,code:'rate_limited',retryAfter:9})
+})
+it('never silently substitutes a completed answer when family streaming fails',async()=>{
+ await family();const {runAgenticOverWire}=await import('../../src/lib/agent.js')
+ const complete=vi.fn();const fail=Object.assign(Error('rate limit'),{status:429})
+ await expect(runAgenticOverWire({model:'family-flash',system:'Task',messages:[{role:'user',content:'Hello'}]},{wireStream:async()=>{throw fail},wireComplete:complete})).rejects.toBe(fail)
+ expect(complete).not.toHaveBeenCalled()
+})

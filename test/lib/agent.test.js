@@ -224,3 +224,10 @@ it('refreshes app access after stale conversation claims before asking the model
  expect(stream.mock.calls[0][0].messages.at(-1).content).toContain('Long term')
  expect(trace).toHaveBeenCalledWith(expect.objectContaining({type:'tool_done',name:'get_portfolios'}))
 })
+
+it('allows a multi-book review to finish its required reads before answering',async()=>{
+ let calls=0
+ const wireStream=vi.fn(async()=>({text:++calls<=9?'{"tool":"get_watchlist","args":{}}':'Review complete.'}))
+ const added=await runAgenticOverWire({model:'family-sonnet',system:'Review all requested books',messages:[{role:'user',content:'Review the accounts'}]},{wireStream,executeTool:async()=>'{"ok":true}'})
+ expect(wireStream).toHaveBeenCalledTimes(10);expect(added.at(-1).content).toBe('Review complete.')
+})

@@ -10,7 +10,7 @@ it('moves adjacent rows in opposite directions and pauses for reading and reduce
  vi.stubGlobal('requestAnimationFrame',f=>{frames.set(++id,f);return id})
  vi.stubGlobal('cancelAnimationFrame',n=>frames.delete(n))
  vi.stubGlobal('ResizeObserver',class {observe(){}disconnect(){}})
- vi.stubGlobal('matchMedia',()=>({matches:false,addEventListener:(_,f)=>{mediaChanges.push(f)},removeEventListener(){}}))
+ vi.stubGlobal('matchMedia',query=>({matches:false,addEventListener:(_,f)=>{if(query.includes('reduced-motion'))mediaChanges.push(f)},removeEventListener(){}}))
  vi.spyOn(HTMLElement.prototype,'clientWidth','get').mockReturnValue(300)
  vi.spyOn(HTMLElement.prototype,'offsetWidth','get').mockReturnValue(900)
  root=document.createElement('div');document.body.append(root)

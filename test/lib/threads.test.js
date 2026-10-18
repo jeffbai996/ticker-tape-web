@@ -151,3 +151,11 @@ it('deletion waits for an in-flight first save so it cannot recreate the title',
 })
 
 })
+
+it('projects the active conversation into the rail without persisting empty stubs',async()=>{
+ const {liveThreadList}=await import('../../src/lib/threads.js')
+ const rows=[{id:7,title:'Old',n:1}],messages=[{role:'user',content:'Updated question'}]
+ expect(liveThreadList(rows,7,messages,{streaming:true})[0]).toMatchObject({title:'Updated question',n:2})
+ expect(rows[0]).toMatchObject({title:'Old',n:1})
+ expect(liveThreadList([],7,[])).toEqual([])
+})

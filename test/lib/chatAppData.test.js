@@ -21,6 +21,8 @@ it('exposes saved cash, transactions and historical marks without merging books'
  expect((await readChatPortfolio({portfolio:'p1',section:'trades'})).rows[0].id).toBe('t1')
  const history=await readChatPortfolio({portfolio:'p1',section:'history'},{fetchHistory:async()=>({marks:[]})})
  expect(history.rows[0]).toMatchObject({d:'2026-01-02',v:1500})
+ expect(history.metric_definitions.drawdownPct).toContain('cash-flow-adjusted')
+ expect(history.metric_definitions.high_low).toContain('raw account-value')
 })
 it('uses the app valuation and refuses to call a partial valuation a complete total',async()=>{
  const getQuotes=vi.fn(async syms=>syms.map(symbol=>({symbol,price:110,pct:1,currency:'USD'})))

@@ -1,3 +1,4 @@
+import {IS_FAMILY_AI} from './nav.js'
 // Agentic chat loop: stream a completion with tools attached; when the model
 // calls tools, execute them client-side, append the results, and go around
 // again. The final (tool-free) answer streams to the UI like a plain chat
@@ -12,7 +13,7 @@ import {
   wireStream,
 } from './wirechat.js'
 
-const MAX_ROUNDS = 6
+const MAX_ROUNDS = 12
 const ANALYSIS_TOOLS = new Set([...APP_READ_TOOLS,'wire_search','get_quotes','get_technicals','get_earnings','get_market_pulse','get_watchlist','get_calendar','journal_search'])
 const analysisRequest = messages => !!messages.findLast(m=>m.role==='user')?.context
 const analysisResult = () => JSON.stringify({error:'This contextual analysis can only read data. Request changes in a separate chat message.'})
@@ -114,7 +115,7 @@ export async function runAgenticOverWire({
         signal,
       }))
     } catch (err) {
-      if (signal?.aborted || err?.partial) throw err // never restart after visible output
+      if (IS_FAMILY_AI || signal?.aborted || err?.partial) throw err // never restart after visible output
       const completed = await completeTurn({
         model, effort, system: roundSystem, messages: contextualMessages(convo),
       })
