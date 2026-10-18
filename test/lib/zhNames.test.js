@@ -6,6 +6,7 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { hasCjk, loadMissingZhName, loadZhTable, localName, onZhTable, tapeName, zhAliasHits, zhKnownSymbols, zhName } from '../../src/lib/zhNames.js'
 import { setLocale } from '../../src/lib/i18n.js'
+import { BUCKETS } from '../../src/lib/symbols.js'
 
 beforeAll(async () => { await loadZhTable() })
 
@@ -136,7 +137,7 @@ describe('tapeName', () => {
   })
   it('falls back to nothing when the name is too long for a tape or unknown', () => {
     setLocale('zh')
-    expect(tapeName('ASX')).toBeNull()
+    expect(tapeName('BNDX')).toBeNull()
     expect(tapeName('ZZZZ9')).toBeNull()
     setLocale('en')
   })
@@ -166,5 +167,30 @@ describe('tape short names', () => {
   it('stays a symbol in English', () => {
     setLocale('en')
     expect(tapeName('TSM')).toBeNull()
+  })
+})
+
+
+describe('Chinese tape name coverage',()=>{
+  it('uses common company abbreviations without changing full research names',()=>{
+    setLocale('zh')
+    for(const [symbol,name] of Object.entries({DIS:'迪士尼',MU:'美光',ON:'安森美',ARM:'安谋',GFS:'格芯',TMO:'赛默飞',ASX:'日月光',MKSI:'万机仪器',MSTR:'微策略'}))expect(tapeName(symbol)).toBe(name)
+    expect(zhName('TMO')).toBe('赛默飞世尔科技公司')
+    expect(tapeName('BRK.B')).toBe(tapeName('BRK-B'))
+    setLocale('en')
+  })
+  it('covers every stock in the standard company rosters',()=>{
+    setLocale('zh')
+    const stocks=[...new Set(BUCKETS.filter(bucket=>bucket.name!=='ETFs & Macro').flatMap(bucket=>bucket.symbols))]
+    expect(stocks.filter(symbol=>!tapeName(symbol))).toEqual([])
+    setLocale('en')
+  })
+  it('allows eight-character names and keeps longer unknown names unaltered',async()=>{
+    await loadMissingZhName('TST8',{lookup:async()=> '一二三四五六七八公司'})
+    await loadMissingZhName('TST9',{lookup:async()=> '一二三四五六七八九公司'})
+    setLocale('zh')
+    expect(tapeName('TST8')).toBe('一二三四五六七八')
+    expect(tapeName('TST9')).toBeNull()
+    setLocale('en')
   })
 })

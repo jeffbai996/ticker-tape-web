@@ -69,18 +69,19 @@ export function localName(symbol, fallback = '') {
   return zhName(symbol) || fallback
 }
 
-/** The name a Chinese tape scrolls: the short name, as 同花顺 and 富途 print
- *  it, with the company suffix trimmed (英伟达公司 → 英伟达). Null in English,
+/** The label a Chinese tape scrolls: an established short name or native
+ *  brand, then the directory name with its company suffix trimmed. Null in English,
  *  for an unknown symbol, or when the name is still too long for the belt,
  *  so the caller shows the symbol instead. */
 export function tapeName(symbol) {
   if (tapeLocale() !== 'zh') return null
-  const fixed = ZH_SHORT_NAMES[String(symbol || '').toUpperCase()]
+  const key = String(symbol || '').toUpperCase()
+  const fixed = ZH_SHORT_NAMES[key] || ZH_SHORT_NAMES[key.replace(/\.([A-Z])$/, '-$1')]
   if (fixed) return fixed
   const name = zhName(symbol)
   if (!name) return null
   const short = name.replace(/(?:股份有限公司|有限公司|公司)$/, '')
-  return short && short.length <= 6 ? short : null
+  return short && short.length <= 8 ? short : null
 }
 
 export function zhName(symbol, { traditional = false } = {}) {
