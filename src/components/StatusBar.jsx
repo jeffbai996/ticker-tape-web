@@ -13,13 +13,12 @@ import { usePointerHighlight, useTapeMotion } from './Tape.jsx'
 import { tl, getLocale, setLocale } from '../lib/i18n.js'
 import { getMarketColorOrder, oppositeMarketColorOrder, saveMarketColorOrder } from '../lib/marketColors.js'
 
-// Session-state chip styling mirrors the extended-quote grammar: blue PM and
-// purple AH. Green/red remain reserved for open/closed state.
+// Session status has fixed colors, independent of the market gain/loss palette.
 const STATE_CHIP = {
-  open: 'text-up border-up/50 bg-up/10',
+  open: 'text-[#3fb950] border-[#3fb950]/50 bg-[#3fb950]/10',
   pre: 'text-[#5ba8d9] border-[#5ba8d9]/50 bg-[#5ba8d9]/10',
   post: 'text-[#c084fc] border-[#c084fc]/50 bg-[#c084fc]/10',
-  closed: 'text-down border-down/50 bg-down/10',
+  closed: 'text-muted border-line bg-surface-2',
 }
 const COMPACT_STATE_LABEL = { open: 'O', pre: 'P', post: 'A', closed: 'C', holiday: 'H' }
 // single-character session states for the zh reader (Jeff 2026-08-05)
