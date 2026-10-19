@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
-import { plainTraceText } from '../../src/lib/chatTrace.js'
+import { plainTraceText, tracePrintout } from '../../src/lib/chatTrace.js'
 
 describe('plainTraceText', () => {
   it('removes markdown emphasis from compact status copy', () => {
@@ -38,4 +38,33 @@ it('gives portfolio calendar and market tools distinct glyphs while keeping reas
  expect(completionLabel([{kind:'tool',name:'get_technicals'}])).toBe('Analyzed for')
  expect(completionLabel([{kind:'tool',name:'get_portfolios'}])).toBe('Reviewed for')
  expect(completionLabel([])).toBe('Worked for')
+})
+
+it('formats tool JSON for inspection while preserving non-JSON output literally', () => {
+ expect(tracePrintout('{"symbol":"AAPL","eps":2}')).toBe('{\n  "symbol": "AAPL",\n  "eps": 2\n}')
+ expect(tracePrintout('**Output**\n<script>example</script>')).toBe('**Output**\n<script>example</script>')
+ expect(tracePrintout(null)).toBe('')
+ expect(tracePrintout(0)).toBe('0')
+})
+it('bounds saved trace printouts without truncating the tool result sent to the model', () => {
+ const result='x'.repeat(20000)
+ expect(tracePrintout(result)).toHaveLength(16002)
+ expect(tracePrintout(result).endsWith('\n…')).toBe(true)
+ expect(result).toHaveLength(20000)
+})
+
+it('recovers saved tool results from the matching turn without crossing reused call ids', async () => {
+ const { traceToolDetails } = await import('../../src/lib/chatTrace.js')
+ const steps=[{key:'tool-w0',kind:'tool'}]
+ const history=[{role:'user',content:'Earlier question'},
+ {role:'assistant',toolCalls:[{id:'w0',args:{symbol:'MSFT'}}]},
+ {role:'tool',id:'w0',content:'old result'},{role:'assistant',content:'Earlier answer'},
+ {role:'user',content:'New question'},
+ {role:'assistant',toolCalls:[{id:'w0',args:{symbol:'AAPL'}}]},
+ {role:'tool',id:'w0',content:'{"eps":2}'},{role:'assistant',trace:steps}]
+ const enriched=traceToolDetails(steps,history,7)[0]
+ expect(enriched.input).toContain('AAPL')
+ expect(enriched.output).toBe('{\n  "eps": 2\n}')
+ expect(traceToolDetails(steps,history,3)[0].output).toBe('old result')
+ expect(steps[0]).toEqual({key:'tool-w0',kind:'tool'})
 })

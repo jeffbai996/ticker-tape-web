@@ -47,3 +47,33 @@ export function completionLabel(steps=[]) {
  if(tools.some(s=>/technical|research|quotes/i.test(s.name||s.label||'')))return 'Analyzed for'
  return tools.length?'Reviewed for':'Worked for'
 }
+
+/** Keep a readable, bounded copy in the trace; the model still gets the full result. */
+export function tracePrintout(value, limit = 16000) {
+  if (value == null) return ''
+  let text = value
+  if (typeof text === 'string') {
+    try { text = JSON.parse(text) } catch { /* plain text stays literal */ }
+  }
+  text = typeof text === 'string' ? text : JSON.stringify(text, null, 2)
+  return text.length > limit ? `${text.slice(0, limit)}\n…` : text
+}
+
+/** Older traces saved tool bodies in the transcript rather than the step. */
+export function traceToolDetails(steps, history, index) {
+  let start = index
+  while (start > 0 && history[start - 1].role !== 'user') start -= 1
+  const turn = history.slice(start, index + 1)
+  const calls = new Map(turn.flatMap(message => message.toolCalls || []).map(call => [String(call.id), call]))
+  const results = new Map(turn.filter(message => message.role === 'tool').map(message => [String(message.id), message.content]))
+  return steps.map(step => {
+    if (step.kind !== 'tool') return step
+    const id = String(step.key || '').replace(/^tool-/, '')
+    const args = calls.get(id)?.args
+    return {
+      ...step,
+      input: step.input || (args && Object.keys(args).length ? tracePrintout(args, 4000) : ''),
+      output: step.output || tracePrintout(results.get(id)),
+    }
+  })
+}

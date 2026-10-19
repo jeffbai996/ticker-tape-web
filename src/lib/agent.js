@@ -84,7 +84,7 @@ export async function runAgenticOverWire({
     const entries=[{role:'assistant',content:'',toolCalls:[{id,name:call.name,args:call.args||{}}]},
       {role:'tool',id,name:call.name,content:result}]
     added.push(...entries);contextAdded.push(...entries)
-    onTrace?.({type:'tool_done',round:-1,id,name:call.name})
+    onTrace?.({type:'tool_done',round:-1,id,name:call.name,result})
     onRound?.([...added])
   }
   for (let round = 0; round < MAX_ROUNDS; round++) {
@@ -142,6 +142,7 @@ export async function runAgenticOverWire({
       onTrace?.({
         type: 'model_done', round,
         outcome: needsAnotherRound ? 'continue' : 'answer',
+        ...(needsAnotherRound ? { commentary: text } : {}),
       })
       if (needsAnotherRound) {
         contextAdded.push(
@@ -179,7 +180,7 @@ export async function runAgenticOverWire({
       })
       throw err
     }
-    onTrace?.({ type: 'tool_done', round, id, name: call.name })
+    onTrace?.({ type: 'tool_done', round, id, name: call.name, result })
     const resultEntry = { role: 'tool', id, name: call.name, content: result }
     added.push(resultEntry)
     contextAdded.push(resultEntry)
@@ -245,7 +246,7 @@ export async function runAgentic({
         })
         throw err
       }
-      onTrace?.({ type: 'tool_done', round, id: tc.id, name: tc.name })
+      onTrace?.({ type: 'tool_done', round, id: tc.id, name: tc.name, result })
       added.push({ role: 'tool', id: tc.id, name: tc.name, content: result })
       onRound?.([...added])
     }

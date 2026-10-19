@@ -1,3 +1,4 @@
+import { TraceEntry } from '../components/TraceEntry.jsx'
 import {ChatNotice} from '../components/ChatNotice.jsx'
 import {ChatFailure} from '../components/ChatFailure.jsx'
 import {ConversationDelete} from '../components/ConversationDelete.jsx'
@@ -38,7 +39,7 @@ import {
   openThread, removeThread, saveActiveHistory, flushActiveHistory, startNewThread, deleteActiveThread, currentThreadId,
 } from '../lib/threads.js'
 import { wireServiceUrl } from '../lib/wire.js'
-import { plainTraceText, hasTurnActivity, activityGroups, traceIcon, completionLabel } from '../lib/chatTrace.js'
+import { plainTraceText, hasTurnActivity, activityGroups, traceIcon, completionLabel, tracePrintout, traceToolDetails } from '../lib/chatTrace.js'
 import { ChatFooter } from '../components/ChatFooter.jsx'
 import { loadZhTable, loadMissingZhName, onZhTable, zhName } from '../lib/zhNames.js'
 import { onPortfoliosChange } from '../lib/myPortfolios.js'
@@ -280,18 +281,6 @@ function durationLabel(ms) {
   return metricDuration(Math.max(0,ms)/1000)
 }
 
-function traceArgs(args) {
-  if (!args || typeof args !== 'object' || !Object.keys(args).length) return ''
-  const raw = Object.entries(args)
-    // These are already printed in the step title by toolRunLabel. Repeating
-    // `symbol: AAPL` underneath `Checking AAPL earnings` is database chrome,
-    // not useful status.
-    .filter(([key]) => !['symbols', 'symbol', 'view', 'label'].includes(key))
-    .map(([key, value]) => `${key}: ${typeof value === 'string' ? value : JSON.stringify(value)}`)
-    .join(' · ')
-  return raw.length > 320 ? `${raw.slice(0, 319)}…` : raw
-}
-
 /** One row of the session list. Delete is always visible (hover-only meant it
  *  didn't exist on touch, and Jeff couldn't find it at all — 2026-08-07), and
  *  arming it flips the row into a confirm rather than firing on one tap. */
@@ -383,7 +372,7 @@ export function ActivityTrace({ steps, busy = false, startedAt, usage = null }) 
   // it duplicates the header; it rejoins the moment it finishes and has a
   // duration to report, which is when a history row starts being worth having.
   const visibleSteps = steps.filter((step) => !(
-    busy && step.status === 'running' && (step.verb || step.label) === title
+    busy && step.status === 'running' && (step.verb || step.label) === title && !step.detail && !step.thinkTokens
   ))
 
   return (
@@ -402,9 +391,6 @@ export function ActivityTrace({ steps, busy = false, startedAt, usage = null }) 
         <span class="chat-trace-count">{tt(steps.length===1?'chat.step':'chat.steps',{n:steps.length})}</span>
         </span>
       </button>
-      {/* live reasoning rides ABOVE the step list: it's the part you actually
-          read while waiting, and it stays reachable per-step afterwards */}
-      {liveThinking && <ThinkingPane text={liveThinking} />}
       <div class={`chat-trace-reveal ${open ? 'is-open' : ''}`}>
         <div>
           {/* Rendered only when it has rows. .chat-trace-body carries a
@@ -418,16 +404,20 @@ export function ActivityTrace({ steps, busy = false, startedAt, usage = null }) 
               <section key={group.model?.key || index} class="chat-trace-phase">
                 {group.model && (
                   <div class="chat-trace-reason">
-                    <div class="chat-trace-row">
+                    <TraceEntry detail={group.model.detail || group.model.commentary || group.model.thinkTokens ? <>
+                      {group.model.detail && (group.model.status === 'running'
+                        ? <ThinkingPane text={group.model.detail} />
+                        : <div class="chat-trace-detail">{plainTraceText(group.model.detail)}</div>)}
+                      {group.model.commentary && <div class="chat-trace-detail">{group.model.commentary}</div>}
+                      {!group.model.detail && group.model.thinkTokens ? <div class="chat-trace-detail">
+                        {`${tl('reasoned privately')} · ${thinkDepth(group.model.thinkTokens)}`}
+                      </div> : null}
+                    </> : null}>
                       <span class="chat-trace-icon"><StepIcon kind="model" verb={group.model.label || group.model.verb} status={group.model.status} /></span>
                       <span>{activityLabel(group.model.label,tl)}</span>
                       <span class="chat-trace-time">{group.model.startedAt ? durationLabel((group.model.endedAt || now)-group.model.startedAt) : ''}</span>
                       {!group.model.detail && group.model.thinkTokens ? <span class="chat-trace-time">{thinkDepth(group.model.thinkTokens)}</span> : null}
-                    </div>
-                    {group.model.detail && <details class="chat-trace-reason-detail">
-                      <summary>{tl('details')}</summary>
-                      <div class="chat-trace-detail">{plainTraceText(group.model.detail)}</div>
-                    </details>}
+                    </TraceEntry>
                   </div>
                 )}
                 {group.tools.length > 0 && <div class="chat-trace-tools">
@@ -437,26 +427,17 @@ export function ActivityTrace({ steps, busy = false, startedAt, usage = null }) 
                     return (
                 <div key={step.key} class={`chat-trace-step is-tool is-${step.status || 'done'}`}>
                   <div class="min-w-0 flex-1">
-                    <div class="chat-trace-row">
+                    <TraceEntry detail={step.input || step.output || step.detail ? <>
+                      {step.input && <div class="chat-trace-printout"><div>{tl('Input')}</div><pre>{step.input}</pre></div>}
+                      {step.output && <div class="chat-trace-printout"><div>{tl('Output')}</div><pre>{step.output}</pre></div>}
+                      {step.detail && <div class="chat-trace-detail">{plainTraceText(step.detail)}</div>}
+                    </> : null}>
                       <span class="chat-trace-icon"><StepIcon kind={step.kind} name={step.name} verb={step.label || step.verb} status={step.status} /></span>
                       <span class="chat-trace-label">
                         {activityLabel(step.label,tl)}{step.status === 'running' && <Ellipsis />}
                       </span>
                       {stepElapsed && <span class="chat-trace-time">{stepElapsed}</span>}
-                    </div>
-                    {/* No placeholder for absent reasoning. Most backends
-                        return none at all, so "no reasoning returned for this
-                        step" was a line of chrome under every model step
-                        announcing that nothing happened. A step with real
-                        reasoning shows it; a step with only a token count says
-                        so; a step with neither says nothing. */}
-                    {step.detail
-                      ? <div class={`chat-trace-detail ${step.kind === 'tool' ? 'is-tool' : ''}`}>{plainTraceText(step.detail)}</div>
-                      : step.kind === 'model' && step.thinkTokens ? (
-                        <div class="chat-trace-detail">
-                          {`${tl('reasoned privately')} · ${thinkDepth(step.thinkTokens)}`}
-                        </div>
-                      ) : null}
+                    </TraceEntry>
                   </div>
                 </div>
                     )
@@ -1065,6 +1046,7 @@ export function Chat() {
               ...step,
               label: event.outcome === 'answer' ? 'Answered' : 'Reasoned',
               status: 'done', endedAt: now,
+              commentary: event.commentary ? tracePrintout(event.commentary) : undefined,
             }
           : step))
         return
@@ -1073,7 +1055,7 @@ export function Chat() {
         const call = { name: event.name, args: event.args }
         updateActivity((steps) => [...steps, {
           key: `tool-${event.id}`, kind: 'tool', name:event.name, label: toolRunLabel(call),
-          verb: toolRunLabel(call), detail: traceArgs(event.args),
+          verb: toolRunLabel(call), input: event.args && Object.keys(event.args).length ? tracePrintout(event.args, 4000) : '',
           status: 'running', startedAt: now,
         }])
         return
@@ -1084,6 +1066,7 @@ export function Chat() {
               ...step,
               status: event.type === 'tool_error' ? 'error' : 'done',
               detail: event.type === 'tool_error' ? event.error : step.detail,
+              output: event.type === 'tool_done' ? tracePrintout(event.result) : step.output,
               endedAt: now,
             }
           : step))
@@ -1700,7 +1683,7 @@ export function Chat() {
             return (
               <div key={i} class="w-full flex flex-col gap-1.5 chat-turn-enter">
                 {m.trace?.length > 0 && (
-                  <ActivityTrace steps={m.trace} startedAt={m.traceStartedAt} usage={m.traceUsage} />
+                  <ActivityTrace steps={traceToolDetails(m.trace, history, i)} startedAt={m.traceStartedAt} usage={m.traceUsage} />
                 )}
                 <div class="group self-start max-w-[92%] flex items-center gap-1.5">
                   <div class="chat-message-copy chat-assistant-bubble min-w-0 rounded-2xl border px-3.5 py-2.5 text-[1em] leading-relaxed bg-surface-1 border-line text-ink font-anth">

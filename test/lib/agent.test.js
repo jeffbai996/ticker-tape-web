@@ -120,6 +120,7 @@ describe('agent trace lifecycle', () => {
     expect(events[2]).toMatchObject({
       type: 'tool_start', round: 0, id: 't1', name: 'get_watchlist', args: {},
     })
+    expect(events[3]).toMatchObject({ type: 'tool_done', result: '{"symbols":["AAPL"]}' })
     expect(events[4]).toMatchObject({ type: 'model_start', round: 1 })
   })
 
@@ -150,11 +151,13 @@ describe('private wire agent loop', () => {
       .mockResolvedValueOnce({ text: 'AAPL leads the list; watch the next earnings print.' })
     const runTool = vi.fn().mockResolvedValue('{"symbols":["AAPL"]}')
     const rounds = []
+    const trace = vi.fn()
 
     const added = await runAgenticOverWire({
       model: 'gpt-terra', effort: 'high', system: 'system',
       messages: [{ role: 'user', content: 'What should I watch?' }],
       onRound: (entries) => rounds.push(entries),
+      onTrace: trace,
     }, {
       wireStream,
       wireComplete: vi.fn(),
@@ -172,6 +175,8 @@ describe('private wire agent loop', () => {
       { role: 'assistant', content: 'I need the current tape before answering.' },
       expect.objectContaining({ role: 'user', content: expect.stringContaining('Continue the original request') }),
     ]))
+    expect(trace).toHaveBeenCalledWith(expect.objectContaining({type:'tool_done',result:'{"symbols":["AAPL"]}'}))
+    expect(trace).toHaveBeenCalledWith(expect.objectContaining({type:'model_done',commentary:'I need the current tape before answering.'}))
     expect(rounds.length).toBeGreaterThan(2)
   })
 })
@@ -222,7 +227,7 @@ it('refreshes app access after stale conversation claims before asking the model
  expect(execute).toHaveBeenCalledWith('get_portfolios',{})
  expect(stream.mock.calls[0][0].messages.at(-1).content).toContain('TOOL_RESULT get_portfolios:')
  expect(stream.mock.calls[0][0].messages.at(-1).content).toContain('Long term')
- expect(trace).toHaveBeenCalledWith(expect.objectContaining({type:'tool_done',name:'get_portfolios'}))
+ expect(trace).toHaveBeenCalledWith(expect.objectContaining({type:'tool_done',name:'get_portfolios',result:await execute.mock.results[0].value}))
 })
 
 it('allows a multi-book review to finish its required reads before answering',async()=>{
