@@ -46,7 +46,7 @@ import { Marquee } from '../components/Marquee.jsx'
 import { FlashMetric, FlashPrice } from '../components/Fig.jsx'
 import { Empty, Loading } from '../components/Loading.jsx'
 import { ChartMount } from '../components/LazyChartMount.jsx'
-import { t as tt, tl } from '../lib/i18n.js'
+import { t as tt, tl, getLocale } from '../lib/i18n.js'
 import { localName } from '../lib/zhNames.js'
 import { extendedLabelClass, extendedQuoteStale } from '../lib/extendedHours.js'
 import { freshnessTitle, symbolFreshness } from '../lib/feedHealth.js'
@@ -1925,6 +1925,9 @@ export function Dashboard({ listId = null }) {
             class="board-drop-line pointer-events-none absolute inset-x-0 top-0 z-30 h-[2px] bg-accent opacity-0" />
           {viewMode !== 'flat' ? ordered.map((g, gi) => {
             const folded = isCollapsed(g.name, groupPrefs)
+            const label = viewMode === 'market' && g.name === 'US' && getLocale() === 'zh'
+              ? 'United States'
+              : viewMode === 'market' && g.name === 'Hong Kong' && getLocale() === 'en' ? 'HK' : g.name
             return (
               <div key={g.name}>
                 <div class={`group flex items-center gap-2 px-3 py-1.5 font-mono text-[11px] text-muted tracking-wider border-b border-line select-none ${gi ? 'border-t' : ''}`}>
@@ -1935,7 +1938,7 @@ export function Dashboard({ listId = null }) {
                       <img src={venueFlag({ symbol: g.symbols[0] })} alt=""
                         class="w-3 h-[9px] rounded-[1px] shrink-0" />
                     )}
-                    {tl(g.name)}
+                    {tl(label)}
                     {folded && (
                       <span class="text-[9px] text-ink-2 border border-line rounded-full px-1.5 py-px leading-none tracking-normal normal-case">
                         {g.symbols.length}
