@@ -318,7 +318,7 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
       class="ai-report-card @container bg-surface-1 border border-line rounded-xl">
       {/* Rows come from .ai-report-head in main.css: narrow puts the title
           beside model+effort and the actions below; wide is one row. */}
-      <header class={`ai-report-head items-center gap-x-1.5 gap-y-1.5 px-3 py-2 bg-surface-2 ${hasDetails ? 'border-b border-line-2 rounded-t-xl' : 'rounded-xl'}`}>
+      <header class={`ai-report-head items-center gap-x-1.5 gap-y-1.5 px-3 py-2 bg-surface-1 ${hasDetails ? 'border-b border-line-2 rounded-t-xl' : 'rounded-xl'}`}>
         <div class="min-w-0 flex items-center gap-2">
           <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase flex items-center gap-1.5 whitespace-nowrap shrink-0"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3m0 12v3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1M3 12h3m12 0h3M5.6 18.4l2.1-2.1m8.6-8.6 2.1-2.1"/><circle cx="12" cy="12" r="3.5"/></svg>{tl(label)}</h2>
           {hint && <span class="font-mono text-[9.5px] text-muted normal-case tracking-normal truncate min-w-0 max-sm:hidden">{hint}</span>}
@@ -441,7 +441,7 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
         </div>
       )}
       {showDials && (
-        <div class="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-2 px-3 py-2.5 border-b border-line-2 bg-surface-2/60">
+        <div class="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-2 px-3 py-2.5 border-b border-line-2 bg-surface-1">
           <span class={DIAL_LABEL}>{tl('length')}</span>
           <Segmented label={tl('length')} options={LENGTHS} value={dials.length}
             onPick={(key) => setDials(saveDials({ ...dials, length: key }))} />
