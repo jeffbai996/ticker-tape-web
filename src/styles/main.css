@@ -879,8 +879,8 @@ html[data-pointer-hover] .tape-hot *:not(.text-up):not(.text-down):not([data-tap
   top:0; bottom:0; width:1px; background:var(--color-line);
 }
 .chat-trace-phase + .chat-trace-phase { margin-top:0; }
-.chat-trace-row { display:flex; align-items:center; gap:.5rem; min-height:26px; }
-.chat-trace-icon { position:relative; display:grid; place-items:center; width:var(--chat-trace-gutter); height:24px; flex:none; }
+.chat-trace-row { display:flex; align-items:baseline; gap:.5rem; min-height:26px; }
+.chat-trace-icon { align-self:center; position:relative; display:grid; place-items:center; width:var(--chat-trace-gutter); height:24px; flex:none; }
 .chat-trace-reason { padding:.12rem 0; color:var(--color-muted); font:450 10px/1.4 var(--font-sans); }
 .chat-trace-reason .chat-trace-node { width:12px; height:12px; color:inherit; }
 .chat-trace-reason-detail { margin-left:calc(var(--chat-trace-gutter) + .5rem); }
