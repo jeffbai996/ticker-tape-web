@@ -1,4 +1,14 @@
 import { BUCKETS } from './symbols.js'
+import { venueOfSymbol, VENUE_LABEL } from './cnMarkets.js'
+
+/** Listing venue, not company domicile: an ADR belongs with its US market. */
+export function groupMarketRows(watchlist) {
+  const groups = new Map(Object.keys(VENUE_LABEL).map(venue => [venue, []]))
+  for (const symbol of watchlist) groups.get(venueOfSymbol(symbol)).push(symbol)
+  return ['US', 'HK', 'CN', 'CA', 'OTHER']
+    .filter(venue => groups.get(venue).length)
+    .map(venue => ({ name: VENUE_LABEL[venue], symbols: groups.get(venue) }))
+}
 
 /** Group a watchlist in its own selected order. Configured groups win, then
  * the built-in broad-universe buckets, provider metadata, then General. */

@@ -1,9 +1,27 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
-  groupDashboardRows, selectFlatRows, quoteSpread, boardBreadth, dropSlot, resolveDrop,
+  groupDashboardRows, groupMarketRows, selectFlatRows, quoteSpread, boardBreadth, dropSlot, resolveDrop,
 } from '../../src/lib/dashboardRows.js'
 
 beforeEach(() => localStorage.clear())
+
+describe('dashboard markets', () => {
+  it('groups listings by trading market and keeps manual order within each market', () => {
+    expect(groupMarketRows(['MSFT', '0700.HK', '600000.SS', 'AAPL', '000001.SZ', 'SHOP.TO', '7203.T'])).toEqual([
+      { name: 'US', symbols: ['MSFT', 'AAPL'] },
+      { name: 'Hong Kong', symbols: ['0700.HK'] },
+      { name: 'A-shares', symbols: ['600000.SS', '000001.SZ'] },
+      { name: 'Canada', symbols: ['SHOP.TO'] },
+      { name: 'Other', symbols: ['7203.T'] },
+    ])
+  })
+
+  it('omits empty markets and accepts the same filtered rows as the sector view', () => {
+    const rows = selectFlatRows(['AAPL', '0700.HK'], {}, { filter: '0700' }).map(r => r.symbol)
+    expect(groupMarketRows(rows)).toEqual([{ name: 'Hong Kong', symbols: ['0700.HK'] }])
+    expect(groupMarketRows([])).toEqual([])
+  })
+})
 
 describe('dashboard categories', () => {
   it('recognizes semiconductor designers, foundries, and equipment names', () => {

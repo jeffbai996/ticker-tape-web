@@ -84,7 +84,7 @@ export function Settings() {
   return <section class="settings-page" onClickCapture={()=>queueMicrotask(preferenceChanged)} onChangeCapture={()=>queueMicrotask(preferenceChanged)}>
     <div class="settings-header">
       <div><h1>{label('Settings', '设置')}</h1>
-        <div role="status" class="text-[10px] text-muted mt-1">{syncState==='synced'?label('Settings synced','设置已同步'):syncState==='syncing'?label('Syncing settings…','正在同步设置…'):syncState==='offline'?label('Saved on this device. Sync will resume when connected.','已保存至此设备，联网后继续同步。'):label('Saved on this device','已保存至此设备')}</div>
+        <div role="status" class="settings-sync">{syncState==='synced'?label('Settings synced','设置已同步'):syncState==='syncing'?label('Syncing settings…','正在同步设置…'):syncState==='offline'?label('Saved on this device. Sync will resume when connected.','已保存至此设备，联网后继续同步。'):label('Saved on this device','已保存至此设备')}</div>
       </div>
       <button type="button" class="settings-reset" onClick={reset}>{label('Reset defaults', '恢复默认')}</button>
     </div>

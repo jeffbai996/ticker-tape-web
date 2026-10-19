@@ -31,7 +31,7 @@ import {
 import { loadUserGroups, onUserGroupsChange } from '../lib/usergroups.js'
 import { groupHeat, rankAlerts, rangeExtremes } from '../lib/railstats.js'
 import { conditionText, loadAlerts, onAlertsChange } from '../lib/alerts.js'
-import { groupDashboardRows, quoteSpread, selectFlatRows, dropSlot, resolveDrop } from '../lib/dashboardRows.js'
+import { groupDashboardRows, groupMarketRows, quoteSpread, selectFlatRows, dropSlot, resolveDrop } from '../lib/dashboardRows.js'
 import { searchSymbols } from '../lib/symbolSearch.js'
 import { venueFlag } from '../lib/venueFlag.js'
 import {
@@ -1679,9 +1679,9 @@ export function Dashboard({ listId = null }) {
   // view nothing consumes it at all. It used to re-run on every quote tick in
   // both views, which on a 30-name board is the single hottest thing here.
   const { visibleManual, ordered } = useMemo(() => {
-    if (viewMode !== 'grouped') return { visibleManual: [], ordered: [] }
+    if (viewMode === 'flat') return { visibleManual: [], ordered: [] }
     const rows = selectFlatRows(watchlist, quotes, { filter }).map((row) => row.symbol)
-    return { visibleManual: rows, ordered: orderGroups(groupDashboardRows(rows, loadUserGroups(), classifications), groupPrefs.order) }
+    return { visibleManual: rows, ordered: orderGroups(viewMode === 'market' ? groupMarketRows(rows) : groupDashboardRows(rows, loadUserGroups(), classifications), groupPrefs.order) }
   }, [viewMode, watchKey, filter, nameKey, groupsRev, classifications, groupPrefs.order.join(',')])
   // The flat view's numeric sorts genuinely re-rank on every tick, so this one
   // stays live — it just no longer runs while the grouped view is on screen.
@@ -1853,7 +1853,11 @@ export function Dashboard({ listId = null }) {
             </button>
             <button onClick={() => setViewMode('grouped')}
               class={`px-2 py-0.5 rounded-md font-anth text-[10px] transition-colors ${viewMode === 'grouped' ? 'bg-accent-soft text-accent shadow-sm' : 'text-muted hover:text-ink'}`}>
-              {tl('Sectors')}
+              {tl('Sector')}
+            </button>
+            <button onClick={() => setViewMode('market')}
+              class={`px-2 py-0.5 rounded-md font-anth text-[10px] transition-colors ${viewMode === 'market' ? 'bg-accent-soft text-accent shadow-sm' : 'text-muted hover:text-ink'}`}>
+              {tl('Market')}
             </button>
           </div>
           <TickerSearch filter={filter} setFilter={setFilter} activeList={activeList} />
@@ -1919,7 +1923,7 @@ export function Dashboard({ listId = null }) {
               under the finger that's dragging it. */}
           <span ref={dropLineRef} data-drop-line aria-hidden="true"
             class="board-drop-line pointer-events-none absolute inset-x-0 top-0 z-30 h-[2px] bg-accent opacity-0" />
-          {viewMode === 'grouped' ? ordered.map((g, gi) => {
+          {viewMode !== 'flat' ? ordered.map((g, gi) => {
             const folded = isCollapsed(g.name, groupPrefs)
             return (
               <div key={g.name}>

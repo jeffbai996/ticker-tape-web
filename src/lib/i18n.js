@@ -1114,7 +1114,7 @@ const LABELS = {
   'Prices, totals and weights appear as soon as the first one lands.': '添加第一只后，价格、合计与权重会立即出现。',
   Holdings: '持仓', Names: '持仓数', Currencies: '币种数',
   Sizing: '仓位测算', Target: '目标', shares: '股', buy: '买入', sell: '卖出', now: '现持',
-  Sectors: '板块分布', Other: '其他',
+  Sectors: '板块分布', Market: '市场', Other: '其他',
   'Day movers': '当日异动', 'Weights': '权重分布', 'Currency mix': '币种构成',
   'vs indices': '指数对比', 'This book': '本组合',
   symbol: '代码',
