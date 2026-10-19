@@ -830,7 +830,7 @@ html[data-pointer-hover] .tape-hot *:not(.text-up):not(.text-down):not([data-tap
 .chat-trace.is-live .chat-trace-title { color: var(--color-ink); }
 .chat-trace.is-complete .chat-trace-title { color: var(--color-ink); }
 .chat-trace-count {
-  display:block; color: var(--color-muted); font: 500 9px/1.4 var(--font-anth);
+  display:block; color: var(--color-muted); font: 500 9px/1.4 var(--font-sans);
 }
 .chat-trace-mark {
   position: relative; width: var(--chat-trace-gutter); height: 24px; flex: 0 0 var(--chat-trace-gutter);
