@@ -1,3 +1,4 @@
+import { AskAI } from './AskAI.jsx'
 import { useEffect, useState } from 'preact/hooks'
 import {useEarningsDates} from '../hooks/useEarningsDays.js'
 import { fetchEarningsImpact } from '../lib/earnings.js'
@@ -7,7 +8,7 @@ import { wireServiceUrl } from '../lib/wire.js'
 import { fmtPct, fmtPctPlain, fmtPrice } from '../lib/format.js'
 import { expiryForEvent, moveEdge, typicalMovePct } from '../lib/expmove.js'
 import { expectedMove } from '../lib/optionsIntel.js'
-import { tl } from '../lib/i18n.js'
+import { getLocale, tl } from '../lib/i18n.js'
 import { Loading } from './Loading.jsx'
 
 // Earnings day mode: everything about a print on one screen — when it lands,
@@ -113,6 +114,7 @@ function EventPanel({ symbol, date, epsEstimate }) {
           {countdown(date)}
           {sess && <span class="text-muted"> · {sess}</span>}
         </span>
+        <AskAI label={getLocale()==='zh' ? '财报前瞻' : 'Earnings preview'} question={getLocale()==='zh' ? `解读 ${symbol} 的本次财报预期、期权隐含波动和主要风险，说明业绩发布后需要关注哪些指标。` : `Preview ${symbol}'s earnings expectations, options-implied move and main risks, and explain the key metrics to watch after the release.`} context={{label:symbol,data:{kind:'earnings',symbol,date,epsEstimate,impliedMovePct:implied,preparedAt:new Date().toISOString()}}} />
       </header>
 
       <div class="grid grid-cols-2 sm:grid-cols-4 divide-x divide-line border-b border-line">

@@ -164,11 +164,11 @@ export function BookNews({ portfolio, quotes }) {
 
       {/* reader: a pane from xl up, a sheet below */}
       <aside class="hidden xl:block xl:sticky xl:top-2 xl:h-[calc(100vh-6rem)] rounded-xl border border-line bg-surface-1 overflow-hidden">
-        <Reader item={open} onClose={() => setOpen(null)} />
+        <Reader portfolio={portfolio} item={open} onClose={() => setOpen(null)} />
       </aside>
       {open && (
         <div class="xl:hidden fixed inset-0 z-40 flex flex-col bg-surface-0/98 backdrop-blur-sm" role="dialog" aria-modal="true">
-          <div class="flex-1 min-h-0"><Reader item={open} onClose={() => setOpen(null)} /></div>
+          <div class="flex-1 min-h-0"><Reader portfolio={portfolio} item={open} onClose={() => setOpen(null)} /></div>
         </div>
       )}
     </div>

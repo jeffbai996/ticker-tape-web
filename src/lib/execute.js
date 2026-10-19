@@ -1,3 +1,4 @@
+import { stageChatQuestion } from './chatHandoff.js'
 // Runs a parsed command plan (lib/commands.js is the pure parser). Lifted out
 // of the CommandBar so the palette can execute the same grammar through the
 // same code path instead of a second, drifting copy.
@@ -103,7 +104,7 @@ export function executePlan(plan, cmd, ctx = {}) {
       ? cats.map((c) => `#${c.id}  ${c.date}  ${c.symbol === 'MACRO' ? '' : `${c.symbol} `}[${c.type}] ${c.label}`).join('\n')
       : 'no catalysts — cat add 2026-09-09 NVDA product GTC keynote')
   } else if (plan.type === 'chat') {
-    sessionStorage.setItem('chat_prefill', plan.q)
+    stageChatQuestion(plan.q)
     location.hash = '#/chat'
     print(cmd, `→ chat: ${plan.q}`)
   } else if (plan.type === 'nav_msg') {

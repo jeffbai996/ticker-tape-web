@@ -1,3 +1,4 @@
+import { AskAI } from '../components/AskAI.jsx'
 import { useEffect, useMemo, useState } from 'preact/hooks'
 import { fetchHistory } from '../lib/history.js'
 import { startVisibleClock } from '../lib/idleClock.js'
@@ -171,6 +172,9 @@ function GroupCard({ name, items, quotes, withUnits, visual = null, visualWindow
     <section id={groupId(name)} class="bg-surface-1 border border-line rounded-xl overflow-hidden @container scroll-mt-3">
       <header class="flex items-baseline gap-2 px-2.5 py-1 border-b border-line-2 bg-surface-2">
         <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">{tl(name)}</h2>
+        <AskAI label={getLocale()==='zh' ? '解读' : 'Explain'}
+          question={getLocale()==='zh' ? `解读「${tl(name)}」市场的最新走势和主要驱动因素，说明接下来需要关注什么。` : `Explain the latest moves in ${name}, their main drivers and what to watch next.`}
+          context={{label:tl(name),data:{kind:'market',market:name,symbols:items.filter(i=>i.symbol).map(i=>i.symbol),preparedAt:new Date().toISOString()}}} />
         {avg != null && (
           <>
             <span class={`font-mono text-[11px] font-semibold ${avg >= 0 ? 'text-up' : 'text-down'}`}>
@@ -1175,10 +1179,11 @@ function Calendar() {
 
   return (
     <section class="bg-surface-1 border border-line rounded-xl overflow-hidden max-w-3xl">
-      <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
+      <header class="flex items-center justify-between gap-2 px-2.5 py-1 border-b border-line-2 bg-surface-2">
         <h2 class="font-anth font-bold text-[11px] tracking-wider text-accent uppercase">
           {tl('Economic calendar — next 90 days')}
         </h2>
+        <AskAI label={getLocale()==='zh' ? '解读本周日程' : 'Explain week ahead'} question={getLocale()==='zh' ? '解读未来七天最重要的市场日程，列出日期、重要性及受影响最大的市场。' : 'Explain the most important market events over the next seven days, their dates, why they matter and which markets are most exposed.'} context={{label:'Explain week ahead',data:{kind:'market',view:'calendar',preparedAt:new Date().toISOString()}}} />
       </header>
       {/* table-fixed with explicit widths. On auto layout the NAME column
           absorbs every pixel of slack, so the empty space between a short

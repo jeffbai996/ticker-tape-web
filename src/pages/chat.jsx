@@ -44,7 +44,7 @@ import { plainTraceText, hasTurnActivity, activityGroups, traceIcon, completionL
 import { ChatFooter } from '../components/ChatFooter.jsx'
 import { loadZhTable, loadMissingZhName, onZhTable, zhName } from '../lib/zhNames.js'
 import { onPortfoliosChange } from '../lib/myPortfolios.js'
-import { CHAT_CONTEXT_EVENT, takeChatContext } from '../lib/chatHandoff.js'
+import { CHAT_CONTEXT_EVENT, takeChatContext, takeChatAction, contextualReadTools } from '../lib/chatHandoff.js'
 import { IS_FAMILY_AI, IS_FAMILY_BUILD, IS_PRIVATE_BUILD } from '../lib/nav.js'
 
 // Base prompt stays generic in source. Whether the assistant has a real book
@@ -65,6 +65,7 @@ function baseSystem(selection) {
     '(price, %, levels, dates) — never vague direction words where a number ' +
     'exists. A typical market answer covers the print, the driver, the levels ' +
     'that matter, and what to watch next. Tight paragraphs or dash bullets. ' +
+    'For a contextual question about a saved portfolio, use the explicit portfolio_id in SELECTED VIEW CONTEXT to read the clicked book with get_portfolio. Do not substitute the default book or combine other books unless asked. ' +
     'No filler, no disclaimers, no restating the question. Depth beats ' +
     'brevity — a thin answer is worse than a long one. '
   const infrastructure =
@@ -717,6 +718,12 @@ export function Chat() {
     return pre
   })
   const [pendingContext,setPendingContext]=useState(takeChatContext)
+  const [pendingAction,setPendingAction]=useState(()=>takeChatAction(input))
+  const actionRef=useRef(pendingAction)
+  const preparingAction=useRef(false)
+  const mounted=useRef(true)
+  const cancelAction=()=>{actionRef.current=null;setPendingAction(null)}
+  useEffect(()=>()=>{mounted.current=false;actionRef.current=null},[])
   useEffect(()=>{
     const receive=()=>{
       const question=sessionStorage.getItem('chat_prefill') || ''
@@ -724,6 +731,8 @@ export function Chat() {
       if(question)setInput(question)
       entryDraft.current=true
       setPendingContext(takeChatContext());setAtHome(false)
+      const action=takeChatAction(question)
+      actionRef.current=action;setPendingAction(action)
     }
     window.addEventListener(CHAT_CONTEXT_EVENT,receive)
     return ()=>window.removeEventListener(CHAT_CONTEXT_EVENT,receive)
@@ -778,6 +787,7 @@ export function Chat() {
   const sessionFailure = (err) => {
     setError(`${tl('session sync failed')}: ${String(err?.message || err)}`)
   }
+  const [threadsReady,setThreadsReady]=useState(false)
   const threadRead=useRef(0)
   const refreshThreads = () => {const revision=++threadRead.current;return fetchThreadList().then(rows=>{if(revision===threadRead.current)setThreads(rows)}).catch(sessionFailure)}
   useEffect(() => onThreadsChange((mutation) => {
@@ -807,6 +817,7 @@ export function Chat() {
           if(resume)markChatInteraction()
         }
         await refreshThreads()
+        if(mounted.current)setThreadsReady(true)
       } catch (err) {
         sessionFailure(err)
       }
@@ -816,6 +827,7 @@ export function Chat() {
   }, [])
 
   const newThread = async () => {
+    cancelAction()
     if (busyRef.current) return
     try {
       await startNewThread(historyRef.current)
@@ -836,6 +848,7 @@ export function Chat() {
   }
 
   const switchThread = async (id) => {
+    cancelAction()
     markChatInteraction()
     if (busyRef.current || id === currentThreadId()) {
       setDrawer(null)
@@ -899,7 +912,7 @@ export function Chat() {
 
   // Warm case: already on the chat page when AI Chat is pressed again.
   useEffect(() => {
-    const home = () => { forcedHome.current=true; takeChatHomePending(); setAtHome(true); setDrawer(null) }
+    const home = () => { cancelAction();forcedHome.current=true; takeChatHomePending(); setAtHome(true); setDrawer(null) }
     const returning = () => {
       forcedHome.current=false
       const resume=canResumeChat(historyRef.current)
@@ -937,7 +950,7 @@ export function Chat() {
         setEffort(nextEffort)
         localStorage.setItem('chat_effort', nextEffort)
       }
-    }).catch(() => {})
+    }).catch(err => {cancelAction();setError(tl(err.message || String(err)))})
     if (onWire) return
     fetchSpend().then(setSpend).catch(() => {})
   }, [])
@@ -1152,7 +1165,7 @@ export function Chat() {
         effort: runEffort,
         system,
         messages: trimHistory(base, MODEL_WINDOW),
-        initialTools: IS_FAMILY_AI ? [{name:'get_portfolios',args:{}}] : [],
+        initialTools: [...(IS_FAMILY_AI ? [{name:'get_portfolios',args:{}}] : []),...contextualReadTools(context)],
         takeFollowUps: drainFollowUps,
         onDelta: (d) => {
           live += d
@@ -1222,8 +1235,39 @@ export function Chat() {
     finally {busyRef.current=false;setBusy(false)}
   }
 
+  // Claim before awaiting storage. Hydration must finish first or its old
+  // transcript can overwrite the generated answer. Each action starts a new conversation.
+  useEffect(()=>{
+    if(!pendingAction || !threadsReady || busy || busyRef.current || !models.some(m=>m.key===model))return
+    const action=pendingAction,context=pendingContext
+    setPendingAction(null)
+    busyRef.current=true;preparingAction.current=true;setBusy(true)
+    const start=async()=>{
+      try {
+        await startNewThread(historyRef.current)
+        historyRef.current=[]
+        if(!mounted.current)return
+        replaceHistory([]);replaceActivity([]);setLiveAnswer('');setError(null);setEditingMessage(null)
+        if(actionRef.current!==action)return
+        actionRef.current=null
+        setPendingContext(null);clearComposer();setDrawer(null)
+        setAtHome(false);markChatInteraction()
+        preparingAction.current=false
+        await runTurns({text:action.question,context,model,effort,ts:Date.now()})
+        await refreshThreads()
+      } catch(err) {if(mounted.current)sessionFailure(err)}
+      finally {
+        preparingAction.current=false;busyRef.current=false
+        if(mounted.current)setBusy(false)
+      }
+    }
+    start()
+  },[pendingAction,threadsReady,busy,models,model,effort])
+
   const send = async (e) => {
     e.preventDefault()
+    if(preparingAction.current)return
+    cancelAction()
     const text = input.trim()
     if (!text) return
     if (admissionRef.current) return
@@ -1250,6 +1294,7 @@ export function Chat() {
   }
 
   const stop = () => {
+    cancelAction()
     queuedRef.current = []
     setQueued([])
     abortRef.current?.abort()
@@ -1353,6 +1398,7 @@ export function Chat() {
             value={input}
             rows={1}
             onInput={(e) => {
+              cancelAction()
               setInput(e.currentTarget.value)
               autoGrow(e.currentTarget)
             }}

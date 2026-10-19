@@ -1,3 +1,4 @@
+import { AskAI } from '../components/AskAI.jsx'
 import { useFamilyWireProfile } from '../lib/useFamilyWireProfile.js'
 import {preferenceChanged,onPreferencesApplied} from '../lib/preferences.js'
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
@@ -368,6 +369,9 @@ function Row({ ev, hot, open, onToggle, tier = 0 }) {
       {open && !ev.live_call && (
         <div class="px-2.5 pb-2 mx-auto w-full max-w-[78ch]">
           <div class="flex items-start gap-4 my-2 max-sm:flex-wrap">
+            <AskAI label={loc==='zh' ? '解读影响' : 'Explain impact'}
+              question={loc==='zh' ? `解读新闻「${hl}」的市场影响，哪些公司或板块受益或承压，区分已确认事实与推测。` : `Explain the market impact of “${hl}”, which companies or sectors benefit or face pressure, and distinguish confirmed facts from inference.`}
+              context={{label:pubDisplayName(ev) || 'News',data:{kind:'article',article_id:ev.id,title:hl.slice(0,500),url:ev.url,symbols:(ev.symbols || []).slice(0,30),publishedAt:ev.ts_event,excerpt:body.slice(0,3000)}}} />
             <button onClick={() => setReaderOpen(true)} class="shrink-0 border border-accent/40 px-2 py-1 font-mono text-[11px] text-accent">{loc === 'zh' ? '打开文章' : 'Open article'} ↗</button>
             {ev.story_cluster && (
               <div class="min-w-0 flex-1 flex flex-col gap-0.5">

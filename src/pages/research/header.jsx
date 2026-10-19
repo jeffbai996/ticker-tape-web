@@ -1,3 +1,4 @@
+import { AskAI } from '../../components/AskAI.jsx'
 import { useEffect, useState } from 'preact/hooks'
 import { getLocale, tl } from '../../lib/i18n.js'
 import { loadPortfolios, onPortfoliosChange } from '../../lib/myPortfolios.js'
@@ -168,6 +169,9 @@ export function ResearchHeader({ symbol, q, route }) {
       </div>
 
       <div class="flex gap-1 px-1 pb-2 select-none flex-nowrap overflow-x-auto no-scrollbar">
+        <AskAI label={getLocale()==='zh' ? '解读个股' : 'Explain stock'}
+          question={getLocale()==='zh' ? `解读 ${symbol} 的最新走势、基本面、主要风险和近期催化因素。结合当前${tl(tabs.find(t=>t.id===(route.view || null))?.label || 'Overview')}页面，说明最重要的三点。` : `Explain ${symbol}'s latest performance, fundamentals, main risks and upcoming catalysts. Focus on the current ${tabs.find(t=>t.id===(route.view || null))?.label || 'Overview'} view and the three most important takeaways.`}
+          context={{label:symbol,data:{kind:'research',symbol,view:route.view || 'overview',price:q?.price,pct:q?.pct,currency:q?.currency,marketTime:q?.marketTime}}} />
         {tabs.map((tab, ti) => (
           <a
             key={tab.label}
