@@ -60,6 +60,35 @@ describe('bounded family reader', () => {
     expect(out.text).not.toContain('<')
     expect(store.SPEND.put).toHaveBeenCalledOnce()
   })
+  it('reads a retained Chinese Google News story by ID through the publisher reader', async () => {
+    const store=env()
+    const id='AU_yqLExampleSignedArticleIdentifier_12345'
+    const url=`https://news.google.com/rss/articles/${id}`
+    store.SPEND.get.mockImplementation(async key=>key==='wire:public'?{events:[{id:7,url}]}:null)
+    const batch=JSON.stringify([['wrb.fr','Fbv4je',JSON.stringify(['garturlres','https://www.finet.hk/newscenter/story'])]])
+    const fetcher=vi.fn()
+      .mockResolvedValueOnce(new Response('<div data-n-a-sg="signed" data-n-a-ts="1700000000"></div>'))
+      .mockResolvedValueOnce(new Response(batch))
+      .mockResolvedValueOnce(new Response('<div class="entry-content"><p>'+ '公司公布業績和經營展望。'.repeat(45)+'</p></div>',{headers:{'Content-Type':'text/html'}}))
+    const out=await (await handleReader(request(),store,fetcher)).json()
+    expect(out.ok).toBe(true)
+    expect(out.text).toContain('公司公布業績')
+    expect(out.resolved_url).toBe('https://www.finet.hk/newscenter/story')
+    expect(fetcher).toHaveBeenCalledTimes(3)
+    expect(store.SPEND.put.mock.calls[0][0]).toBe('reader:v2:7')
+  })
+
+  it('lets an explicit retry bypass a previously cached partial article', async () => {
+    const store=env()
+    store.SPEND.get.mockImplementation(async key=>key==='wire:public'
+      ? {events:[{id:7,url:'https://news.rthk.hk/a'}]}
+      : {ok:true,source_url:'https://news.rthk.hk/a',text:'Old excerpt',truncated:true})
+    const fetcher=vi.fn(async()=>new Response('<article><p>Updated publicly available article text.</p></article>',{headers:{'Content-Type':'text/html'}}))
+    const out=await (await handleReader(request('id=7&refresh=1'),store,fetcher)).json()
+    expect(out.text).toContain('Updated publicly available')
+    expect(fetcher).toHaveBeenCalledOnce()
+    expect(store.SPEND.put.mock.calls[0][2]).toEqual({expirationTtl:300})
+  })
   it('fails closed when the quota is exhausted', async () => {
     const store = env()
     store.READER_QUOTA.get = () => ({ fetch: async () => new Response(null, { status: 429 }) })
@@ -89,4 +118,28 @@ it('gives family inference its own budget and a precise retry delay',async()=>{
   clock.mockReturnValue(86400000)
   expect((await quota.fetch(new Request('https://quota/family-ai'))).status).toBe(204)
  }finally{clock.mockRestore()}
+})
+
+it('keeps the article body instead of longer related-story lists', () => {
+  const html='<main><div class="entry-content"><p>公司公布年度業績，收入與盈利均按年增長。</p><p>董事會同時公布下一年度的投資計劃。</p></div><div class="related-posts">'+Array.from({length:12},()=>'<p>相關新聞與推薦內容，不屬於這篇文章的正文。</p>').join('')+'</div></main>'
+  const out=extractArticle(html)
+  expect(out.text).toContain('公司公布年度業績')
+  expect(out.text).not.toContain('相關新聞')
+})
+
+it('preserves Chinese paragraphs separated by div and br instead of p tags', () => {
+  const out=extractArticle('<div id="paragraph"><div>公司公布新的投資計劃。</div><div>第一階段將在明年完成。<br>第二階段仍在規劃中。</div></div>')
+  expect(out.text).toBe('公司公布新的投資計劃。\n\n第一階段將在明年完成。\n\n第二階段仍在規劃中。')
+})
+
+it('cleans HTML embedded in articleBody metadata and retains paragraph breaks', () => {
+  const out=extractArticle(`<script type="application/ld+json">${JSON.stringify({articleBody:'<p>第一段公司公告。</p><p>第二段財務資料。</p>'})}</script>`)
+  expect(out.text).toBe('第一段公司公告。\n\n第二段財務資料。')
+})
+
+it('does not pad a publisher excerpt with navigation and call it complete', () => {
+  const out=extractArticle('<div id="contentWrap">'+Array.from({length:20},()=>'<p>每日熱門新聞與訂閱導覽內容。</p>').join('')+'<div id="article-detail-wrapper"><p>這是文章公開的節錄。</p><p>（節錄）</p></div></div>')
+  expect(out.text).toContain('公開的節錄')
+  expect(out.text).not.toContain('每日熱門新聞')
+  expect(out.truncated).toBe(true)
 })
