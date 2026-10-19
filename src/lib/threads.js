@@ -4,7 +4,7 @@
 // stays exactly what it was: one thread in localStorage.
 
 import {
-  chatstoreAvailable, createThread, deleteThread, getThread, listThreads,
+  stageThreadHistory, chatstoreAvailable, createThread, deleteThread, getThread, listThreads,
   updateThread,
 } from './chatstore.js'
 import { trimHistory } from './agent.js'
@@ -85,6 +85,7 @@ function cacheHistory(messages) {
 }
 
 function resetActiveThread() {
+  stageThreadHistory(null, null)
   clearTimeout(saveTimer)
   saveTimer = null
   pendingMessages = null
@@ -124,6 +125,7 @@ export function saveActiveHistory(messages) {
   const trimmed = trimHistory(messages, STORE_MAX)
   cacheHistory(trimmed)
   pendingMessages = trimmed
+  stageThreadHistory(currentThreadId(), trimmed)
   clearTimeout(saveTimer)
   saveTimer = setTimeout(() => flushActiveHistory().catch(() => {}), 800)
 }
@@ -209,6 +211,7 @@ export async function deleteActiveThread() {
 /** One-time migration: a legacy local conversation with no server threads
  *  becomes thread #1 so nothing evaporates on upgrade. */
 export async function migrateLegacy() {
+  if (import.meta.env.VITE_FAMILY_BUILD === '1' && chatstoreAvailable()) { await listThreads(); return }
   if (currentThreadId() != null) return
   const local = loadActiveHistory()
   if (!local.length) return

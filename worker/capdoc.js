@@ -6,6 +6,7 @@
 // bad push is recoverable, and guarded kinds refuse a shrinking write
 // without a declared intent — see shrink.js.
 
+import { handleChatData } from './family_chat.js'
 import { GUARDED_PREFIXES, HISTORY_KEEP, docCounts, shrinkReason } from './shrink.js'
 import { familyCorsFor } from './security_log.js'
 
@@ -104,6 +105,7 @@ export class CapDocCoordinator {
 
   async handle(request) {
     const key = request.headers.get('X-Capdoc-Key') || ''
+    if (/^chatstore:[a-f0-9]{32}$/.test(key)) return handleChatData(request, this.state.storage)
     if (!STORAGE_KEY_RE.test(key)) return new Response(null, { status: 400 })
     await this.migrate(key)
     const current = parseRow(await this.state.storage.get('row'))

@@ -172,8 +172,8 @@ it('opens family at the shared portfolio and leaves the main default intact',asy
 
 it('compacts memories through the family transport and offers undo',async()=>{
  await family()
- const {addMemory,loadMemories}=await import('../../src/lib/chatMemory.js')
- for(const t of ['Concise summaries.','Keep summaries concise.','Use USD.','Cite sources.'])addMemory(t)
+ const {loadMemories}=await import('../../src/lib/chatMemory.js')
+ localStorage.setItem('chat_memories_v1',JSON.stringify(['Concise summaries.','Keep summaries concise.','Use USD.','Cite sources.'].map((text,i)=>({id:i+1,text,ts:1000}))))
  const original=loadMemories()
  const fetcher=vi.fn(async()=>Response.json({ok:true,text:'[{"op":"edit","id":1,"text":"Keep summaries concise."},{"op":"delete","id":2}]'}))
  vi.stubGlobal('fetch',fetcher)

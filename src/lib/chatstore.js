@@ -5,7 +5,23 @@
 // locally first (snappy UI) and push fire-and-forget, add-acks reconcile
 // local ids to server ids.
 
+import { IS_FAMILY_BUILD } from './nav.js'
+import { getWatchlistCapability, watchlistSyncEndpoint, watchlistSyncHeaders } from './watchlistSync.js'
+import { FamilyChatStore } from './familyChatStore.js'
 import { wireServiceUrl } from './wire.js'
+
+let familyStore
+const family = () => {
+  if (!IS_FAMILY_BUILD || !getWatchlistCapability()) return null
+  return familyStore ||= new FamilyChatStore({
+    endpoint: () => watchlistSyncEndpoint().replace(/\/watchlists$/, '/chatstore'),
+    headers: () => watchlistSyncHeaders(),
+  })
+}
+export const CHATSTORE_ERROR_EVENT = 'ttw:chatstore-error'
+const syncError = error => window.dispatchEvent(new CustomEvent(CHATSTORE_ERROR_EVENT, {detail:error}))
+export const stageThreadHistory = (id, messages) => family()?.stage(id, messages)
+export const localNoteId = fallback => family() ? -(Date.now()*1000+Math.floor(Math.random()*1000)) : fallback
 
 export const CHATSTORE_SYNC_EVENT = 'ttw:chatstore-sync'
 
@@ -15,12 +31,13 @@ const base = () => {
 }
 
 export function chatstoreAvailable() {
-  return !!base()
+  return !!family() || !!base()
 }
 
 const emit = () => window.dispatchEvent(new CustomEvent(CHATSTORE_SYNC_EVENT))
 
 async function req(path, opts = {}) {
+  if (family()) return family().request(path, opts)
   const resp = await fetch(`${base()}${path}`, {
     headers: { 'Content-Type': 'application/json' },
     signal: AbortSignal.timeout(10_000),
@@ -38,7 +55,7 @@ async function req(path, opts = {}) {
 /** Pull memories + journal from the server into the localStorage caches.
  *  Called once on app boot (see chatMemory/journal for the cache keys). */
 export async function syncNotes() {
-  if (!base()) return false
+  if (!chatstoreAvailable()) return false
   const [mem, jr] = await Promise.all([
     req('/memories'), req('/journal'),
   ])
@@ -54,6 +71,11 @@ export async function syncNotes() {
 
 /** Push an add; on ack, let the caller reconcile the local id. */
 export function pushAdd(kind, item, onServerId) {
+  if (family()) {
+    family().note(`/${kind}`, {method:'POST',body:JSON.stringify(kind === 'journal' ? {text:item.text,symbols:item.symbols} : {text:item.text})}, item.id)
+      .then(out=>onServerId?.(out.item.id)).catch(syncError)
+    return
+  }
   if (!base()) return
   req(`/${kind}`, {
     method: 'POST',
@@ -64,12 +86,14 @@ export function pushAdd(kind, item, onServerId) {
 }
 
 export function pushEdit(kind, id, text) {
+  if (family()) { family().note(`/${kind}/${id}`, {method:'PUT',body:JSON.stringify({text})}).catch(syncError); return }
   if (!base()) return
   req(`/${kind}/${id}`, { method: 'PUT', body: JSON.stringify({ text }) })
     .catch(() => {})
 }
 
 export function pushDelete(kind, id) {
+  if (family()) { family().note(`/${kind}/${id}`, {method:'DELETE'}).catch(syncError); return }
   if (!base()) return
   req(`/${kind}/${id}`, { method: 'DELETE' }).catch(() => {})
 }

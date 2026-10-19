@@ -10,6 +10,7 @@ const store = vi.hoisted(() => ({
 }))
 
 vi.mock('../../src/lib/chatstore.js', () => ({
+  stageThreadHistory: vi.fn(),
   chatstoreAvailable: () => store.available,
   createThread: store.createThread,
   deleteThread: store.deleteThread,

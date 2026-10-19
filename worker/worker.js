@@ -6,6 +6,7 @@
  * Deploy: npx wrangler deploy
  */
 
+import {handleFamilyChat} from './family_chat.js'
 import {handleSettings} from './settings.js'
 import { handleWatchlists } from './watchlists.js'
 import { handleCompanyNews } from './company_news.js'
@@ -98,6 +99,7 @@ export default {
         });
         if (path === '/wire/api/read') return handleReader(request, env);
         if (path === '/portfolio-history') return handlePortfolioHistory(request, env);
+        if (path.startsWith('/chatstore/')) return handleFamilyChat(request, env);
         if (path === '/family-ai' || path.startsWith('/family-ai/')) return handleFamilyAI(request, env);
 
         // Generic chat stays disabled. Family inference has its own bearer,

@@ -32,7 +32,7 @@ import { loadMemories, editMemory, removeMemory, applyMemoryTags, applyMemoryOpe
 import { loadJournal, addJournalEntry, removeJournalEntry, searchJournal } from '../lib/journal.js'
 import { CHAT_HOME_EVENT, takeChatHomePending, CHAT_RETURN_EVENT, canResumeChat, markChatInteraction } from '../lib/chatnav.js'
 import { captureAnchor, restoreAnchor } from '../lib/scrollAnchor.js'
-import { CHATSTORE_SYNC_EVENT, chatstoreAvailable, syncNotes } from '../lib/chatstore.js'
+import { CHATSTORE_ERROR_EVENT, CHATSTORE_SYNC_EVENT, chatstoreAvailable, syncNotes } from '../lib/chatstore.js'
 import { LANES, activeLanes, dynamicActions, visibleActions, promptLabel } from '../lib/launchpad.js'
 import {
   liveThreadList, onThreadsChange, fetchThreadList, hydrateActiveThread, loadActiveHistory, migrateLegacy,
@@ -791,7 +791,7 @@ export function Chat() {
     const onSync = () => { setMemories(loadMemories()); setJournal(loadJournal()) }
     if (chatstoreAvailable()) {
       window.addEventListener(CHATSTORE_SYNC_EVENT, onSync)
-      syncNotes().catch(() => {})
+      syncNotes().catch(sessionFailure)
     }
     const bootThreads = async () => {
       try {
@@ -875,6 +875,25 @@ export function Chat() {
       sessionFailure(err)
     }
   }
+
+  useEffect(() => {
+    const failed = event => sessionFailure(event.detail)
+    const refresh = () => {
+      if (document.visibilityState === 'hidden' || busyRef.current || !chatstoreAvailable()) return
+      syncNotes().catch(sessionFailure)
+      refreshThreads()
+    }
+    window.addEventListener(CHATSTORE_ERROR_EVENT, failed)
+    window.addEventListener('focus', refresh)
+    window.addEventListener('online', refresh)
+    document.addEventListener('visibilitychange', refresh)
+    return () => {
+      window.removeEventListener(CHATSTORE_ERROR_EVENT, failed)
+      window.removeEventListener('focus', refresh)
+      window.removeEventListener('online', refresh)
+      document.removeEventListener('visibilitychange', refresh)
+    }
+  }, [])
 
   // Warm case: already on the chat page when AI Chat is pressed again.
   useEffect(() => {
@@ -1004,6 +1023,7 @@ export function Chat() {
 
     // CLI parity: volatile context (clock, memories, quotes, book, news for
     // mentioned symbols) rebuilt per turn and appended to the base prompt.
+    if (IS_FAMILY_AI) await syncNotes().catch(sessionFailure)
     let system = baseSystem()
     try {
       system += '\n\n' + await buildChatContext(text)

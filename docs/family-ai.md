@@ -28,9 +28,13 @@ TTW_FAMILY_AI=1 bash scripts/deploy_family.sh --deploy FULL_SOURCE_SHA
 Publication requires an explicit `TTW_FAMILY_AI=1` or `0`; build-only defaults
 to off. Setting `VITE_FAMILY_AI` alone does not activate
 the public build; it also requires the family build flag and its capability.
-Client chat history and notes use the browser's existing local storage. The
-inference transport does not make the gateway a private wire service or expose
-broker/account routes. Existing browser tools supply quotes, news and watchlist
+Family memories, journal entries, and conversations sync through authenticated
+`/chatstore/*` routes using the existing family capability and `CAP_DOCS`
+coordinator. They are separate from the private owner's chat store. Each device
+imports its existing browser data once, retaining the local copy. Queued writes
+and active drafts survive reloads; conflicting conversation edits preserve both
+versions. Focus, reconnect, and reopening chat refresh shared state.
+The inference transport does not expose broker/account routes. Existing browser tools supply quotes, news and watchlist
 context to the assistant; native server tools are denied.
 
 To disable the UI, redeploy with `TTW_FAMILY_AI=0`. Removing either new Worker

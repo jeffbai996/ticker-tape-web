@@ -2,16 +2,21 @@ import { CapDocCoordinator } from '../../worker/capdoc.js'
 
 function storage() {
   const rows = new Map()
-  return {
+  const store = {
     rows,
     async get(key) { return rows.get(key) },
     async put(key, value) { rows.set(key, value) },
     async delete(key) { rows.delete(key) },
+    async transaction(callback) {
+      const before=new Map(rows)
+      try {return await callback(store)} catch(error) {rows.clear();for(const [k,v] of before)rows.set(k,v);throw error}
+    },
     async list({ prefix = '', limit } = {}) {
       const hits = [...rows].filter(([k]) => k.startsWith(prefix)).sort()
       return new Map(limit ? hits.slice(0, limit) : hits)
     },
   }
+  return store
 }
 
 export function capDocEnv(token) {
