@@ -1013,7 +1013,7 @@ html[data-pointer-hover] .chat-trace-entry > summary:hover { background-color:tr
 /* Quiet response metadata; wraps as whole metrics on narrow screens. */
 .chat-token-footer { display:flex; flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; align-items:center; gap:7px 16px; padding:5px 2px 8px; max-width:92%; color:#92949b; font:11px/1.6 var(--font-mono, monospace); font-variant-numeric:tabular-nums; }
 .chat-token-footer svg { width:13px; height:13px; flex:none; opacity:.8; }
-.chat-token-model { display:inline-flex; align-items:center; gap:6px; max-width:100%; border-radius:6px; background:rgba(154,154,164,.08); padding:2px 7px; min-width:0; }
+.chat-token-model { flex:none; display:inline-flex; align-items:center; gap:6px; max-width:100%; border-radius:6px; background:rgba(154,154,164,.08); padding:2px 7px; min-width:0; }
 .chat-token-model-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .chat-token-effort { display:inline-flex; color:#d3b35c; }
 .chat-token-effort svg { width:12px; height:12px; }
@@ -1082,7 +1082,7 @@ html[data-pointer-hover] .chat-trace-entry > summary:hover { background-color:tr
 @media (max-width: 640px) {
   .chat-token-footer { max-width:100%; gap:8px; font-size:10px; }
   .chat-token-footer svg { width:11px; height:11px; }
-  .chat-token-model { gap:4px; padding-inline:5px; max-width:34%; }
+  .chat-token-model { gap:4px; padding-inline:5px; max-width:none; }
   .chat-token-stat { gap:3px; }
   .chat-token-input, .chat-token-output { gap:2px; }
   .composer-shortcuts .desktop-shortcut { display:none; }
