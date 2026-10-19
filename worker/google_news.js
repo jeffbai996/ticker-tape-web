@@ -42,8 +42,9 @@ export async function resolveGoogleArticle(url, fetcher, { signal, allowed, onSt
     }
   } catch { /* Opaque current IDs need the signed resolver below. */ }
   let page
+  url = `https://news.google.com/articles/${id}?hl=en-US&gl=US&ceid=US:en`
   for (let n = 0; n < 3; n++) {
-    const response = await fetcher(url, { signal, redirect:'manual', headers:{'User-Agent':'Mozilla/5.0',Accept:'text/html'} })
+    const response = await fetcher(url, { signal, redirect:'manual', headers:{'User-Agent':'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/126.0',Accept:'text/html'} })
     if ([301,302,303,307,308].includes(response.status)) {
       const location = new URL(response.headers.get('location') || '', url).href
       await response.body?.cancel()
@@ -53,7 +54,14 @@ export async function resolveGoogleArticle(url, fetcher, { signal, allowed, onSt
       url = location
       continue
     }
-    if (!response.ok) { onStage('google_http', response.status); await response.body?.cancel(); return null }
+    if (!response.ok) {
+      await response.body?.cancel()
+      if (n === 0 && [403,429,502,503].includes(response.status)) {
+        url = `https://news.google.com/rss/articles/${id}?hl=en-US&gl=US&ceid=US:en`
+        continue
+      }
+      onStage('google_http', response.status); return null
+    }
     page = await readArticleResponse(response)
     break
   }
@@ -67,7 +75,7 @@ export async function resolveGoogleArticle(url, fetcher, { signal, allowed, onSt
       'en-US','US',1,[2,3,4,8],1,0,'655000234',0,0,null,0], id,timestamp,signature]
   const body = new URLSearchParams({'f.req':JSON.stringify([[['Fbv4je',JSON.stringify(request),null,'generic']]])})
   const response = await fetcher('https://news.google.com/_/DotsSplashUi/data/batchexecute', {
-    method:'POST',redirect:'manual',signal,body:body.toString(),headers:{'User-Agent':'Mozilla/5.0',
+    method:'POST',redirect:'manual',signal,body:body.toString(),headers:{'User-Agent':'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/126.0',
       'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
   })
   if (!response.ok) { onStage('google_rpc', response.status); await response.body?.cancel(); return null }

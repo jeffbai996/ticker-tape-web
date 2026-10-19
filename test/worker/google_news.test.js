@@ -53,3 +53,13 @@ it('decodes Big5 Chinese from either the response header or the HTML declaration
 it('caps streamed responses even when Content-Length is absent', async () => {
   await expect(readArticleResponse(new Response(new Uint8Array(1_500_001)))).rejects.toThrow('article too large')
 })
+
+it('tries the alternate Google article wrapper when the first returns a temporary refusal', async () => {
+  const fetcher=vi.fn()
+    .mockResolvedValueOnce(new Response('',{status:503}))
+    .mockResolvedValueOnce(new Response('<div data-n-a-sg="signed" data-n-a-ts="1700000000"></div>'))
+    .mockResolvedValueOnce(new Response(response('https://www.finet.hk/newscenter/story')))
+  expect(await resolveGoogleArticle(url,fetcher,options())).toBe('https://www.finet.hk/newscenter/story')
+  expect(new URL(fetcher.mock.calls[0][0]).pathname).toContain('/articles/')
+  expect(fetcher.mock.calls[1][0]).not.toBe(fetcher.mock.calls[0][0])
+})
