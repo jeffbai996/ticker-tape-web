@@ -387,7 +387,7 @@ export function ActivityTrace({ steps, busy = false, startedAt, usage = null }) 
         </span>
         <span class="chat-trace-heading"><span class="chat-trace-summary">
         <span class="chat-trace-title">{activityLabel(title,tl)}{busy ? <Ellipsis /> : ` ${elapsed}`}</span>
-        {busy && <span class="font-mono text-[9px] tabular-nums text-muted">{elapsed}</span>}
+        {busy && <span class="chat-trace-elapsed font-mono text-[10px] tabular-nums text-muted">{elapsed}</span>}
         {liveDepth && !liveThinking && (
           <span class="font-mono text-[9px] tabular-nums text-muted/80">{liveDepth}</span>
         )}

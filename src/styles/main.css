@@ -826,7 +826,7 @@ html[data-pointer-hover] .tape-hot *:not(.text-up):not(.text-down):not([data-tap
   font-family: var(--font-sans);
 }
 .chat-trace-head:hover { background: transparent; color: var(--color-ink); }
-.chat-trace-title { color: var(--color-ink-2); font-size: 11.5px; font-weight: 625; }
+.chat-trace-title { line-height:24px; color: var(--color-ink-2); font-size: 11.5px; font-weight: 625; }
 .chat-trace.is-live .chat-trace-title { color: var(--color-ink); }
 .chat-trace.is-complete .chat-trace-title { color: var(--color-ink); }
 .chat-trace-count {
@@ -1044,7 +1044,7 @@ html[data-pointer-hover] .chat-trace-entry > summary:hover { background-color:tr
 @media (prefers-reduced-motion: reduce) { .chat-suggestion-motion { display:none; } }
 
 .chat-trace-heading { display:flex; flex-direction:column; gap:1px; }
-.chat-trace-summary { display:flex; align-items:center; gap:6px; min-height:24px; }
+.chat-trace-summary { display:flex; align-items:baseline; gap:6px; min-height:24px; }
 
 /* Message prose remains selectable without making the application chrome draggable. */
 .chat-message-copy, .chat-message-copy * { user-select: text; -webkit-user-select: text; }
