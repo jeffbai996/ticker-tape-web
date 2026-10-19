@@ -1,3 +1,4 @@
+import {TEMPORARY_CHAT_PROMPT} from '../lib/chatPrivacy.js'
 import { assistantIdentityPrompt } from '../lib/chatIdentity.js'
 import { TraceEntry } from '../components/TraceEntry.jsx'
 import {ChatNotice} from '../components/ChatNotice.jsx'
@@ -466,7 +467,7 @@ export function ActivityTrace({ steps, busy = false, startedAt, usage = null }) 
  */
 function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
                      threadLen, onResume, memN, journalN, journal,
-                     onOpenMem, onOpenJournal, bookRevision = 0 }) {
+                     onOpenMem, onOpenJournal, temporary=false, bookRevision = 0 }) {
   const book = hasLiveBook()
   const nextEvent = events[0] || null
   const [lane, setLane] = useState(null)
@@ -610,12 +611,14 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
           <div class={cell}>
             <div class={eyebrow}>{tl('context it carries')}</div>
             <div class="font-mono text-[11.5px] leading-[1.55]">
+              {!temporary && <>
               <button type="button" onClick={onOpenMem} class="flex justify-between w-full hover:text-ink">
                 <span class="text-muted">{tl('memories')}</span><span class="text-ink-2">{memN}</span>
               </button>
               <button type="button" onClick={onOpenJournal} class="flex justify-between w-full hover:text-ink">
                 <span class="text-muted">{tl('journal')}</span><span class="text-ink-2">{journalN}</span>
               </button>
+              </>}
               <div class="flex justify-between"><span class="text-muted">{tl('watching')}</span><span class="text-ink-2">{watchlist.length}</span></div>
               <div class="flex justify-between"><span class="text-muted">{tl('book')}</span>
                 <span class={book ? 'text-success' : 'text-muted'}>{tl(book ? (IS_FAMILY_AI ? 'saved' : 'live') : 'demo')}</span></div>
@@ -712,6 +715,8 @@ export function Chat() {
   const [effort, setEffort] = useState(IS_FAMILY_AI ? 'medium' : model==='agy-argon' ? 'low' : localStorage.getItem('chat_effort') || 'auto')
   const [spend, setSpend] = useState(null)
   const [history, setHistory] = useState(loadHistory)
+  const [incognito,setIncognito]=useState(false)
+  const incognitoRef=useRef(false)
   const [input, setInput] = useState(() => {
     const pre = sessionStorage.getItem('chat_prefill') || ''
     sessionStorage.removeItem('chat_prefill')
@@ -800,7 +805,7 @@ export function Chat() {
     }
   }), [])
   useEffect(() => {
-    const onSync = () => { setMemories(loadMemories()); setJournal(loadJournal()) }
+    const onSync = () => { if(!incognitoRef.current){setMemories(loadMemories());setJournal(loadJournal())} }
     if (chatstoreAvailable()) {
       window.addEventListener(CHATSTORE_SYNC_EVENT, onSync)
       syncNotes().catch(sessionFailure)
@@ -830,7 +835,7 @@ export function Chat() {
     cancelAction()
     if (busyRef.current) return
     try {
-      await startNewThread(historyRef.current)
+      if(!incognitoRef.current)await startNewThread(historyRef.current)
       if(IS_FAMILY_AI){setModel('family-sonnet');setEffort('medium')}
       historyRef.current = []
       activityRef.current = []
@@ -847,6 +852,25 @@ export function Chat() {
     }
   }
 
+  const toggleIncognito=async()=>{
+    if(busyRef.current || admissionRef.current || !threadsReady)return
+    cancelAction();busyRef.current=true;setBusy(true)
+    try {
+      // Park a normal conversation before entering. Temporary text never
+      // reaches the thread store, including when leaving or starting again.
+      if(!incognitoRef.current)await startNewThread(historyRef.current)
+      if(!mounted.current)return
+      const next=!incognitoRef.current
+      incognitoRef.current=next;setIncognito(next)
+      historyRef.current=[];activityRef.current=[]
+      setHistory([]);setActivity([]);setLiveAnswer('');setError(null);setNotice(null)
+      setEditingMessage(null);setDrawer(null);setPendingContext(null);clearComposer();setAtHome(true)
+      setMemories(next ? [] : loadMemories());setJournal(next ? [] : loadJournal())
+      refreshThreads()
+    } catch(err){if(mounted.current)sessionFailure(err)}
+    finally {busyRef.current=false;if(mounted.current)setBusy(false)}
+  }
+
   const switchThread = async (id) => {
     cancelAction()
     markChatInteraction()
@@ -856,7 +880,12 @@ export function Chat() {
       return
     }
     try {
-      const messages = await openThread(id, historyRef.current)
+      const previous=incognitoRef.current ? [] : historyRef.current
+      if(incognitoRef.current){
+        incognitoRef.current=false;setIncognito(false);historyRef.current=[];setHistory([])
+        setPendingContext(null);clearComposer();setMemories(loadMemories());setJournal(loadJournal())
+      }
+      const messages = await openThread(id, previous)
       historyRef.current = messages
       setHistory(messages)
       activityRef.current = []
@@ -894,7 +923,7 @@ export function Chat() {
   useEffect(() => {
     const failed = event => sessionFailure(event.detail)
     const refresh = () => {
-      if (document.visibilityState === 'hidden' || busyRef.current || !chatstoreAvailable()) return
+      if (document.visibilityState === 'hidden' || busyRef.current || incognitoRef.current || !chatstoreAvailable()) return
       syncNotes().catch(sessionFailure)
       refreshThreads()
     }
@@ -980,7 +1009,7 @@ export function Chat() {
   const replaceHistory = (next, persist = false) => {
     historyRef.current = next
     setHistory(next)
-    if (persist) {
+    if (persist && !incognitoRef.current) {
       saveHistory(next)
     }
   }
@@ -1003,6 +1032,7 @@ export function Chat() {
   const updateActivity = (fn) => replaceActivity(fn(activityRef.current))
 
   const runTurn = async ({ text, model: runModel, effort: runEffort, ts, context }) => {
+    const temporary=incognitoRef.current
     setError(null)
     setNotice(null)
     setLiveAnswer('')
@@ -1038,12 +1068,13 @@ export function Chat() {
 
     // CLI parity: volatile context (clock, memories, quotes, book, news for
     // mentioned symbols) rebuilt per turn and appended to the base prompt.
-    if (IS_FAMILY_AI) await syncNotes().catch(sessionFailure)
+    if (IS_FAMILY_AI && !temporary) await syncNotes().catch(sessionFailure)
     const selected = models.find(candidate => candidate.key === runModel)
     let system = baseSystem({modelLabel:selected?.label, effort:selected?.fixed_effort || runEffort})
     try {
-      system += '\n\n' + await buildChatContext(text)
+      system += '\n\n' + await buildChatContext(text,{temporary})
     } catch { /* context is best-effort — a bare prompt still answers */ }
+    if(temporary)system+='\n\n'+TEMPORARY_CHAT_PROMPT
     system = applyLanguagePreference(system, getLocale())
 
     const traceEvent = (event) => {
@@ -1124,7 +1155,7 @@ export function Chat() {
         : step)
       const stamped = added.map((m) => {
         if (m.role === 'assistant' && m.content) {
-          const r = applyMemoryTags(m.content)
+          const r = applyMemoryTags(m.content,{persist:!temporary})
           notes.push(...r.notes)
           return { ...m, content: r.text, ts: Date.now(), model: runModel }
         }
@@ -1152,7 +1183,7 @@ export function Chat() {
         setMemories(loadMemories())
       }
       const done = [...base, ...stamped]
-      replaceHistory(done, true)
+      replaceHistory(done, !temporary)
       setLiveAnswer('')
       if (finalIndex >= 0) replaceActivity([])
     }
@@ -1160,6 +1191,7 @@ export function Chat() {
     try {
       abortRef.current = new AbortController()
       await runAgentic({
+        temporary,
         signal: abortRef.current.signal,
         model: runModel,
         effort: runEffort,
@@ -1224,12 +1256,12 @@ export function Chat() {
     const branch=replayRequest(historyRef.current,index,text,{model,effort})
     busyRef.current=true;setBusy(true)
     try {
-      await startNewThread(historyRef.current)
+      if(!incognitoRef.current)await startNewThread(historyRef.current)
       replaceHistory(branch.prefix)
       replaceActivity([]);setLiveAnswer('');setError(null);setEditingMessage(null)
       setAtHome(false);markChatInteraction()
       await runTurns(branch.request)
-      await flushActiveHistory(historyRef.current)
+      if(!incognitoRef.current)await flushActiveHistory(historyRef.current)
       await refreshThreads()
     } catch(err) { sessionFailure(err) }
     finally {busyRef.current=false;setBusy(false)}
@@ -1244,7 +1276,7 @@ export function Chat() {
     busyRef.current=true;preparingAction.current=true;setBusy(true)
     const start=async()=>{
       try {
-        await startNewThread(historyRef.current)
+        if(!incognitoRef.current)await startNewThread(historyRef.current)
         historyRef.current=[]
         if(!mounted.current)return
         replaceHistory([]);replaceActivity([]);setLiveAnswer('');setError(null);setEditingMessage(null)
@@ -1339,7 +1371,7 @@ export function Chat() {
   const clear = async () => {
     if(busyRef.current)return
     try {
-      await deleteActiveThread()
+      if(!incognitoRef.current)await deleteActiveThread()
       if(IS_FAMILY_AI){setModel('family-sonnet');setEffort('medium')}
       replaceHistory([]);replaceActivity([]);setLiveAnswer('')
       setError(null);setEditingMessage(null);setAtHome(true);setDrawer(null)
@@ -1383,6 +1415,7 @@ export function Chat() {
   const composerButton = "shrink-0 w-8 h-8 box-border grid place-items-center rounded-md border transition-colors"
   const composer = (
       <form onSubmit={send} class="max-w-[46rem] w-full mx-auto pt-2">
+        {incognito && <p data-incognito-notice class="mb-2 px-1 font-anth text-[10px] text-muted">{tl('Temporary chat. History is not saved. Memories and notes are off.')}</p>}
         {pendingContext && <div data-chat-context class="mb-2 flex items-center gap-2 rounded-md border border-line px-2 py-1 font-anth text-[10px] text-muted">
           <span class="min-w-0 flex-1 truncate">{pendingContext.label}</span>
           <button type="button" aria-label={tl('Remove')} onClick={()=>setPendingContext(null)}>✕</button>
@@ -1532,7 +1565,7 @@ export function Chat() {
       </form>
   )
 
-  const liveThreads=liveThreadList(threads,currentThreadId(),history,{streaming:!!liveAnswer})
+  const liveThreads=incognito ? threads : liveThreadList(threads,currentThreadId(),history,{streaming:!!liveAnswer})
   const rail=chatRailData({symbols:quoteSymbols,quotes,earnDays,events:upcoming})
   const railMovers=rail.movers
 
@@ -1578,6 +1611,12 @@ export function Chat() {
         <h1 class="font-bold text-[17px] leading-tight text-ink" style="font-family: var(--font-sans)">{tl('AI Chat')}</h1>
         <span class={`w-1.5 h-1.5 rounded-full ${models.length ? 'bg-[#3fb950]' : 'bg-muted animate-pulse'}`}
               title={tl(onWire ? 'online — private wire' : 'online — public proxy')} />
+        <button type="button" data-incognito-toggle aria-pressed={incognito} disabled={busy || !threadsReady}
+          onClick={toggleIncognito} aria-label={tl('Incognito')} title={tl(incognito ? 'End incognito chat' : 'Start incognito chat')}
+          class={`inline-flex items-center gap-1 rounded-md border px-2 py-1 font-anth text-[10px] whitespace-nowrap disabled:opacity-40 ${incognito ? 'border-accent/50 text-accent bg-accent-soft' : 'border-line text-muted hover:text-ink'}`}>
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="3"/><path d="m3 3 18 18"/></svg>
+          <span class={incognito ? '' : 'max-sm:sr-only'}>{tl('Incognito')}</span>
+        </button>
       </div>
         <div class="absolute top-2.5 right-3 z-30 h-7 flex items-center gap-0.5 rounded-lg px-0.5">
           <button
@@ -1591,6 +1630,7 @@ export function Chat() {
             </svg>
             {liveThreads.length > 0 && <span class="absolute -top-1 -right-1 min-w-[13px] h-[13px] px-0.5 grid place-items-center rounded-full bg-surface-3 border border-line-2 font-mono text-[7.5px] text-ink-2 leading-none">{liveThreads.length}</span>}
           </button>
+          {!incognito && <>
           <button
             onClick={() => { setMemories(loadMemories()); setDrawer(drawer === 'mem' ? null : 'mem') }}
             class={`relative w-6 h-6 grid place-items-center rounded-md ${drawer === 'mem' ? 'text-accent bg-accent-soft' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
@@ -1616,6 +1656,7 @@ export function Chat() {
             </svg>
             {journal.length > 0 && <span class="absolute -top-1 -right-1 min-w-[13px] h-[13px] px-0.5 grid place-items-center rounded-full bg-surface-3 border border-line-2 font-mono text-[7.5px] text-ink-2 leading-none">{journal.length}</span>}
           </button>
+          </>}
           {history.length > 0 && (
             <button onClick={() => exportChat(history)} class="w-6 h-6 grid place-items-center rounded-md text-muted hover:text-ink hover:bg-surface-2"
               title={tl('download transcript')}>
@@ -1657,7 +1698,7 @@ export function Chat() {
         </Overlay>
       )}
 
-      {drawer === 'mem' && (
+      {!incognito && drawer === 'mem' && (
         <Overlay onClose={() => setDrawer(null)} label={tl('Memories')}
           class="max-w-xl w-full bg-surface-1 border border-line rounded-2xl px-4 py-3 max-h-[72vh] overflow-y-auto">
           <div class="flex items-start gap-3 pb-1">
@@ -1678,7 +1719,7 @@ export function Chat() {
         </Overlay>
       )}
 
-      {drawer === 'journal' && (
+      {!incognito && drawer === 'journal' && (
         <Overlay onClose={() => setDrawer(null)} label={tl('Trade journal')}
           class="max-w-xl w-full bg-surface-1 border border-line rounded-2xl px-4 py-3 max-h-[72vh] overflow-y-auto">
           <div class="flex items-center gap-2 pb-3 border-b border-line">
@@ -1712,6 +1753,7 @@ export function Chat() {
         <div class="flex-1 min-h-0 overflow-y-auto flex flex-col">
           <Launchpad
             onWire={onWire}
+            temporary={incognito}
             watchlist={watchlist}
             bookRevision={bookRevision}
             quotes={quotes}
@@ -1776,7 +1818,7 @@ export function Chat() {
                       >
                         <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h4"/></svg>
                       </button>
-                      {m.content.trim().length>=160 && <button
+                      {!incognito && m.content.trim().length>=160 && <button
                         type="button"
                         onClick={() => {
                           // CLI `journal save` parity: the exchange, not just the answer
@@ -1929,6 +1971,7 @@ export function Chat() {
         </div>
       </section>}
 
+      {!incognito && (
       <section class="chat-rail-section bg-surface-1 border border-line rounded-xl overflow-hidden shrink-0">
         <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
           <h2 class="font-anth font-bold text-[10px] tracking-wider text-accent uppercase">{tl('library')}</h2>
@@ -1946,6 +1989,7 @@ export function Chat() {
           </button>
         </div>
       </section>
+      )}
     </aside>
     </div>
   )

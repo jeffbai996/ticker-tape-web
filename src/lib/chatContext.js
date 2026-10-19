@@ -84,7 +84,7 @@ async function mentionedNews(question, watchlist) {
  * Async but cheap: quotes come from the feed cache, the book is TTL-cached,
  * only mentioned-symbol news may fetch (and it's TTL-cached too).
  */
-export async function buildChatContext(question) {
+export async function buildChatContext(question, {temporary=false}={}) {
   if (IS_FAMILY_AI) await waitForChatPortfolioSync()
   const watchlist = [...new Set([...getWatchlist(),...(IS_FAMILY_AI ? savedChatBook()?.positions.map(p=>p.symbol) || [] : [])])]
   const now = new Date()
@@ -95,10 +95,12 @@ export async function buildChatContext(question) {
     })} ET`,
   ]
 
-  if(IS_FAMILY_AI)parts.push('APP DATA ACCESS: get_app_data reads watchlists, alerts, saved screens, memories and journal; get_portfolio reads cash, trades, lots, history and app valuations; get_research reads company data, corporate dates, dividends, price history and options; get_news/read_article read app news. These are read-only and available without switching pages.')
-  const mem = memoriesForPrompt()
-  if (mem) parts.push('', mem)
-  parts.push('', MEMORY_PROMPT)
+  if(IS_FAMILY_AI)parts.push('APP DATA ACCESS: get_app_data reads watchlists, alerts, saved screens'+(temporary ? '' : ', memories and journal')+'; get_portfolio reads cash, trades, lots, history and app valuations; get_research reads company data, corporate dates, dividends, price history and options; get_news/read_article read app news. These are read-only and available without switching pages.')
+  if(!temporary) {
+    const mem = memoriesForPrompt()
+    if (mem) parts.push('', mem)
+    parts.push('', MEMORY_PROMPT)
+  }
 
   parts.push('', `Watched symbols: ${watchlist.join(', ')}`)
 

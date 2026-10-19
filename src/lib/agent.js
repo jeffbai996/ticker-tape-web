@@ -1,3 +1,4 @@
+import {temporaryToolAllowed,temporaryToolError,temporaryTools} from './chatPrivacy.js'
 import {IS_FAMILY_AI} from './nav.js'
 // Agentic chat loop: stream a completion with tools attached; when the model
 // calls tools, execute them client-side, append the results, and go around
@@ -58,16 +59,17 @@ function receiveFollowUps(takeFollowUps, added, onRound) {
 
 export async function runAgenticOverWire({
   model, effort, system, messages, onDelta, onThinking, onRound, onTrace,
-  takeFollowUps, signal, initialTools = [],
+  takeFollowUps, signal, initialTools = [], temporary = false,
 }, services = {}) {
   const streamTurn = services.wireStream || wireStream
   const completeTurn = services.wireComplete || wireComplete
   const execute = services.executeTool || executeTool
+  const definitions=temporary ? temporaryTools(TOOL_DEFS) : TOOL_DEFS
   let effectiveModel=model, effectiveEffort=effort, effectiveLabel=''
   let toolCalls=0
   const runTool=(...args)=>{
     if(toolCalls>=MAX_TOOL_CALLS)throw new Error('This prompt reached its tool-call limit. Please narrow the request.')
-    toolCalls++;return execute(...args)
+    toolCalls++;return temporary && !temporaryToolAllowed(args[0],args[1]) ? temporaryToolError() : execute(...args)
   }
   const turnId=newTurnId(),sendIds=[turnId]
   const added = []
@@ -99,7 +101,7 @@ export async function runAgenticOverWire({
       sendIds.push(...followUps.filter(m=>m.role==='user').map(()=>newTurnId()))
     }
     readOnly ||= analysisRequest(added)
-    const sys = `${system}\n\n${toolProtocol(readOnly ? TOOL_DEFS.filter(t=>ANALYSIS_TOOLS.has(t.name)) : TOOL_DEFS)}`
+    const sys = `${system}\n\n${toolProtocol(readOnly ? definitions.filter(t=>ANALYSIS_TOOLS.has(t.name)) : definitions)}`
     const convo = [...messages, ...contextAdded]
       .filter((m) => m.role !== 'tool' || m.content)
       .map((m) => (m.role === 'tool'
@@ -201,18 +203,19 @@ export async function runAgenticOverWire({
 
 export async function runAgentic({
   model, effort, system, messages, onDelta, onThinking, onRound, onTrace,
-  takeFollowUps, signal, initialTools = [],
+  takeFollowUps, signal, initialTools = [], temporary = false,
 }) {
   // Private build talks to the user's own router; the metered API is the
   // fallback for anyone without one.
   if (wireChatAvailable()) {
     return runAgenticOverWire({
       model, effort, system, messages, onDelta, onThinking, onRound, onTrace,
-      takeFollowUps, signal, initialTools,
+      takeFollowUps, signal, initialTools, temporary,
     })
   }
   const added = []
   const convo = () => [...messages, ...added]
+  const definitions=temporary ? temporaryTools(TOOL_DEFS) : TOOL_DEFS
   let readOnly = analysisRequest(messages)
 
   for (let round = 0; round < MAX_ROUNDS; round++) {
@@ -227,7 +230,7 @@ export async function runAgentic({
       model,
       system,
       messages: contextualMessages(convo()),
-      tools: finalRound ? undefined : readOnly ? TOOL_DEFS.filter(t=>ANALYSIS_TOOLS.has(t.name)) : TOOL_DEFS,
+      tools: finalRound ? undefined : readOnly ? definitions.filter(t=>ANALYSIS_TOOLS.has(t.name)) : definitions,
       onDelta: (d) => {
         text += d
         onDelta?.(d)
@@ -248,7 +251,7 @@ export async function runAgentic({
       onTrace?.({ type: 'tool_start', round, id: tc.id, name: tc.name, args: tc.args })
       let result
       try {
-        result = readOnly && !ANALYSIS_TOOLS.has(tc.name) ? analysisResult() : await executeTool(tc.name, tc.args)
+        result = temporary && !temporaryToolAllowed(tc.name,tc.args) ? temporaryToolError() : readOnly && !ANALYSIS_TOOLS.has(tc.name) ? analysisResult() : await executeTool(tc.name, tc.args)
       } catch (err) {
         onTrace?.({
           type: 'tool_error', round, id: tc.id, name: tc.name,

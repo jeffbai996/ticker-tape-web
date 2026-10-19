@@ -1,5 +1,5 @@
 import {beforeEach,expect,it} from 'vitest'
-import {addMemory,loadMemories,applyMemoryOperations,undoMemoryCompaction} from '../../src/lib/chatMemory.js'
+import {addMemory,loadMemories,applyMemoryOperations,undoMemoryCompaction,applyMemoryTags} from '../../src/lib/chatMemory.js'
 beforeEach(()=>localStorage.clear())
 it('compacts with retained identifiers and can undo the exact facts',()=>{
  addMemory('Concise summaries.');addMemory('Keep summaries concise.');addMemory('Use USD.');addMemory('Check sources.')
@@ -20,4 +20,13 @@ it('does not overwrite a memory changed while the model was working',()=>{
  addMemory('First fact.');const before=loadMemories();addMemory('Second fact.')
  expect(()=>applyMemoryOperations([{op:'edit',id:1,text:'Changed'}],{expected:before})).toThrow()
  expect(loadMemories()[0].text).toBe('First fact.')
+})
+
+it('strips temporary memory tags without adding, editing or deleting saved facts',()=>{
+ addMemory('Existing fact')
+ const before=loadMemories()
+ expect(applyMemoryTags('Answer [MEMORY: Private fact] [MEMORY_EDIT: 1 | Changed] [MEMORY_DELETE: 1]',{persist:false})).toEqual({text:'Answer',notes:[]})
+ expect(loadMemories()).toEqual(before)
+ applyMemoryTags('[MEMORY: Normal fact]')
+ expect(loadMemories().map(m=>m.text)).toEqual(['Existing fact','Normal fact'])
 })

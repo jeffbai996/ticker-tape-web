@@ -390,6 +390,10 @@ const STRINGS = {
 
 // Short labels keyed by English text. Absent key → English passthrough.
 const LABELS = {
+  Incognito: '无痕',
+  'Start incognito chat': '开始无痕对话',
+  'End incognito chat': '结束无痕对话',
+  'Temporary chat. History is not saved. Memories and notes are off.': '临时对话，不保存记录，不读取或更新记忆与笔记。',
   'This prompt reached its tool-call limit. Please narrow the request.':'本次请求已达到工具调用上限，请缩小问题范围后重试。',
   'This prompt reached its model-call limit. Please narrow the request.':'本次请求已达到模型调用上限，请缩小问题范围后重试。',
   'Model unavailable; please select another model.': '该模型暂不可用，请选择其他模型。',

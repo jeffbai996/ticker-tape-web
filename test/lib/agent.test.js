@@ -6,7 +6,7 @@ vi.mock('../../src/lib/chatClient.js', () => ({
 
 vi.mock('../../src/lib/tools.js', () => ({
   APP_READ_TOOLS: ['get_portfolios','get_portfolio','get_app_data','get_research','get_news','read_article'],
-  TOOL_DEFS: [{ name: 'get_watchlist', description: 'watchlist', parameters: {} }, {name:'watch',description:'add symbol',parameters:{}}],
+  TOOL_DEFS: [{ name: 'get_watchlist', description: 'watchlist', parameters: {} }, {name:'watch',description:'add symbol',parameters:{}},...['journal_search','journal_add','memory_add','get_app_data'].map(name=>({name,description:name,parameters:{type:'object',properties:{}}}))],
   executeTool: vi.fn().mockResolvedValue('{"symbols":["AAPL"]}'),
 }))
 
@@ -265,4 +265,20 @@ it('keeps the fallback model for subsequent tool rounds and forwards its identit
  expect(stream.mock.calls[1][0]).toMatchObject({model:'family-flash',effort:'medium'})
  expect(stream.mock.calls[1][0].system).toContain('4 Argon')
  expect(trace).toHaveBeenCalledWith(expect.objectContaining({type:'model',...fallback}))
+})
+it('blocks note reads and writes in temporary subscription chats while retaining market tools',async()=>{
+ const execute=vi.fn(async()=>'{"symbols":["AAPL"]}')
+ const stream=vi.fn()
+ for(const [name,args] of [['journal_search',{}],['get_app_data',{topic:'memories'}],['get_app_data',{}],['memory_add',{text:'Secret'}],['get_watchlist',{}]])stream.mockResolvedValueOnce({text:JSON.stringify({tool:name,args})})
+ stream.mockResolvedValue({text:'Done'})
+ await runAgenticOverWire({model:'family-sonnet',temporary:true,messages:[{role:'user',content:'Question'}],system:'system'},{wireStream:stream,executeTool:execute})
+ expect(execute.mock.calls).toEqual([['get_watchlist',{}]])
+ expect(JSON.stringify(stream.mock.calls.at(-1)[0].messages)).toContain('unavailable in incognito')
+})
+it('blocks note access even when a native model requests an unadvertised tool',async()=>{
+ streamChat.mockResolvedValueOnce({toolCalls:[{id:'a',name:'journal_add',args:{text:'Private'}},{id:'b',name:'get_app_data',args:{topic:'journal'}}]}).mockResolvedValueOnce({toolCalls:[]})
+ await runAgentic({model:'flash',temporary:true,system:'system',messages:[{role:'user',content:'Question'}]})
+ expect(streamChat.mock.calls[0][0].tools.map(t=>t.name)).not.toContain('journal_add')
+ expect(streamChat.mock.calls[0][0].tools.find(t=>t.name==='get_app_data').parameters.properties.topic.enum).toEqual(['watchlists','alerts','screens'])
+ expect(executeTool).not.toHaveBeenCalled()
 })

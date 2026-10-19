@@ -137,8 +137,9 @@ const TAG_RE = /\[MEMORY(?:_(?:DELETE|EDIT))?:\s*[^\]]+\]/g
  * Apply and strip memory tags from a response. Returns
  * { text, notes } — text with tags removed, notes describing what happened.
  */
-export function applyMemoryTags(text) {
+export function applyMemoryTags(text, {persist=true}={}) {
   if (!text || !text.includes('[MEMORY')) return { text, notes: [] }
+  if(!persist)return {text:text.replace(TAG_RE,'').replace(/[ \t]+\n/g,'\n').trim(),notes:[]}
   const notes = []
   for (const m of text.matchAll(/\[MEMORY:\s*([^\]]+)\]/g)) {
     const mem = addMemory(m[1])
