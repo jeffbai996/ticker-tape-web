@@ -6,7 +6,8 @@ vi.mock('../../src/lib/chatClient.js', () => ({
 
 vi.mock('../../src/lib/tools.js', () => ({
   APP_READ_TOOLS: ['get_portfolios','get_portfolio','get_app_data','get_research','get_news','read_article'],
-  TOOL_DEFS: [{ name: 'get_watchlist', description: 'watchlist', parameters: {} }, {name:'watch',description:'add symbol',parameters:{}},...['journal_search','journal_add','memory_add','get_app_data'].map(name=>({name,description:name,parameters:{type:'object',properties:{}}}))],
+  VISUAL_TOOLS: ['chart_compare','chart_portfolio','chart_price'],
+  TOOL_DEFS: [{ name: 'get_watchlist', description: 'watchlist', parameters: {} }, {name:'watch',description:'add symbol',parameters:{}},...['journal_search','journal_add','memory_add','get_app_data','chart_portfolio','chart_compare'].map(name=>({name,description:name,parameters:{type:'object',properties:{}}}))],
   executeTool: vi.fn().mockResolvedValue('{"symbols":["AAPL"]}'),
 }))
 
@@ -165,7 +166,7 @@ describe('private wire agent loop', () => {
     })
 
     expect(wireStream).toHaveBeenCalledTimes(3)
-    expect(runTool).toHaveBeenCalledWith('get_watchlist', {})
+    expect(runTool).toHaveBeenCalledWith('get_watchlist', {}, { rich: true })
     expect(added.at(-1)).toEqual({
       role: 'assistant',
       content: 'AAPL leads the list; watch the next earnings print.',
@@ -224,7 +225,7 @@ it('refreshes app access after stale conversation claims before asking the model
   messages:[{role:'assistant',content:'I can only see the selected portfolio.'},{role:'user',content:'You should see the others now.'}],
   initialTools:[{name:'get_portfolios',args:{}}],onTrace:trace},
   {wireStream:stream,executeTool:execute})
- expect(execute).toHaveBeenCalledWith('get_portfolios',{})
+ expect(execute).toHaveBeenCalledWith('get_portfolios',{},{rich:true})
  expect(stream.mock.calls[0][0].messages.at(-1).content).toContain('TOOL_RESULT get_portfolios:')
  expect(stream.mock.calls[0][0].messages.at(-1).content).toContain('Long term')
  expect(trace).toHaveBeenCalledWith(expect.objectContaining({type:'tool_done',name:'get_portfolios',result:await execute.mock.results[0].value}))
@@ -272,7 +273,7 @@ it('blocks note reads and writes in temporary subscription chats while retaining
  for(const [name,args] of [['journal_search',{}],['get_app_data',{topic:'memories'}],['get_app_data',{}],['memory_add',{text:'Secret'}],['get_watchlist',{}]])stream.mockResolvedValueOnce({text:JSON.stringify({tool:name,args})})
  stream.mockResolvedValue({text:'Done'})
  await runAgenticOverWire({model:'family-sonnet',temporary:true,messages:[{role:'user',content:'Question'}],system:'system'},{wireStream:stream,executeTool:execute})
- expect(execute.mock.calls).toEqual([['get_watchlist',{}]])
+ expect(execute.mock.calls).toEqual([['get_watchlist',{},{rich:true}]])
  expect(JSON.stringify(stream.mock.calls.at(-1)[0].messages)).toContain('unavailable in incognito')
 })
 it('blocks note access even when a native model requests an unadvertised tool',async()=>{
@@ -281,4 +282,44 @@ it('blocks note access even when a native model requests an unadvertised tool',a
  expect(streamChat.mock.calls[0][0].tools.map(t=>t.name)).not.toContain('journal_add')
  expect(streamChat.mock.calls[0][0].tools.find(t=>t.name==='get_app_data').parameters.properties.topic.enum).toEqual(['watchlists','alerts','screens'])
  expect(executeTool).not.toHaveBeenCalled()
+})
+
+describe('visual tool blocks', () => {
+  const block = { v: 1, type: 'bars', id: 'contrib', title: 'Example growth', items: [{ key: 'AAPL', value: 1 }] }
+  it('keeps a chart block on the tool record over the wire and sends the model only the summary', async () => {
+    const execute = vi.fn(async (name) => (name === 'chart_portfolio' ? { content: '{"chart":"shown"}', block } : '{"ok":true}'))
+    const stream = vi.fn().mockResolvedValueOnce({ text: '{"tool":"chart_portfolio","args":{"portfolio":"book-2","view":"contributors"}}' }).mockResolvedValueOnce({ text: 'AAPL carried the day.' })
+    const trace = vi.fn()
+    const added = await runAgenticOverWire({ model: 'family-sonnet', system: 'sys', messages: [{ role: 'user', content: 'Explain the book' }], onTrace: trace }, { wireStream: stream, executeTool: execute })
+    expect(execute).toHaveBeenCalledWith('chart_portfolio', { portfolio: 'book-2', view: 'contributors' }, { rich: true })
+    const record = added.find((m) => m.role === 'tool')
+    expect(record).toEqual({ role: 'tool', id: 'w0', name: 'chart_portfolio', content: '{"chart":"shown"}', block })
+    expect(JSON.stringify(stream.mock.calls[1][0].messages)).not.toContain('"block"')
+    expect(stream.mock.calls[1][0].messages.at(-1).content).toContain('TOOL_RESULT chart_portfolio: {"chart":"shown"}')
+    expect(trace).toHaveBeenCalledWith(expect.objectContaining({ type: 'tool_done', name: 'chart_portfolio', result: '{"chart":"shown"}' }))
+  })
+  it('runs a contextual chart as an initial read and refuses tools outside the read-only set', async () => {
+    const execute = vi.fn(async (name) => (name === 'chart_portfolio' ? { content: '{"chart":"shown"}', block } : '{"book":true}'))
+    const added = await runAgenticOverWire({ model: 'family-sonnet', system: 'sys', messages: [{ role: 'user', content: 'Explain' }],
+      initialTools: [{ name: 'get_portfolio', args: { portfolio: 'book-2' } }, { name: 'chart_portfolio', args: { portfolio: 'book-2', view: 'contributors' } }] },
+    { wireStream: async () => ({ text: 'Done' }), executeTool: execute })
+    expect(added.filter((m) => m.role === 'tool').map((m) => !!m.block)).toEqual([false, true])
+    await expect(runAgenticOverWire({ model: 'family-sonnet', system: 'sys', messages: [{ role: 'user', content: 'Explain' }], initialTools: [{ name: 'watch', args: { symbol: 'AAPL' } }] },
+      { wireStream: async () => ({ text: 'Done' }), executeTool: execute })).rejects.toThrow('read-only')
+  })
+  it('carries the block on the native tool path too', async () => {
+    executeTool.mockResolvedValueOnce({ content: '{"chart":"shown"}', block })
+    streamChat
+      .mockResolvedValueOnce({ text: '', toolCalls: [{ id: 'n1', name: 'chart_compare', args: { symbols: ['AAPL', 'MSFT'] } }] })
+      .mockResolvedValueOnce({ text: 'done', toolCalls: [] })
+    const added = await runAgentic({ model: 'flash', effort: 'high', system: 'system', messages: [{ role: 'user', content: 'compare' }] })
+    expect(executeTool).toHaveBeenCalledWith('chart_compare', { symbols: ['AAPL', 'MSFT'] }, { rich: true })
+    expect(added.find((m) => m.role === 'tool')).toMatchObject({ content: '{"chart":"shown"}', block })
+    expect(JSON.stringify(streamChat.mock.calls[1][0].messages)).not.toContain('"block"')
+  })
+  it('still accepts a plain string from an executor that knows nothing about blocks', async () => {
+    const added = await runAgenticOverWire({ model: 'family-sonnet', system: 'sys', messages: [{ role: 'user', content: 'Hi' }] },
+      { wireStream: vi.fn().mockResolvedValueOnce({ text: '{"tool":"get_watchlist","args":{}}' }).mockResolvedValueOnce({ text: 'Done' }), executeTool: async () => '{"symbols":[]}' })
+    expect(added.find((m) => m.role === 'tool')).toEqual({ role: 'tool', id: 'w0', name: 'get_watchlist', content: '{"symbols":[]}' })
+  })
 })

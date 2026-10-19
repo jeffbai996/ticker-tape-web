@@ -36,3 +36,22 @@ it('reads the explicitly selected book before answering instead of relying on th
   expect(contextualReadTools({label:'Example',data:{kind:'watchlist'}})).toEqual([])
   expect(contextualReadTools({label:'Broker',data:{portfolio_id:'broker'}})).toEqual([])
 })
+
+it('draws the view an entry point asked for, from an allowlist, and never for a broker book',()=>{
+  const book={label:'Example',data:{portfolio_id:'book-2',visual:'contributors'}}
+  expect(contextualReadTools(book)).toEqual([
+    {name:'get_portfolio',args:{portfolio:'book-2',section:'holdings'}},
+    {name:'chart_portfolio',args:{portfolio:'book-2',view:'contributors'}},
+  ])
+  expect(contextualReadTools({label:'Example',data:{portfolio_id:'book-2',visual:'delete_everything'}})).toEqual([{name:'get_portfolio',args:{portfolio:'book-2',section:'holdings'}}])
+  expect(contextualReadTools({label:'Broker',data:{portfolio_id:'broker',visual:'allocation'}})).toEqual([])
+  expect(contextualReadTools({label:'AAPL',data:{kind:'research',symbol:'aapl',visual:'price'}})).toEqual([{name:'chart_price',args:{symbol:'AAPL',range:'6M'}}])
+  expect(contextualReadTools({label:'AAPL',data:{kind:'research',symbol:'../etc',visual:'price'}})).toEqual([])
+  expect(contextualReadTools({label:'List',data:{kind:'watchlist',symbols:['AAPL','msft','bad symbol','GOOGL'],visual:'compare'}})).toEqual([{name:'chart_compare',args:{symbols:['AAPL','MSFT','GOOGL'],range:'3M'}}])
+  expect(contextualReadTools({label:'List',data:{kind:'watchlist',symbols:['AAPL'],visual:'compare'}})).toEqual([])
+  expect(contextualReadTools({label:'List',data:{kind:'watchlist',symbols:['AAPL','MSFT','GOOGL'],movers:[{symbol:'TSLA',pct:9},{symbol:'AMZN',pct:-4},{symbol:'TSLA'}],visual:'compare'}})).toEqual([{name:'chart_compare',args:{symbols:['TSLA','AMZN'],range:'3M'}}])
+})
+it('keeps a visual block off the model boundary',()=>{
+  const out=contextualMessages([{role:'tool',id:'w0',name:'chart_compare',content:'{}',block:{v:1}},{role:'assistant',content:'Done'}])
+  expect(out[0]).toEqual({role:'tool',id:'w0',name:'chart_compare',content:'{}'})
+})

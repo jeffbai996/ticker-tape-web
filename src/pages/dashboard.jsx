@@ -1863,7 +1863,7 @@ export function Dashboard({ listId = null }) {
           </div>
           <AskAI label={getLocale()==='zh' ? '解读' : 'Explain'}
             question={getLocale()==='zh' ? `解读「${activeList?.name || tl('Watchlist')}」自选股的最新表现，说明主要异动、共同驱动因素和近期需关注的日程。` : `Explain the latest performance of the “${activeList?.name || 'Watchlist'}” watchlist, its main moves, common drivers and upcoming catalysts.`}
-            context={{label:activeList?.name || 'Watchlist',data:{kind:'watchlist',watchlist_id:activeList?.id || 'main',symbols:watchlist,preparedAt:new Date().toISOString(),movers:all.slice().sort((a,b)=>Math.abs(b.pct)-Math.abs(a.pct)).slice(0,8).map(q=>({symbol:q.symbol,price:q.price,pct:q.pct,currency:q.currency,marketTime:q.marketTime}))}}} />
+            context={{label:activeList?.name || 'Watchlist',data:{kind:'watchlist',watchlist_id:activeList?.id || 'main',symbols:watchlist,visual:'compare',preparedAt:new Date().toISOString(),movers:all.slice().sort((a,b)=>Math.abs(b.pct)-Math.abs(a.pct)).slice(0,8).map(q=>({symbol:q.symbol,price:q.price,pct:q.pct,currency:q.currency,marketTime:q.marketTime}))}}} />
           <TickerSearch filter={filter} setFilter={setFilter} activeList={activeList} />
           <button data-select-trigger type="button" aria-pressed={selecting}
             title={tl('Select rows')}

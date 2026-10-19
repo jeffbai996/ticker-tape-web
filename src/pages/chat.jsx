@@ -20,6 +20,8 @@ import { BrandSpinner } from '../components/BrandSpinner.jsx'
 import { Loading } from '../components/Loading.jsx'
 import { Overlay } from '../components/Overlay.jsx'
 import { MdLite } from '../components/AiReport.jsx'
+import { ChatBlocks } from '../components/ChatBlock.jsx'
+import { blockAnchors, blockText, validateBlock } from '../lib/chatBlocks.js'
 import { getLocale, tl, t as tt } from '../lib/i18n.js'
 import { applyLanguagePreference } from '../lib/aidials.js'
 import { fetchWireChatModels, wireChatAvailable, wireComplete } from '../lib/wirechat.js'
@@ -61,6 +63,10 @@ function baseSystem(selection) {
     'read/write, alert arming, persistent memory, and app navigation. Use them for ' +
     'anything involving current prices, technicals, or the watchlist instead of ' +
     'answering from memory; complete the relevant reads before answering. ' +
+    'VISUALS: chart_compare, chart_portfolio and chart_price draw a chart or table inside your answer from app data. ' +
+    'Use one when the user asks for a chart, a comparison, an allocation or a performance picture, or when a visual clearly helps; at most two per answer. ' +
+    'A chart you requested is already visible to the user: refer to it and explain the key figures from its TOOL_RESULT in prose. ' +
+    'Never paste data points or JSON into the answer, and never describe a chart you did not request. ' +
     'Answer like a sharp desk colleague: lead with the direct call, then the ' +
     'numbers behind it. Always quote the actual figures your tools returned ' +
     '(price, %, levels, dates) — never vague direction words where a number ' +
@@ -99,7 +105,10 @@ function exportChat(history) {
   const lines = [`# ticker-tape chat export — ${new Date().toISOString().slice(0, 16)}`, '']
   for (const m of history) {
     if (m.role === 'user') lines.push(`**You**${stamp(m)}`, '', m.content, '', '---', '')
-    else if (m.role === 'assistant' && m.content) {
+    else if (m.role === 'tool' && m.block) {
+      const block = validateBlock(m.block)
+      if (block.ok) lines.push('```', blockText(block.block), '```', '')
+    } else if (m.role === 'assistant' && m.content) {
       lines.push(`**Assistant**${m.model ? ` (${m.model})` : ''}${stamp(m)}`, '', m.content, '', '---', '')
     }
   }
@@ -1566,6 +1575,7 @@ export function Chat() {
   )
 
   const liveThreads=incognito ? threads : liveThreadList(threads,currentThreadId(),history,{streaming:!!liveAnswer})
+  const blockLayout=blockAnchors(history,{liveTail:activity.length>0})
   const rail=chatRailData({symbols:quoteSymbols,quotes,earnDays,events:upcoming})
   const railMovers=rail.movers
 
@@ -1784,11 +1794,15 @@ export function Chat() {
             style={{ fontSize: `${(13.5 * chatZoom).toFixed(2)}px`, overflowAnchor: 'none' }}
           >
         {history.map((m, i) => {
-          if (m.role === 'tool') return null
+          // A turn's chart/table blocks ride its tool records and draw with
+          // its answer; a turn still streaming draws them under the live trace.
+          const blocksHere = blockLayout.anchors.get(i)
+          if (m.role === 'tool') return blocksHere ? <ChatBlocks key={i} blocks={blocksHere} /> : null
           if (m.role === 'assistant' && m.toolCalls?.length) {
-            if (m.traceHidden || hasTurnActivity(history, i, activity)) return null
+            if (m.traceHidden || hasTurnActivity(history, i, activity)) return blocksHere ? <ChatBlocks key={i} blocks={blocksHere} /> : null
             return (
-              <div key={i} class="chat-message-enter self-start flex flex-col gap-1 max-w-[92%]">
+              <div key={i} class="w-full flex flex-col gap-1.5">
+              <div class="chat-message-enter self-start flex flex-col gap-1 max-w-[92%]">
                 {m.content && (
                   <div class="chat-message-copy rounded-xl border px-3 py-2 font-anth text-[0.96em] leading-relaxed bg-surface-1 border-line text-ink">
                     <MdLite text={m.content} />
@@ -1796,15 +1810,18 @@ export function Chat() {
                 )}
                 <ToolChips calls={m.toolCalls} results={results} />
               </div>
+              {blocksHere && <ChatBlocks blocks={blocksHere} />}
+              </div>
             )
           }
           if (m.role === 'assistant') {
-            if (!m.content) return null   // trace narrates the wait — no empty bubble
+            if (!m.content) return blocksHere ? <ChatBlocks key={i} blocks={blocksHere} /> : null   // trace narrates the wait — no empty bubble
             return (
               <div key={i} class="w-full flex flex-col gap-1.5 chat-turn-enter">
                 {m.trace?.length > 0 && (
                   <ActivityTrace steps={traceToolDetails(m.trace, history, i)} startedAt={m.traceStartedAt} usage={m.traceUsage} />
                 )}
+                {blocksHere && <ChatBlocks blocks={blocksHere} />}
                 <div class="group self-start max-w-[92%] flex items-center gap-1.5">
                   <div class="chat-message-copy chat-assistant-bubble min-w-0 rounded-2xl border px-3.5 py-2.5 text-[1em] leading-relaxed bg-surface-1 border-line text-ink font-anth">
                     <MdLite text={m.content} />
@@ -1868,6 +1885,7 @@ export function Chat() {
         {activity.length > 0 && (
           <ActivityTrace steps={activity} busy={busy} startedAt={turnStartedRef.current} usage={usage} />
         )}
+        {blockLayout.tail.length > 0 && <ChatBlocks blocks={blockLayout.tail} />}
         {liveAnswer && (
           <div class="chat-message-copy chat-assistant-bubble chat-message-live self-start max-w-[92%] rounded-2xl border px-3.5 py-2.5 text-[1em] leading-relaxed bg-surface-1 border-line text-ink font-anth">
             <MdLite text={liveAnswer} />

@@ -50,7 +50,8 @@ export function findChatPortfolio(selector) {
  return {error:matches.length?'ambiguous portfolio name; use an id':'portfolio not found',choices:books.map(identity)}
 }
 
-async function priceBook(book,fetchQuotes) {
+/** App valuation of one book with the quotes and FX behind it; shared with chat visuals. */
+export async function priceChatBook(book,fetchQuotes) {
  const currencies=[book.ccy,...book.holdings.map(h=>holdingCurrency(h.symbol)),...book.cash.map(c=>c.ccy)]
  const symbols=[...new Set([...book.holdings.map(h=>h.symbol),...fxSymbolsFor(currencies)])]
  const entries=Object.fromEntries(symbols.map(s=>[s,getCached(s)]).filter(([,v])=>v?.quote))
@@ -98,7 +99,7 @@ export async function readChatPortfolio(args={},services={}) {
    stats:historyStats(series),...chatPage(filter(series).reverse(),args)}
  }
  if(!['summary','holdings'].includes(section))return {error:'unknown portfolio section'}
- const value=await priceBook(p,services.fetchQuotes)
+ const value=await priceChatBook(p,services.fetchQuotes)
  const valuation={...value.total,value:value.missing.length?null:value.total.value,priced_value:value.total.value,
   complete:!value.missing.length,missing:value.missing,currency:p.ccy,price_as_of:value.as_of,
   fx_rates_to_usd:value.fx_rates,stale_symbols:value.stale,failed_quotes:value.failed}

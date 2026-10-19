@@ -587,6 +587,8 @@ const LABELS = {
   "Reading research": "读取研究资料",
   "Reading news": "阅读新闻",
   "Reading article": "阅读文章",
+  "Drawing a chart": "绘制图表",
+  "Table": "表格", "View": "视图", "As of": "截至", "Show series": "显示该序列", "Hide series": "隐藏该序列",
   "Reading quotes": "读取行情",
   "Reading technicals": "读取技术指标",
   "Checking earnings": "查看财报",

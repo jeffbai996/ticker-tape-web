@@ -1,6 +1,7 @@
 import {TOOL_GERUNDS} from './chatActivityLabels.js'
 import {listChatPortfolios,readChatPortfolio,readChatAppData} from './chatAppData.js'
 import {readChatResearch,readChatNews,readChatArticle} from './chatResearch.js'
+import {compareVisual,portfolioVisual,priceVisual,COMPARE_RANGES,PORTFOLIO_VIEWS} from './chatVisuals.js'
 // Chat tool registry: JSON-Schema defs sent to the worker, and the
 // client-side executors backing them. Everything executes in the browser
 // against data paths the app already uses (feed cache, Yahoo via the proxy,
@@ -266,6 +267,8 @@ const sym = { type: 'string', description: 'Ticker symbol, e.g. NVDA' }
 
 const readPage={offset:{type:'integer',description:'Next offset returned by this tool'},limit:{type:'integer',description:'Rows per page, 1–50'}}
 export const APP_READ_TOOLS=['get_portfolios','get_portfolio','get_app_data','get_research','get_news','read_article']
+/** Read-only tools whose result also carries a validated chart or table block for the transcript. */
+export const VISUAL_TOOLS=['chart_compare','chart_portfolio','chart_price']
 
 export const TOOL_DEFS = [
   {name:'get_portfolios',description:'List ALL saved portfolios, names, ids, currencies, cash and data counts. The selected UI portfolio is not an access limit. Never merge separate portfolios implicitly.',parameters:{type:'object',properties:{}}},
@@ -274,6 +277,9 @@ export const TOOL_DEFS = [
   {name:'get_research',description:'Read the same company research providers as the app: fundamentals, profile, analysts, insiders, holders, corporate events (including HK/A-share results/dividends), dividends, historical prices or options. Options expiration is a Unix timestamp. Fetch further pages using next_offset.',parameters:{type:'object',properties:{symbol:sym,section:{type:'string',enum:['fundamentals','profile','analysts','insiders','holders','events','dividends','history','options']},range:{type:'string',enum:['1M','3M','6M','1Y','2Y','5Y','MAX']},expiration:{type:'integer'},side:{type:'string',enum:['calls','puts']},...readPage},required:['symbol']}},
   {name:'get_news',description:'Read app wire headlines, or news for a saved portfolio or symbol, including targeted Chinese company coverage. q filters text. Returns ids usable by read_article; all data is read-only.',parameters:{type:'object',properties:{portfolio:{type:'string'},symbol:sym,q:{type:'string'},...readPage}}},
   {name:'read_article',description:'Read full text for an article id returned by get_news. Only known app-visible articles can be read. offset is a character offset; continue using next_offset.',parameters:{type:'object',properties:{id:{type:'string'},symbol:sym,portfolio:{type:'string'},offset:{type:'integer'}},required:['id']}},
+  {name:'chart_compare',description:'Show the user a chart comparing up to six symbols as indexed price return (first shared session = 100) over a range, or the same figures as a table with view=table. The chart renders inside your answer automatically from app price history; explain what it shows in prose and never paste the points.',parameters:{type:'object',properties:{symbols:{type:'array',items:{type:'string'},description:'One to six ticker symbols'},range:{type:'string',enum:COMPARE_RANGES},view:{type:'string',enum:['chart','table']}},required:['symbols']}},
+  {name:'chart_portfolio',description:'Show the user a chart of one saved portfolio using the same valuation as the app: contributors (today\'s P&L by holding in the book currency), allocation (weights by holding including cash) or currency (weights by trading currency). Unpriced holdings are listed, not omitted. Pass the explicit portfolio id or exact name; omit only for the selected default. Renders automatically; explain it in prose.',parameters:{type:'object',properties:{portfolio:{type:'string'},view:{type:'string',enum:PORTFOLIO_VIEWS}}}},
+  {name:'chart_price',description:'Show the user a closing-price chart for one symbol over a range with its period high, low and return. Renders automatically from app price history; explain it in prose.',parameters:{type:'object',properties:{symbol:sym,range:{type:'string',enum:COMPARE_RANGES}},required:['symbol']}},
 
   {
     name: 'wire_search',
@@ -427,6 +433,9 @@ const EXECUTORS = {
   get_research:readChatResearch,
   get_news:readChatNews,
   read_article:readChatArticle,
+  chart_compare:args=>compareVisual(args),
+  chart_portfolio:args=>portfolioVisual(args,{fetchQuotes:fetchQuoteBatch}),
+  chart_price:args=>priceVisual(args),
   wire_search: async ({ q, symbol }) => {
     const base = wireServiceUrl()
     if (!base) return { error: 'no wire connected in this browser' }
@@ -488,6 +497,7 @@ const EXECUTORS = {
 // better than get_quotes({"symbols":…}).
 const TOOL_VERBS = {
   get_portfolios:'portfolios',get_portfolio:'portfolio',get_app_data:'app data',get_research:'research',get_news:'news',read_article:'article',
+  chart_compare:'chart',chart_portfolio:'chart',chart_price:'chart',
   get_quotes: 'quotes',
   get_technicals: 'technicals',
   get_earnings: 'earnings',
@@ -534,17 +544,26 @@ export function toolRunLabel(tc) {
 
 /**
  * Execute one tool call; always resolves to a JSON string (errors included —
- * the model reads them and self-corrects). Exported for tests.
+ * the model reads them and self-corrects). With `rich`, resolves to
+ * {content, block}: the model-facing string plus any validated visual block
+ * a chart tool produced for the transcript. Exported for tests.
  */
-export async function executeTool(name, args) {
+export async function executeTool(name, args, { rich = false } = {}) {
   const fn = EXECUTORS[name]
   if (!fn) return JSON.stringify({ error: `unknown tool: ${name}` })
+  let block = null
+  let content
   try {
-    const result = await fn(args || {})
+    let result = await fn(args || {})
+    if (VISUAL_TOOLS.includes(name) && result && typeof result === 'object' && 'summary' in result) {
+      block = result.block || null
+      result = result.summary
+    }
     const s = JSON.stringify(result)
-    if(APP_READ_TOOLS.includes(name))return s.length<=16000?s:JSON.stringify({error:'Result exceeds the page budget; request a smaller limit or a specific section.'})
-    return s.length > MAX_RESULT_CHARS ? s.slice(0, MAX_RESULT_CHARS) + '…(truncated)' : s
+    if(APP_READ_TOOLS.includes(name))content=s.length<=16000?s:JSON.stringify({error:'Result exceeds the page budget; request a smaller limit or a specific section.'})
+    else content=s.length > MAX_RESULT_CHARS ? s.slice(0, MAX_RESULT_CHARS) + '…(truncated)' : s
   } catch (err) {
-    return JSON.stringify({ error: String(err?.message || err) })
+    content=JSON.stringify({ error: String(err?.message || err) })
   }
+  return rich ? { content, ...(block ? { block } : {}) } : content
 }

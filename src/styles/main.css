@@ -1020,6 +1020,14 @@ html[data-pointer-hover] .chat-trace-entry > summary:hover { background-color:tr
 .chat-token-stat { flex:none; display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }
 .chat-token-arrow { color:#73767e; }
 
+/* Rich chat output: chart and table blocks inside an assistant turn. The
+   tooltip floats over the plot; the bar track and table reuse the surface
+   tokens so a block reads as one more flat data card in the transcript. */
+.chat-block { container-type: inline-size; }
+.chat-block-tip { pointer-events: none; min-width: 7rem; max-width: 60%; border: 1px solid var(--color-line-2); border-radius: 6px; background: var(--color-surface-3); padding: 3px 6px; font: 10px/1.5 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--color-ink-2); }
+.chat-block-line svg text { font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: no-preference) { .chat-block-bars span[style] { transition: width .25s ease-out; } }
+
 /* A chart mounts in a child that undoes the desktop zoom: lightweight-charts
    reads the mouse in on-screen pixels and draws in its own, so under the zoom
    its crosshair drifted right of the cursor (chartview.js chartHost). */

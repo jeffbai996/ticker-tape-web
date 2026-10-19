@@ -8,7 +8,7 @@ import {IS_FAMILY_AI} from './nav.js'
 
 import { contextualMessages } from './chatHandoff.js'
 import { streamChat } from './chatClient.js'
-import { TOOL_DEFS, executeTool, APP_READ_TOOLS } from './tools.js'
+import { TOOL_DEFS, executeTool, APP_READ_TOOLS, VISUAL_TOOLS } from './tools.js'
 import {
   isPlanningStub, parseToolCall, toolProtocol, wireChatAvailable, wireComplete,
   wireStream, newTurnId,
@@ -16,9 +16,14 @@ import {
 
 const MAX_ROUNDS = 12
 const MAX_TOOL_CALLS = 12
-const ANALYSIS_TOOLS = new Set([...APP_READ_TOOLS,'wire_search','get_quotes','get_technicals','get_earnings','get_market_pulse','get_watchlist','get_calendar','journal_search'])
+const ANALYSIS_TOOLS = new Set([...APP_READ_TOOLS,...VISUAL_TOOLS,'wire_search','get_quotes','get_technicals','get_earnings','get_market_pulse','get_watchlist','get_calendar','journal_search'])
 const analysisRequest = messages => !!messages.findLast(m=>m.role==='user')?.context
 const analysisResult = () => JSON.stringify({error:'This contextual analysis can only read data. Request changes in a separate chat message.'})
+const INITIAL_TOOLS=new Set([...APP_READ_TOOLS,...VISUAL_TOOLS])
+/** A tool run yields the model-facing text and, for chart tools, a block for the transcript. */
+const toolOutcome = (result) => (result && typeof result === 'object' && typeof result.content === 'string'
+  ? result : { content: typeof result === 'string' ? result : JSON.stringify(result ?? null) })
+const toolRecord = (id, name, outcome) => ({ role: 'tool', id, name, content: outcome.content, ...(outcome.block ? { block: outcome.block } : {}) })
 
 /**
  * Trim chat history to at most `max` entries without orphaning tool messages:
@@ -69,7 +74,7 @@ export async function runAgenticOverWire({
   let toolCalls=0
   const runTool=(...args)=>{
     if(toolCalls>=MAX_TOOL_CALLS)throw new Error('This prompt reached its tool-call limit. Please narrow the request.')
-    toolCalls++;return temporary && !temporaryToolAllowed(args[0],args[1]) ? temporaryToolError() : execute(...args)
+    toolCalls++;return temporary && !temporaryToolAllowed(args[0],args[1]) ? temporaryToolError() : execute(args[0],args[1],{rich:true})
   }
   const turnId=newTurnId(),sendIds=[turnId]
   const added = []
@@ -80,14 +85,14 @@ export async function runAgenticOverWire({
   // Refresh visible state after historical replies so earlier access claims
   // cannot masquerade as the current browser's capabilities.
   for(const [index,call] of initialTools.entries()) {
-    if(!APP_READ_TOOLS.includes(call.name))throw new Error('Initial context tools must be read-only.')
+    if(!INITIAL_TOOLS.has(call.name))throw new Error('Initial context tools must be read-only.')
     const id=`context-${index}`
     onTrace?.({type:'tool_start',round:-1,id,name:call.name,args:call.args||{}})
-    const result=await runTool(call.name,call.args||{})
+    const outcome=toolOutcome(await runTool(call.name,call.args||{}))
     const entries=[{role:'assistant',content:'',toolCalls:[{id,name:call.name,args:call.args||{}}]},
-      {role:'tool',id,name:call.name,content:result}]
+      toolRecord(id,call.name,outcome)]
     added.push(...entries);contextAdded.push(...entries)
-    onTrace?.({type:'tool_done',round:-1,id,name:call.name,result})
+    onTrace?.({type:'tool_done',round:-1,id,name:call.name,result:outcome.content})
     onRound?.([...added])
   }
   for (let round = 0; round < MAX_ROUNDS; round++) {
@@ -182,9 +187,9 @@ export async function runAgenticOverWire({
     contextAdded.push(callEntry)
     onRound?.([...added])
     onTrace?.({ type: 'tool_start', round, id, name: call.name, args: call.args })
-    let result
+    let outcome
     try {
-      result = readOnly && !ANALYSIS_TOOLS.has(call.name) ? analysisResult() : await runTool(call.name, call.args)
+      outcome = toolOutcome(readOnly && !ANALYSIS_TOOLS.has(call.name) ? analysisResult() : await runTool(call.name, call.args))
     } catch (err) {
       onTrace?.({
         type: 'tool_error', round, id, name: call.name,
@@ -192,8 +197,8 @@ export async function runAgenticOverWire({
       })
       throw err
     }
-    onTrace?.({ type: 'tool_done', round, id, name: call.name, result })
-    const resultEntry = { role: 'tool', id, name: call.name, content: result }
+    onTrace?.({ type: 'tool_done', round, id, name: call.name, result: outcome.content })
+    const resultEntry = toolRecord(id, call.name, outcome)
     added.push(resultEntry)
     contextAdded.push(resultEntry)
     onRound?.([...added])
@@ -249,9 +254,9 @@ export async function runAgentic({
     onRound?.([...added])
     for (const tc of toolCalls) {
       onTrace?.({ type: 'tool_start', round, id: tc.id, name: tc.name, args: tc.args })
-      let result
+      let outcome
       try {
-        result = temporary && !temporaryToolAllowed(tc.name,tc.args) ? temporaryToolError() : readOnly && !ANALYSIS_TOOLS.has(tc.name) ? analysisResult() : await executeTool(tc.name, tc.args)
+        outcome = toolOutcome(temporary && !temporaryToolAllowed(tc.name,tc.args) ? temporaryToolError() : readOnly && !ANALYSIS_TOOLS.has(tc.name) ? analysisResult() : await executeTool(tc.name, tc.args, { rich: true }))
       } catch (err) {
         onTrace?.({
           type: 'tool_error', round, id: tc.id, name: tc.name,
@@ -259,8 +264,8 @@ export async function runAgentic({
         })
         throw err
       }
-      onTrace?.({ type: 'tool_done', round, id: tc.id, name: tc.name, result })
-      added.push({ role: 'tool', id: tc.id, name: tc.name, content: result })
+      onTrace?.({ type: 'tool_done', round, id: tc.id, name: tc.name, result: outcome.content })
+      added.push(toolRecord(tc.id, tc.name, outcome))
       onRound?.([...added])
     }
   }

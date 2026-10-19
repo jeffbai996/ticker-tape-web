@@ -57,6 +57,11 @@ Corollaries:
   with the extended print after the close.
 - AI briefing, memo, and multi-model chat surfaces. Publicly the AI routes
   render inert previews badged PREVIEW and never call a model service.
+- Rich chat output: read-only chart tools (`chart_compare`, `chart_portfolio`,
+  `chart_price` in `src/lib/tools.js`) build a validated block
+  (`src/lib/chatBlocks.js`, data in `src/lib/chatVisuals.js`) from app data
+  and attach it to the tool record of the turn; `src/components/ChatBlock.jsx`
+  draws it with a table view. The model only receives the block's summary.
 - Wire page with a synthetic public session, the public wire mirror, or an
   optional user-supplied wire endpoint. The mirror is a
   sanitized headline snapshot pushed to the Worker (`worker/wire.js`,

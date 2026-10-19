@@ -1,6 +1,7 @@
 /** Stable source labels remain in saved traces; localize only their chrome. */
 export const TOOL_GERUNDS = {
   get_portfolios:'Reading portfolios',get_portfolio:'Reading portfolio',get_app_data:'Reading app data',get_research:'Reading research',get_news:'Reading news',read_article:'Reading article',
+  chart_compare:'Drawing a chart',chart_portfolio:'Drawing a chart',chart_price:'Drawing a chart',
   get_quotes: 'Reading quotes',
   get_technicals: 'Reading technicals',
   get_earnings: 'Checking earnings',
