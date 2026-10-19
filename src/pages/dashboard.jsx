@@ -1836,7 +1836,7 @@ export function Dashboard({ listId = null }) {
       {/* ONE row at every width (Jeff 2026-08-06: "do not use a second row
           in any view") — the strip scrolls, everything else shrinks */}
       <div class="dashboard-toolbar flex items-center gap-2 md:gap-4 px-1 pb-2 min-w-0">
-        <div class="dashboard-controls flex items-center gap-2 min-w-0 shrink-0">
+        <div class="dashboard-controls flex items-center gap-2 max-sm:gap-1.5 min-w-0 shrink-0">
           <BoardMenu sort={sort} setSort={setSort} setViewMode={setViewMode}
             spark={spark} setSpark={setSpark} sparkWin={sparkWin} setSparkWin={setSparkWin}
             lists={namedWatchlists} listId={activeList?.id || null}
@@ -1880,7 +1880,7 @@ export function Dashboard({ listId = null }) {
               <rect x="1.5" y="1.5" width="11" height="11" rx="2.5" />
               <path d="m4.4 7.2 1.9 1.9 3.4-4" />
             </svg>
-            {tl('Select')}
+            <span class="max-sm:sr-only">{tl('Select')}</span>
           </button>
         </div>
 
