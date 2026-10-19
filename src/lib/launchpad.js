@@ -60,7 +60,8 @@ export function dynamicActions({ watchlist, quotes, earnDays, nextEvent, book, j
     .filter(q=>q.pct!=null&&Math.abs(q.pct)>=1.5).sort((a,b)=>Math.abs(b.pct)-Math.abs(a.pct))[0]
   if(overnight)add('overnight','mkt',{symbol:overnight.symbol,pct:overnight.pct.toFixed(1)})
   const leader=badges.filter(b=>b.rs!=null&&Math.abs(b.rs)>=5).sort((a,b)=>Math.abs(b.rs)-Math.abs(a.rs))[0]
-  if(leader)add('rs','mkt',{symbol:leader.symbol,pct:leader.rs.toFixed(1)})
+  // Relative strength is signed: a laggard is 跑输, not 跑赢 by a negative number.
+  if(leader)add(leader.rs>=0?'rs':'rs_lag','mkt',{symbol:leader.symbol,pct:Math.abs(leader.rs).toFixed(1)})
   const nearHigh=badges.filter(b=>b.offHigh!=null&&b.offHigh<=3).sort((a,b)=>a.offHigh-b.offHigh)[0]
   if(nearHigh)add('near_high','mkt',{symbol:nearHigh.symbol,pct:nearHigh.offHigh.toFixed(1)})
   const tagged=[...(journal||[])].reverse().find(e=>e.symbols?.length)

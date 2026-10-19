@@ -266,6 +266,7 @@ const STRINGS = {
   'chat.action_near_high': { en: '{symbol} is {pct}% off its 52-week high — room left?', zh: '{symbol} 距 52 周高点 {pct}%，还有空间吗？' },
   'chat.action_stretched': { en: "{symbol}'s RSI is {rsi} — trending or overextended?", zh: '{symbol} 的 RSI 为 {rsi}，是趋势还是超买？' },
   'chat.action_rs': { en: '{symbol} is {pct}pp ahead of the market over 20d — why?', zh: '{symbol} 近 20 日跑赢大盘 {pct} 个百分点，原因是什么？' },
+  'chat.action_rs_lag': { en: '{symbol} is {pct}pp behind the market over 20d — why?', zh: '{symbol} 近 20 日跑输大盘 {pct} 个百分点，原因是什么？' },
   'chat.action_overnight': { en: '{symbol} moved {pct}% after hours — does it hold?', zh: '{symbol} 盘后波动 {pct}%，能守住吗？' },
   // Feed-health tooltips. Keys rather than built sentences: feedHealth used to
   // interpolate the age into English prose, which no locale could ever reach.

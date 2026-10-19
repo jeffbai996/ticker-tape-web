@@ -146,3 +146,18 @@ it('states the listing currency in alert thresholds in both locales',async()=>{
  setLocale('en')
  expect(dynamicActions(context).find(a=>a.family==='chat.action_alert').t).toContain('HKD')
 })
+
+describe('relative-strength prompt', () => {
+  const base = { watchlist: ['AAPL'], earnDays: {}, nextEvent: null, book: false, journal: [] }
+  it('calls a laggard behind the market, never ahead by a negative number', () => {
+    const pool = dynamicActions({ ...base, quotes: { AAPL: { tech: { rs: -29.6 } } } })
+    const prompt = pool.find((a) => /20d|20 日/.test(a.t))
+    expect(prompt.t).toContain('behind')
+    expect(prompt.t).toContain('29.6')
+    expect(prompt.t).not.toContain('-29.6')
+  })
+  it('keeps the leader wording for a positive spread', () => {
+    const pool = dynamicActions({ ...base, quotes: { AAPL: { tech: { rs: 12.4 } } } })
+    expect(pool.find((a) => /20d/.test(a.t)).t).toContain('ahead')
+  })
+})
