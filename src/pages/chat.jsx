@@ -1585,15 +1585,15 @@ export function Chat() {
         <Overlay onClose={() => setDrawer(null)} label={tl('Chat sessions')}
           class="max-w-xl w-full bg-surface-1 border border-line rounded-2xl px-4 py-3 max-h-[72vh] overflow-y-auto">
           <div class="flex items-center gap-3 pb-3 border-b border-line">
-            <div>
+            <div class="min-w-0 flex-1">
               <div class="font-anth text-[15px] font-semibold text-ink">{tl('Chat sessions')}</div>
               <div class="font-anth text-[11px] text-muted">{tl('Saved automatically. Open any session without replacing this one.')}</div>
             </div>
             <button type="button" disabled={busy} onClick={newThread}
-              class="ml-auto font-anth text-[11px] text-accent border border-accent/40 rounded-md px-2 py-1 hover:bg-accent-soft disabled:opacity-40">
+              class="ml-auto shrink-0 whitespace-nowrap font-anth text-[11px] text-accent border border-accent/40 rounded-md px-2 py-1 hover:bg-accent-soft disabled:opacity-40">
               {tl('+ new session')}
             </button>
-            <button class="chat-drawer-close text-muted hover:text-ink" onClick={() => setDrawer(null)} aria-label={tl('close')}>✕</button>
+            <button class="chat-drawer-close shrink-0 text-muted hover:text-ink" onClick={() => setDrawer(null)} aria-label={tl('close')}>✕</button>
           </div>
           <div class="py-2 flex flex-col gap-1">
             {liveThreads.length === 0 && <div class="font-anth text-[12px] text-muted py-1">{tl('no saved sessions yet')}</div>}
