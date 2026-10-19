@@ -33,10 +33,11 @@ async function boundedBody(request) {
   const body = JSON.parse(new TextDecoder().decode(bytes))
   if (!body || typeof body !== 'object' || Array.isArray(body)) throw new SyntaxError()
   const model=body.model || 'family-sonnet'
-  const profiles={'family-sonnet':'medium','family-opus':'low','family-flash':'medium'}
+  const profiles={'family-sonnet':'medium','family-opus':'low','family-flash':'low'}
   if (!Object.hasOwn(profiles,model)) throw new SyntaxError()
   const effort=profiles[model]
-  if (body.effort && body.effort!==effort) throw new SyntaxError()
+  const legacyArgon = model==='family-flash' && body.effort==='medium'
+  if (body.effort && body.effort!==effort && !legacyArgon) throw new SyntaxError()
   if(body.turn_id!==undefined || body.send_ids!==undefined){
     if(typeof body.turn_id!=='string'||!/^[a-f0-9]{32}$/.test(body.turn_id)
       ||!Array.isArray(body.send_ids)||body.send_ids.length<1||body.send_ids.length>64

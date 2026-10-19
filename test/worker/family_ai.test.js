@@ -56,11 +56,11 @@ it('routes the approved Opus option with low effort and rejects arbitrary models
   expect(fetcher).not.toHaveBeenCalled()
 })
 
-it('allows family Flash with fixed medium effort through the streaming proxy',async()=>{
+it('allows family Argon with fixed low effort through the streaming proxy',async()=>{
  const fetcher=vi.fn(async()=>new Response('event: done\ndata: {}\n\n'))
  const response=await handleFamilyAI(request('/api/chat/stream',cap,{model:'family-flash',messages:[{role:'user',content:'Hello'}]}),env(),fetcher)
  expect(response.status).toBe(200)
- expect(JSON.parse(fetcher.mock.calls[0][1].body)).toMatchObject({model:'family-flash',effort:'medium'})
+ expect(JSON.parse(fetcher.mock.calls[0][1].body)).toMatchObject({model:'family-flash',effort:'low'})
 })
 
 it('does not charge model-list reads against inference quota',async()=>{
@@ -98,4 +98,11 @@ it('pauses new inference during a deployment drain without consuming quota or bl
  expect((await response.json()).code).toBe('assistant_busy')
  expect(fetcher).not.toHaveBeenCalled()
  expect((await handleFamilyAI(request('/api/chat/models'),config,fetcher)).status).toBe(200)
+})
+
+it('normalizes legacy Argon requests to low effort',async()=>{
+ const fetcher=vi.fn(async()=>Response.json({ok:true,text:'Done'}))
+ const response=await handleFamilyAI(request('/api/chat',cap,{model:'family-flash',effort:'medium',messages:[{role:'user',content:'Hello'}]}),env(),fetcher)
+ expect(response.status).toBe(200)
+ expect(JSON.parse(fetcher.mock.calls[0][1].body)).toMatchObject({model:'family-flash',effort:'low'})
 })

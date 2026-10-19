@@ -708,7 +708,7 @@ export function Chat() {
   const [model, setModel] = useState(
     IS_FAMILY_AI ? 'family-sonnet' : localStorage.getItem(modelStorageKey) || (onWire ? 'agy-argon' : 'argon'),
   )
-  const [effort, setEffort] = useState(IS_FAMILY_AI ? 'medium' : localStorage.getItem('chat_effort') || 'auto')
+  const [effort, setEffort] = useState(IS_FAMILY_AI ? 'medium' : model==='agy-argon' ? 'low' : localStorage.getItem('chat_effort') || 'auto')
   const [spend, setSpend] = useState(null)
   const [history, setHistory] = useState(loadHistory)
   const [input, setInput] = useState(() => {

@@ -207,7 +207,7 @@ it('supplies a catalog of every saved portfolio without restricting chat to the 
 it('routes family Flash to its own model instead of silently choosing Sonnet',async()=>{
  const chat=await family();const fetcher=vi.fn(async()=>Response.json({ok:true,text:'Ready'}));vi.stubGlobal('fetch',fetcher)
  await chat.wireComplete({model:'family-flash',effort:'high',messages:[{role:'user',content:'Hello'}]})
- expect(JSON.parse(fetcher.mock.calls[0][1].body)).toMatchObject({model:'family-flash',effort:'medium'})
+ expect(JSON.parse(fetcher.mock.calls[0][1].body)).toMatchObject({model:'family-flash',effort:'low'})
 })
 
 it('retains rate-limit retry metadata from a failed stream',async()=>{
@@ -219,4 +219,12 @@ it('never silently substitutes a completed answer when family streaming fails',a
  const complete=vi.fn();const fail=Object.assign(Error('rate limit'),{status:429})
  await expect(runAgenticOverWire({model:'family-flash',system:'Task',messages:[{role:'user',content:'Hello'}]},{wireStream:async()=>{throw fail},wireComplete:complete})).rejects.toBe(fail)
  expect(complete).not.toHaveBeenCalled()
+})
+
+it('uses low effort when Argon is explicitly selected',async()=>{
+ const chat=await family()
+ const fetcher=vi.fn(async()=>Response.json({ok:true,text:'Done'}))
+ vi.stubGlobal('fetch',fetcher)
+ await chat.wireComplete({model:'family-flash',effort:'medium',messages:[{role:'user',content:'Hello'}]})
+ expect(JSON.parse(fetcher.mock.calls[0][1].body)).toMatchObject({model:'family-flash',effort:'low'})
 })

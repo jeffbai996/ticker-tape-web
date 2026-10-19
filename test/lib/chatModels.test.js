@@ -40,3 +40,9 @@ it('expands compact provider names without duplicating a full name',()=>{
  expect(fullModelName('Claude Opus 5.5')).toBe('Claude Opus 5.5')
  expect(fullModelName('Qwen 3.8-27B')).toBe('Qwen 3.8-27B')
 })
+
+it('defaults private Argon to low without changing other model effort settings',()=>{
+ const models=[{key:'agy-argon',default_effort:'medium'},{key:'other',default_effort:'high'}]
+ expect(pickerModels(models,true).map(m=>m.default_effort)).toEqual(['low','high'])
+ expect(models[0].default_effort).toBe('medium')
+})

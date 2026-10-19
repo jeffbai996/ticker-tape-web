@@ -27,7 +27,7 @@ function chatBody({ model, effort, system, messages, turnId, sendIds }) {
   const chosen=IS_FAMILY_AI ? (['family-opus','family-flash'].includes(model) ? model : 'family-sonnet') : model
   const identity=IS_FAMILY_AI?{turn_id:turnId||newTurnId()}:{}
   if(IS_FAMILY_AI)identity.send_ids=sendIds||[identity.turn_id]
-  return JSON.stringify({model:chosen,effort:IS_FAMILY_AI ? (chosen==='family-opus' ? 'low' : 'medium') : effort,system,messages,...identity})
+  return JSON.stringify({model:chosen,effort:IS_FAMILY_AI ? (chosen==='family-sonnet' ? 'medium' : 'low') : effort,system,messages,...identity})
 }
 
 /** Preserve admission metadata so the UI can offer a timed retry. */
