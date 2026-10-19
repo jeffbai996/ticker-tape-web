@@ -554,6 +554,7 @@ const LABELS = {
   'stop generating': '停止生成',
   'reading the wire…': '正在读取快讯…',
   'Chat sessions': '对话记录', Memories: '记忆', 'Trade journal': '交易日志',
+  'current conversation': '当前对话',
   'Saved automatically. Open any session without replacing this one.': '自动保存。打开任意对话都不会覆盖当前对话。',
   'no saved sessions yet': '暂无已保存对话', 'no saved threads': '暂无已保存对话',
   'Details the assistant should remember in future chats.': '需要 AI 在今后对话中记住的内容。',

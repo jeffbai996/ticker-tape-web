@@ -1587,7 +1587,11 @@ export function Chat() {
           <div class="flex items-center gap-3 pb-3 border-b border-line">
             <div class="min-w-0 flex-1">
               <div class="font-anth text-[15px] font-semibold text-ink">{tl('Chat sessions')}</div>
-              <div class="font-anth text-[11px] text-muted">{tl('Saved automatically. Open any session without replacing this one.')}</div>
+              <div class="font-anth text-[11px] text-muted">
+                {tl('Saved automatically. Open any session without replacing this one.').split(tl('current conversation')).map((part, index) => (
+                  <span key={index}>{index > 0 && <span class="whitespace-nowrap">{tl('current conversation')}</span>}{part}</span>
+                ))}
+              </div>
             </div>
             <button type="button" disabled={busy} onClick={newThread}
               class="ml-auto shrink-0 whitespace-nowrap font-anth text-[11px] text-accent border border-accent/40 rounded-md px-2 py-1 hover:bg-accent-soft disabled:opacity-40">
