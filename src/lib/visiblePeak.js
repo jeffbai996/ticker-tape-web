@@ -1,4 +1,5 @@
 import { fmtPrice } from './format.js'
+import { chartFont } from './chartview.js'
 
 export function peakInRange(bars, range) {
   if (!range || !bars?.length) return null
@@ -12,47 +13,54 @@ export function peakInRange(bars, range) {
   return peak
 }
 
-// The label lives over the chart canvas so it never changes the price scale.
-export function attachVisiblePeak(chart, series, host, bars) {
-  const marker = document.createElement('div')
-  marker.className = 'pointer-events-none absolute z-10 font-mono text-[8px] text-ink-2 tabular-nums whitespace-nowrap'
-  marker.style.cssText = 'display:none;transform:translate(-100%,-50%);text-shadow:0 1px 4px #000,0 1px 4px #000'
-  const dot = document.createElement('span')
-  dot.className = 'pointer-events-none absolute z-10 rounded-full bg-accent-2/70'
-  dot.style.cssText = 'display:none;width:3px;height:3px;transform:translate(-50%,-50%)'
-  host.append(marker, dot)
-  let shown = null
-  const update = () => {
-    const bar = peakInRange(bars, chart.timeScale().getVisibleLogicalRange())
-    const x = bar && chart.timeScale().timeToCoordinate(bar.time)
-    const y = bar && series.priceToCoordinate(bar.high)
-    if (!bar || x == null || y == null || x < 0 || x > host.clientWidth) {
-      marker.style.display = 'none'
-      dot.style.display = 'none'
-      shown = null
-      return
-    }
-    if (shown !== bar) {
-      marker.textContent = fmtPrice(bar.high)
-      shown = bar
-    }
-    marker.style.display = 'block'
-    dot.style.display = 'block'
-    const roomOnLeft = x >= marker.offsetWidth + 12
-    marker.style.transform = roomOnLeft ? 'translate(-100%,-50%)' : 'translate(0,-50%)'
-    marker.style.left = `${x + (roomOnLeft ? -9 : 9)}px`
-    marker.style.top = `${Math.max(10, y - 8)}px`
-    dot.style.left = `${x}px`
-    dot.style.top = `${y}px`
+// Render in the price pane's own coordinates. A DOM overlay outside
+// .lwc-unzoom drifts under app zoom and misses price-scale-only redraws.
+export function attachVisiblePeak(chart, series, _host, bars) {
+  let rangeKey = null
+  let peak = null
+  const renderer = {
+    draw(target) {
+      const scale = chart.timeScale()
+      const range = scale.getVisibleLogicalRange()
+      const key = range ? `${Math.ceil(range.from)}:${Math.floor(range.to)}` : ''
+      if (key !== rangeKey) {
+        peak = peakInRange(bars, range)
+        rangeKey = key
+      }
+      if (!peak) return
+      const x = scale.timeToCoordinate(peak.time)
+      const y = series.priceToCoordinate(peak.high)
+      if (x == null || y == null) return
+      target.useMediaCoordinateSpace(({ context: ctx, mediaSize }) => {
+        if (x < 0 || x > mediaSize.width || y < 0 || y > mediaSize.height) return
+        ctx.save()
+        ctx.font = `500 ${chartFont(8)}px ${chart.options().layout.fontFamily}`
+        ctx.textAlign = 'left'
+        ctx.textBaseline = 'alphabetic'
+        const text = fmtPrice(peak.high)
+        const width = ctx.measureText(text).width
+        const step = chartFont(3)
+        const leader = step * 4
+        const left = x >= width + leader + 2
+        if (!left && x + leader + width > mediaSize.width - 2) {
+          ctx.restore()
+          return
+        }
+        ctx.fillStyle = '#a6adb6'
+        ctx.shadowColor = '#000'
+        ctx.shadowBlur = 2
+        ctx.fillText(text, left ? x - leader - width : x + leader, y)
+        // The number baseline and leader end both land on the wick high.
+        for (let i = 0; i < 4; i++) {
+          ctx.beginPath()
+          ctx.arc(x + (left ? -1 : 1) * i * step, y, chartFont(.5), 0, Math.PI * 2)
+          ctx.fill()
+        }
+        ctx.restore()
+      })
+    },
   }
-  chart.timeScale().subscribeVisibleLogicalRangeChange(update)
-  const observer = new ResizeObserver(update)
-  observer.observe(host)
-  update()
-  return () => {
-    chart.timeScale().unsubscribeVisibleLogicalRangeChange(update)
-    observer.disconnect()
-    marker.remove()
-    dot.remove()
-  }
+  const primitive = { paneViews: () => [{ zOrder: () => 'top', renderer: () => renderer }] }
+  series.attachPrimitive(primitive)
+  return () => series.detachPrimitive(primitive)
 }
