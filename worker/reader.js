@@ -96,8 +96,11 @@ export function extractArticle(html) {
 async function fetchArticle(url, fetcher) {
   const signal = AbortSignal.timeout(15_000)
   if (googleArticleId(url)) {
-    url = await resolveGoogleArticle(url, fetcher, { signal, allowed:publicArticleUrl })
-    if (!url) throw Error('article link unavailable')
+    let stage = 'google_unresolved'
+    url = await resolveGoogleArticle(url, fetcher, { signal, allowed:publicArticleUrl,
+      onStage:(name,status) => { stage = status ? `${name}_${status}` : name },
+    })
+    if (!url) throw Error(stage)
   }
   for (let n = 0; n < 4; n++) {
     if (!publicArticleUrl(url)) throw Error('unsupported publisher')
@@ -160,5 +163,9 @@ export async function handleReader(request, env, fetcher = fetch) {
     const result = { ok: true, ...await fetchArticle(url, fetcher), source_url: url }
     await env.SPEND.put(key, JSON.stringify(result), { expirationTtl: result.text && !result.truncated ? 21600 : 300 })
     return out(result)
-  } catch { return out({ ok: false, error: 'publisher did not provide readable text' }, 502) }
+  } catch (error) {
+    const stage = /^google_[a-z_]+(?:_\d{3})?$/.test(error?.message || '') ? error.message : 'publisher_fetch'
+    console.warn(JSON.stringify({type:'reader_failure',stage}))
+    return out({ ok:false,error:'publisher did not provide readable text' },502)
+  }
 }

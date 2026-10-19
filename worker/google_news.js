@@ -31,7 +31,7 @@ export function googleBatchUrl(text, allowed) {
 }
 
 /** Resolve retained Google News IDs; every destination still needs the publisher allowlist. */
-export async function resolveGoogleArticle(url, fetcher, { signal, allowed }) {
+export async function resolveGoogleArticle(url, fetcher, { signal, allowed, onStage = () => {} }) {
   const id = googleArticleId(url)
   if (!id) return null
   try {
@@ -49,19 +49,19 @@ export async function resolveGoogleArticle(url, fetcher, { signal, allowed }) {
       await response.body?.cancel()
       const direct = publisherUrl(location, allowed)
       if (direct) return direct
-      if (googleArticleId(location) !== id) return null
+      if (googleArticleId(location) !== id) { onStage('google_redirect'); return null }
       url = location
       continue
     }
-    if (!response.ok) { await response.body?.cancel(); return null }
+    if (!response.ok) { onStage('google_http', response.status); await response.body?.cancel(); return null }
     page = await readArticleResponse(response)
     break
   }
-  if (!page) return null
+  if (!page) { onStage('google_empty'); return null }
   const node = parseHTML(page).document.querySelector('[data-n-a-sg][data-n-a-ts]')
   const signature = node?.getAttribute('data-n-a-sg')
   const timestamp = Number(node?.getAttribute('data-n-a-ts'))
-  if (!signature || signature.length > 4096 || !Number.isSafeInteger(timestamp) || timestamp <= 0) return null
+  if (!signature || signature.length > 4096 || !Number.isSafeInteger(timestamp) || timestamp <= 0) { onStage('google_signature'); return null }
   const request = ['garturlreq',
     [['X','X',['en-US','US'],null,null,1,1,'US:en',null,180,null,null,null,null,null,0,null,null,[1608992183,723341000]],
       'en-US','US',1,[2,3,4,8],1,0,'655000234',0,0,null,0], id,timestamp,signature]
@@ -70,6 +70,8 @@ export async function resolveGoogleArticle(url, fetcher, { signal, allowed }) {
     method:'POST',redirect:'manual',signal,body:body.toString(),headers:{'User-Agent':'Mozilla/5.0',
       'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
   })
-  if (!response.ok) { await response.body?.cancel(); return null }
-  return googleBatchUrl(await readArticleResponse(response), allowed)
+  if (!response.ok) { onStage('google_rpc', response.status); await response.body?.cancel(); return null }
+  const resolved = googleBatchUrl(await readArticleResponse(response), allowed)
+  if (!resolved) onStage('google_destination')
+  return resolved
 }
