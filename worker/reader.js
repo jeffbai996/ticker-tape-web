@@ -1,3 +1,4 @@
+import { fetchGatewayArticle } from './article_gateway.js'
 import { readArticleResponse } from './article_fetch.js'
 import { googleArticleId, resolveGoogleArticle } from './google_news.js'
 import { parseHTML } from 'linkedom'
@@ -93,7 +94,7 @@ export function extractArticle(html) {
   return { text:text.slice(0,MAX_TEXT), truncated:locked || excerpt || text.length < 400 || text.length > MAX_TEXT }
 }
 
-async function fetchArticle(url, fetcher) {
+async function fetchDirectArticle(url, fetcher) {
   const signal = AbortSignal.timeout(15_000)
   if (googleArticleId(url)) {
     let stage = 'google_unresolved'
@@ -118,6 +119,23 @@ async function fetchArticle(url, fetcher) {
     return { ...extractArticle(html), resolved_url: url }
   }
   throw Error('too many redirects')
+}
+
+async function fetchArticle(url, fetcher, env) {
+  const google = !!googleArticleId(url)
+  if (google) {
+    const article = await fetchGatewayArticle(url,env,fetcher,publicArticleUrl)
+    if (article) return article
+  }
+  try { return await fetchDirectArticle(url,fetcher) }
+  catch (error) {
+    const host = new URL(url).hostname
+    if (!google && [...CHINESE_PUBLISHERS,'cna.com.tw','investing.com'].some(h => matchesHost(host,h))) {
+      const article = await fetchGatewayArticle(url,env,fetcher,publicArticleUrl)
+      if (article) return article
+    }
+    throw error
+  }
 }
 
 // A global, serialized quota bounds damage even when the shared link leaks.
@@ -160,7 +178,7 @@ export async function handleReader(request, env, fetcher = fetch) {
   const cached = await env.SPEND.get(key, 'json')
   if (query.get('refresh') !== '1' && cached?.source_url === url) return out({ ...cached, text: cleanArticleText(cached.text) })
   try {
-    const result = { ok: true, ...await fetchArticle(url, fetcher), source_url: url }
+    const result = { ok: true, ...await fetchArticle(url, fetcher, env), source_url: url }
     await env.SPEND.put(key, JSON.stringify(result), { expirationTtl: result.text && !result.truncated ? 21600 : 300 })
     return out(result)
   } catch (error) {

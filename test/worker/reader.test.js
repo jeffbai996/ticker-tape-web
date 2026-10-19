@@ -89,6 +89,20 @@ describe('bounded family reader', () => {
     expect(fetcher).toHaveBeenCalledOnce()
     expect(store.SPEND.put.mock.calls[0][2]).toEqual({expirationTtl:300})
   })
+  it('keeps gateway article reads behind the retained-ID reader capability', async () => {
+    const store=env()
+    Object.assign(store,{FAMILY_AI_ORIGIN:'https://gateway.example.test',FAMILY_AI_GATEWAY_TOKEN:'gateway-secret'})
+    const url='https://news.google.com/articles/AU_yqLExampleSignedArticleIdentifier_12345'
+    store.SPEND.get.mockImplementation(async key=>key==='wire:public'?{events:[{id:7,url}]}:null)
+    const fetcher=vi.fn(async()=>Response.json({ok:true,text:'Published public story.',resolved_url:'https://www.finet.hk/story',truncated:true}))
+    expect((await handleReader(request('id=8'),store,fetcher)).status).toBe(404)
+    expect(fetcher).not.toHaveBeenCalled()
+    const out=await (await handleReader(request(),store,fetcher)).json()
+    expect(out.text).toBe('Published public story.')
+    expect(fetcher).toHaveBeenCalledTimes(1)
+    expect(fetcher.mock.calls[0][0]).toBe('https://gateway.example.test/api/article')
+  })
+
   it('fails closed when the quota is exhausted', async () => {
     const store = env()
     store.READER_QUOTA.get = () => ({ fetch: async () => new Response(null, { status: 429 }) })
