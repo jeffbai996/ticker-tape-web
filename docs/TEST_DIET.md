@@ -577,3 +577,17 @@ The scope selection and both native exception suites also pass together via
 the normal npm command (20 cases), including canonical paths, alternate root
 selection, mixed lists and in-tree symlinks. Web landing remains pending the
 translation repair approval so a red full suite is not pushed as green.
+
+### Current-main integration and validation
+
+The approved translation repair was already present on main at `e49cc4c`:
+Declining, Market pulse and thinking all have Chinese entries. No dictionary
+edit was necessary. Main also incorporated the status-palette contract updates;
+retain its retry-button binding assertion instead of reintroducing a styling
+substring check. The remaining patch changes only runtime configuration,
+selection verification and test procedure/report files.
+
+Complete native validation of the integrated patch passes all 2,182 cases
+in 252 files in 29.21 s, with zero failures. The increased count comes from
+main integration, not additional cases in this change. Native forks remain
+explicit in the full wrapper. The earlier pending-approval failure is resolved.
