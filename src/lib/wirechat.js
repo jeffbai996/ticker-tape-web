@@ -127,7 +127,7 @@ export function parseToolCall(text, defs = TOOL_DEFS) {
  * wireComplete.
  */
 export async function wireStream({ model, effort, system, messages, onDelta, onThinking,
-                                  onThinkingTokens, onUsage, signal, turnId, sendIds }) {
+                                  onThinkingTokens, onUsage, onModel, signal, turnId, sendIds }) {
   const { base, headers } = chatTransport()
   const resp = await fetch(`${base}/api/chat/stream`, {
     method: 'POST',
@@ -162,6 +162,11 @@ export async function wireStream({ model, effort, system, messages, onDelta, onT
       try { payload = JSON.parse(data) } catch { continue }
       if (event === 'delta') {
         if (payload.t === 'text') { text += payload.d; onDelta?.(payload.d) }
+        else if (payload.t === 'model') {
+          let model
+          try { model = typeof payload.d === 'string' ? JSON.parse(payload.d) : payload.d } catch { continue }
+          if (model?.key && model?.label) onModel?.(model)
+        }
         else if (payload.t === 'thinking') onThinking?.(payload.d)
         // Claude 5's adaptive thinking omits the text and reports depth only —
         // the running token estimate is the honest stand-in (2026-08-07)

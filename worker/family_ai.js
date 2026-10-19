@@ -56,6 +56,9 @@ export async function handleFamilyAI(request, env, fetcher = fetch) {
   if (!env.FAMILY_SYNC_TOKEN || !constantTimeEqual(request.headers.get('Authorization'), `Bearer ${env.FAMILY_SYNC_TOKEN}`)) {
     return out('Unauthorized', 401)
   }
+  if (request.method === 'POST' && env.FAMILY_AI_DRAIN === '1') {
+    return out('Assistant is busy. Please try again.',429,{code:'assistant_busy',retry_after:2})
+  }
   let origin
   try {
     origin = new URL(env.FAMILY_AI_ORIGIN)

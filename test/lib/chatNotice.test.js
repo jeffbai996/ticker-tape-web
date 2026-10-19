@@ -19,3 +19,9 @@ it('returns structured confirmation events while stripping saved tags',()=>{
  expect(out.text).toBe('Saved.')
  expect(out.notes).toEqual([{action:'saved',id:expect.any(Number)}])
 })
+it('explains an automatic model fallback without showing a saved-memory action',async()=>{
+ root=document.createElement('div')
+ await act(()=>render(h(ChatNotice,{notice:{kind:'model_fallback',model:'Gemini 4 Argon'}}),root))
+ expect(root.textContent).toContain('Gemini 4 Argon')
+ expect(root.querySelector('button')).toBeNull()
+})

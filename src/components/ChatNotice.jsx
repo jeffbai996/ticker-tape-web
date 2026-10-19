@@ -3,6 +3,7 @@ import {t} from '../lib/i18n.js'
 /** Saved-state receipts lead directly to the content they describe. */
 export function ChatNotice({notice,onMemory,onJournal}) {
  if(!notice)return null
+ if(notice.kind==='model_fallback')return <div role="status" class="font-anth text-[10px] text-muted px-1">{t('chat.model_fallback',{model:notice.model})}</div>
  if(typeof notice==='string')return <div role="status" class="font-anth text-[10px] text-muted px-1">{notice}</div>
  const memory=notice.kind==='memory'
  const items=memory?notice.items:[{action:'journal_saved'}]

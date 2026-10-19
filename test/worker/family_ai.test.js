@@ -89,3 +89,13 @@ it('shows a known turn-limit message without exposing arbitrary gateway errors',
  const invalid=await handleFamilyAI(request(),env(),async()=>Response.json({error:'private detail'},{status:400}))
  expect((await invalid.json()).error).toBe('Invalid request')
 })
+
+it('pauses new inference during a deployment drain without consuming quota or blocking model reads',async()=>{
+ const config=env();config.FAMILY_AI_DRAIN='1'
+ const fetcher=vi.fn(async()=>Response.json({ok:true,models:[]}))
+ const response=await handleFamilyAI(request(),config,fetcher)
+ expect(response.status).toBe(429)
+ expect((await response.json()).code).toBe('assistant_busy')
+ expect(fetcher).not.toHaveBeenCalled()
+ expect((await handleFamilyAI(request('/api/chat/models'),config,fetcher)).status).toBe(200)
+})

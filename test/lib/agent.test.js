@@ -253,3 +253,16 @@ it('never executes more than twelve tools even when initial context tools fill t
  {executeTool:execute,wireStream:async()=>({text:'Done'})})).rejects.toThrow('tool-call limit')
  expect(execute).toHaveBeenCalledTimes(12)
 })
+
+it('keeps the fallback model for subsequent tool rounds and forwards its identity',async()=>{
+ const trace=vi.fn(),fallback={key:'family-flash',label:'4 Argon',effort:'medium',fallback_from:'family-opus',reason:'provider_limit'}
+ const stream=vi.fn().mockImplementationOnce(async options=>{
+  options.onModel(fallback)
+  return {text:'{"tool":"get_watchlist","args":{}}'}
+ }).mockResolvedValueOnce({text:'Complete'})
+ await runAgenticOverWire({model:'family-opus',effort:'low',system:'Selected model: Opus',messages:[{role:'user',content:'Review'}],onTrace:trace},
+  {wireStream:stream,executeTool:vi.fn(async()=>'{}')})
+ expect(stream.mock.calls[1][0]).toMatchObject({model:'family-flash',effort:'medium'})
+ expect(stream.mock.calls[1][0].system).toContain('4 Argon')
+ expect(trace).toHaveBeenCalledWith(expect.objectContaining({type:'model',...fallback}))
+})

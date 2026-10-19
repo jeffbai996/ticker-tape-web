@@ -63,6 +63,7 @@ export async function runAgenticOverWire({
   const streamTurn = services.wireStream || wireStream
   const completeTurn = services.wireComplete || wireComplete
   const execute = services.executeTool || executeTool
+  let effectiveModel=model, effectiveEffort=effort, effectiveLabel=''
   let toolCalls=0
   const runTool=(...args)=>{
     if(toolCalls>=MAX_TOOL_CALLS)throw new Error('This prompt reached its tool-call limit. Please narrow the request.')
@@ -113,8 +114,13 @@ export async function runAgenticOverWire({
     let text = ''
     try {
       ;({ text } = await streamTurn({
-        model, effort, system: roundSystem, messages: contextualMessages(convo),turnId,sendIds:[...sendIds],
+        model:effectiveModel, effort:effectiveEffort,
+        system:effectiveModel===model ? roundSystem : `${roundSystem}\n\nACTIVE MODEL UPDATE: The actual model for this response is ${effectiveLabel}, with ${effectiveEffort} reasoning effort. This replaces earlier selected-model metadata.`, messages: contextualMessages(convo),turnId,sendIds:[...sendIds],
         onDelta,
+        onModel: (selection) => {
+          effectiveModel=selection.key;effectiveEffort=selection.effort;effectiveLabel=selection.label
+          onTrace?.({type:'model',round,...selection})
+        },
         onThinking: (delta) => {
           onThinking?.(delta)
           onTrace?.({ type: 'thinking', round, delta })
@@ -126,9 +132,13 @@ export async function runAgenticOverWire({
     } catch (err) {
       if (IS_FAMILY_AI || signal?.aborted || err?.partial) throw err // never restart after visible output
       const completed = await completeTurn({
-        model, effort, system: roundSystem, messages: contextualMessages(convo),turnId,sendIds:[...sendIds],
+        model:effectiveModel, effort:effectiveEffort, system: roundSystem, messages: contextualMessages(convo),turnId,sendIds:[...sendIds],
       })
       text = completed.text
+      if(completed.fallback_from) {
+        effectiveModel=completed.backend;effectiveEffort=completed.effort;effectiveLabel=completed.model_label
+        onTrace?.({type:'model',round,key:effectiveModel,label:effectiveLabel,effort:effectiveEffort,fallback_from:completed.fallback_from,reason:'provider_limit'})
+      }
       if (completed.usage) onTrace?.({type:'usage',round,usage:completed.usage})
     }
     if (signal?.aborted) throw new DOMException('stopped', 'AbortError')

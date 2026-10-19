@@ -57,3 +57,15 @@ it('marks a stream that failed after visible output as partial',async()=>{
  vi.stubGlobal('fetch',vi.fn(async()=>new Response(frames,{status:200})))
  await expect(wireStream({model:'qwen-local',messages:[{role:'user',content:'hello'}]})).rejects.toMatchObject({partial:true,message:'interrupted'})
 })
+
+it('forwards a fallback model announcement before streaming its answer',async()=>{
+ const {wireStream}=await import('../../src/lib/wirechat.js')
+ localStorage.setItem('tape-wire-url','https://wire.example')
+ const model={key:'family-flash',label:'4 Argon',effort:'medium',fallback_from:'family-opus',reason:'provider_limit'}
+ const frames='event: delta\ndata: '+JSON.stringify({t:'model',d:JSON.stringify(model)})+'\n\nevent: delta\ndata: {"t":"text","d":"Answer"}\n\nevent: done\ndata: {"backend":"family-flash"}\n\n'
+ vi.stubGlobal('fetch',vi.fn(async()=>new Response(frames,{status:200})))
+ const selected=vi.fn()
+ const out=await wireStream({model:'family-opus',messages:[{role:'user',content:'Hello'}],onModel:selected})
+ expect(selected).toHaveBeenCalledWith(model)
+ expect(out).toMatchObject({text:'Answer',backend:'family-flash'})
+})

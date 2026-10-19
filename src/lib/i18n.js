@@ -47,6 +47,7 @@ export function onLocaleChange(fn) {
 
 // Sentences and parameterized chrome. {name} placeholders interpolate.
 const STRINGS = {
+  'chat.model_fallback': {en:'Model limit reached. Using {model}.',zh:'模型额度已用完,已切换至 {model}。'},
   'palette.placeholder': {
     en: 'Search symbols, pages or commands…',
     zh: '搜索代码、页面或命令…',

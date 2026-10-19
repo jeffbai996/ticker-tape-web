@@ -3,7 +3,7 @@ import { TraceEntry } from '../components/TraceEntry.jsx'
 import {ChatNotice} from '../components/ChatNotice.jsx'
 import {ChatFailure} from '../components/ChatFailure.jsx'
 import {ConversationDelete} from '../components/ConversationDelete.jsx'
-import {pickerModels,modelGroups} from '../lib/chatModels.js'
+import {pickerModels,modelGroups,fullModelName} from '../lib/chatModels.js'
 import {SuggestionRows} from '../components/SuggestionRows.jsx'
 import { earningsTone } from '../lib/earningsTone.js'
 import {submitTextKey} from '../lib/chatInput.js'
@@ -1035,6 +1035,11 @@ export function Chat() {
 
     const traceEvent = (event) => {
       const now = Date.now()
+      if (event.type === 'model') {
+        turnModelRef.current = {model:event.key,label:event.label,effort:event.effort}
+        if (event.fallback_from) setNotice({kind:'model_fallback',model:fullModelName(event.label)})
+        return
+      }
       if (event.type === 'model_start') {
         // the placeholder "Thinking…" step yields to the real model step
         updateActivity((steps) => [...steps.filter((step) => step.key !== 'context'), {
@@ -1126,7 +1131,7 @@ export function Chat() {
           // cost 50k and then never see what it cost again.
           ...stamped[finalIndex], trace, traceStartedAt: turnStartedRef.current,
           traceUsage: usageRef.current,
-          traceEndedAt: completedAt, modelLabel: turnModelRef.current.label, effort: runEffort,
+          traceEndedAt: completedAt, model: turnModelRef.current.model, modelLabel: turnModelRef.current.label, effort: turnModelRef.current.effort,
         }
       }
       if (notes.length) {

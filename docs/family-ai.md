@@ -39,3 +39,11 @@ context to the assistant; native server tools are denied.
 
 To disable the UI, redeploy with `TTW_FAMILY_AI=0`. Removing either new Worker
 secret makes the inference route fail closed without touching saved portfolios.
+
+
+Sonnet and Opus provider quota failures fall back once to Argon before any
+answer text is emitted. Application admission limits and generic failures do
+not switch models. The gateway announces the actual model over SSE; the client
+keeps it for subsequent tool rounds and stores the actual label with the reply.
+`FAMILY_AI_DRAIN=1` temporarily rejects new inference while accepted replies
+finish during a gateway release. It does not block model-registry reads.
