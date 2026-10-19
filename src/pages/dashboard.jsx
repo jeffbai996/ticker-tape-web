@@ -1931,6 +1931,10 @@ export function Dashboard({ listId = null }) {
                   <button onClick={() => toggleCollapsed(g.name)}
                           class="flex-1 flex items-center gap-2 hover:text-ink uppercase text-left"
                           title={folded ? tl('expand') : tl('collapse')}>
+                    {viewMode === 'market' && g.name !== 'Other' && (
+                      <img src={venueFlag({ symbol: g.symbols[0] })} alt=""
+                        class="w-3 h-[9px] rounded-[1px] shrink-0" />
+                    )}
                     {tl(g.name)}
                     {folded && (
                       <span class="text-[9px] text-ink-2 border border-line rounded-full px-1.5 py-px leading-none tracking-normal normal-case">
