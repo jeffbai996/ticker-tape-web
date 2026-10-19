@@ -428,3 +428,14 @@ describe('reader byline', () => {
     expect(readMinutes(null)).toBe(0)
   })
 })
+
+
+it('uses personal tiers for family filtering and ranking without owner thesis boosts', () => {
+  const profile = { holdings:[{symbol:'AAPL',names:['Apple Inc.']}],watched:[] }
+  const mine = {type:'headline',headline:'AAPL raises guidance',ts_event:1000,url:'https://reuters.com/a'}
+  const other = {...mine,headline:'Another company announces product',symbols:['MSFT'],meta:{thesis:3}}
+  expect(tierOfEvent(mine,new Set(),profile)).toBe(3)
+  expect(tierOfEvent(other,new Set(['MSFT']),profile)).toBe(0)
+  expect(matchesWireRelevance(mine,new Set(),{profile,tiers:new Set([3]),thesisOnly:true})).toBe(true)
+  expect(rankEvents([other,mine],new Set(['MSFT']),1000,profile)[0]).toBe(mine)
+})

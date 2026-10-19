@@ -1,3 +1,4 @@
+import { familyEventTier } from './familyWireRelevance.js'
 import {preferenceChanged} from './preferences.js'
 // Wire panel data layer — optional viewer-supplied endpoint. This site is public and static; it
 // ships NO wire URL and NO symbols. A viewer points the panel at their own
@@ -534,11 +535,12 @@ export const TYPE_WEIGHT = {
   live_call: 90, digest: 60, filing: 55, headline: 40, transcript_chunk: 12,
 }
 
-export function scoreEvent(ev, watchset, now = Date.now() / 1000) {
+export function scoreEvent(ev, watchset, now = Date.now() / 1000, profile = null) {
   const base = TYPE_WEIGHT[ev.type] ?? 30
-  const wl = (ev.symbols || []).some((s) => watchset.has(s)) ? 1.5 : 1
+  const personalTier = profile ? familyEventTier(ev, profile) : null
+  const wl = (profile ? personalTier === 3 : (ev.symbols || []).some((s) => watchset.has(s))) ? 1.5 : 1
   const ageH = Math.max(0, now - ev.ts_event) / 3600
-  const thesis = 1 + 0.15 * ((ev.meta || {}).thesis || 0)
+  const thesis = 1 + 0.15 * (profile ? personalTier : ((ev.meta || {}).thesis || 0))
   return base * wl * thesis * srcCred(ev) * Math.exp(-ageH / 36)
 }
 
@@ -567,7 +569,8 @@ export function saveWireOrder(value) {
   preferenceChanged()
 }
 
-export function tierOfEvent(ev, watchset) {
+export function tierOfEvent(ev, watchset, profile = null) {
+  if (profile) return familyEventTier(ev, profile)
   // The public/family mirror intentionally omits newsservice's private symbols
   // and thesis metadata. Only an exact watchlist ticker mention establishes
   // relevance here. Source credibility is displayed separately by the bars.
@@ -591,16 +594,16 @@ export function tierOfEvent(ev, watchset) {
 }
 
 export function matchesWireRelevance(ev, watchset, {
-  tiers = new Set(), thesisOnly = false, primeOnly = false,
+  tiers = new Set(), thesisOnly = false, primeOnly = false, profile = null,
 } = {}) {
-  if (thesisOnly && !((ev.meta || {}).thesis >= 1) && !ev.live_call) return false
-  if (tiers.size && !tiers.has(tierOfEvent(ev, watchset))) return false
+  if (!profile && thesisOnly && !((ev.meta || {}).thesis >= 1) && !ev.live_call) return false
+  if (tiers.size && !tiers.has(tierOfEvent(ev, watchset, profile))) return false
   if (primeOnly && srcCred(ev) < 1.25) return false
   return true
 }
 
 // TOP mode collapses live-transcript chatter to the newest chunk per session.
-export function rankEvents(events, watchset, now = Date.now() / 1000) {
+export function rankEvents(events, watchset, now = Date.now() / 1000, profile = null) {
   const newestChunk = new Map()
   for (const ev of events) {
     if (ev.type !== 'transcript_chunk') continue
@@ -613,7 +616,7 @@ export function rankEvents(events, watchset, now = Date.now() / 1000) {
       || newestChunk.get(ev.meta && ev.meta.session_id) === ev)
     .slice()
     .sort((a, b) => (b.is_live ? 1 : 0) - (a.is_live ? 1 : 0)
-      || scoreEvent(b, watchset, now) - scoreEvent(a, watchset, now))
+      || scoreEvent(b, watchset, now, profile) - scoreEvent(a, watchset, now, profile))
 }
 
 /**

@@ -1,12 +1,13 @@
+import { useFamilyWireProfile } from '../lib/useFamilyWireProfile.js'
 import {preferenceChanged,onPreferencesApplied} from '../lib/preferences.js'
-import { useEffect, useRef, useState } from 'preact/hooks'
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { activityColor } from '../lib/contrast.js'
 import {
   wireUrl, setWireUrl, newsserviceHome, calendarSubscriptionUrl, armAudioCapture, fetchEvents, fetchUpdates, fetchToday, fetchMeta, fetchWireArticle,
   demoBackfill, demoEvent, demoToday, DEMO_SESSION_ROWS, rankEvents, collapseSessions, clusterStories,
   srcCred, evHeadline, evBody, matchesWireQuery, matchesWireRelevance,
   pubDisplayName, readMinutes, sortWireLatest, tierOfEvent, effectiveEventTime,
-  toggleWireArticle, isMirrorBase, mirrorAgeMinutes, eventLanguage, filterWireLanguage, loadWireOrder, saveWireOrder,
+  toggleWireArticle, isMirrorBase, mirrorAgeMinutes, filterWireLanguage, loadWireOrder, saveWireOrder,
 } from '../lib/wire.js'
 import { IS_FAMILY_BUILD, IS_PRIVATE_BUILD } from '../lib/nav.js'
 import { prefetchSymbol } from '../lib/history.js'
@@ -29,7 +30,9 @@ function TierBadge({ tier }) {
   if (!tier) return null
   return (
     <span class={`inline-block align-middle mr-1.5 border rounded-[2px] px-1 font-mono font-bold text-[8.5px] tracking-wider leading-[1.6] ${TIER_CLS[tier]}`}
-      title={tl(tier === 3 ? 'T3 — thesis story on a name you hold'
+      title={tl(IS_FAMILY_BUILD
+        ? tier === 3 ? 'T3: Holdings' : tier === 2 ? 'T2: Watchlist and sectors' : 'T1: Markets and macro'
+        : tier === 3 ? 'T3 — thesis story on a name you hold'
         : tier === 2 ? 'T2 — core thesis story' : 'T1 — touches the sector')}>
       T{tier}
     </span>
@@ -604,6 +607,7 @@ const savedTierFilters = () => {
 }
 
 export function Wire({ route }) {
+  const familyProfile = useFamilyWireProfile(IS_FAMILY_BUILD)
   const [endpoint, setEndpoint] = useState(() => wireUrl())
   const [draft, setDraft] = useState(() => wireUrl())
   const [events, setEvents] = useState([])
@@ -878,15 +882,16 @@ export function Wire({ route }) {
   const wanted = filter ? filter.split(',') : null
   // a session card answers for its audio contents on the type filter
   const typeOf = (ev) => (ev.type === 'live_call' ? 'digest' : ev.type)
-  const filtered = clusterStories(collapseSessions(filterWireLanguage(events, showZhSources), now), now)
+  const locale = getLocale()
+  const filtered = useMemo(() => clusterStories(collapseSessions(filterWireLanguage(events, showZhSources), now), now)
     .filter((ev) => !wanted || wanted.includes(typeOf(ev)) || wanted.includes(ev.type))
-    .filter((ev) => matchesWireQuery(ev, query, getLocale()))
+    .filter((ev) => matchesWireQuery(ev, query, locale))
     .filter((ev) => matchesWireRelevance(ev, watchset, {
-      tiers: tierFilters, thesisOnly, primeOnly,
-    }))
-  const shown = mode === 'top'
-    ? rankEvents(filtered, watchset, now)
-    : sortWireLatest(filtered, now)
+      tiers: tierFilters, thesisOnly:IS_FAMILY_BUILD ? false : thesisOnly, primeOnly, profile:familyProfile,
+    })), [events, showZhSources, now, filter, query, locale, watchset, tierFilters, thesisOnly, primeOnly, familyProfile])
+  const shown = useMemo(() => mode === 'top'
+    ? rankEvents(filtered, watchset, now, familyProfile)
+    : sortWireLatest(filtered, now), [filtered, watchset, now, mode, familyProfile])
 
   const applyEndpoint = (e) => {
     e.preventDefault()
@@ -1097,11 +1102,13 @@ export function Wire({ route }) {
             showZhSources
               ? 'bg-teal-400/20 border-teal-400/60 text-teal-200'
               : 'border-teal-600/40 text-teal-400 hover:border-teal-400/60 hover:text-teal-200'
-          }`}>中文{showZhSources ? ` · ${events.filter((ev) => eventLanguage(ev) === 'zh').length}` : ''}</button>
+          }`}>中文</button>
         <span aria-hidden="true" class="h-4 w-px bg-line mx-0.5" />
         {[1, 2, 3].map((tier) => (
           <button key={tier} data-tier-filter={tier}
-            title={tl(tier === 3 ? 'T3 — thesis story on a name you hold'
+            title={tl(IS_FAMILY_BUILD
+              ? tier === 3 ? 'T3: Holdings' : tier === 2 ? 'T2: Watchlist and sectors' : 'T1: Markets and macro'
+              : tier === 3 ? 'T3 — thesis story on a name you hold'
               : tier === 2 ? 'T2 — core thesis story' : 'T1 — touches the sector')}
             onClick={() => toggleTier(tier)}
             class={`w-[28px] shrink-0 justify-center border rounded-md px-0 py-0.5 font-mono text-[10.5px] font-bold transition-colors ${
@@ -1153,7 +1160,7 @@ export function Wire({ route }) {
             // a session card's identity must survive id churn as chunks land
             const key = ev.live_call ? `s${ev.live_call.sid}` : ev.id
             return (
-              <Row key={key} ev={ev} hot={hotIds.has(ev.id)} tier={tierOfEvent(ev, watchset)}
+              <Row key={key} ev={ev} hot={hotIds.has(ev.id)} tier={tierOfEvent(ev, watchset, familyProfile)}
                    open={openIds.has(key)} onToggle={() => toggleOpen(key)} />
             )
           })}

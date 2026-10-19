@@ -59,7 +59,18 @@ reader_token=""
 if [[ -f "$HOME/.config/ttw/reader_token" ]]; then
   read -r reader_token < "$HOME/.config/ttw/reader_token"
 fi
+# Personal news scope belongs to this private build, not the public source.
+news_book_ids="${TTW_NEWS_PORTFOLIO_IDS:-}"
+news_book_file="${TTW_NEWS_PORTFOLIO_IDS_FILE:-$HOME/.config/ttw/news_portfolio_ids}"
+if [[ -z "$news_book_ids" && -f "$news_book_file" ]]; then
+  IFS= read -r news_book_ids < "$news_book_file" || [[ -n "$news_book_ids" ]]
+fi
+if [[ -n "$news_book_ids" && ! "$news_book_ids" =~ ^p[0-9]{1,6}(,p[0-9]{1,6})*$ ]]; then
+  echo "family news portfolio IDs have the wrong shape" >&2
+  exit 2
+fi
 VITE_FAMILY_BUILD=1 \
+VITE_NEWS_PORTFOLIO_IDS="$news_book_ids" \
 VITE_FAMILY_AI="${TTW_FAMILY_AI:-0}" \
 VITE_SYNC_CAPABILITY="$sync_token" \
 VITE_READER_CAPABILITY="$reader_token" \

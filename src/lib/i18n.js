@@ -1115,6 +1115,7 @@ const LABELS = {
   Holdings: '持仓', Names: '持仓数', Currencies: '币种数',
   Sizing: '仓位测算', Target: '目标', shares: '股', buy: '买入', sell: '卖出', now: '现持',
   Sectors: '板块分布', Market: '市场', Other: '其他',
+  'T3: Holdings': 'T3：持仓相关新闻', 'T2: Watchlist and sectors': 'T2：自选股及相关行业', 'T1: Markets and macro': 'T1：市场与宏观',
   'Day movers': '当日异动', 'Weights': '权重分布', 'Currency mix': '币种构成',
   'vs indices': '指数对比', 'This book': '本组合',
   symbol: '代码',
