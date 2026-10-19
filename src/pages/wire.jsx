@@ -885,7 +885,7 @@ export function Wire({ route }) {
   const locale = getLocale()
   const filtered = useMemo(() => clusterStories(collapseSessions(filterWireLanguage(events, showZhSources), now), now)
     .filter((ev) => !wanted || wanted.includes(typeOf(ev)) || wanted.includes(ev.type))
-    .filter((ev) => matchesWireQuery(ev, query, locale))
+    .filter((ev) => matchesWireQuery(ev, query, getLocale()))
     .filter((ev) => matchesWireRelevance(ev, watchset, {
       tiers: tierFilters, thesisOnly:IS_FAMILY_BUILD ? false : thesisOnly, primeOnly, profile:familyProfile,
     })), [events, showZhSources, now, filter, query, locale, watchset, tierFilters, thesisOnly, primeOnly, familyProfile])

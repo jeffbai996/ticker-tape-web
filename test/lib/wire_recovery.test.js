@@ -32,8 +32,7 @@ describe('wire SSE recovery', () => {
     expect(src).toContain('data-wire-retry')
     expect(src).toContain("{state === 'error' && (")
     expect(src).toMatch(/const retryNow = \(\) => \{\s*\n\s*attemptsRef\.current = 0/)
-    // the affordance stays in the brow's language: bordered pill, down tone
-    expect(src).toContain('px-2 py-0.5 rounded-md border border-down/50')
+    expect(src).toContain('<button data-wire-retry onClick={retryNow}')
   })
 })
 
