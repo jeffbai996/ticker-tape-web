@@ -1,3 +1,4 @@
+import { assistantIdentityPrompt } from '../lib/chatIdentity.js'
 import { TraceEntry } from '../components/TraceEntry.jsx'
 import {ChatNotice} from '../components/ChatNotice.jsx'
 import {ChatFailure} from '../components/ChatFailure.jsx'
@@ -49,9 +50,10 @@ import { IS_FAMILY_AI, IS_FAMILY_BUILD, IS_PRIVATE_BUILD } from '../lib/nav.js'
 // Base prompt stays generic in source. Whether the assistant has a real book
 // is decided at runtime by whether the viewer wired in their own newsservice —
 // the public no-endpoint build keeps the demo disclaimer.
-function baseSystem() {
+function baseSystem(selection) {
   const common =
-    'You are the assistant inside ticker-tape-web, a market dashboard ' +
+    assistantIdentityPrompt(selection) +
+    'You work inside ticker-tape, a market dashboard ' +
     '(dashboard, markets, per-symbol research, screening, alerts, portfolio). ' +
     'You have tools: live quotes, technicals, earnings, market ' +
     'pulse, the macro calendar (plus adding user catalysts to it), watchlist ' +
@@ -1024,7 +1026,8 @@ export function Chat() {
     // CLI parity: volatile context (clock, memories, quotes, book, news for
     // mentioned symbols) rebuilt per turn and appended to the base prompt.
     if (IS_FAMILY_AI) await syncNotes().catch(sessionFailure)
-    let system = baseSystem()
+    const selected = models.find(candidate => candidate.key === runModel)
+    let system = baseSystem({modelLabel:selected?.label, effort:selected?.fixed_effort || runEffort})
     try {
       system += '\n\n' + await buildChatContext(text)
     } catch { /* context is best-effort — a bare prompt still answers */ }
