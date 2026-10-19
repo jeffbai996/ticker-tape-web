@@ -1462,11 +1462,11 @@ export function Chat() {
           )}
           <span class="composer-shortcuts ml-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
             <span class="inline-flex items-center gap-1"><kbd class="text-ink-2">↵</kbd> {tl('send')}</span>
-            <span class="inline-flex items-center gap-1">
+            <span class="desktop-shortcut inline-flex items-center gap-1">
               <kbd class="text-ink-2">⇧</kbd><span aria-hidden="true">+</span><kbd class="text-ink-2">↵</kbd>
               <span>{tl('newline')}</span>
             </span>
-            <span class="inline-flex items-center gap-1"><kbd class="text-ink-2">↑</kbd> {tl('recall')}</span>
+            <span class="desktop-shortcut inline-flex items-center gap-1"><kbd class="text-ink-2">↑</kbd> {tl('recall')}</span>
             <span class="inline-flex items-center gap-1 max-sm:hidden">
               <kbd class="text-ink-2">⌘/Ctrl</kbd><span aria-hidden="true">+</span><kbd class="text-ink-2">K</kbd>
               <span>{tl('commands')}</span>
