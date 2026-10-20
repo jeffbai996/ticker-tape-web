@@ -34,6 +34,10 @@ it('gives portfolio calendar and market tools distinct glyphs while keeping reas
  expect(traceIcon({kind:'tool',label:'Reading the calendar'})).toBe('calendar')
  expect(traceIcon({kind:'tool',label:'Reading the tape'})).toBe('market')
  expect(traceIcon({kind:'model',label:'Reasoned'})).toBe('thinking')
+ expect(traceIcon({kind:'tool',name:'journal_add',label:'Writing to the journal'})).toBe('write')
+ expect(traceIcon({kind:'tool',name:'memory_edit'})).toBe('write')
+ expect(traceIcon({kind:'tool',name:'memory_delete'})).toBe('forget')
+ expect(traceIcon({kind:'tool',name:'journal_search'})).toBe('search')
  expect(completionLabel([{kind:'tool',name:'get_market_pulse'}])).toBe('Read the tape for')
  expect(completionLabel([{kind:'tool',name:'get_technicals'}])).toBe('Analyzed for')
  expect(completionLabel([{kind:'tool',name:'get_portfolios'}])).toBe('Reviewed for')
@@ -67,4 +71,19 @@ it('recovers saved tool results from the matching turn without crossing reused c
  expect(enriched.output).toBe('{\n  "eps": 2\n}')
  expect(traceToolDetails(steps,history,3)[0].output).toBe('old result')
  expect(steps[0]).toEqual({key:'tool-w0',kind:'tool'})
+})
+
+it('turns successful note and memory writes into saved receipts', async () => {
+ const {savedReceipts}=await import('../../src/lib/chatTrace.js')
+ const ok=JSON.stringify({ok:true,id:3})
+ expect(savedReceipts([
+  {kind:'tool',name:'get_quotes',status:'done',output:'{}'},
+  {kind:'tool',name:'journal_add',status:'done',output:ok},
+  {kind:'tool',name:'memory_add',status:'done',output:ok},
+  {kind:'tool',name:'memory_edit',status:'done',output:JSON.stringify({error:'no memory #9'})},
+  {kind:'tool',name:'memory_delete',status:'error',output:''},
+  {kind:'tool',name:'journal_add',status:'done',output:ok},
+ ])).toEqual([{target:'journal',action:'saved'},{target:'memory',action:'saved'}])
+ expect(savedReceipts([{kind:'tool',name:'memory_delete',status:'done',output:JSON.stringify({ok:true,deleted:2})}]))
+  .toEqual([{target:'memory',action:'deleted'}])
 })

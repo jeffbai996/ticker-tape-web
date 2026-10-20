@@ -43,7 +43,7 @@ import {
   openThread, removeThread, saveActiveHistory, flushActiveHistory, startNewThread, deleteActiveThread, currentThreadId,
 } from '../lib/threads.js'
 import { wireServiceUrl } from '../lib/wire.js'
-import { plainTraceText, hasTurnActivity, activityGroups, traceIcon, completionLabel, tracePrintout, traceToolDetails } from '../lib/chatTrace.js'
+import { plainTraceText, hasTurnActivity, activityGroups, traceIcon, completionLabel, tracePrintout, traceToolDetails, savedReceipts } from '../lib/chatTrace.js'
 import { ChatFooter } from '../components/ChatFooter.jsx'
 import { loadZhTable, loadMissingZhName, onZhTable, zhName } from '../lib/zhNames.js'
 import { onPortfoliosChange } from '../lib/myPortfolios.js'
@@ -350,6 +350,8 @@ function StepIcon({ kind, name, verb, status }) {
     market:<g {...p}><path d="M2 2v12h12M4 10l3-4 3 2 4-5"/></g>,
     read:<g {...p}><path d="M2 3h4a2 2 0 0 1 2 2v9a2 2 0 0 0-2-2H2zM14 3h-4a2 2 0 0 0-2 2v9a2 2 0 0 1 2-2h4z"/></g>,
     search:<g {...p}><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></g>,
+    write:<g {...p}><path d="M10.5 2.5 13.5 5.5 5.5 13.5H2.5V10.5Z"/><path d="M8.5 4.5l3 3"/></g>,
+    forget:<g {...p}><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></g>,
     answer:<g {...p}><path d="M3 8.5 6.5 12 13 4.5"/></g>,
     thinking:<g {...p}><path d="M6 12.5h4M6.5 14h3M8 2a4 4 0 0 0-2.5 7.1c.5.4.5.8.5 1.4h4c0-.6 0-1 .5-1.4A4 4 0 0 0 8 2Z"/></g>,
   }
@@ -1247,9 +1249,13 @@ export function Chat() {
           traceEndedAt: completedAt, model: turnModelRef.current.model, modelLabel: turnModelRef.current.label, effort: turnModelRef.current.effort,
         }
       }
-      if (notes.length) {
-        setNotice({kind:'memory',items:notes})
-        setMemories(loadMemories())
+      // Tag-saved memories and tool writes share one receipt row under the answer.
+      const saved=[...notes.map(note=>({target:'memory',action:note.action})),...savedReceipts(trace)]
+        .filter((item,i,all)=>all.findIndex(other=>other.target===item.target && other.action===item.action)===i)
+      if (saved.length) {
+        setNotice({kind:'saved',items:saved})
+        if (saved.some(item=>item.target==='memory')) setMemories(loadMemories())
+        if (saved.some(item=>item.target==='journal')) setJournal(loadJournal())
       }
       const done = [...base, ...stamped]
       replaceHistory(done, !temporary)

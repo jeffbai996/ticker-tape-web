@@ -33,11 +33,30 @@ export function activityGroups(steps) {
 export function traceIcon(step={}) {
  const text=String(step.name||step.label||step.verb||'').toLowerCase()
  if(step.kind==='model')return /answer/.test(text)?'answer':'thinking'
+ if(/memory_delete|forget/.test(text))return 'forget'
+ if(/memory_add|memory_edit|journal_add|remember|revising|writing/.test(text))return 'write'
  if(/portfolio|holding/.test(text))return 'portfolio'
  if(/calendar|earnings|events/.test(text))return 'calendar'
  if(/market|tape|technical|quotes/.test(text))return 'market'
  if(/article|research|news|read|brows/.test(text))return 'read'
  return 'search'
+}
+
+const WRITES={journal_add:['journal','saved'],memory_add:['memory','saved'],memory_edit:['memory','updated'],memory_delete:['memory','deleted']}
+
+/** One receipt per kind of note or memory write that actually succeeded this turn. */
+export function savedReceipts(steps=[]) {
+ const out=[]
+ for(const step of steps){
+  const write=step.kind==='tool' && step.status==='done' && WRITES[step.name]
+  if(!write)continue
+  let result=null
+  try {result=JSON.parse(step.output||'')} catch {continue}
+  if(!result?.ok)continue
+  const [target,action]=write
+  if(!out.some(r=>r.target===target && r.action===action))out.push({target,action})
+ }
+ return out
 }
 
 /** A small, stable vocabulary describes the work actually present in the trace. */

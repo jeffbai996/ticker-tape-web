@@ -25,3 +25,13 @@ it('explains an automatic model fallback without showing a saved-memory action',
  expect(root.textContent).toContain('Gemini 4 Argon')
  expect(root.querySelector('button')).toBeNull()
 })
+it('shows each saved note and memory as a success receipt that opens its own panel',async()=>{
+ localStorage.setItem('locale_v1','en')
+ const mem=vi.fn(),journal=vi.fn();root=document.createElement('div')
+ await act(()=>render(h(ChatNotice,{notice:{kind:'saved',items:[{target:'journal',action:'saved'},{target:'memory',action:'saved'}]},onMemory:mem,onJournal:journal}),root))
+ const buttons=[...root.querySelectorAll('button')]
+ expect(buttons.map(b=>b.textContent)).toEqual(['Saved to journal','Memory saved'])
+ expect(buttons.every(b=>b.querySelector('svg.text-success'))).toBe(true)
+ buttons[0].click();expect(journal).toHaveBeenCalledOnce();expect(mem).not.toHaveBeenCalled()
+ buttons[1].click();expect(mem).toHaveBeenCalledOnce()
+})
