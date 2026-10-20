@@ -23,13 +23,15 @@ describe('live chat footer', () => {
 })
 
 it.each([
- ['Claude Sonnet 5.5','Sonnet 5.5','claude'],
- ['Gemini 4 Argon','4 Argon','gemini'],
- ['Qwen 3.8','Qwen 3.8','qwen'],
-])('keeps %s compact in both footer layouts while retaining its provider icon',async(model,label,provider)=>{
+ ['Claude Sonnet 5.5','Claude','claude'],
+ ['Gemini 4 Argon','Gemini','gemini'],
+ ['Qwen 3.8','Qwen','qwen'],
+ ['Example model','Example model',undefined],
+])('labels %s by its provider in both footer layouts and keeps the full name on hover',async(model,label,provider)=>{
  host=document.createElement('div');document.body.append(host)
- await act(()=>render(h(ChatFooter,{model}),host))
+ await act(()=>render(h(ChatFooter,{model,effort:'low'}),host))
+ expect(host.querySelector('.chat-token-model').title).toContain(model)
  expect(host.querySelector('.chat-model-short').textContent).toBe(label)
  expect(host.querySelector('.chat-model-full').textContent).toBe(label)
- expect(host.querySelector('.chat-token-provider').dataset.provider).toBe(provider)
+ expect(host.querySelector('.chat-token-provider')?.dataset.provider).toBe(provider)
 })

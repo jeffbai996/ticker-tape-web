@@ -8,6 +8,8 @@ import { useEffect, useState } from 'preact/hooks'
 import { chatMetrics, metricDuration } from '../lib/chatMetrics.js'
 
 const PROVIDERS={claude:[claudeLogo,'#d97757'],qwen:[qwenLogo,'#8b7bf4'],gemini:[geminiLogo,'#58a6ff'],openai:[openaiLogo,'#d8dee9']}
+// The footer names the provider; the exact model and effort are on hover.
+const PROVIDER_NAMES={claude:'Claude',gemini:'Gemini',qwen:'Qwen',openai:'GPT'}
 
 const paths = {
   model: 'm8 1 6 3.5v7L8 15l-6-3.5v-7L8 1Zm-6 3.5L8 8l6-3.5M8 8v7M5 2.8l6 3.5',
@@ -31,7 +33,7 @@ export function ChatFooter({ model, effort, usage, startedAt, endedAt, busy = fa
   }, [busy, startedAt])
   const m = chatMetrics({ usage, startedAt, endedAt, now })
   const provider=modelProvider(model),mark=PROVIDERS[provider]
-  const modelName=String(model || '').replace(/^(?:Claude|Gemini)\s+/i, '')
+  const modelName=PROVIDER_NAMES[provider] || String(model || '')
   const tokens = (n) => n == null ? '—' : n.toLocaleString('en-US')
   return <div class="chat-token-footer" aria-label={tl('Response statistics')} data-live={busy || undefined}>
     <span class="chat-token-model" title={effort ? `${model} · ${tl(effort)}` : model}>
