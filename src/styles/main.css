@@ -49,6 +49,9 @@ select:not([multiple]):not([size]):not(.appearance-none) {
   /* Same-day earnings: deeper than the P&L red so "reports today" doesn't
      read as "down today" (Jeff 2026-08-04). */
   --color-imminent: #c31432;
+  /* Earnings four to seven days out: between the red of this week's first
+     days and the amber of later weeks. */
+  --color-soon: #f97b3d;
 
   --color-up: #3fb950;
   --color-down: #f85149;
