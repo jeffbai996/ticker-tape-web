@@ -147,9 +147,11 @@ describe('test architecture', () => {
 
   it('stages family assets beneath the routed URL prefix before deployment', () => {
     const deploy = readFileSync(resolve(process.cwd(), 'scripts/deploy_family.sh'), 'utf8')
-    expect(deploy).toContain('$asset_root/example-private-entry')
+    expect(deploy).toContain('$asset_root${family_base%/}')
     expect(deploy).toContain('--assets "$asset_root"')
     expect(deploy).not.toContain('--assets dist-family')
+    expect(deploy).not.toMatch(/--route\s+['"][a-zA-Z0-9.-]+\//)
+    expect(deploy).toContain('TTW_BASE="$family_base"')
   })
 })
 

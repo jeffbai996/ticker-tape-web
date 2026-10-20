@@ -203,7 +203,12 @@ export function makeCapDocHandler({ route, keyPrefix, validate, maxBody }) {
       return json(request, { ok: false, error: 'storage unavailable' }, 503)
     }
 
-    const key = `${keyPrefix}${capability}`
+    // Authentication may rotate without moving the document or its history.
+    const storageCapability = env.FAMILY_STORAGE_CAPABILITY ?? capability
+    if (!CAPABILITY_RE.test(storageCapability)) {
+      return json(request, { ok: false, error: 'storage unavailable' }, 503)
+    }
+    const key = `${keyPrefix}${storageCapability}`
     if (sub === 'history') {
       if (request.method !== 'GET') return json(request, { ok: false, error: 'method not allowed' }, 405)
       const result = await coordinate(env, key, 'GET', undefined, 'history')

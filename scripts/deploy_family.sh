@@ -6,6 +6,16 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TOKEN_FILE="${TTW_SYNC_TOKEN_FILE:-${HOME}/.config/ttw/sync_token}"
 FONT_FILE="${TTW_PRIVATE_FONT_FILE:-${HOME}/repos/newsservice/static/fonts/AnthropicSansVariable-TextRegular.woff2}"
+# The family entry point is private deployment configuration, never source.
+if [[ -f "${TTW_FAMILY_CONFIG:-$HOME/.config/ttw/family_deploy.env}" ]]; then
+  source "${TTW_FAMILY_CONFIG:-$HOME/.config/ttw/family_deploy.env}"
+fi
+family_base="${TTW_FAMILY_BASE:-}"
+family_host="${TTW_FAMILY_HOST:-}"
+if [[ ! "$family_base" =~ ^/[a-zA-Z0-9_-]{8,}/$ || ! "$family_host" =~ ^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
+  echo "private family route configuration is missing or invalid" >&2
+  exit 2
+fi
 MODE="${1:---build-only}"
 SOURCE_SHA="${2:-}"
 # shellcheck source=private_release.sh
@@ -74,7 +84,7 @@ VITE_NEWS_PORTFOLIO_IDS="$news_book_ids" \
 VITE_FAMILY_AI="${TTW_FAMILY_AI:-0}" \
 VITE_SYNC_CAPABILITY="$sync_token" \
 VITE_READER_CAPABILITY="$reader_token" \
-TTW_BASE=/example-private-entry/ \
+TTW_BASE="$family_base" \
 TTW_OUT_DIR="$release" \
   npm run build
 unset sync_token
@@ -95,14 +105,14 @@ cleanup() {
   rm -rf -- "$asset_root" "$SOURCE_DIR"
 }
 trap cleanup EXIT
-install -d -m 0700 "$asset_root/example-private-entry"
-cp -a "$release/." "$asset_root/example-private-entry/"
+install -d -m 0700 "$asset_root${family_base%/}"
+cp -a "$release/." "$asset_root$family_base"
 
 npx --yes wrangler@4.37.1 deploy \
   --name ttw-family \
   --compatibility-date 2026-01-24 \
   --assets "$asset_root" \
-  --route 'example.com/example-private-entry' \
-  --route 'example.com/example-private-entry/*' \
-  --route 'www.example.com/example-private-entry' \
-  --route 'www.example.com/example-private-entry/*'
+  --route "${family_host}${family_base%/}" \
+  --route "${family_host}${family_base}*" \
+  --route "www.${family_host}${family_base%/}" \
+  --route "www.${family_host}${family_base}*"

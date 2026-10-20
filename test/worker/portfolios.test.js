@@ -120,3 +120,22 @@ describe('optional per-book fields — cash, daily marks, trades', () => {
     expect(validatePortfolioDocument(withBook({ bogus: 1 })).ok).toBe(false)
   })
 })
+
+
+describe('family credential rotation', () => {
+  it('keeps the existing document and revision while rejecting the retired bearer', async () => {
+    const env = capDocEnv(TOKEN)
+    await handlePortfolios(req('POST', { rev: 0, data: doc }), env, '/portfolios')
+    const replacement = 'b'.repeat(32)
+    env.FAMILY_STORAGE_CAPABILITY = TOKEN
+    env.FAMILY_SYNC_TOKEN = replacement
+    const response = await handlePortfolios(req('GET', undefined, replacement), env, '/portfolios')
+    expect(await response.json()).toEqual({ ok: true, rev: 1, data: doc })
+    expect((await handlePortfolios(req(), env, '/portfolios')).status).toBe(401)
+    expect(env.SPEND.rows.has(`myportfolios:${replacement}`)).toBe(false)
+  })
+  it('fails closed when a configured storage namespace is invalid', async () => {
+    const env = { ...capDocEnv(TOKEN), FAMILY_STORAGE_CAPABILITY: 'invalid' }
+    expect((await handlePortfolios(req(), env, '/portfolios')).status).toBe(503)
+  })
+})

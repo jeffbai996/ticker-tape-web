@@ -141,6 +141,13 @@ actually executed. Cloudflare zone Traffic Analytics for the exact family path
 also includes HTML-only fetches such as WeChat previews. Neither device IDs nor
 Origin headers are authentication; the bearer remains the machine credential.
 
+Private family deployment reads `TTW_FAMILY_BASE` and `TTW_FAMILY_HOST` from
+`~/.config/ttw/family_deploy.env` (or `TTW_FAMILY_CONFIG`). Both are required;
+no private route is built into source. A bearer rotation can retain documents
+and their revision history by setting the Worker secret `FAMILY_STORAGE_CAPABILITY`
+to the existing storage namespace before changing `FAMILY_SYNC_TOKEN`. The storage
+namespace does not authorize requests; only the current sync token does.
+
 Build the separately hosted family bundle with
 `scripts/deploy_family.sh --build-only FULL_SOURCE_SHA`. Publish it with
 `TTW_FAMILY_AI=1 scripts/deploy_family.sh --deploy FULL_SOURCE_SHA` for the
