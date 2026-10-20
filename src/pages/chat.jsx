@@ -608,14 +608,10 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
                 <div class="font-mono text-[11.5px] leading-[1.55]">
                   {books.map((b) => (
                     <a key={b.id} href="#/portfolio/mine" onClick={() => selectBook(b.id)}
-                      class="block min-w-0 py-px hover:no-underline group">
-                      <span class="flex justify-between gap-2">
-                        <span class="truncate text-ink font-[650] group-hover:text-accent">{b.name}</span>
-                        <span class="shrink-0 text-muted">{b.positions.length} {tl('holdings')}</span>
-                      </span>
-                      <span class="block truncate text-ink-2 text-[10.5px]">
-                        {b.positions.map((p) => (getLocale()==='zh' && zhName(p.symbol)) || p.symbol).join(' · ')}
-                      </span>
+                      title={b.positions.map((p) => (getLocale()==='zh' && zhName(p.symbol)) || p.symbol).join(' · ')}
+                      class="flex justify-between gap-2 py-px hover:no-underline group">
+                      <span class="truncate text-ink font-[650] group-hover:text-accent">{b.name}</span>
+                      <span class="shrink-0 text-ink-2">{b.positions.length} {tl('holdings')}</span>
                     </a>
                   ))}
                 </div>
