@@ -147,8 +147,12 @@ function NoteRow({ id, text, meta, onSave, onDelete }) {
   return (
     <div class="group flex items-baseline gap-2 py-1 font-mono text-[11px] border-b border-line-2/60 last:border-0">
       <span class="text-accent shrink-0">#{id}</span>
-      <span class="text-ink-2 flex-1 min-w-0 font-anth text-[12px] leading-snug">{text}</span>
-      {meta && <span class="text-muted text-[9px] shrink-0">{meta}</span>}
+      {/* The date and tickers sit under the text: a long ticker line beside it
+          took the whole row and squeezed the note into one character. */}
+      <div class="flex-1 min-w-0">
+        <div data-note-text class="text-ink-2 font-anth text-[12px] leading-snug whitespace-pre-line break-words">{text}</div>
+        {meta && <div data-note-meta class="text-muted text-[9px] pt-0.5 break-words">{meta}</div>}
+      </div>
       {/* touch has no hover — the controls stay visible on coarse pointers,
           which is why "no way to delete" read as true on the phone */}
       {onSave && (
