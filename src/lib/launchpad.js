@@ -53,7 +53,8 @@ export function dynamicActions({ watchlist, quotes, earnDays, nextEvent, book, j
   const badges=watchlist.map(symbol=>({symbol,...quotes[symbol]?.tech}))
   const stretched=badges.filter(b=>b.rsi!=null&&(b.rsi>=70||b.rsi<=30))
     .sort((a,b)=>Math.abs(b.rsi-50)-Math.abs(a.rsi-50))[0]
-  if(stretched)add('stretched','mkt',{symbol:stretched.symbol,rsi:Math.round(stretched.rsi)})
+  // RSI is directional too: 30 and below is oversold, not overbought.
+  if(stretched)add(stretched.rsi>=70?'stretched':'oversold','mkt',{symbol:stretched.symbol,rsi:Math.round(stretched.rsi)})
   const spike=badges.filter(b=>b.volRatio>=2).sort((a,b)=>b.volRatio-a.volRatio)[0]
   if(spike)add('vol_spike','mkt',{symbol:spike.symbol,mult:spike.volRatio.toFixed(1)})
   const overnight=watchlist.map(symbol=>({symbol,pct:quotes[symbol]?.quote?.extPct}))

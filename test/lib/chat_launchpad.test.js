@@ -161,3 +161,17 @@ describe('relative-strength prompt', () => {
     expect(pool.find((a) => /20d/.test(a.t)).t).toContain('ahead')
   })
 })
+
+describe('RSI extreme prompt', () => {
+  const base = { watchlist: ['AAPL'], earnDays: {}, nextEvent: null, book: false, journal: [] }
+  const rsiPrompt = (rsi) => dynamicActions({ ...base, quotes: { AAPL: { tech: { rsi } } } }).find((a) => /RSI/.test(a.t))
+  it('asks about an oversold reading as oversold, never overbought', () => {
+    const prompt = rsiPrompt(19.2)
+    expect(prompt.t).toContain('19')
+    expect(prompt.t).toMatch(/oversold/i)
+    expect(prompt.t).not.toMatch(/overextended|overbought/i)
+  })
+  it('keeps the overextended wording for an overbought reading', () => {
+    expect(rsiPrompt(78).t).toMatch(/overextended/i)
+  })
+})
