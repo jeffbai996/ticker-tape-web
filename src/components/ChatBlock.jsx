@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { blockText } from '../lib/chatBlocks.js'
 import { fmtCcy } from '../lib/fx.js'
 import { getLocale, tl } from '../lib/i18n.js'
+import { dateTicks as axisDates, niceScale } from '../lib/chartAxis.js'
 
 // Renders validated chat blocks (chatBlocks.js) inside the transcript. Every
 // chart keeps a table view of the same data one tap away, so the figures
@@ -30,7 +31,9 @@ function useWidth(ref, fallback = 560) {
   useEffect(() => {
     const el = ref.current
     if (!el) return undefined
-    const measure = () => { const w = el.getBoundingClientRect().width; if (w > 0) setWidth(w) }
+    // Layout width, not getBoundingClientRect: under the desktop page zoom the
+    // on-screen box is 10% wider, and drawing at that size overflowed the card.
+    const measure = () => { const w = el.clientWidth; if (w > 0) setWidth(w) }
     measure()
     if (typeof ResizeObserver === 'undefined') return undefined
     const ro = new ResizeObserver(measure)
@@ -53,8 +56,10 @@ function LineView({ block }) {
   const visible = block.series.filter((s) => !hidden.has(s.key))
   const values = visible.flatMap((s) => s.values).filter((v) => v != null)
   const baseline = block.unit?.baseline
-  const lo = Math.min(...(baseline != null ? [baseline] : []), ...values)
-  const hi = Math.max(...(baseline != null ? [baseline] : []), ...values)
+  // Round steps: the axis reads 80 / 100 / 120, not the raw min and max.
+  const scale = niceScale(Math.min(...(baseline != null ? [baseline] : []), ...values),
+    Math.max(...(baseline != null ? [baseline] : []), ...values), narrow ? 3 : 4)
+  const { lo, hi } = scale
   const span = hi - lo || 1
   const x = (i) => pad.l + (i / (n - 1)) * (width - pad.l - pad.r)
   const y = (v) => pad.t + (1 - (v - lo) / span) * (H - pad.t - pad.b)
@@ -69,15 +74,16 @@ function LineView({ block }) {
     return d
   }
   const color = (key) => PALETTE[block.series.findIndex((s) => s.key === key) % PALETTE.length]
-  const ticks = useMemo(() => {
-    const steps = narrow ? 2 : 3
-    return Array.from({ length: steps + 1 }, (_, k) => lo + (span * k) / steps)
-  }, [lo, span, narrow])
-  const dateTicks = n >= 3 ? [0, Math.floor((n - 1) / 2), n - 1] : [0, n - 1]
+  const ticks = scale.ticks
+  const tickLabel = (v) => formatBlockValue(v, { ...block.unit, digits: scale.digits })
+  const dateTicks = useMemo(() => axisDates(block.dates, { locale: getLocale(), max: narrow ? 3 : 6 }), [block.dates, narrow])
+  // Edge labels hug the plot so they never hang past it.
+  const anchor = (px) => (px < pad.l + 18 ? 'start' : px > width - pad.r - 18 ? 'end' : 'middle')
   const locate = (event) => {
     const rect = host.current?.getBoundingClientRect()
     if (!rect || n < 2) return
-    const px = event.clientX - rect.left
+    // Pointer positions arrive in on-screen pixels; scale back to layout ones.
+    const px = (event.clientX - rect.left) * (host.current.clientWidth / rect.width || 1)
     const i = Math.round(((px - pad.l) / (width - pad.l - pad.r)) * (n - 1))
     setCursor(Math.max(0, Math.min(n - 1, i)))
   }
@@ -96,7 +102,7 @@ function LineView({ block }) {
           {ticks.map((t) => (
             <g key={t}>
               <line x1={pad.l} x2={width - pad.r} y1={y(t)} y2={y(t)} stroke="currentColor" stroke-opacity="0.08" />
-              <text x={width - pad.r + 4} y={y(t) + 3} fill="currentColor" fill-opacity="0.55" font-size="9" font-family="var(--font-mono)">{fmt(t)}</text>
+              <text x={width - pad.r + 6} y={y(t) + 3} fill="currentColor" fill-opacity="0.55" font-size="9" font-family="var(--font-mono)">{tickLabel(t)}</text>
             </g>
           ))}
           {baseline != null && baseline >= lo && baseline <= hi && (
@@ -105,9 +111,12 @@ function LineView({ block }) {
           {visible.map((s) => (
             <path key={s.key} d={path(s.values)} fill="none" stroke={color(s.key)} stroke-width={visible.length === 1 ? 1.8 : 1.4} stroke-linejoin="round" vector-effect="non-scaling-stroke" />
           ))}
-          {dateTicks.map((i, k) => (
-            <text key={i} x={x(i)} y={H - 5} fill="currentColor" fill-opacity="0.55" font-size="9" font-family="var(--font-mono)"
-              text-anchor={k === 0 ? 'start' : k === dateTicks.length - 1 ? 'end' : 'middle'}>{block.dates[i].slice(narrow ? 5 : 0)}</text>
+          {dateTicks.map(({ index, label }) => (
+            <g key={index}>
+              <line x1={x(index)} x2={x(index)} y1={H - pad.b} y2={H - pad.b + 3} stroke="currentColor" stroke-opacity="0.25" />
+              <text x={x(index)} y={H - 5} fill="currentColor" fill-opacity="0.55" font-size="9" font-family="var(--font-mono)"
+                text-anchor={anchor(x(index))}>{label}</text>
+            </g>
           ))}
           {cursor != null && (
             <g>
@@ -188,9 +197,11 @@ function TableView({ block }) {
     : block.type === 'line' ? block.dates.map((d, i) => [d, ...block.series.map((s) => formatBlockValue(s.values[i], block.unit))])
       : block.items.map((i) => [i.label, formatBlockValue(i.value, block.unit, { signed: block.signed }), ...(columns.some((c) => c.key === 'pct') ? [i.pct == null ? DASH : formatBlockValue(i.pct, { kind: 'pct', digits: 2 }, { signed: true })] : []), ...(columns.some((c) => c.key === 'note') ? [i.note || ''] : [])])
   return (
-    <div class="chat-block-table max-h-64 overflow-auto pt-1">
+    // No padding inside the scroll box: the sticky header pins to its top
+    // edge, and padding there let rows show through above the header.
+    <div class="chat-block-table max-h-64 overflow-auto mt-1">
       <table class="w-full border-collapse font-mono text-[10.5px]">
-        <thead><tr>{columns.map((c) => <th key={c.key} class={`sticky top-0 bg-surface-1 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-muted border-b border-line ${c.align === 'right' ? 'text-right' : 'text-left'}`}>{c.label}</th>)}</tr></thead>
+        <thead><tr>{columns.map((c) => <th key={c.key} class={`sticky top-0 z-10 bg-surface-1 shadow-[inset_0_-1px_0_var(--color-line)] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-muted ${c.align === 'right' ? 'text-right' : 'text-left'}`}>{c.label}</th>)}</tr></thead>
         <tbody>
           {rows.map((row, ri) => (
             <tr key={ri} class="border-b border-line/40 last:border-0">
