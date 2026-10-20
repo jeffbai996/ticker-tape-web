@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readlinkSync, rmSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { execFileSync, spawnSync } from 'node:child_process'
@@ -134,4 +134,44 @@ it('family deployment requires an off-repository route instead of a built-in pat
   const f = fixture()
   expect(f.run('family', '--deploy', f.sha, { TTW_FAMILY_BASE: '' }).status).not.toBe(0)
   expect(f.steps()).toEqual([])
+})
+
+describe('tailnet publication', () => {
+  const sharedLink = (f) => join(f.base, 'home', 'repos', 'ticker-tape-web', 'dist-tailnet')
+  it('publishes to the shared checkout link the server reads by default', () => {
+    const f = fixture()
+    const previous = join(f.base, 'previous-release')
+    mkdirSync(previous, { recursive: true })
+    mkdirSync(join(f.base, 'home', 'repos', 'ticker-tape-web'), { recursive: true })
+    symlinkSync(previous, sharedLink(f))
+    const result = f.run('tailnet')
+    expect(result.status, result.stderr).toBe(0)
+    const release = readlinkSync(sharedLink(f))
+    expect(JSON.parse(readFixtureArtifact(f.base, join(release, 'release.json'))).source_sha).toBe(f.sha)
+    expect(result.stdout).toContain(`serving source ${f.sha}`)
+  })
+  it('publishes to an explicitly named served link', () => {
+    const f = fixture()
+    const served = join(f.base, 'served-link')
+    const result = f.run('tailnet', '--deploy', f.sha, { TTW_TAILNET_LINK: served })
+    expect(result.status, result.stderr).toBe(0)
+    expect(JSON.parse(readFixtureArtifact(f.base, join(readlinkSync(served), 'release.json'))).source_sha).toBe(f.sha)
+  })
+  it('never prunes the release the shared link still serves', () => {
+    const f = fixture()
+    const releases = join(f.repo, 'dist-tailnet-releases')
+    const old = ['a', 'b', 'c', 'd'].map((name, i) => {
+      const dir = join(releases, name)
+      mkdirSync(dir, { recursive: true })
+      const t = new Date(Date.UTC(2026, 0, 1 + i))
+      utimesSync(dir, t, t)
+      return dir
+    })
+    mkdirSync(join(f.base, 'home', 'repos', 'ticker-tape-web'), { recursive: true })
+    symlinkSync(old[0], sharedLink(f))
+    const result = f.run('tailnet', '--deploy', f.sha, { TTW_TAILNET_LINK: join(f.base, 'staging-link') })
+    expect(result.status, result.stderr).toBe(0)
+    expect(existsSync(old[0])).toBe(true)
+    expect(existsSync(old[1])).toBe(false)
+  })
 })

@@ -21,7 +21,13 @@ if ! node -e "if (!require('node:util').styleText) process.exit(1)" >/dev/null 2
   if [[ -n "$newest" ]]; then export PATH="$newest:$PATH"; fi
 fi
 release_prepare "$ROOT" "$SOURCE_SHA"
-LINK="$ROOT/dist-tailnet"
+# The server reads the shared checkout's link, not one in this release
+# checkout: publishing only to $ROOT/dist-tailnet reported success while the
+# live site stayed on the old release.
+SHARED_LINK="$HOME/repos/ticker-tape-web-demo/dist-tailnet"
+if [[ -n "${TTW_TAILNET_LINK:-}" ]]; then LINK="$TTW_TAILNET_LINK"
+elif [[ -L "$SHARED_LINK" ]]; then LINK="$SHARED_LINK"
+else LINK="$ROOT/dist-tailnet"; fi
 RELEASES="$ROOT/dist-tailnet-releases"
 release="$RELEASES/$SOURCE_SHA-$(date +%Y%m%d-%H%M%S)-$$"
 mkdir -p "$release"
@@ -42,10 +48,22 @@ fi
 ln -s "$release" "$LINK.tmp.$$"
 mv -T "$LINK.tmp.$$" "$LINK"
 echo "published source $SOURCE_SHA at $release"
+# Read the release back through the link that is actually served.
+if ! grep -q "\"source_sha\":\"$SOURCE_SHA\"" "$LINK/release.json"; then
+  echo "served link $LINK does not resolve to source $SOURCE_SHA" >&2
+  exit 1
+fi
+echo "serving source $SOURCE_SHA through $LINK"
 # Preserve the established bounded rollback window after successful publish.
 KEEP=3
+# Never delete a release any known link still serves.
+protected=()
+for link in "$LINK" "$SHARED_LINK" "$ROOT/dist-tailnet"; do
+  if [[ -L "$link" ]]; then protected+=("$(readlink -f "$link")"); fi
+done
 # shellcheck disable=SC2012
 ls -1dt "$RELEASES"/*/ 2>/dev/null | tail -n +$((KEEP + 1)) | while read -r old; do
-  [[ "$(readlink -f "$LINK")" == "$(readlink -f "$old")" ]] && continue
+  target="$(readlink -f "$old")"
+  for keep in "${protected[@]}"; do [[ "$keep" == "$target" ]] && continue 2; done
   rm -rf -- "$old"
 done
