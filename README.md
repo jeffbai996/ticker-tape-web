@@ -1,230 +1,62 @@
 # ticker-tape-web
 
-![Demo](https://img.shields.io/badge/demo-live-3fb950?style=flat-square)
-![Frontend](https://img.shields.io/badge/frontend-Preact-673ab8?style=flat-square)
-![Styling](https://img.shields.io/badge/styling-Tailwind_v4-38bdf8?style=flat-square)
-![Build](https://img.shields.io/badge/build-Vite-f59e0b?style=flat-square)
-![Data](https://img.shields.io/badge/data-live%2C_client--side-208cff?style=flat-square)
-![PWA](https://img.shields.io/badge/PWA-installable-0f766e?style=flat-square)
-![Deploy](https://github.com/jeffbai996/ticker-tape-web-demo/actions/workflows/deploy.yml/badge.svg)
-
-A Bloomberg-style market terminal in the browser — the web rebuild of a private CLI TUI. Preact + Vite + Tailwind v4, deployed on GitHub Pages, all data fetched live client-side through a Cloudflare Worker proxy.
+Market terminal in the browser: streaming quotes, research, markets and portfolio demo views. Preact + Vite + Tailwind v4, static on GitHub Pages, live data through a Cloudflare Worker proxy.
 
 ![ticker-tape dashboard](docs/images/hero.jpeg)
 
-<sub><em>The dashboard mid-session: streaming quotes with overnight prints, per-symbol technical badges, day/52-week ranges, and the pulse / global markets / earnings rail.</em></sub>
+Live: https://jeffbai996.github.io/ticker-tape-web-demo/ · License: [LICENSE](LICENSE)
 
-**Live:** https://jeffbai996.github.io/ticker-tape-web-demo/
+## Install
 
-Personal project. See [LICENSE](LICENSE).
-
-## Features
-
-- **TUI dashboard** — ticker-by-ticker streaming prints with terminal tick flashes, after-hours quotes, volume histogram sparks, and a badge row per symbol: RSI(14), days-to-earnings, SMA50/200 flags, volume vs 20d average, % off 52-week high, 20d relative strength vs QQQ
-- **Customizable widget rail** — add / remove / reorder panels (pulse, earnings, macro calendar, movers, mini charts) on the home view; layout persists per browser
-- **`ticker>` command line** — the CLI grammar in the footer, with a drop-up output console and ↑/↓ history: `NVDA`, `ta AMD`, `intra TSM`, `vs AAPL MSFT`, `alert SPY > 700`, `w SHOP`, `b`, `h`
-- **Status bar** — PRE / OPEN / POST / CLOSED / HOLIDAY session chip (ET, holiday-aware), global index strip that swaps to ES/NQ futures outside regular hours, VIX threshold colors, ET clock with connectivity dot, and a `LIVE / RECOVERING / DELAYED` feed-health chip; rows carry their own freshness marker, so a snapshot is never painted as a live print
-- **Research** — candlestick charts (1D–5Y) with SMA/Bollinger/VWAP overlays, options chain with BS delta, earnings history + surprise impact, analyst ratings + price targets, insider activity, news
-- **Options intelligence** — expected move from the ATM straddle against what the stock has actually done on past prints, IV term structure, put/call skew, volume-vs-open-interest outliers, and expected-move bands drawn on the price chart
-- **Markets** — movers, sectors, heatmap, commodities, earnings week, 2026 macro calendar (FOMC/CPI/NFP/GDP/PCE)
-- **Event workspace** — a calendar row opens in place into the full event: what it is in plain language, prior/consensus/actual, the public sector proxies and watched symbols it touches, and a distinct post-print surprise/reaction state
-- **Screening** — multi-symbol compare, correlation matrix, valuation grid on any tickers
-- **Signal boards** — saved screen definitions (field · operator · value over the technicals the feed already computes, with a rank field) rendered as a ranked board that shares the dashboard's row grammar, plus `open as watchlist` and `alert when entered`
-- **Saved workspaces** — a handful of named layouts (`opening`, `research`, `event day`): active watchlist, grouping, spark shape/window, rail widgets, market subview. Switchable from the toolbar or the `ws` console verb, with versioned export/import of layout preferences. Layout only — never quotes, positions, tokens, or endpoints
-- **Alerts** — price + technical (RSI / SMA cross / volume) alerts evaluated in-browser, with browser notifications
-- **Watchlists** — named lists next to the main one, with opt-in cloud sync: the browser pulls, merges locally, and pushes against the revision it read, so two devices reconcile without the server arbitrating
-- **AI surfaces** — public and private builds ship the same navigation. Publicly the **Briefing** / report controls and the multi-model chat workspace render as inert `PREVIEW` surfaces that never call a model; a separately hosted private build activates them through its server-side router
-- **Portfolios** — public synthetic demo views; separate private broker/account views and family/manual books with a FIFO trade ledger, cash journal, multi-currency valuation, and session-aware day P&L
-- **Wire** — a news-and-events board scored by event type × watched name × freshness, running on a synthetic public session, on the **public mirror** (a sanitized headline snapshot pushed to the Worker's `/wire/*` routes and read back read-only, with the snapshot age on screen), or on a user-supplied endpoint that serves the same wire event contract
-- **Mobile** — bottom tab bar, spotlight-style inline search, and the `ticker>` console promoted to its own phone page (desktop keeps the floating drop-up)
-- **i18n** — EN / 中文 toggle, PWA-installable
-
-## Architecture
-
-```
-Browser (GitHub Pages, static)
-  src/lib/feed.js       Yahoo WebSocket streams individual price ticks; v7
-                        snapshots recover gaps and v8 fills badges + sparks
-  src/lib/*             all analytics computed client-side (pure functions)
-        │
-        ▼
-Cloudflare Worker (worker/)
-  selected Yahoo routes   Yahoo Finance proxy; handles the cookie+crumb dance
-                        (single-flight refresh, survives 401 stampedes)
-  /watchlists            Capability-authenticated family watchlist document
-  /portfolios            Capability-authenticated family portfolio document
-                        (bearer is confined to the separate family artifact; never a URL;
-                        per-document Durable Object serializes revisions)
-  /wire/*               Public wire mirror: a sanitized headline snapshot is
-                        PUSHed in and served back read-only. Every event is
-                        re-validated against a seven-field contract on write.
-```
-
-The public Worker has no AI route. Paid/model-backed actions exist only through
-the separately hosted private service. Family sync deliberately favors zero-setup family
-use: its separately hosted build receives the 128-bit capability from the
-off-git deploy secret, and the Worker accepts only the matching
-`FAMILY_SYNC_TOKEN`. The ordinary GitHub Pages build carries neither the family
-flag nor the capability. Anyone who obtains the family bundle can recover its
-shared capability; the unindexed path limits discovery, logging detects use,
-and rotation is the recovery boundary.
-
-## Tech Stack
-
-| Layer | Choice |
-|-------|--------|
-| UI | Preact + hash router |
-| Build | Vite 8 |
-| CSS | Tailwind CSS v4 (`@theme` tokens, CSS-first) |
-| Charts | lightweight-charts (TradingView) + hand-rolled SVG sparks |
-| Tests | Vitest (jsdom) |
-| Fonts | Plus Jakarta Sans (UI) + IBM Plex Mono (data) |
-| Deploy | GitHub Pages via Actions |
-| Public data proxy | Cloudflare Worker (`worker/`) |
-| Private AI router | A server-side router in the private build |
-
-## Commands
-
-Node 22 is required for the build chain (Vite 8 + Tailwind v4).
-
-```bash
-npm install
-npm run dev        # Vite dev server
-npm run build      # production build to dist/
-npm test -- test/lib/wire_layout.test.js  # one explicit Vitest file
-npm run budget     # build, then fail if the entry chunk drifts over budget
-npm run test:fast  # the fast Vitest selection (test/run-tests.mjs)
-npm run test:full  # every Vitest suite through test/run-tests.mjs
-npm run probe      # responsive probe gate (scripts/probe_gate.py)
-npm run dev:tv     # Samsung Tizen TV build: dev server
-npm run build:tv   # TV production build (vite.tv.config.js)
-npm run package:tv # package the TV build (scripts/tizen_tv.sh)
-```
-
-Routed pages are lazy-loaded, so the shell, dashboard, and command grammar are
-the only eager chunks. `scripts/probe_matrix.py` runs the responsive matrix
-against a served build (Playwright + chromium).
-
-Vitest refuses empty, directory, and substring-only test selections before
-collection. Managed landings choose related files automatically; direct test
-commands must name existing `.test.js` or `.spec.js` files. Public deployment
-checks run explicit release contracts; application behavior is checked at landing.
-
-Worker: `cd worker && npx wrangler deploy` (needs Cloudflare credentials).
-
-
-Provision or rotate family sync separately with
-`npx wrangler secret put FAMILY_SYNC_TOKEN`; the separately hosted family build
-must use the matching value from its off-git deploy configuration. Never pass
-it on the command line or commit it.
-
-The family build also emits privacy-bounded `ttw_security` objects to
-Cloudflare Workers Logs. Provision `TTW_AUDIT_KEY` as a separate strong Worker
-secret before deploy; it HMAC-pseudonymizes device and network identifiers.
-The event never contains the family bearer, raw IP, document body, symbol,
-portfolio name, full URL, referer, or full user agent. Generic invocation logs
-are disabled because the same Worker carries ordinary market-data traffic.
-Cloudflare is still the edge provider and can attach its own request metadata
-to invocation and real-time-tail views; the privacy bound applies to the
-application's `ttw_security` object.
-
-View the events in **Cloudflare → Workers & Pages → yf-proxy → Observability →
-Query Builder** with `event = ttw_security`. Useful saved views are:
-
-- `TTW — all security events`: `event = ttw_security`
-- `TTW — writes and restores`: add `operation IN (write, restore)`
-- `TTW — failures`: add `status >= 400`
-- `TTW — unfamiliar clients`: group by `device`, `country`, and `asn`
-
-The `kind = browser` / `operation = view` event means the family JavaScript
-actually executed. Cloudflare zone Traffic Analytics for the exact family path
-also includes HTML-only fetches such as WeChat previews. Neither device IDs nor
-Origin headers are authentication; the bearer remains the machine credential.
-
-Private family deployment reads `TTW_FAMILY_BASE` and `TTW_FAMILY_HOST` from
-`~/.config/ttw/family_deploy.env` (or `TTW_FAMILY_CONFIG`). Both are required;
-no private route is built into source. A bearer rotation can retain documents
-and their revision history by setting the Worker secret `FAMILY_STORAGE_CAPABILITY`
-to the existing storage namespace before changing `FAMILY_SYNC_TOKEN`. The storage
-namespace does not authorize requests; only the current sync token does.
-
-Build the separately hosted family bundle with
-`scripts/deploy_family.sh --build-only FULL_SOURCE_SHA`. Publish it with
-`TTW_FAMILY_AI=1 scripts/deploy_family.sh --deploy FULL_SOURCE_SHA` for the
-enabled assistant, or explicitly set `TTW_FAMILY_AI=0` to disable it. Publication
-without either value is refused. The script reads the capability from `~/.config/ttw/sync_token`, validates it without
-printing it, and preserves the existing `ttw-family` Assets Worker routes.
-Both private release scripts require the full current HEAD SHA and a clean
-checkout, export only committed files, and run `npm ci`, focused release and
-architecture tests, a production build, then the offline served responsive
-probe before publishing. Application tests are selected by changed files at
-landing. The release tests use the shared `cc_test.py` runner beside `cc-land`;
-`TTW_TEST_RUNNER` and `TTW_TEST_PYTHON` can select its path and interpreter.
-Missing tooling or failed checks stop publication. Ignored
-`.env` files are excluded; the family capability is supplied only to the build.
-Each output carries `release.json` with its source SHA and an asset hash manifest.
-Use `npm run build:tailnet -- --build-only FULL_SOURCE_SHA` to validate a tailnet
-release, or `--deploy FULL_SOURCE_SHA` to swap its symlink after all gates pass.
-Build-only is the default; both commands still require the SHA argument. The previous
-tailnet releases retain the existing three-release rollback window.
-
-### iOS development
-
-The Capacitor app bundles the existing frontend and uses the existing public
-market-data service. The default build uses demo portfolios and never enables
-family sync. Building it does not change the web deployments.
+Node 22 is required.
 
 ```bash
 npm ci
-npm run ios:sync    # build dist-ios/ and copy it into the Xcode project
-npm run ios:open    # open ios/App/App.xcodeproj on a Mac
-npm run ios:run     # build and launch on a selected simulator or device
 ```
 
-Use Node 22+, Xcode 26+ and an iOS 15+ device or simulator. Swift Package
-Manager resolves the pinned Capacitor dependency; CocoaPods is not required.
-Simulator builds do not require a paid developer account. For an iPhone,
-select a Personal Team under Signing & Capabilities in Xcode. Free device
-provisioning lasts seven days; App Store and TestFlight distribution require
-Apple Developer Program membership.
+## Usage
 
-For a family-only build, place `VITE_FAMILY_BUILD=1` and the **existing**
-`VITE_SYNC_CAPABILITY` in a local, gitignored `.env.ios.local`, then run
-`npm run ios:sync`. Do not generate or rotate a capability: it identifies
-the existing shared document. The resulting bundle carries family access and
-must not be published or uploaded to public artifacts. Family sync is not
-enabled in the default preview. Private broker builds are rejected.
-
-Native mode reserves screen safe areas and skips the website's service worker
-and deployment freshness polling. Quotes still require a network connection;
-the interface is bundled locally. Assets and generated native configuration
-are ignored by Git and regenerated by `ios:sync`.
-
-
-## Constraints
-
-- **No personal data in the public repository or ordinary Pages assets.** Source and fixtures contain no real positions, accounts, or portfolio symbols. The separately deployed family bundle contains its shared capability by design; a browser holding it can access the private Worker document.
-- API keys never touch the browser. Public AI controls are previews only; the private build calls its server-side router.
-- The family capability is a shared bearer embedded only in the separately hosted family bundle. Treat the page path as capability-adjacent, keep it unindexed, and rotate the bearer if either is broadly disclosed.
-- Yahoo data quirks are handled explicitly (crumb auth, ^TNX change fields, patchy earnings-calendar coverage) rather than papered over.
-
-## Repo Layout
-
+```bash
+npm run dev          # Vite dev server
+npm run build        # production build to dist/
+npm run budget       # build, fail if the entry chunk is over budget
+npm run test:fast    # fast Vitest selection (test/run-tests.mjs)
+npm run test:full    # every Vitest suite
+npm test -- test/lib/wire_layout.test.js   # one explicit file
+npm run probe        # responsive probe gate (scripts/probe_gate.py)
+npm run dev:tv       # Samsung Tizen TV: dev server (vite.tv.config.js)
+npm run build:tv     # TV production build
+npm run package:tv   # package the TV build (scripts/tizen_tv.sh)
+npm run ios:sync     # build dist-ios/ and copy into the Xcode project
+npm run ios:open     # open ios/App/App.xcodeproj (Mac)
+npm run ios:run      # build and launch on a simulator or device
+cd worker && npx wrangler deploy   # deploy the Worker (needs Cloudflare credentials)
 ```
-ticker-tape-web/
-├── .github/workflows/deploy.yml
-├── worker/              # Cloudflare Worker: bounded Yahoo proxy, family sync, public wire mirror
-├── src/
-│   ├── app.jsx          # shell: status bar, tape, sidebar, command bar
-│   ├── pages/           # dashboard, watchlists, brief, markets, screen, portfolio, alerts, wire, chat, console
-│   │   └── research/    # research is a directory: header, overview, news, options, earnings… behind a router
-│   ├── components/      # StatusBar, FeedIndicator, Tape, CommandBar, Overlay, LazyPage, WorkspacesControl…
-│   └── lib/             # feed, feedHealth, yahoo, badges, eventLinks, screenDefs, workspaces, optionsIntel, wire…
-├── scripts/             # release, probe and backup scripts: deploy_family.sh, deploy_tailnet.sh,
-│                        #   private_release.sh, probe_gate.py, probe_matrix.py, bundle_budget.sh…
-├── docs/                # engineering notes and README images
-├── test/                # Vitest suites (test/lib + test/worker)
-├── ios/                 # Capacitor iOS project (capacitor.config.json)
-├── tv/, tv.html         # Samsung Tizen TV build (vite.tv.config.js, tizen/)
-└── vite.config.js
-```
+
+In the app, the footer `ticker>` console takes commands such as `NVDA`, `ta AMD`, `intra TSM`, `vs AAPL MSFT`, `alert SPY > 700`, `w SHOP`.
+
+Pushes to `main` deploy to GitHub Pages (`.github/workflows/deploy.yml`).
+
+iOS needs Xcode 26+ and an iOS 15+ simulator or device; a device needs a signing team. Generated native assets are gitignored and rebuilt by `ios:sync`.
+
+## Configuration
+
+- Worker bindings, vars and observability: `worker/wrangler.toml`.
+- Worker secrets are set with `npx wrangler secret put NAME`; never pass them on the command line or commit them.
+- Build-time flags are `VITE_*` variables; the Pages build sets `VITE_PUBLIC_DEMO=1` (see `.github/workflows/deploy.yml`).
+- Worker routes: Yahoo proxy, `/watchlists`, `/portfolios`, `/wire/*` (`worker/worker.js`).
+
+## Notes
+
+- Tests: Vitest rejects empty, directory and substring selections; name existing `.test.js` / `.spec.js` files.
+- The Pages build must not set `VITE_FAMILY_BUILD` or `VITE_SYNC_CAPABILITY`; that would embed a credential in public assets. `test/test_architecture.test.js` fails the build if either appears.
+- No personal data in source, fixtures or Pages assets. API keys never reach the browser; public AI controls are inert previews.
+
+## Layout
+
+- `src/` app (`app.jsx`, `pages/`, `components/`, `lib/`)
+- `worker/` Cloudflare Worker
+- `scripts/` release, probe and backup scripts
+- `docs/` engineering notes
+- `test/` Vitest suites
+- `ios/`, `tv/` native and TV builds
