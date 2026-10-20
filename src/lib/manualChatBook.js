@@ -3,7 +3,16 @@ import { holdingCurrency } from './fx.js'
 /** Keep one selected book intact; quantities across separate books never mix. */
 export function manualBookSnapshot(portfolios, selectedId = '') {
   const book=portfolios.find(p=>p.id===selectedId) || portfolios[0]
-  if(!book) return null
+  return book ? bookSnapshot(book) : null
+}
+
+/** Every book that holds something, each kept whole, for surfaces that show them side by side. */
+export function manualBookSnapshots(portfolios, selectedId = '') {
+  const selected=(portfolios.find(p=>p.id===selectedId) || portfolios[0])?.id
+  return portfolios.filter(p=>p.holdings?.length).map(p=>({...bookSnapshot(p),selected:p.id===selected}))
+}
+
+function bookSnapshot(book) {
   return {ok:true,manual:true,id:book.id,name:book.name,currency:book.ccy,cash:book.cash||[],
     available:{trades:book.txns?.length||0,cash_activity:book.cashTxns?.length||0,history:book.snapshots?.length||0},
     positions:(book.holdings || []).map(h=>({symbol:h.symbol,shares:h.shares,

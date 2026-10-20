@@ -12,7 +12,7 @@ import { fetchNews } from './history.js'
 import { memoriesForPrompt, MEMORY_PROMPT } from './chatMemory.js'
 import { IS_FAMILY_AI } from './nav.js'
 import { loadPortfolios } from './myPortfolios.js'
-import { manualBookSnapshot, manualPortfolioContext, manualPortfolioCatalog } from './manualChatBook.js'
+import { manualBookSnapshot, manualBookSnapshots, manualPortfolioContext, manualPortfolioCatalog } from './manualChatBook.js'
 import {waitForChatPortfolioSync} from './chatAppData.js'
 import { wireServiceUrl } from './wire.js'
 
@@ -20,10 +20,17 @@ import { wireServiceUrl } from './wire.js'
 let bookCache = { ts: 0, block: '' }
 const BOOK_TTL = 60_000
 
+function selectedBookId() {
+  try {return localStorage.getItem('my_portfolio_sel_v1') || ''} catch {return ''}
+}
+
 export function savedChatBook() {
-  let selected=''
-  try {selected=localStorage.getItem('my_portfolio_sel_v1') || ''} catch {}
-  return manualBookSnapshot(loadPortfolios(),selected)
+  return manualBookSnapshot(loadPortfolios(),selectedBookId())
+}
+
+/** Every saved book with holdings; the chat reads all of them, not only the selected tab. */
+export function savedChatBooks() {
+  return manualBookSnapshots(loadPortfolios(),selectedBookId())
 }
 
 async function portfolioBlock() {
@@ -146,7 +153,14 @@ export async function fetchBookJson() {
   return bookJsonCache.data
 }
 
+/** The launchpad's books: every saved book on the family build, the one wire book elsewhere. */
+export async function fetchBooksJson() {
+  if(IS_FAMILY_AI) return savedChatBooks()
+  const book=await fetchBookJson()
+  return book ? [book] : []
+}
+
 /** Does this browser have a live book wired in (affects the base prompt)? */
 export function hasLiveBook() {
-  return IS_FAMILY_AI ? !!savedChatBook()?.positions.length : !!wireServiceUrl()
+  return IS_FAMILY_AI ? savedChatBooks().length>0 : !!wireServiceUrl()
 }

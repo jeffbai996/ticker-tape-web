@@ -6,7 +6,7 @@ vi.mock('../../src/lib/nav.js',()=>({IS_FAMILY_AI:true,IS_FAMILY_BUILD:true,IS_P
 vi.mock('../../src/hooks.js',()=>({useQuotes:()=>({}),useWatchlist:()=>[]}))
 vi.mock('../../src/pages/dashboard.jsx',()=>({useEarningsDays:()=>({})}))
 vi.mock('../../src/lib/wirechat.js',()=>({wireChatAvailable:()=>true,fetchWireChatModels:async()=>[{key:'family-sonnet',label:'Sonnet 5.5',efforts:['medium']}]}))
-vi.mock('../../src/lib/chatContext.js',()=>({buildChatContext:async()=>'',hasLiveBook:()=>false,savedChatBook:()=>null}))
+vi.mock('../../src/lib/chatContext.js',()=>({buildChatContext:async()=>'',hasLiveBook:()=>false,savedChatBooks:()=>[],fetchBooksJson:async()=>[]}))
 vi.mock('../../src/lib/chatstore.js',()=>({chatstoreAvailable:()=>false,syncNotes:async()=>{},CHATSTORE_ERROR_EVENT:'store-error',CHATSTORE_SYNC_EVENT:'store-sync'}))
 vi.mock('../../src/lib/threads.js',()=>({
  loadActiveHistory:()=>[],hydrateActiveThread:()=>mocks.boot(),migrateLegacy:async()=>{},fetchThreadList:async()=>[],

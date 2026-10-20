@@ -30,7 +30,7 @@ import { useEarningsDays } from './dashboard.jsx'
 import { ECON_EVENTS } from '../lib/markets.js'
 import { loadCatalysts, mergedEvents } from '../lib/catalysts.js'
 import { fmtPct } from '../lib/format.js'
-import { buildChatContext, hasLiveBook, fetchBookJson, savedChatBook } from '../lib/chatContext.js'
+import { buildChatContext, hasLiveBook, fetchBooksJson, savedChatBooks } from '../lib/chatContext.js'
 import { pulseStats } from '../lib/pulse.js'
 import { loadMemories, editMemory, removeMemory, applyMemoryTags, applyMemoryOperations, canUndoMemoryCompaction, undoMemoryCompaction } from '../lib/chatMemory.js'
 import { loadJournal, addJournalEntry, removeJournalEntry, searchJournal } from '../lib/journal.js'
@@ -467,6 +467,11 @@ export function ActivityTrace({ steps, busy = false, startedAt, usage = null }) 
 }
 
 
+// Opening a book from the launchpad lands on that book, not the last tab viewed.
+function selectBook(id) {
+  try { localStorage.setItem('my_portfolio_sel_v1', id) } catch { /* best-effort */ }
+}
+
 /**
  * The launchpad — chat's home screen, and a place you can navigate back to.
  * One instrument panel (three cells under a single frame, hairline-divided)
@@ -492,12 +497,14 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
     .slice(0, 4)
   const pulse = pulseStats(watchlist.map((s) => quotes[s]?.quote).filter(Boolean))
 
-  // the real book, when a wire is connected — TTL-cached in chatContext
-  const [bk, setBk] = useState(null)
+  // the real book when a wire is connected (TTL-cached in chatContext), or
+  // every saved book on the family build — the chat reads all of them
+  const [books, setBooks] = useState([])
   useEffect(() => {
-    if (book) fetchBookJson().then(setBk).catch(() => {})
+    if (book) fetchBooksJson().then(setBooks).catch(() => {})
   }, [book,bookRevision])
-  const suggestionSymbols=[...new Set([...(bk?.positions || []).map(p=>p.symbol),...watchlist])]
+  const bk = books.length === 1 ? books[0] : null
+  const suggestionSymbols=[...new Set([...books.flatMap(b=>b.positions || []).map(p=>p.symbol),...watchlist])]
   const [,nameTick]=useState(0)
   useEffect(()=>{
     if(getLocale()!=='zh') return
@@ -597,6 +604,22 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
           {book && (
             <div class={cell}>
               <div class={eyebrow}>{tl('the book')}</div>
+              {books.length > 1 ? (
+                <div class="font-mono text-[11.5px] leading-[1.55]">
+                  {books.map((b) => (
+                    <a key={b.id} href="#/portfolio/mine" onClick={() => selectBook(b.id)}
+                      class="block min-w-0 py-px hover:no-underline group">
+                      <span class="flex justify-between gap-2">
+                        <span class="truncate text-ink font-[650] group-hover:text-accent">{b.name}</span>
+                        <span class="shrink-0 text-muted">{b.positions.length} {tl('holdings')}</span>
+                      </span>
+                      <span class="block truncate text-ink-2 text-[10.5px]">
+                        {b.positions.map((p) => (getLocale()==='zh' && zhName(p.symbol)) || p.symbol).join(' · ')}
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              ) : <>
               {bk?.manual && <a href="#/portfolio/mine" class="block truncate text-[10px] text-muted mb-1">{bk.name}</a>}
               {topPos.length ? (
                 <div class="font-mono text-[11.5px] leading-[1.55]">
@@ -615,6 +638,7 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
                   )}
                 </div>
               ) : <div class="font-mono text-[11px] text-muted py-1">{tl('reading the wire…')}</div>}
+              </>}
             </div>
           )}
           <div class={cell}>
@@ -789,7 +813,7 @@ export function Chat() {
   const watchlist = useWatchlist()
   const [bookRevision,bookTick]=useState(0)
   useEffect(()=>onPortfoliosChange(()=>bookTick(n=>n+1)),[])
-  const quoteSymbols=IS_FAMILY_AI ? [...new Set([...watchlist,...(savedChatBook()?.positions || []).map(p=>p.symbol)])] : watchlist
+  const quoteSymbols=IS_FAMILY_AI ? [...new Set([...watchlist,...savedChatBooks().flatMap(b=>b.positions).map(p=>p.symbol)])] : watchlist
   // the right rail is live even mid-thread, so the pad data polls always
   const quotes = useQuotes(quoteSymbols)
   const earnDays = useEarningsDays(quoteSymbols)

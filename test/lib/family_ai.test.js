@@ -146,6 +146,10 @@ it('uses the selected family portfolio as chat context without calling a broker'
   expect(block).toContain('MSFT: 20 shares')
   expect(block).not.toContain('AAPL: 10 shares')
   expect(fetcher).not.toHaveBeenCalled()
+  expect((await context.fetchBooksJson()).map(b=>b.name)).toEqual(['First portfolio','Second portfolio'])
+  replacePortfolios([{id:'p1',name:'First portfolio',ccy:'USD',holdings:[{symbol:'AAPL',shares:10,cost:100}]},
+    {id:'p2',name:'Second portfolio',ccy:'USD',holdings:[]}])
+  expect(context.hasLiveBook()).toBe(true)
 })
 
 it('keeps selected holdings in context when a quote lacks a daily change',async()=>{
