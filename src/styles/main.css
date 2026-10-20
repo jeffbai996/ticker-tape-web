@@ -643,6 +643,8 @@ html[data-pointer-hover] .market-deck-row:hover {
 .chat-think::-webkit-scrollbar { display: none; }
 
 @media (prefers-reduced-motion: reduce) {
+    .chat-incognito-label,
+    .chat-rail-tools > *,
     .mq-inner,
     .tui-company-symbol,
     .tui-company-name-swap,
@@ -1037,6 +1039,27 @@ html[data-pointer-hover] .chat-trace-entry > summary:hover { background-color:tr
 .chat-token-input { display:inline-flex; align-items:center; gap:4px; color:#58a6ff; }
 .chat-token-output { display:inline-flex; align-items:center; gap:4px; color:#3fb950; }
 .chat-token-input .chat-token-arrow, .chat-token-output .chat-token-arrow { color:inherit; }
+
+/* Chat header rail. The incognito toggle is an icon until hovered or on, when
+   its label slides out. Turning it on folds every tool to its left into it:
+   each icon travels right by its distance in slots, nearest first. The motion
+   is on a wrapper span because buttons themselves never transition. */
+.chat-incognito-label { max-width:0; margin-left:0; opacity:0; overflow:hidden;
+  transition: max-width .28s cubic-bezier(.4,0,.2,1), margin-left .28s cubic-bezier(.4,0,.2,1), opacity .2s ease; }
+.chat-incognito:hover .chat-incognito-label,
+.chat-incognito:focus-visible .chat-incognito-label,
+.chat-incognito.is-on .chat-incognito-label { max-width:6em; margin-left:4px; opacity:1; }
+.chat-rail-tools { display:flex; align-items:center; gap:2px; }
+.chat-rail-slot { display:inline-flex; }
+.chat-rail-tools > * { --slot:1;
+  transition: transform .36s cubic-bezier(.4,0,.2,1), opacity .32s cubic-bezier(.6,0,1,1);
+  transition-delay: calc((var(--slot) - 1) * 30ms); }
+.chat-rail-tools > :nth-last-child(2) { --slot:2; }
+.chat-rail-tools > :nth-last-child(3) { --slot:3; }
+.chat-rail-tools > :nth-last-child(4) { --slot:4; }
+.chat-rail-tools > :nth-last-child(5) { --slot:5; }
+.chat-rail-tools[data-collapsed="true"] { pointer-events:none; }
+.chat-rail-tools[data-collapsed="true"] > * { opacity:0; transform: translateX(calc(var(--slot) * 26px)) scale(.35); }
 
 /* A bounded suggestion shelf uses spare height and leaves the composer docked. */
 .chat-launchpad { flex: 1; min-height: 100%; }

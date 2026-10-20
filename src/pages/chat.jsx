@@ -530,7 +530,9 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
       <div class="flex items-start gap-3">
         <div class="min-w-0">
           <h2 class="font-anth text-[20px] leading-[1.25] font-semibold text-ink">
-            {onWire
+            {temporary
+              ? tl('Incognito chat')
+              : onWire
               ? tt('chat.wire_empty')
               : tt('chat.empty')}
           </h2>
@@ -585,7 +587,7 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
             )) : <div class="font-mono text-[11px] text-muted py-1">{tl('clear runway')}</div>}
           </div>
         </div>
-        <div class={`grid grid-cols-1 divide-y divide-line sm:divide-y-0 sm:divide-x ${book ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
+        <div class={`grid grid-cols-1 divide-y divide-line sm:divide-y-0 sm:divide-x ${book || temporary ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
           <div class={cell}>
             <div class={eyebrow}>{tl('Pulse')}</div>
             {pulse ? (
@@ -601,6 +603,14 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
               </div>
             ) : <Loading label={tl('loading…')} minH={72} />}
           </div>
+          {/* Incognito keeps the market cells and drops everything personal;
+              the notice takes the space the book and context cells used. */}
+          {temporary ? (
+            <div data-incognito-notice class={`${cell} sm:col-span-2 flex items-center gap-3`}>
+              <svg viewBox="0 0 24 24" width="22" height="22" class="shrink-0 text-muted" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="3"/><path d="m3 3 18 18"/></svg>
+              <p class="font-anth text-[12px] leading-[1.5] text-ink-2">{tl('Temporary chat. History is not saved. Memories and notes are off.')}</p>
+            </div>
+          ) : <>
           {book && (
             <div class={cell}>
               <div class={eyebrow}>{tl('the book')}</div>
@@ -640,19 +650,18 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
           <div class={cell}>
             <div class={eyebrow}>{tl('context it carries')}</div>
             <div class="font-mono text-[11.5px] leading-[1.55]">
-              {!temporary && <>
               <button type="button" onClick={onOpenMem} class="flex justify-between w-full hover:text-ink">
                 <span class="text-muted">{tl('memories')}</span><span class="text-ink-2">{memN}</span>
               </button>
               <button type="button" onClick={onOpenJournal} class="flex justify-between w-full hover:text-ink">
                 <span class="text-muted">{tl('journal')}</span><span class="text-ink-2">{journalN}</span>
               </button>
-              </>}
               <div class="flex justify-between"><span class="text-muted">{tl('watching')}</span><span class="text-ink-2">{watchlist.length}</span></div>
               <div class="flex justify-between"><span class="text-muted">{tl('book')}</span>
                 <span class={book ? 'text-success' : 'text-muted'}>{tl(book ? (IS_FAMILY_AI ? 'saved' : 'live') : 'demo')}</span></div>
             </div>
           </div>
+          </>}
         </div>
       </div>
 
@@ -1444,7 +1453,6 @@ export function Chat() {
   const composerButton = "shrink-0 w-8 h-8 box-border grid place-items-center rounded-md border transition-colors"
   const composer = (
       <form onSubmit={send} class="max-w-[46rem] w-full mx-auto pt-2">
-        {incognito && <p data-incognito-notice class="mb-2 px-1 font-anth text-[10px] text-muted">{tl('Temporary chat. History is not saved. Memories and notes are off.')}</p>}
         {pendingContext && <div data-chat-context class="mb-2 flex items-center gap-2 rounded-md border border-line px-2 py-1 font-anth text-[10px] text-muted">
           <span class="min-w-0 flex-1 truncate">{pendingContext.label}</span>
           <button type="button" aria-label={tl('Remove')} onClick={()=>setPendingContext(null)}>✕</button>
@@ -1641,14 +1649,11 @@ export function Chat() {
         <h1 class="font-bold text-[17px] leading-tight text-ink" style="font-family: var(--font-sans)">{tl('AI Chat')}</h1>
         <span class={`w-1.5 h-1.5 rounded-full ${models.length ? 'bg-[#3fb950]' : 'bg-muted animate-pulse'}`}
               title={tl(onWire ? 'online — private wire' : 'online — public proxy')} />
-        <button type="button" data-incognito-toggle aria-pressed={incognito} disabled={busy || !threadsReady}
-          onClick={toggleIncognito} aria-label={tl('Incognito')} title={tl(incognito ? 'End incognito chat' : 'Start incognito chat')}
-          class={`inline-flex items-center gap-1 rounded-md border px-2 py-1 font-anth text-[10px] whitespace-nowrap disabled:opacity-40 ${incognito ? 'border-accent/50 text-accent bg-accent-soft' : 'border-line text-muted hover:text-ink'}`}>
-          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="3"/><path d="m3 3 18 18"/></svg>
-          <span class={incognito ? '' : 'max-sm:sr-only'}>{tl('Incognito')}</span>
-        </button>
       </div>
         <div class="absolute top-2.5 right-3 z-30 h-7 flex items-center gap-0.5 rounded-lg px-0.5">
+          {/* Incognito sits last; switching it on folds the tools to its left into it. */}
+          <div class="chat-rail-tools" data-collapsed={incognito ? 'true' : 'false'} inert={incognito} aria-hidden={incognito ? 'true' : undefined}>
+          <span class="chat-rail-slot">
           <button
             onClick={() => setDrawer(drawer === 'sessions' ? null : 'sessions')}
             class={`relative w-6 h-6 grid place-items-center rounded-md ${drawer === 'sessions' ? 'text-accent bg-accent-soft' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
@@ -1660,7 +1665,8 @@ export function Chat() {
             </svg>
             {liveThreads.length > 0 && <span class="absolute -top-1 -right-1 min-w-[13px] h-[13px] px-0.5 grid place-items-center rounded-full bg-surface-3 border border-line-2 font-mono text-[7.5px] text-ink-2 leading-none">{liveThreads.length}</span>}
           </button>
-          {!incognito && <>
+          </span>
+          <span class="chat-rail-slot">
           <button
             onClick={() => { setMemories(loadMemories()); setDrawer(drawer === 'mem' ? null : 'mem') }}
             class={`relative w-6 h-6 grid place-items-center rounded-md ${drawer === 'mem' ? 'text-accent bg-accent-soft' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
@@ -1673,6 +1679,8 @@ export function Chat() {
             </svg>
             {memories.length > 0 && <span class="absolute -top-1 -right-1 min-w-[13px] h-[13px] px-0.5 grid place-items-center rounded-full bg-surface-3 border border-line-2 font-mono text-[7.5px] text-ink-2 leading-none">{memories.length}</span>}
           </button>
+          </span>
+          <span class="chat-rail-slot">
           <button
             onClick={() => { setJournal(loadJournal()); setDrawer(drawer === 'journal' ? null : 'journal') }}
             class={`relative w-6 h-6 grid place-items-center rounded-md ${drawer === 'journal' ? 'text-accent bg-accent-soft' : 'text-muted hover:text-ink hover:bg-surface-2'}`}
@@ -1686,16 +1694,27 @@ export function Chat() {
             </svg>
             {journal.length > 0 && <span class="absolute -top-1 -right-1 min-w-[13px] h-[13px] px-0.5 grid place-items-center rounded-full bg-surface-3 border border-line-2 font-mono text-[7.5px] text-ink-2 leading-none">{journal.length}</span>}
           </button>
-          </>}
+          </span>
           {history.length > 0 && (
+            <span class="chat-rail-slot">
             <button onClick={() => exportChat(history)} class="w-6 h-6 grid place-items-center rounded-md text-muted hover:text-ink hover:bg-surface-2"
               title={tl('download transcript')}>
               <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12M7 10l5 5 5-5M5 20h14"/></svg>
             </button>
+            </span>
           )}
           {history.length > 0 && (
+            <span class="chat-rail-slot">
             <ConversationDelete onDelete={clear} disabled={busy} label={tl('clear')} />
+            </span>
           )}
+          </div>
+          <button type="button" data-incognito-toggle aria-pressed={incognito} disabled={busy || !threadsReady}
+            onClick={toggleIncognito} aria-label={tl('Incognito')} title={tl(incognito ? 'End incognito chat' : 'Start incognito chat')}
+            class={`chat-incognito relative z-10 h-6 inline-flex items-center rounded-md px-[4.5px] font-anth text-[11px] whitespace-nowrap disabled:opacity-40 ${incognito ? 'is-on text-accent bg-accent-soft' : 'text-muted hover:text-ink hover:bg-surface-2'}`}>
+            <svg viewBox="0 0 24 24" width="15" height="15" class="shrink-0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="3"/><path d="m3 3 18 18"/></svg>
+            <span class="chat-incognito-label">{tl('Incognito')}</span>
+          </button>
         </div>
 
       {drawer === 'sessions' && (
