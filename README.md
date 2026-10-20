@@ -6,7 +6,7 @@
 ![Build](https://img.shields.io/badge/build-Vite-f59e0b?style=flat-square)
 ![Data](https://img.shields.io/badge/data-live%2C_client--side-208cff?style=flat-square)
 ![PWA](https://img.shields.io/badge/PWA-installable-0f766e?style=flat-square)
-![Tests](https://img.shields.io/badge/tests-passing-3fb950?style=flat-square)
+![Deploy](https://github.com/jeffbai996/ticker-tape-web-demo/actions/workflows/deploy.yml/badge.svg)
 
 A Bloomberg-style market terminal in the browser — the web rebuild of a private CLI TUI. Preact + Vite + Tailwind v4, deployed on GitHub Pages, all data fetched live client-side through a Cloudflare Worker proxy.
 
@@ -33,9 +33,9 @@ Personal project. See [LICENSE](LICENSE).
 - **Saved workspaces** — a handful of named layouts (`opening`, `research`, `event day`): active watchlist, grouping, spark shape/window, rail widgets, market subview. Switchable from the toolbar or the `ws` console verb, with versioned export/import of layout preferences. Layout only — never quotes, positions, tokens, or endpoints
 - **Alerts** — price + technical (RSI / SMA cross / volume) alerts evaluated in-browser, with browser notifications
 - **Watchlists** — named lists next to the main one, with opt-in cloud sync: the browser pulls, merges locally, and pushes against the revision it read, so two devices reconcile without the server arbitrating
-- **AI surfaces** — public and private builds ship the same navigation. Publicly the **Briefing** / report controls and the multi-model chat workspace render as inert `PREVIEW` surfaces that never call a model; the private tailnet build activates them through its server-side router
+- **AI surfaces** — public and private builds ship the same navigation. Publicly the **Briefing** / report controls and the multi-model chat workspace render as inert `PREVIEW` surfaces that never call a model; a separately hosted private build activates them through its server-side router
 - **Portfolios** — public synthetic demo views; separate private broker/account views and family/manual books with a FIFO trade ledger, cash journal, multi-currency valuation, and session-aware day P&L
-- **Wire** — a news-and-events board scored by event type × watched name × freshness, running on a synthetic public session, on the **public mirror** (a sanitized headline snapshot pushed to the Worker's `/wire/*` routes and read back read-only, with the snapshot age on screen), or on a user-supplied newsservice-compatible endpoint
+- **Wire** — a news-and-events board scored by event type × watched name × freshness, running on a synthetic public session, on the **public mirror** (a sanitized headline snapshot pushed to the Worker's `/wire/*` routes and read back read-only, with the snapshot age on screen), or on a user-supplied endpoint that serves the same wire event contract
 - **Mobile** — bottom tab bar, spotlight-style inline search, and the `ticker>` console promoted to its own phone page (desktop keeps the floating drop-up)
 - **i18n** — EN / 中文 toggle, PWA-installable
 
@@ -61,7 +61,7 @@ Cloudflare Worker (worker/)
 ```
 
 The public Worker has no AI route. Paid/model-backed actions exist only through
-the private tailnet service. Family sync deliberately favors zero-setup family
+the separately hosted private service. Family sync deliberately favors zero-setup family
 use: its separately hosted build receives the 128-bit capability from the
 off-git deploy secret, and the Worker accepts only the matching
 `FAMILY_SYNC_TOKEN`. The ordinary GitHub Pages build carries neither the family
@@ -81,7 +81,7 @@ and rotation is the recovery boundary.
 | Fonts | Plus Jakarta Sans (UI) + IBM Plex Mono (data) |
 | Deploy | GitHub Pages via Actions |
 | Public data proxy | Cloudflare Worker (`worker/`) |
-| Private AI router | newsservice on the tailnet build |
+| Private AI router | A server-side router in the private build |
 
 ## Commands
 
@@ -93,6 +93,12 @@ npm run dev        # Vite dev server
 npm run build      # production build to dist/
 npm test -- test/lib/wire_layout.test.js  # one explicit Vitest file
 npm run budget     # build, then fail if the entry chunk drifts over budget
+npm run test:fast  # the fast Vitest selection (test/run-tests.mjs)
+npm run test:full  # every Vitest suite through test/run-tests.mjs
+npm run probe      # responsive probe gate (scripts/probe_gate.py)
+npm run dev:tv     # Samsung Tizen TV build: dev server
+npm run build:tv   # TV production build (vite.tv.config.js)
+npm run package:tv # package the TV build (scripts/tizen_tv.sh)
 ```
 
 Routed pages are lazy-loaded, so the shell, dashboard, and command grammar are
@@ -207,8 +213,11 @@ ticker-tape-web/
 │   │   └── research/    # research is a directory: header, overview, news, options, earnings… behind a router
 │   ├── components/      # StatusBar, FeedIndicator, Tape, CommandBar, Overlay, LazyPage, WorkspacesControl…
 │   └── lib/             # feed, feedHealth, yahoo, badges, eventLinks, screenDefs, workspaces, optionsIntel, wire…
-├── scripts/             # bundle_budget.sh, probe_matrix.py, deploy_tailnet.sh
+├── scripts/             # release, probe and backup scripts: deploy_family.sh, deploy_tailnet.sh,
+│                        #   private_release.sh, probe_gate.py, probe_matrix.py, bundle_budget.sh…
 ├── docs/                # engineering notes and README images
 ├── test/                # Vitest suites (test/lib + test/worker)
+├── ios/                 # Capacitor iOS project (capacitor.config.json)
+├── tv/, tv.html         # Samsung Tizen TV build (vite.tv.config.js, tizen/)
 └── vite.config.js
 ```
