@@ -132,9 +132,9 @@ row has to be found by eye:
 - `.markets-page tr.is-now` — accent hairline plus a short gradient fade
   underneath, so the "you are here" row separates from the hairline separators
   already in the table.
-- `.board-drop-line` and `.tape-hot` glows, and the `.mq.is-clipped` /
-  `.chat-think` mask gradients, are motion and overflow affordances rather than
-  surface styling.
+- `.board-drop-line` and `.tape-hot` glows, and the `.mq.is-clipped`,
+  `.chat-think` and `.launchpad-list` mask gradients, are motion and overflow
+  affordances rather than surface styling.
 - `.chat-assistant-bubble` — one tight, nearly black drop shadow to lift the
   bubble off the transcript.
 

@@ -467,6 +467,34 @@ export function ActivityTrace({ steps, busy = false, startedAt, usage = null }) 
 }
 
 
+// Launchpad cells list up to this many rows; four show and the rest scroll.
+const LAUNCHPAD_ITEMS = 12
+
+/** A launchpad list that shows `rows` rows and scrolls the rest inside its
+ *  cell. The height is measured from the rendered rows, so rows of any height
+ *  line up; the bottom edge fades while more rows sit below. */
+function CappedList({ rows = 4, class: cls = '', children }) {
+  const ref = useRef(null)
+  const [cap, setCap] = useState(null)
+  const [more, setMore] = useState(false)
+  const measure = () => {
+    const el = ref.current
+    if (!el) return
+    const kids = el.children
+    if (kids.length <= rows) { setCap(null); setMore(false); return }
+    const last = kids[rows - 1]
+    setCap(last.offsetTop + last.offsetHeight - kids[0].offsetTop)
+    setMore(el.scrollTop + el.clientHeight < el.scrollHeight - 1)
+  }
+  useLayoutEffect(measure)
+  return (
+    <div ref={ref} onScroll={measure} data-more={more ? 'true' : 'false'}
+      class={`launchpad-list ${cls}`} style={cap ? { maxHeight: `${cap}px` } : undefined}>
+      {children}
+    </div>
+  )
+}
+
 // Opening a book from the launchpad lands on that book, not the last tab viewed.
 function selectBook(id) {
   try { localStorage.setItem('my_portfolio_sel_v1', id) } catch { /* best-effort */ }
@@ -490,11 +518,11 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
     .map((s) => ({ s, pct: quotes[s]?.quote?.pct }))
     .filter((x) => x.pct != null)
     .sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct))
-    .slice(0, 4)
+    .slice(0, LAUNCHPAD_ITEMS)
   const nextEarn = watchlist
     .filter((s) => earnDays[s] != null && earnDays[s] >= 0)
     .sort((a, b) => earnDays[a] - earnDays[b])
-    .slice(0, 4)
+    .slice(0, LAUNCHPAD_ITEMS)
   const pulse = pulseStats(watchlist.map((s) => quotes[s]?.quote).filter(Boolean))
 
   // the real book when a wire is connected (TTL-cached in chatContext), or
@@ -520,7 +548,7 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
   const topPos = (bk?.positions || [])
     .filter((p) => bk?.manual || p.weight_pct != null)
     .sort((a, b) => (b.weight_pct || 0) - (a.weight_pct || 0))
-    .slice(0, 3)
+    .slice(0, LAUNCHPAD_ITEMS)
 
   const cell = "px-3 py-2 min-w-0"
   const eyebrow = "font-mono text-[9px] tracking-[0.16em] text-muted uppercase pb-1"
@@ -557,34 +585,34 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
         <div class="grid grid-cols-1 sm:grid-cols-3 divide-y divide-line sm:divide-y-0 sm:divide-x">
           <div class={cell}>
             <div class={eyebrow}>{tl('moving now')}</div>
-            {movers.length ? movers.map(({ s, pct }) => (
+            {movers.length ? <CappedList>{movers.map(({ s, pct }) => (
               <a key={s} href={`#/research/${s.toLowerCase()}`} class="flex items-baseline justify-between font-mono text-[11.5px] py-px hover:no-underline">
                 <span class="text-ink font-[650]">{s}</span>
                 <span class={pct >= 0 ? 'text-up' : 'text-down'}>{fmtPct(pct)}</span>
               </a>
-            )) : <Loading label={tl('loading…')} minH={72} />}
+            ))}</CappedList> : <Loading label={tl('loading…')} minH={72} />}
           </div>
           <div class={cell}>
             <div class={eyebrow}>{tl('next earnings')}</div>
-            {nextEarn.length ? nextEarn.map((s) => (
+            {nextEarn.length ? <CappedList>{nextEarn.map((s) => (
               <a key={s} href={`#/research/${s.toLowerCase()}/earnings`} class="flex items-baseline justify-between font-mono text-[11.5px] py-px hover:no-underline">
                 <span class="text-ink font-[650]">{s}</span>
                 <span class={earningsTone(earnDays[s])}>
                   {earnDays[s] === 0 ? tl('today') : tt('common.days', { days: earnDays[s] })}
                 </span>
               </a>
-            )) : <Loading label={tl('loading…')} minH={72} />}
+            ))}</CappedList> : <Loading label={tl('loading…')} minH={72} />}
           </div>
           <div class={cell}>
             <div class={eyebrow}>{tl('on the calendar')}</div>
-            {events.length ? events.slice(0, 4).map((ev) => (
+            {events.length ? <CappedList>{events.map((ev) => (
               <a key={ev.label + ev.days} href="#/markets/calendar" class="flex items-baseline justify-between gap-2 font-mono text-[11.5px] py-px hover:no-underline">
                 <span class="text-ink truncate">{tl(ev.rawLabel || ev.label)}</span>
                 <span class={ev.days <= 1 ? 'text-imminent font-bold' : ev.days <= 7 ? 'text-danger' : 'text-accent'}>
                   {ev.days === 0 ? tl('today') : tt('common.days', { days: ev.days })}
                 </span>
               </a>
-            )) : <div class="font-mono text-[11px] text-muted py-1">{tl('clear runway')}</div>}
+            ))}</CappedList> : <div class="font-mono text-[11px] text-muted py-1">{tl('clear runway')}</div>}
           </div>
         </div>
         <div class={`grid grid-cols-1 divide-y divide-line sm:divide-y-0 sm:divide-x ${book || temporary ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
@@ -615,7 +643,7 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
             <div class={cell}>
               <div class={eyebrow}>{tl('the book')}</div>
               {books.length > 1 ? (
-                <div class="font-mono text-[11.5px] leading-[1.55]">
+                <CappedList class="font-mono text-[11.5px] leading-[1.55]">
                   {books.map((b) => (
                     <a key={b.id} href="#/portfolio/mine" onClick={() => selectBook(b.id)}
                       title={b.positions.map((p) => (getLocale()==='zh' && zhName(p.symbol)) || p.symbol).join(' · ')}
@@ -624,18 +652,18 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
                       <span class="shrink-0 text-ink-2">{b.positions.length} {tl('holdings')}</span>
                     </a>
                   ))}
-                </div>
+                </CappedList>
               ) : <>
               {bk?.manual && <a href="#/portfolio/mine" class="block truncate text-[10px] text-muted mb-1">{bk.name}</a>}
               {topPos.length ? (
                 <div class="font-mono text-[11.5px] leading-[1.55]">
-                  {topPos.map((p) => (
+                  <CappedList rows={bk?.margin?.cushion_pct != null ? 3 : 4}>{topPos.map((p) => (
                     <div key={p.symbol} class="flex justify-between">
                       <span class="text-ink font-[650]">{(getLocale()==='zh' && zhName(p.symbol)) || p.symbol}</span>
                       {bk?.manual ? <span class="text-ink-2">{p.shares} {tl('shares')}</span> : <span><span class="text-ink-2">{Math.round(p.weight_pct)}%</span>{' '}
                         <span class={p.unrealized_pnl >= 0 ? 'text-up' : 'text-down'}>{p.unrealized_pnl >= 0 ? '▲' : '▼'}</span></span>}
                     </div>
-                  ))}
+                  ))}</CappedList>
                   {bk?.margin?.cushion_pct != null && (
                     <div class="flex justify-between pt-px border-t border-line-2/60 mt-px">
                       <span class="text-muted">{tl('Cushion')}</span>
@@ -755,6 +783,8 @@ export function Chat() {
   const [history, setHistory] = useState(loadHistory)
   const [incognito,setIncognito]=useState(false)
   const incognitoRef=useRef(false)
+  // The launchpad rises in after an incognito switch, not on every visit home.
+  const modeSwitched=useRef(false)
   const [input, setInput] = useState(() => {
     const pre = sessionStorage.getItem('chat_prefill') || ''
     sessionStorage.removeItem('chat_prefill')
@@ -823,7 +853,7 @@ export function Chat() {
   const quotes = useQuotes(quoteSymbols)
   const earnDays = useEarningsDays(quoteSymbols)
   const upcoming = mergedEvents(ECON_EVENTS, loadCatalysts(),
-    new Date().toISOString().slice(0, 10), 60).slice(0, 6)
+    new Date().toISOString().slice(0, 10), 60).slice(0, LAUNCHPAD_ITEMS)
 
   // Boot: pull the shared brain from the wire (server wins), adopt a legacy
   // local conversation as thread #1, and list the threads for the rail.
@@ -899,6 +929,7 @@ export function Chat() {
       if(!incognitoRef.current)await startNewThread(historyRef.current)
       if(!mounted.current)return
       const next=!incognitoRef.current
+      modeSwitched.current=true
       incognitoRef.current=next;setIncognito(next)
       historyRef.current=[];activityRef.current=[]
       setHistory([]);setActivity([]);setLiveAnswer('');setError(null);setNotice(null)
@@ -1799,7 +1830,7 @@ export function Chat() {
           toward the end edge. */}
       {splash ? (
         <>
-        <div class="flex-1 min-h-0 overflow-y-auto flex flex-col">
+        <div key={incognito ? 'incognito' : 'normal'} class={`flex-1 min-h-0 overflow-y-auto flex flex-col ${modeSwitched.current ? 'rise-in' : ''}`}>
           <Launchpad
             onWire={onWire}
             temporary={incognito}

@@ -921,7 +921,7 @@ html[data-pointer-hover] .chat-trace-entry > summary:hover { background-color:tr
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .chat-message-enter, .chat-message-live, .chat-turn-enter, .chat-rail-section,
+  .chat-message-enter, .chat-message-live, .chat-turn-enter, .chat-rail-section, .rise-in,
   .chat-trace, .chat-trace-step { animation: none !important; }
   .chat-trace-mark svg path, .chat-trace-step.is-running .chat-trace-node { animation: none !important; }
   .brand-spinner circle, .chat-ellipsis i { animation: none !important; }
@@ -1060,6 +1060,13 @@ html[data-pointer-hover] .chat-trace-entry > summary:hover { background-color:tr
 .chat-rail-tools > :nth-last-child(5) { --slot:5; }
 .chat-rail-tools[data-collapsed="true"] { pointer-events:none; }
 .chat-rail-tools[data-collapsed="true"] > * { opacity:0; transform: translateX(calc(var(--slot) * 26px)) scale(.35); }
+
+/* Launchpad cells show four rows and scroll the rest in place. */
+.launchpad-list { position:relative; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:none; }
+.launchpad-list::-webkit-scrollbar { display:none; }
+.launchpad-list[data-more="true"] {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 12px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 12px), transparent); }
 
 /* A bounded suggestion shelf uses spare height and leaves the composer docked. */
 .chat-launchpad { flex: 1; min-height: 100%; }
