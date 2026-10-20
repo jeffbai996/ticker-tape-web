@@ -45,7 +45,7 @@ import {
 import { wireServiceUrl } from '../lib/wire.js'
 import { plainTraceText, hasTurnActivity, activityGroups, traceIcon, completionLabel, tracePrintout, traceToolDetails, savedReceipts } from '../lib/chatTrace.js'
 import { ChatFooter } from '../components/ChatFooter.jsx'
-import { loadZhTable, loadMissingZhName, onZhTable, zhName } from '../lib/zhNames.js'
+import { loadZhTable, loadMissingZhName, onZhTable, shortName, zhName } from '../lib/zhNames.js'
 import { onPortfoliosChange } from '../lib/myPortfolios.js'
 import { CHAT_CONTEXT_EVENT, takeChatContext, takeChatAction, contextualReadTools } from '../lib/chatHandoff.js'
 import { IS_FAMILY_AI, IS_FAMILY_BUILD, IS_PRIVATE_BUILD } from '../lib/nav.js'
@@ -473,6 +473,18 @@ export function ActivityTrace({ steps, busy = false, startedAt, usage = null }) 
 }
 
 
+/** One row of the right rail: a name column that truncates and a value
+ *  column with fixed-width digits, so every list shares the same two edges. */
+function RailRow({ symbol, label, href, children }) {
+  return (
+    <a href={href} title={symbol} data-rail-row
+      class="group grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-2 py-[3px] hover:no-underline">
+      <span class="truncate font-anth text-[11px] text-ink-2 group-hover:text-ink">{label || shortName(symbol)}</span>
+      <span class="font-mono text-[10.5px] tabular-nums text-right whitespace-nowrap">{children}</span>
+    </a>
+  )
+}
+
 // Launchpad cells list up to this many rows; four show and the rest scroll.
 const LAUNCHPAD_ITEMS = 12
 
@@ -858,6 +870,13 @@ export function Chat() {
   // the right rail is live even mid-thread, so the pad data polls always
   const quotes = useQuotes(quoteSymbols)
   const earnDays = useEarningsDays(quoteSymbols)
+  // The right rail names companies in Chinese for a Chinese reader.
+  const [,railNameTick]=useState(0)
+  useEffect(()=>{
+    if(getLocale()!=='zh') return
+    loadZhTable().then(()=>quoteSymbols.forEach(s=>loadMissingZhName(s)))
+    return onZhTable(()=>railNameTick(n=>n+1))
+  },[quoteSymbols.join(',')])
   const upcoming = mergedEvents(ECON_EVENTS, loadCatalysts(),
     new Date().toISOString().slice(0, 10), 60).slice(0, LAUNCHPAD_ITEMS)
 
@@ -1997,14 +2016,12 @@ export function Chat() {
         <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
           <h2 class="font-anth font-bold text-[10px] tracking-wider text-accent uppercase">{tl('in view')}</h2>
         </header>
-        <div class="px-2.5 py-1 font-mono text-[10.5px]">
+        <div class="px-2.5 py-1">
           {railMovers.map(({ sym, pct }) => (
-            <a key={sym} href={`#/research/${sym.toLowerCase()}`} class="flex justify-between py-px hover:no-underline">
-              <span class="text-ink font-[650] font-tick">{sym}</span>
+            <RailRow key={sym} symbol={sym} href={`#/research/${sym.toLowerCase()}`}>
               <span class={pct >= 0 ? 'text-up' : 'text-down'}>{fmtPct(pct)}</span>
-            </a>
+            </RailRow>
           ))}
-
         </div>
       </section>
 
@@ -2034,11 +2051,10 @@ export function Chat() {
           <h2 class="font-anth font-bold text-[10px] tracking-wider text-accent uppercase">{tl('Earnings')}</h2>
           <a href="#/markets/earnings" class="text-[9px] text-muted hover:text-accent">{getLocale()==='zh'?'全部':'All'}</a>
         </header>
-        <div class="px-2.5 py-1 font-mono text-[10.5px]">
-          {rail.earnings.map(({symbol,days})=><a key={symbol} href={`#/research/${symbol.toLowerCase()}/earnings`} class="flex items-baseline justify-between gap-2 py-0.5 hover:no-underline">
-            <span class="text-ink-2 font-tick">{symbol}</span>
+        <div class="px-2.5 py-1">
+          {rail.earnings.map(({symbol,days})=><RailRow key={symbol} symbol={symbol} href={`#/research/${symbol.toLowerCase()}/earnings`}>
             <span class={earningsTone(days)}>{days===0?tl('today'):tt('common.days',{days})}</span>
-          </a>)}
+          </RailRow>)}
         </div>
       </section>}
 
@@ -2046,14 +2062,13 @@ export function Chat() {
         <header class="px-2.5 py-1 border-b border-line-2 bg-surface-2">
           <h2 class="font-anth font-bold text-[10px] tracking-wider text-accent uppercase">{tl('Technicals')}</h2>
         </header>
-        <div class="px-2.5 py-1 font-mono text-[10px]">
-          {rail.signals.map(signal=><a key={signal.symbol} href={`#/research/${signal.symbol.toLowerCase()}`} class="flex flex-wrap items-baseline justify-between gap-1 py-0.5 hover:no-underline">
-            <span class="text-ink-2 font-tick">{signal.symbol}</span>
-            <span class="flex gap-2">
+        <div class="px-2.5 py-1">
+          {rail.signals.map(signal=><RailRow key={signal.symbol} symbol={signal.symbol} href={`#/research/${signal.symbol.toLowerCase()}`}>
+            <span class="inline-flex gap-2">
               {Number.isFinite(signal.rsi)&&<span class={rsiTone(signal.rsi)}>RSI {Math.round(signal.rsi)}</span>}
               {signal.volume>=2&&<span class="text-accent">{signal.volume.toFixed(1)}× {getLocale()==='zh'?'量':'vol'}</span>}
             </span>
-          </a>)}
+          </RailRow>)}
         </div>
       </section>}
 
@@ -2062,10 +2077,9 @@ export function Chat() {
           <h2 class="font-anth font-bold text-[10px] tracking-wider text-accent uppercase">{tl('Calendar')}</h2>
         </header>
         <div class="px-2.5 py-1">
-          {rail.events.map((event,index)=><a key={`${event.date}-${index}`} href="#/markets/calendar" class="flex items-baseline justify-between gap-2 py-1 hover:no-underline">
-            <span class="min-w-0 truncate text-[10.5px] text-ink-2 font-anth">{tl(event.label)}</span>
-            <span class="shrink-0 font-mono text-[9px] text-muted">{event.date?.slice(5)}</span>
-          </a>)}
+          {rail.events.map((event,index)=><RailRow key={`${event.date}-${index}`} label={tl(event.label)} href="#/markets/calendar">
+            <span class="text-muted">{event.date?.slice(5)}</span>
+          </RailRow>)}
         </div>
       </section>}
 

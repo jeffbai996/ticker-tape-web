@@ -75,6 +75,11 @@ export function localName(symbol, fallback = '') {
  *  so the caller shows the symbol instead. */
 export function tapeName(symbol) {
   if (tapeLocale() !== 'zh') return null
+  return shortZhName(symbol)
+}
+
+/** A short Chinese name for a narrow column, or null when none fits. */
+function shortZhName(symbol) {
   const key = String(symbol || '').toUpperCase()
   const fixed = ZH_SHORT_NAMES[key] || ZH_SHORT_NAMES[key.replace(/\.([A-Z])$/, '-$1')]
   if (fixed) return fixed
@@ -82,6 +87,12 @@ export function tapeName(symbol) {
   if (!name) return null
   const short = name.replace(/(?:股份有限公司|有限公司|公司)$/, '')
   return short && short.length <= 8 ? short : null
+}
+
+/** The label a narrow list shows: the short Chinese name for a Chinese
+ *  reader, otherwise the symbol. */
+export function shortName(symbol) {
+  return (getLocale() === 'zh' && shortZhName(symbol)) || symbol
 }
 
 export function zhName(symbol, { traditional = false } = {}) {

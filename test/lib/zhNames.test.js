@@ -4,7 +4,7 @@
  *  name needs a local table consulted before the provider. The table is
  *  generated from the exchanges (scripts/gen_zh_names.py) and lazy-loaded. */
 import { beforeAll, describe, expect, it, vi } from 'vitest'
-import { hasCjk, loadMissingZhName, loadZhTable, localName, onZhTable, tapeName, zhAliasHits, zhKnownSymbols, zhName } from '../../src/lib/zhNames.js'
+import { hasCjk, loadMissingZhName, loadZhTable, localName, onZhTable, shortName, tapeName, zhAliasHits, zhKnownSymbols, zhName } from '../../src/lib/zhNames.js'
 import { setLocale } from '../../src/lib/i18n.js'
 import { BUCKETS } from '../../src/lib/symbols.js'
 
@@ -192,5 +192,16 @@ describe('Chinese tape name coverage',()=>{
     expect(tapeName('TST8')).toBe('一二三四五六七八')
     expect(tapeName('TST9')).toBeNull()
     setLocale('en')
+  })
+})
+
+describe('shortName', () => {
+  it('shows the short Chinese name to a Chinese reader and the symbol otherwise', () => {
+    setLocale('zh')
+    try {
+      expect(shortName('0700.HK')).toBe('腾讯控股')
+      expect(shortName('ZZZZ9.HK')).toBe('ZZZZ9.HK')
+    } finally { setLocale('en') }
+    expect(shortName('0700.HK')).toBe('0700.HK')
   })
 })
