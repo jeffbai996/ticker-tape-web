@@ -111,7 +111,7 @@ it('balances the first screen even with many movers and upcoming reports',()=>{
  expect(Math.max(...LANES.map(l=>first.filter(a=>a.k===l.k).length))).toBeLessThanOrEqual(3)
  const families=pool.reduce((m,a)=>(m[a.family]=(m[a.family]||0)+1,m),{})
  expect(Math.max(...Object.values(families))).toBeLessThanOrEqual(2)
- expect(Math.max(...LANES.map(l=>pool.filter(a=>a.k===l.k).length))).toBeLessThanOrEqual(6)
+ expect(Math.max(...LANES.map(l=>pool.filter(a=>a.k===l.k).length))).toBeLessThanOrEqual(10)
 })
 
 it('mixes topics within each moving row and preserves every prompt',async()=>{
@@ -173,5 +173,23 @@ describe('RSI extreme prompt', () => {
   })
   it('keeps the overextended wording for an overbought reading', () => {
     expect(rsiPrompt(78).t).toMatch(/overextended/i)
+  })
+})
+
+describe('depth and fit', () => {
+  const books = [{ id: 'g', name: 'Growth', positions: [{ symbol: 'AAPL', shares: 10, avg_cost: 100 }, { symbol: 'MSFT', shares: 2, avg_cost: 500 }] }]
+  const quotes = { AAPL: { quote: { price: 200, pct: 1 } }, MSFT: { quote: { price: 400, pct: 1 } } }
+  it('puts the user’s books and names into the pool when books exist', () => {
+    const pool = dynamicActions({ watchlist: ['AAPL', 'MSFT'], quotes, earnDays: {}, nextEvent: null, book: true, journal: [], books })
+    expect(pool.some((a) => a.family === 'chat.action_book_top' && a.t.includes('Growth'))).toBe(true)
+    expect(pool.some((a) => a.lvl === 3)).toBe(true)
+  })
+  it('sends basic questions to the back of each topic', () => {
+    const pool = dynamicActions({ watchlist: ['AAPL'], quotes: {}, earnDays: {}, nextEvent: null, book: false, journal: [] })
+    for (const k of ['mkt', 'app', 'macro']) {
+      const lane = pool.filter((a) => a.k === k)
+      const firstBasic = lane.findIndex((a) => a.lvl === 1)
+      if (firstBasic >= 0) expect(lane.slice(firstBasic).every((a) => a.lvl === 1)).toBe(true)
+    }
   })
 })

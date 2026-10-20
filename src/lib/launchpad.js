@@ -1,6 +1,7 @@
 /** Contextual prompt suggestions, balanced by topic before presentation. */
 import { t as tt, tl, getLocale } from './i18n.js'
 import {holdingCurrency} from './fx.js'
+import {bookPrompts,stackPrompts,PRACTITIONER} from './stackPrompts.js'
 
 function alertPrice(value,currency) {
  if(!/^[A-Z]{3}$/.test(currency))return `${value} ${currency}`
@@ -23,15 +24,18 @@ const SUGGESTIONS = [
   ['explain','app'], ['last_week','app'],
 ]
 
-export function dynamicActions({ watchlist, quotes, earnDays, nextEvent, book, journal, edition=0 }) {
+// Entry-level prompts stay available but sit behind the deeper ones.
+const BASIC = new Set(['explain','heatmap','research','last_week','moving','calendar','week_ahead'])
+
+export function dynamicActions({ watchlist, quotes, earnDays, nextEvent, book, journal, books=[], edition=0 }) {
   const acts=[], families=new Map()
-  const add=(name,k,params)=>{
+  const add=(name,k,params,lvl=BASIC.has(name)?1:2)=>{
     const family=`chat.action_${name}`
     const variation=VARIED.has(name)?(edition+(families.get(family)||0))%3:0
     const t=tt(family+(variation?'_'+(variation+1):''),params)
     // A second company can be useful; a wall of the same question is not.
     if((families.get(family)||0)>=2 || acts.some(a=>a.t===t))return
-    acts.push({t,k,family});families.set(family,(families.get(family)||0)+1)
+    acts.push({t,k,family,lvl});families.set(family,(families.get(family)||0)+1)
   }
   for(const symbol of watchlist.filter(s=>earnDays[s]===0).slice(0,2))add('earnings_summary','earn',{symbol})
   watchlist.filter(s=>earnDays[s]>0 && earnDays[s]<=7)
@@ -67,8 +71,14 @@ export function dynamicActions({ watchlist, quotes, earnDays, nextEvent, book, j
   if(nearHigh)add('near_high','mkt',{symbol:nearHigh.symbol,pct:nearHigh.offHigh.toFixed(1)})
   const tagged=[...(journal||[])].reverse().find(e=>e.symbols?.length)
   if(tagged)add('journal','app',{symbol:tagged.symbols[0]})
+  // The user's own books and names come before generic market questions.
+  const held=[...new Set(books.flatMap(b=>(b.positions||[]).map(p=>p.symbol)))]
+  for(const p of bookPrompts({books,quotes,earnDays}))add(p.name,p.k,p.params,p.lvl)
+  for(const p of stackPrompts({held,watchlist:watchlist.filter(s=>!held.includes(s)),edition}))add(p.name,p.k,p.params,p.lvl)
+  for(const [name,k,lvl] of PRACTITIONER)add(name,k,undefined,lvl)
   let cursor=edition
-  for(const [name,k,needsSymbol] of SUGGESTIONS){
+  const ordered=[...SUGGESTIONS].sort((a,b)=>Number(BASIC.has(a[0]))-Number(BASIC.has(b[0])))
+  for(const [name,k,needsSymbol] of ordered){
     if(k==='book'&&!book)continue
     if(needsSymbol&&!watchlist.length)continue
     const symbol=needsSymbol?watchlist[(cursor++)%watchlist.length]:null
@@ -83,7 +93,7 @@ function balanceActions(actions,edition){
   const queues=lanes.map(k=>{
     const lane=actions.filter(a=>a.k===k),rest=lane.slice(2)
     const start=rest.length?(edition*2)%rest.length:0
-    return [...lane.slice(0,2),...rest.slice(start),...rest.slice(0,start)].slice(0,6)
+    return [...lane.slice(0,2),...rest.slice(start),...rest.slice(0,start)].slice(0,10)
   }),out=[]
   let round=0
   while(queues.some(q=>q.length)){

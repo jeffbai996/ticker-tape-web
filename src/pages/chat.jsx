@@ -546,7 +546,7 @@ function Launchpad({ onWire, watchlist, quotes, earnDays, events, onPick,
     return onZhTable(()=>nameTick(n=>n+1))
   },[suggestionSymbols.join(',')])
   const names=getLocale()==='zh' ? Object.fromEntries(suggestionSymbols.map(s=>[s,zhName(s)])) : {}
-  const pool=dynamicActions({watchlist:suggestionSymbols,quotes,earnDays,nextEvent,book,journal,edition:page})
+  const pool=dynamicActions({watchlist:suggestionSymbols,quotes,earnDays,nextEvent,book,journal,books,edition:page})
   const lanes=activeLanes(pool)
   const shown=visibleActions(pool,{lane,page,size:40,rotate:true})
   const refreshable=shown.length>12
