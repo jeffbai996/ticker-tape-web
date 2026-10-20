@@ -53,7 +53,7 @@ echo probe >> "$STEP_LOG"
   const token = join(base, 'token'), font = join(base, 'font')
   writeFileSync(token, '0'.repeat(32)); writeFileSync(font, 'synthetic font')
   const env = { ...process.env, HOME: home, PATH: `${bin}:${process.env.PATH}`, STEP_LOG: log,
-    TTW_FAMILY_BASE: "/family-example123/", TTW_FAMILY_HOST: "example.com", TTW_SYNC_TOKEN_FILE: token, TTW_PRIVATE_FONT_FILE: font, TTW_FAMILY_AI: '1', TTW_PROBE_PYTHON: join(bin, 'python3'),
+    TTW_FAMILY_CONFIG: join(home, "isolated-family.env"), TTW_FAMILY_BASE: "/family-example123/", TTW_FAMILY_HOST: "example.com", TTW_SYNC_TOKEN_FILE: token, TTW_PRIVATE_FONT_FILE: font, TTW_FAMILY_AI: '1', TTW_PROBE_PYTHON: join(bin, 'python3'),
     TTW_TEST_PYTHON: join(bin, 'python3'), TTW_TEST_RUNNER: join(bin, 'test-runner') }
   const run = (variant, mode = '--deploy', requested = sha, extra = {}) => spawnSync('bash', [`scripts/deploy_${variant}.sh`, mode, requested], { cwd: repo, env: { ...env, ...extra }, encoding: 'utf8' })
   const steps = () => existsSync(log) ? readFixtureArtifact(base, log).trim().split('\n') : []
