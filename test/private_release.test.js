@@ -1,10 +1,15 @@
 // @vitest-environment node
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { execFileSync, spawnSync } from 'node:child_process'
 import { readFixtureArtifact } from './helpers/release_artifacts.js'
+
+// Each case builds a git fixture and runs the release scripts in bash; the
+// first one pays cold process start-up, which inside the bounded release
+// gate on a loaded host runs past vitest's 5s default.
+vi.setConfig({ testTimeout: 30_000 })
 
 const created = []
 afterEach(() => { for (const path of created.splice(0)) rmSync(path, { recursive: true, force: true }) })
