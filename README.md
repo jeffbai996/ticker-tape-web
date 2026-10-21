@@ -2,6 +2,8 @@
 
 Market terminal in the browser: streaming quotes, research, markets and portfolio demo views. Preact + Vite + Tailwind v4, static on GitHub Pages, live data through a Cloudflare Worker proxy.
 
+This public demo retains the development history with deployment details and personal fixtures sanitized. Account and portfolio views use synthetic data. Builds always enable demo mode and refuse private credentials or private feature flags.
+
 ![ticker-tape dashboard](docs/images/hero.jpeg)
 
 Live: https://jeffbai996.github.io/ticker-tape-web-demo/ · License: [LICENSE](LICENSE)

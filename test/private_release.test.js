@@ -137,12 +137,12 @@ it('family deployment requires an off-repository route instead of a built-in pat
 })
 
 describe('tailnet publication', () => {
-  const sharedLink = (f) => join(f.base, 'home', 'repos', 'ticker-tape-web', 'dist-tailnet')
+  const sharedLink = (f) => join(f.base, 'home', 'repos', 'ticker-tape-web-demo', 'dist-tailnet')
   it('publishes to the shared checkout link the server reads by default', () => {
     const f = fixture()
     const previous = join(f.base, 'previous-release')
     mkdirSync(previous, { recursive: true })
-    mkdirSync(join(f.base, 'home', 'repos', 'ticker-tape-web'), { recursive: true })
+    mkdirSync(join(f.base, 'home', 'repos', 'ticker-tape-web-demo'), { recursive: true })
     symlinkSync(previous, sharedLink(f))
     const result = f.run('tailnet')
     expect(result.status, result.stderr).toBe(0)
@@ -167,7 +167,7 @@ describe('tailnet publication', () => {
       utimesSync(dir, t, t)
       return dir
     })
-    mkdirSync(join(f.base, 'home', 'repos', 'ticker-tape-web'), { recursive: true })
+    mkdirSync(join(f.base, 'home', 'repos', 'ticker-tape-web-demo'), { recursive: true })
     symlinkSync(old[0], sharedLink(f))
     const result = f.run('tailnet', '--deploy', f.sha, { TTW_TAILNET_LINK: join(f.base, 'staging-link') })
     expect(result.status, result.stderr).toBe(0)
