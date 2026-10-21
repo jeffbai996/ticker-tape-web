@@ -23,7 +23,7 @@ python3 scripts/probe_matrix.py http://127.0.0.1:8098/ --routes '#/,#/screen' --
 
 The gate script (`scripts/probe_gate.py`) starts its own `http.server` on a free
 port and mounts `dist/` at the base path it reads out of the built
-`index.html` — `/ticker-tape-web-demo/` for the Pages build, `/` for a `--base=/`
+`index.html` — `/ticker-tape-web/` for the Pages build, `/` for a `--base=/`
 build. Hash routes need a real origin; `file://` cannot load the module graph.
 
 ## What it asserts

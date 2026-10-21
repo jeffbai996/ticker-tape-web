@@ -33,8 +33,8 @@ describe('registerServiceWorker', () => {
   it('registers at the build base in production and never in dev or without support', async () => {
     const register = vi.fn(async () => ({ update: vi.fn(async () => {}) }))
     const nav = { serviceWorker: { register } }
-    await registerServiceWorker({ nav, base: '/ticker-tape-web-demo/', dev: false })
-    expect(register).toHaveBeenCalledWith('/ticker-tape-web-demo/sw.js', { scope: '/ticker-tape-web-demo/' })
+    await registerServiceWorker({ nav, base: '/ticker-tape-web/', dev: false })
+    expect(register).toHaveBeenCalledWith('/ticker-tape-web/sw.js', { scope: '/ticker-tape-web/' })
     await registerServiceWorker({ nav, base: '/', dev: false })
     expect(register).toHaveBeenLastCalledWith('/sw.js', { scope: '/' })
     expect(registerServiceWorker({ nav, base: '/', dev: true })).toBeNull()

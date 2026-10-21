@@ -24,7 +24,7 @@ release_prepare "$ROOT" "$SOURCE_SHA"
 # The server reads the shared checkout's link, not one in this release
 # checkout: publishing only to $ROOT/dist-tailnet reported success while the
 # live site stayed on the old release.
-SHARED_LINK="$HOME/repos/ticker-tape-web-demo/dist-tailnet"
+SHARED_LINK="$HOME/repos/ticker-tape-web/dist-tailnet"
 if [[ -n "${TTW_TAILNET_LINK:-}" ]]; then LINK="$TTW_TAILNET_LINK"
 elif [[ -L "$SHARED_LINK" ]]; then LINK="$SHARED_LINK"
 else LINK="$ROOT/dist-tailnet"; fi

@@ -6,7 +6,7 @@ This public demo retains the development history with deployment details and per
 
 ![ticker-tape dashboard](docs/images/hero.jpeg)
 
-Live: https://jeffbai996.github.io/ticker-tape-web-demo/ · License: [LICENSE](LICENSE)
+Live: https://jeffbai996.github.io/ticker-tape-web/ · License: [LICENSE](LICENSE)
 
 ## Install
 

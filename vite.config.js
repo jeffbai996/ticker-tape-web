@@ -57,7 +57,7 @@ export default defineConfig(({ mode }) => ({
   // Where the bundle will be served from. The public GitHub Pages deploy keeps
   // the repo-name base; the family build is hosted elsewhere at its own path,
   // so both are env-driven rather than forked configs (Jeff 2026-08-25).
-  base: process.env.TTW_BASE || '/ticker-tape-web-demo/',
+  base: process.env.TTW_BASE || '/ticker-tape-web/',
   build: {
     outDir: process.env.TTW_OUT_DIR || 'dist',
   },

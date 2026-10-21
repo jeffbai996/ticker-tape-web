@@ -7,7 +7,7 @@ the exact bytes that are about to ship.
     python3 scripts/probe_gate.py --dist dist --routes '#/,#/markets'
 
 Why a server and not file://: the build ships under a base path
-(`/ticker-tape-web-demo/`), hash routing needs a real origin, and module scripts do
+(`/ticker-tape-web/`), hash routing needs a real origin, and module scripts do
 not load off file://. The base path is read out of the built index.html, so
 the public build and the `--base=/` build both serve correctly.
 
