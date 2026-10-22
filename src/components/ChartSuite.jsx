@@ -1,3 +1,4 @@
+import { attachTrackpadPinch } from '../lib/trackpadPinch.js'
 // Koyfin-style chart workbench: one lightweight-charts instance, price in
 // pane 0, RSI/MACD as native synced panes below. Overlays and panes toggle
 // from the toolbar and persist; compare mode swaps the frame to normalized
@@ -176,7 +177,8 @@ export function ChartSuite({ symbol }) {
 
   useEffect(() => {
     if (!el.current || !bars || !bars.length) return
-    const chart = createChart(chartHost(el.current), {
+    const chartElement = chartHost(el.current)
+    const chart = createChart(chartElement, {
       ...CHART_OPTS,
       layout: { ...CHART_OPTS.layout, fontSize: chartFont(CHART_OPTS.layout.fontSize) },
       localization: timeAxis ? { timeFormatter: marketTimeLabel } : undefined,
@@ -186,6 +188,7 @@ export function ChartSuite({ symbol }) {
         mode: prefs.log && !cmp ? 1 : 0,
       },
     })
+    const detachPinch = attachTrackpadPinch(chartElement)
     chartRef.current = chart
     // Overlays (MAs, bands, VWAP) may stretch the price scale past the bars
     // by a bounded fraction and no further — otherwise an SMA200 anchored in
@@ -315,6 +318,7 @@ export function ChartSuite({ symbol }) {
     seriesRef.current = comparing ? null : priceSeries
     setEpoch((e) => e + 1)
     return () => {
+      detachPinch()
       detachPeak?.()
       if (chartRef.current === chart) chartRef.current = null
       if (seriesRef.current === priceSeries) seriesRef.current = null

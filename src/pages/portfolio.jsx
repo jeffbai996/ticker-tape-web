@@ -1,3 +1,4 @@
+import { attachTrackpadPinch } from '../lib/trackpadPinch.js'
 import { PortfolioHome } from '../components/PortfolioHome.jsx'
 import { useEffect, useMemo, useState } from 'preact/hooks'
 import { shortAccountLabel } from '../lib/accounts.js'
@@ -731,7 +732,8 @@ function Timeline({ priceMap, positions, accountId }) {
   // the wire build.
   const draw = (host, { createChart, AreaSeries }) => {
     if (!real && s.nlv == null) return undefined
-    const chart = createChart(chartHost(host), {
+    const chartElement = chartHost(host)
+    const chart = createChart(chartElement, {
       autoSize: true,
       layout: {
         background: { color: 'transparent' },
@@ -746,6 +748,7 @@ function Timeline({ priceMap, positions, accountId }) {
       rightPriceScale: { borderColor: 'rgba(255,255,255,0.10)' },
       timeScale: boundedTimeScale(false),
     })
+    const detachPinch = attachTrackpadPinch(chartElement)
     const series = chart.addSeries(AreaSeries, {
       lineColor: '#f59e0b',
       topColor: 'rgba(245, 158, 11, 0.25)',
@@ -756,7 +759,7 @@ function Timeline({ priceMap, positions, accountId }) {
       ? days.map((d) => ({ time: d.date, value: d.nlv }))
       : nlvWalk('ttw-demo-nlv', 252, s.nlv))
     chart.timeScale().fitContent()
-    return () => chart.remove()
+    return () => { detachPinch(); chart.remove() }
   }
 
   return (

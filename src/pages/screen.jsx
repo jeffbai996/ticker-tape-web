@@ -1,3 +1,4 @@
+import { attachTrackpadPinch } from '../lib/trackpadPinch.js'
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { createChart, LineSeries } from 'lightweight-charts'
 import { boundedTimeScale, chartFont, chartHost } from '../lib/chartview.js'
@@ -183,7 +184,8 @@ function Compare({ symbols, hist }) {
 
   useEffect(() => {
     if (!el.current) return
-    const chart = createChart(chartHost(el.current), {
+    const chartElement = chartHost(el.current)
+    const chart = createChart(chartElement, {
       autoSize: true,
       layout: {
         background: { color: 'transparent' },
@@ -198,6 +200,7 @@ function Compare({ symbols, hist }) {
       rightPriceScale: { borderColor: 'rgba(255,255,255,0.10)' },
       timeScale: boundedTimeScale(false),
     })
+    const detachPinch = attachTrackpadPinch(chartElement)
     symbols.forEach((sym, i) => {
       const h = hist[sym]
       if (!h?.bars?.length) return
@@ -210,7 +213,7 @@ function Compare({ symbols, hist }) {
       series.setData(h.bars.map((b, j) => ({ time: b.time, value: norm[j] })))
     })
     chart.timeScale().fitContent()
-    return () => chart.remove()
+    return () => { detachPinch(); chart.remove() }
   }, [symbols.join(','), Object.keys(hist).length])
 
   return (

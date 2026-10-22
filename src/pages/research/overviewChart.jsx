@@ -1,3 +1,4 @@
+import { attachTrackpadPinch } from '../../lib/trackpadPinch.js'
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { createChart, CandlestickSeries, HistogramSeries, LineSeries, AreaSeries } from 'lightweight-charts'
 import { RANGES } from '../../lib/history.js'
@@ -85,7 +86,8 @@ export function Candles({ bars, warmPad, intraday, timeAxis, ticks, tick, onTick
 
   useEffect(() => {
     if (!el.current) return
-    const chart = createChart(chartHost(el.current), {
+    const chartElement = chartHost(el.current)
+    const chart = createChart(chartElement, {
       autoSize: true,
       layout: {
         background: { color: 'transparent' },
@@ -108,6 +110,7 @@ export function Candles({ bars, warmPad, intraday, timeAxis, ticks, tick, onTick
       timeScale: boundedTimeScale(timeAxis),
       crosshair: { mode: 0 },
     })
+    const detachPinch = attachTrackpadPinch(chartElement)
     const series = ctype === 'candles'
       ? chart.addSeries(CandlestickSeries, {
           upColor: '#3fb950',
@@ -144,7 +147,7 @@ export function Candles({ bars, warmPad, intraday, timeAxis, ticks, tick, onTick
         `<span style="color:#79828d">C</span> <span style="color:${up ? '#3fb950' : '#f85149'}">${b.close.toFixed(2)} ${fmtPct(pct)}</span>` +
         (b.volume ? ` <span style="color:#79828d">V</span> ${fmtVol(b.volume)}` : '')
     })
-    return () => { chartRef.current?.detachPeak?.(); chart.remove() }
+    return () => { detachPinch(); chartRef.current?.detachPeak?.(); chart.remove() }
   }, [timeAxis, ctype])
 
   useEffect(() => {
