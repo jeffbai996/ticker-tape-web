@@ -2,7 +2,7 @@ import { h, render } from 'preact'
 import { act } from 'preact/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const lineup = vi.hoisted(() => ({ models: [], calls: 0, stream: null }))
+const lineup = vi.hoisted(() => ({ models: [], calls: 0, stream: null, complete: null }))
 
 vi.mock('../../src/lib/nav.js', async (importOriginal) => ({
   ...await importOriginal(),
@@ -20,6 +20,7 @@ vi.mock('../../src/lib/wirechat.js', async (importOriginal) => ({
     return lineup.models.map((m) => ({ ...m }))
   },
   wireStream: async (options) => { if(lineup.stream)return lineup.stream(options);options.onDelta('**Setup**\nFlat.') },
+  wireComplete: async (options) => lineup.complete(options),
 }))
 
 const { AiReport } = await import('../../src/components/AiReport.jsx')
@@ -34,6 +35,7 @@ beforeEach(() => {
   localStorage.clear()
   lineup.calls = 0
   lineup.stream = null
+  lineup.complete = null
   root = document.createElement('div')
   document.body.append(root)
 })
@@ -146,4 +148,52 @@ it('starts private reports on Argon instead of the old Qwen default',async()=>{
  await mountCard()
  expect(localStorage.getItem('report_model')).toBe('agy-argon')
  expect(localStorage.getItem('report_effort')).toBe('low')
+})
+
+it('shows live statistics before text, updates reported usage, and removes them on completion',async()=>{
+ lineup.models=[CLOUD]
+ let callbacks,finish,startedResolve
+ const started=new Promise(resolve=>{startedResolve=resolve})
+ const gate=new Promise(resolve=>{finish=resolve})
+ lineup.stream=async(options)=>{callbacks=options;startedResolve();await gate}
+ await mountCard()
+ expect(root.querySelector('[data-report-observability]')).toBeNull()
+ await act(async()=>{button('generate').click();await started})
+ const stats=root.querySelector('[data-report-observability]')
+ expect(stats).not.toBeNull()
+ expect(stats.closest('header')).toBeNull()
+ expect(stats.querySelector('[data-live]')).not.toBeNull()
+ expect(stats.querySelector('.chat-token-input').textContent).toBe('↑—')
+ expect(stats.querySelector('.chat-token-output').textContent).toBe('↓—')
+ await act(async()=>{
+  callbacks.onModel({key:'agy-argon',label:'Gemini 4 Argon',effort:'low'})
+  callbacks.onUsage({in:1200,out:20,decode_seconds:1})
+  callbacks.onUsage({in:1200,out:50,decode_seconds:2})
+  callbacks.onDelta('Report text.')
+ })
+ expect(stats.querySelector('.chat-token-model').title).toBe('Gemini 4 Argon · low')
+ expect(stats.querySelector('.chat-token-input').textContent).toBe('↑1,200')
+ expect(stats.querySelector('.chat-token-output').textContent).toBe('↓50')
+ expect(stats.textContent).toContain('25.0 tok/s')
+ expect(root.querySelector('[data-stream-cursor]').className).toContain('ai-report-cursor')
+ await act(async()=>{finish();await gate})
+ await act(async()=>{})
+ expect(root.querySelector('[data-report-observability]')).toBeNull()
+ expect(root.querySelector('[data-stream-cursor]')).toBeNull()
+})
+
+it('keeps statistics live through one-shot fallback and clears them when it finishes',async()=>{
+ lineup.models=[CLOUD]
+ let finish,startedResolve
+ const started=new Promise(resolve=>{startedResolve=resolve})
+ const gate=new Promise(resolve=>{finish=resolve})
+ lineup.stream=async({onUsage})=>{onUsage({in:100,out:0});throw new Error('empty stream')}
+ lineup.complete=async()=>{startedResolve();await gate;return {text:'Recovered.',usage:{in:200,out:30,inference_seconds:2}}}
+ await mountCard()
+ await act(async()=>{button('generate').click();await started})
+ expect(root.querySelector('[data-report-observability]')).not.toBeNull()
+ await act(async()=>{finish();await gate})
+ await vi.waitFor(async()=>{await act(async()=>{});expect(root.textContent).toContain('Recovered.')})
+ expect(root.querySelector('[data-report-observability]')).toBeNull()
+ expect(button('regenerate').disabled).toBe(false)
 })

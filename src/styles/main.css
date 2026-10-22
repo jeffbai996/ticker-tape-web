@@ -117,6 +117,10 @@ select:not([multiple]):not(.appearance-none):dir(rtl) { background-position: lef
 
 .wire-article-window::backdrop { background: rgba(0, 0, 0, .7); }
 .ai-report-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+.ai-report-cursor { animation: ai-report-cursor-blink 1s steps(1, end) infinite; }
+@keyframes ai-report-cursor-blink { 0%, 100% { opacity:1; } 50% { opacity:0; } }
+@media (prefers-reduced-motion: reduce) { .ai-report-cursor { animation:none; } }
+[data-report-observability] .chat-token-footer { max-width:100%; }
 /* Narrow: the title shares the model picker's row; the remaining controls take
    the row below, right-aligned (Jeff 2026-10-07: the heading sat alone). */
 .ai-report-head > :nth-child(2) { grid-column: 2; justify-self: end; }

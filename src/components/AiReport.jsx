@@ -1,4 +1,5 @@
 import {ChatFailure} from './ChatFailure.jsx'
+import { ChatFooter } from './ChatFooter.jsx'
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { streamChat } from '../lib/chatClient.js'
 import { fetchWireChatModels, wireComplete, wireStream, wireChatAvailable } from '../lib/wirechat.js'
@@ -9,6 +10,7 @@ import { getLocale, tl } from '../lib/i18n.js'
 import { LENGTHS, TONES, applyAiPreferences, loadDials, saveDials } from '../lib/aidials.js'
 import {pickerModels,preferredModel,migratePrivateModelDefaults} from '../lib/chatModels.js'
 import { reportModelLabel } from '../lib/modelLabel.js'
+import { mergeTurnUsage } from '../lib/chatMetrics.js'
 
 // One-click AI synthesis panel: build a prompt, stream the answer, offer
 // copy/download. On a wire build the writer is picked from the subscription
@@ -55,7 +57,7 @@ export function MdLite({ text, streaming = false }) {
 
   // block pass with table grouping: consecutive |-rows render as a real table
   const lines = (streaming ? text.trimEnd() : text).split('\n')
-  const cursor = streaming ? <span data-stream-cursor aria-hidden="true" class="text-accent">▌</span> : null
+  const cursor = streaming ? <span data-stream-cursor aria-hidden="true" class="ai-report-cursor text-accent">▌</span> : null
   const out = []
   for (let i = 0; i < lines.length; i++) {
     const isRow = (l) => /^\s*\|.*\|\s*$/.test(l)
@@ -179,6 +181,7 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
   const [dials, setDials] = useState(loadDials)
   const [showDials, setShowDials] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [generation, setGeneration] = useState(null)
   useEffect(()=>{onBusyChange?.(busy)},[busy,onBusyChange])
   const [error, setError] = useState(null)
   const [copied, setCopied] = useState(false)
@@ -227,8 +230,10 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
 
   const generate = async () => {
     if (!serviceAvailable || busy) return
+    setGeneration({ startedAt: Date.now(), model: models.find(m => m.key === writer)?.label || (onWire ? writer : REPORT_MODEL), effort, usage: null })
     setBusy(true)
     setError(null)
+    const reportUsage = (round, usage) => setGeneration(current => ({ ...current, usage: mergeTurnUsage(current?.usage, round, usage) }))
     try {
       if (onWire) {
         const live = await refreshModels()
@@ -251,6 +256,8 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
             model: writer, effort, system: shaped,
             messages: [{ role: 'user', content: prompt }],
             onDelta: (d) => { acc += d; setText(acc) },
+            onUsage: usage => reportUsage(0, usage),
+            onModel: model => setGeneration(current => ({ ...current, model: model.label, effort: model.effort ?? current.effort })),
           })
           // a stream can "succeed" with zero content — agy exits clean with
           // an empty answer about one run in four, and a dropped SSE pipe
@@ -265,6 +272,7 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
             messages: [{ role: 'user', content: prompt }],
             signal: AbortSignal.timeout(240_000),
           })
+          if (out.usage) reportUsage(1, out.usage)
           acc = out.text
           setText(acc)
         }
@@ -479,6 +487,12 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
         <div ref={bodyRef} class="ai-report-body px-4 sm:px-6 py-4 font-anth text-[13px] leading-relaxed select-text text-ink-2 max-h-[45vh] overflow-y-auto break-words">
           {text && <MdLite text={text} streaming={busy} />}
           {error && <div class="pt-2"><ChatFailure error={error} onRetry={generate} busy={busy} /></div>}
+        </div>
+      )}
+      {busy && generation && (
+        <div data-report-observability class="px-3 pb-1">
+          <ChatFooter model={generation.model} effort={generation.effort} usage={generation.usage}
+            startedAt={generation.startedAt} busy />
         </div>
       )}
       {/* the actions on a finished report sit with the report, not in the
