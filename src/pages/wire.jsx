@@ -135,12 +135,12 @@ const countdown = (sec) => {
   if (getLocale() === 'zh') {
     if (sec <= 0) return '现在'
     if (sec < 3600) return `${Math.round(sec / 60)}分钟后`
-    if (sec < 86400) return `${(sec / 3600).toFixed(1)}小时后`
+    if (sec < 86400) return `${Math.floor(sec / 3600)}小时 ${Math.floor(sec / 60) % 60}分钟后`
     return `${Math.round(sec / 86400)}天后`
   }
   if (sec <= 0) return 'now'
   if (sec < 3600) return `in ${Math.round(sec / 60)}m`
-  if (sec < 86400) return `in ${(sec / 3600).toFixed(1)}h`
+  if (sec < 86400) return `in ${Math.floor(sec / 3600)}h ${Math.floor(sec / 60) % 60}m`
   return `in ${Math.round(sec / 86400)}d`
 }
 
@@ -556,7 +556,7 @@ function Rail({ today, now, events, watchset, onHide, onSource }) {
         ))}
       </Panel>}
       {sessions.length > 0 && (
-        <Panel title={`${tl('sessions')}${live.length ? ` · ${live.length} ${tl('live')}` : ''}`}>
+        <Panel title={`${tl('transcriptions')}${live.length ? ` · ${live.length} ${tl('live')}` : ''}`}>
           {sessions.slice(0, 6).map((s) => (
             <div key={s.id} class="flex items-baseline gap-2 py-[2.5px] font-mono text-[11px]">
               <span class={`text-[9px] uppercase tracking-wider whitespace-nowrap ${
@@ -620,6 +620,9 @@ export function Wire({ route }) {
   const [openIds, setOpenIdsRaw] = useState(() => new Set(openStore))
   const [filter, setFilterRaw] = useState(() => localStorage.getItem('tape-wire-filter') || '')
   const [query, setQueryRaw] = useState(() => localStorage.getItem('tape-wire-filter-text') || '')
+  const [queryOpen, setQueryOpen] = useState(false)
+  const queryRef = useRef(null)
+  useEffect(() => { if (queryOpen) queryRef.current?.focus() }, [queryOpen])
   const [mode, setMode] = useState(loadWireOrder)
   const [tierFilters, setTierFiltersRaw] = useState(savedTierFilters)
   const [thesisOnly, setThesisOnlyRaw] = useState(() => !IS_FAMILY_BUILD && localStorage.getItem('tape-wire-thesis-only') === '1')
@@ -1085,7 +1088,8 @@ export function Wire({ route }) {
         <span class="hidden sm:inline text-muted font-mono text-[9px] shrink-0">{pubDisplayName(breaking)} · {rowTime(breaking.ts_event)}</span>
         <button aria-label={getLocale() === 'zh' ? '关闭' : 'Dismiss'} class="text-muted hover:text-ink px-1" onClick={() => setDismissedBreaking((prev) => new Set([...prev, breaking.id]))}>×</button>
       </div>}
-      <div class="flex gap-1.5 flex-wrap items-center">
+      <div data-wire-filters class="relative flex gap-1.5 items-center min-w-0 min-h-[26px]">
+        <div class="flex flex-1 min-w-0 gap-1.5 items-center overflow-x-auto whitespace-nowrap [&>button]:shrink-0 [&>span]:shrink-0 [scrollbar-width:none]">
         {FILTERS.map((f) => (
           <button
             key={f.id}
@@ -1135,13 +1139,23 @@ export function Wire({ route }) {
           class={`box-border inline-flex items-center justify-center w-[28px] h-[22px] shrink-0 border rounded-md px-[6px] py-0 leading-none text-success transition-colors ${
             primeOnly ? 'bg-[#3fb950] border-[#3fb950] text-black' : 'border-[#3fb950]/40 hover:bg-[#3fb950]/10 hover:border-[#3fb950]'
           }`}><SourceSignal tier={1.25} className={primeOnly ? 'text-black' : 'text-[#3fb950]'} /></button>
-        <input
-          data-wire-query
-          class="bg-surface-2 border border-line rounded-md px-2 py-0.5 font-mono text-[11px] text-ink outline-none focus:border-accent w-36"
-          placeholder={tl('filter…')}
-          value={query}
-          onInput={(e) => setQuery(e.currentTarget.value)}
-        />
+        </div>
+        <div class={`wire-query${queryOpen ? ' is-open' : ''}`} onBlur={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget)) setQueryOpen(false)
+        }}>
+          {queryOpen && <input ref={queryRef} data-wire-query aria-label={tl('filter…')}
+            class="min-w-0 flex-1 bg-transparent px-2 font-mono text-[11px] text-ink outline-none"
+            placeholder={tl('filter…')} value={query} onInput={(e) => setQuery(e.currentTarget.value)}
+            onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); setQueryOpen(false) } }} />}
+          <button type="button" data-wire-query-toggle aria-label={tl('filter…')} aria-expanded={queryOpen}
+            class={`relative grid place-items-center w-7 h-6 shrink-0 ${query ? 'text-accent' : 'text-muted hover:text-ink'}`}
+            onClick={() => setQueryOpen(!queryOpen)}>
+            <svg viewBox="0 0 20 20" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+              {queryOpen ? <path d="m5 5 10 10M5 15 15 5" /> : <><circle cx="8.5" cy="8.5" r="5.5" /><path d="m13 13 4 4" /></>}
+            </svg>
+            {!queryOpen && query && <span aria-hidden="true" class="absolute right-1 top-1 w-1 h-1 rounded-full bg-accent" />}
+          </button>
+        </div>
       </div>
       {missing != null && (
         <p class="font-mono text-[10.5px] text-muted px-1">

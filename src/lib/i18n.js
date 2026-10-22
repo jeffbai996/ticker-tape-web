@@ -680,7 +680,7 @@ const LABELS = {
   'Select rows': '多选', selected: '已选', 'select all': '全选',
   top: '置顶', remove: '移除', Manual: '手动',
   Dashboard: '主看板', 'board menu': '看板菜单',
-  sessions: '会话', live: '直播', capturing: '录制中', armed: '待命', queued: '排队中',
+  sessions: '会话', transcriptions: '转录', 'Loading models': '正在加载模型', live: '直播', capturing: '录制中', armed: '待命', queued: '排队中',
   positions: '持仓', 'margin ladder': '保证金梯度', 'filter by symbol': '按代码筛选',
   'upcoming dividends': '即将派息', 'snapshots since': '快照始于', days: '天',
   'snapshot store live — the curve draws itself as daily history accrues':
