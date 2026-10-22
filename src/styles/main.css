@@ -2,18 +2,20 @@
 
 /* Native select arrows ignore author padding differently across browser engines.
    Own the closed control's arrow and gutter while retaining its native menu. */
-select:not([multiple]):not([size]):not(.appearance-none) {
+select:not([multiple]):not([size]):not(.appearance-none), select:not([multiple])[size="1"]:not(.appearance-none) {
   -webkit-appearance: none;
   appearance: none;
-  padding-right: 28px;
+  padding-inline-end: 36px;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='m3 4.5 3 3 3-3' fill='none' stroke='%23a6adb6' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 8px center;
+  background-position: right 12px center;
   background-size: 12px 12px;
 }
 
+select:not([multiple]):not(.appearance-none):dir(rtl) { background-position: left 12px center; }
+
 @media (forced-colors: active) {
-  select:not([multiple]):not([size]):not(.appearance-none) {
+  select:not([multiple]):not([size]):not(.appearance-none), select:not([multiple])[size="1"]:not(.appearance-none) {
     -webkit-appearance: auto;
     appearance: auto;
     background-image: none;
@@ -1039,8 +1041,8 @@ html[data-pointer-hover] .chat-trace-entry > summary:hover { background-color:tr
 .lwc-unzoom { position: absolute; inset: 0; zoom: calc(1 / var(--app-zoom)); }
 
 .chat-token-provider { display:inline-block; width:12px; height:12px; flex:none; background:#d97757; mask-repeat:no-repeat; mask-position:center; mask-size:contain; -webkit-mask-repeat:no-repeat; -webkit-mask-position:center; -webkit-mask-size:contain; }
-.chat-token-input { display:inline-flex; align-items:center; gap:4px; color:#58a6ff; }
-.chat-token-output { display:inline-flex; align-items:center; gap:4px; color:#3fb950; }
+.chat-token-input { display:inline-flex; align-items:center; gap:4px; color:var(--token-input); }
+.chat-token-output { display:inline-flex; align-items:center; gap:4px; color:var(--token-output); }
 .chat-token-input .chat-token-arrow, .chat-token-output .chat-token-arrow { color:inherit; }
 
 /* Chat header rail. The incognito toggle is an icon until hovered or on, when
@@ -1128,3 +1130,7 @@ html[data-pointer-hover] .chat-trace-entry > summary:hover { background-color:tr
   .chat-token-input, .chat-token-output { gap:2px; }
   .composer-shortcuts .desktop-shortcut { display:none; }
 }
+
+/* Token roles keep the same meaning independently of brand and model colors. */
+:root { --token-input: #58a6ff; --token-output: #3fb950; }
+[data-theme="light"] { --token-input: #0755ce; --token-output: #087c34; }
