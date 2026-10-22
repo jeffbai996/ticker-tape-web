@@ -54,6 +54,12 @@ describe('portfolio-fitted prompts', () => {
   it('returns nothing without books', () => {
     expect(bookPrompts({ books: [], quotes })).toEqual([])
   })
+  it('leaves out a book with no name rather than asking about undefined', () => {
+    const unnamed = { positions: growth.positions }
+    expect(bookPrompts({ books: [unnamed], quotes })).toEqual([])
+    const out = bookPrompts({ books: [unnamed, income], quotes })
+    expect(out.every((p) => Object.values(p.params || {}).every((v) => v !== undefined))).toBe(true)
+  })
 })
 
 describe('stack prompts', () => {

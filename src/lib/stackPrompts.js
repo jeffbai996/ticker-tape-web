@@ -23,7 +23,8 @@ const priceOf = (quotes, symbol) => quotes[symbol]?.quote?.price || null
 export function bookPrompts({ books = [], quotes = {}, earnDays = {} }) {
   const out = []
   const add = (name, lvl, params) => out.push({ name, k: 'book', lvl, params })
-  const held = books.filter((b) => b.positions?.length)
+  // Every book prompt names its book; an unnamed one would read "undefined".
+  const held = books.filter((b) => b.name && b.positions?.length)
   if (!held.length) return out
 
   for (const book of held) {

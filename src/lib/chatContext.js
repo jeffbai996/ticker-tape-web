@@ -157,7 +157,8 @@ export async function fetchBookJson() {
 export async function fetchBooksJson() {
   if(IS_FAMILY_AI) return savedChatBooks()
   const book=await fetchBookJson()
-  return book ? [book] : []
+  // The wire's /api/portfolio is the IBKR book and carries no name of its own.
+  return book ? [{...book,name:book.name||'IBKR'}] : []
 }
 
 /** Does this browser have a live book wired in (affects the base prompt)? */
