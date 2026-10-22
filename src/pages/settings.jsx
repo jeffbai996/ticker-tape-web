@@ -3,7 +3,7 @@ import { useEffect, useState } from 'preact/hooks'
 import { getHighContrast, saveHighContrast } from '../lib/contrast.js'
 import { getLocale, setLocale, onLocaleChange, tl } from '../lib/i18n.js'
 import { getTapeLocaleSetting, setTapeLocaleSetting } from '../lib/tapeLocale.js'
-import { IS_FAMILY_BUILD, IS_PRIVATE_BUILD } from '../lib/nav.js'
+import { IS_FAMILY_BUILD, IS_FAMILY_AI, IS_PRIVATE_BUILD } from '../lib/nav.js'
 import { useNamedWatchlists } from '../hooks.js'
 import { pinnedDashboardLanding, pinDashboardLanding } from '../lib/dashboardLanding.js'
 import { BOOK_CARDS, hiddenCards, onCardsChange, resetCards, toggleCard } from '../lib/bookCards.js'
@@ -32,6 +32,15 @@ function SettingsPanel({ id, title, children, wide = false }) {
     <h2 id={`settings-${id}-heading`} class="settings-panel-heading">{title}</h2>
     {children}
   </section>
+}
+
+function ServiceIcon({ kind }) {
+  const paths = {
+    wire: 'M3 12h4l3-7 4 14 3-7h4',
+    chat: 'M21 11a8 8 0 0 1-8 8H7l-4 3V7a4 4 0 0 1 4-4h6a8 8 0 0 1 8 8Z',
+    portfolio: 'M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12a25 25 0 0 0 18 0M10 13h4M5 7h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z',
+  }
+  return <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d={paths[kind]} /></svg>
 }
 
 export function Settings() {
@@ -104,10 +113,16 @@ export function Settings() {
     </div>
     <div class="settings-row">
       <label for="settings-colors">{label('Market colors', '涨跌颜色')}</label>
-      <select id="settings-colors" class={control} value={colors} onChange={(e) => changeColors(e.currentTarget.value)}>
-        <option value="global">{label('Green up · Red down', '绿涨 · 红跌')}</option>
-        <option value="cn">{label('Red up · Green down', '红涨 · 绿跌')}</option>
-      </select>
+      <span class="settings-color-control">
+        <select id="settings-colors" class={`${control} settings-color-select`} value={colors} onChange={(e) => changeColors(e.currentTarget.value)}>
+          <option value="global">{label('Green up · Red down', '绿涨 · 红跌')}</option>
+          <option value="cn">{label('Red up · Green down', '红涨 · 绿跌')}</option>
+        </select>
+        <span class="settings-color-preview" aria-hidden="true">
+          <svg class="settings-color-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 6-6 4 4 8-10m-6 0h6v6" /></svg>
+          <svg class="settings-color-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 6 6 4-4 8 10m-6 0h6v-6" /></svg>
+        </span>
+      </span>
     </div>
     <label class="settings-row">
       {label('Higher contrast', '高对比度')}
@@ -156,13 +171,16 @@ export function Settings() {
       </label>)}
     </SettingsPanel>
     <SettingsPanel id="services" title={label('Services', '服务')}>
-    <dl>
+    <nav aria-label={label('Services', '服务')}>
       {[
-        [label('Wire', '快讯'), IS_PRIVATE_BUILD ? label('Live stream', '实时推送') : label('Periodic updates', '定期更新')],
-        [label('AI chat', 'AI 对话'), IS_PRIVATE_BUILD ? label('Available', '可用') : label('Unavailable', '暂不可用')],
-        [label('Portfolio', '持仓'), IS_PRIVATE_BUILD ? label('IBKR + manual', 'IBKR 与手动组合') : label('Manual', '手动组合')],
-      ].map(([name, status]) => <div key={name} class="settings-row"><dt>{name}</dt><dd class="settings-status">{status}</dd></div>)}
-    </dl>
+        ['wire', label('Wire', '快讯'), IS_PRIVATE_BUILD ? label('Live stream', '实时推送') : label('Periodic updates', '定期更新')],
+        ['chat', label('AI chat', 'AI 对话'), IS_PRIVATE_BUILD || IS_FAMILY_AI ? label('Available', '可用') : label('Unavailable', '暂不可用')],
+        ['portfolio', label('Portfolio', '持仓'), IS_PRIVATE_BUILD ? label('IBKR + manual', 'IBKR 与手动组合') : label('Manual', '手动组合')],
+      ].map(([id, name, status]) => <a key={id} href={`#/${id}`} class="settings-row settings-service">
+        <span class="settings-service-name"><ServiceIcon kind={id} /><span>{name}</span></span>
+        <span class="settings-service-detail"><span class="settings-status">{status}</span><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 4 4 4-4 4" /></svg></span>
+      </a>)}
+    </nav>
     </SettingsPanel>
     <SettingsPanel id="portfolio" title={label('Portfolio cards', '持仓分析卡片')} wide>
     <div class="settings-options">
