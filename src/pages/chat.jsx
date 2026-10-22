@@ -1634,7 +1634,7 @@ export function Chat() {
                       something different from the thing it sets (Jeff
                       2026-08-07). Model names beside it aren't translated
                       either, for the same reason. */}
-                  {tl(lv)}
+                  {lv}
                 </button>
               ))}
             </span>
