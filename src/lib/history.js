@@ -20,9 +20,9 @@ export const RANGES = [
   // two ET sessions preserves the prior close/open context across weekends.
   { key: '2D', range: '5d', interval: '5m', intraday: true, sessions: 2, ttl: 60_000, warm: '5d', ticks: ['1m', '2m', '5m', '15m', '30m', '1h'] },
   { key: '5D', range: '5d', interval: '15m', intraday: true, ttl: 5 * 60_000, warm: '1mo', ticks: ['2m', '5m', '15m', '30m', '1h'] },
-  { key: '1M', range: '1mo', interval: '1d', ttl: 10 * 60_000, warm: '3mo', ticks: ['30m', '1h', '4h', '1d'] },
-  { key: '3M', range: '3mo', interval: '1d', ttl: 10 * 60_000, warm: '6mo', ticks: ['1h', '4h', '1d'] },
-  { key: '6M', range: '6mo', interval: '1d', ttl: 10 * 60_000, warm: '1y', ticks: ['1h', '4h', '1d', '1wk'] },
+  { key: '1M', range: '1mo', interval: '1h', ttl: 10 * 60_000, warm: '3mo', ticks: ['30m', '1h', '4h', '1d'] },
+  { key: '3M', range: '3mo', interval: '4h', ttl: 10 * 60_000, warm: '6mo', ticks: ['1h', '4h', '1d'] },
+  { key: '6M', range: '6mo', interval: '4h', ttl: 10 * 60_000, warm: '1y', ticks: ['1h', '4h', '1d', '1wk'] },
   { key: 'YTD', range: 'ytd', interval: '1d', ttl: 10 * 60_000, warm: '2y', ticks: ['1h', '4h', '1d', '1wk'] },
   { key: '1Y', range: '1y', interval: '1d', ttl: 10 * 60_000, warm: '2y', ticks: ['1h', '4h', '1d', '1wk'] },
   { key: '2Y', range: '2y', interval: '1d', ttl: 30 * 60_000, warm: '5y', ticks: ['1d', '1wk', '1mo'] },
@@ -80,7 +80,12 @@ export const lastSessionBars = (bars) => latestSessionBars(bars, 1)
 async function fetchChart(symbol, range, interval, prepost = false) {
   // includePrePost widens an intraday window to 04:00–20:00 ET; daily and
   // weekly bars are unaffected by it (Jeff 2026-08-07, IBKR parity)
-  const url = `${proxyBase()}/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}`
+  // Yahoo silently coarsens range=max to quarterly candles, even for 1wk.
+  // Explicit dates preserve the interval the chart actually requested.
+  const rangeQuery = range === 'max'
+    ? `period1=0&period2=${Math.floor(Date.now() / 1000)}`
+    : `range=${range}`
+  const url = `${proxyBase()}/v8/finance/chart/${encodeURIComponent(symbol)}?${rangeQuery}&interval=${interval}`
     + (prepost ? '&includePrePost=true' : '')
   const resp = await fetch(url, { signal: AbortSignal.timeout(12_000) })
   if (!resp.ok) throw new Error(`history ${symbol}: HTTP ${resp.status}`)
@@ -97,7 +102,8 @@ function target(symbol, rangeKey, { warm = false, interval = null, prepost = fal
   // the extended session is a DIFFERENT series, so it gets its own cache key
   const ext = prepost && r.intraday
   const warmRange = warm ? indicatorWarmRange(iv, r.warm) : null
-  const key = `h:${symbol}:${r.key}${iv !== r.interval ? `:${iv}` : ''}${ext ? ':ext' : ''}${warm ? `:warm:${warmRange}` : ''}`
+  // Old MAX snapshots may contain quarterly data under a weekly/monthly key.
+  const key = `h:${symbol}:${r.key}:${iv}${r.range === 'max' ? ':dates' : ''}${ext ? ':ext' : ''}${warm ? `:warm:${warmRange}` : ''}`
   return { r, iv, ext, key, warmRange }
 }
 

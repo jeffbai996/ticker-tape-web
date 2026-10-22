@@ -102,8 +102,47 @@ describe('fetchHistory extended hours', () => {
     expect(globalThis.fetch.mock.calls[0][0]).not.toContain('includePrePost')
   })
 
+  it.each([['1M', '1mo', '1h'], ['3M', '3mo', '4h'], ['6M', '6mo', '4h']])(
+    'uses the requested default resolution for %s', async (key, range, interval) => {
+      await fetchHistory('DEFAULT' + key, key)
+      expect(globalThis.fetch.mock.calls[0][0]).toContain(`range=${range}&interval=${interval}`)
+    },
+  )
+
+  it('keeps an explicit daily override on the one-month view', async () => {
+    await fetchHistory('DAYOVERRIDE', '1M', { interval: '1d' })
+    expect(globalThis.fetch.mock.calls[0][0]).toContain('range=1mo&interval=1d')
+  })
+
+  it('does not reuse a cached default after its interval changes', async () => {
+    const range = RANGES.find(r => r.key === '1M')
+    const original = range.interval
+    try {
+      range.interval = '1d'
+      await fetchHistory('CACHEDEFAULT', '1M')
+      range.interval = '1h'
+      await fetchHistory('CACHEDEFAULT', '1M')
+      expect(globalThis.fetch).toHaveBeenCalledTimes(2)
+      expect(globalThis.fetch.mock.calls[1][0]).toContain('interval=1h')
+    } finally { range.interval = original }
+  })
+
+  it.each(['1wk', '1mo', '3mo'])('requests exact date bounds for MAX %s bars', async (interval) => {
+    await fetchHistory('MAX' + interval, 'MAX', { interval })
+    const url = new URL(globalThis.fetch.mock.calls[0][0], 'https://example.test')
+    expect(url.searchParams.has('range')).toBe(false)
+    expect(url.searchParams.get('period1')).toBe('0')
+    expect(Number(url.searchParams.get('period2'))).toBeGreaterThan(0)
+    expect(url.searchParams.get('interval')).toBe(interval)
+  })
+
+  it('warms the hourly month view with hourly bars', async () => {
+    await fetchHistory('WARMHOUR', '1M', { warm: true })
+    expect(globalThis.fetch.mock.calls[0][0]).toContain('range=3mo&interval=1h')
+  })
+
   it('fetches a full year to warm a daily SMA 200', async () => {
-    await fetchHistory('WARM200', '1M', { warm: true })
+    await fetchHistory('WARM200', '1Y', { warm: true })
     expect(globalThis.fetch.mock.calls[0][0]).toContain('range=1y&interval=1d')
   })
 })
