@@ -46,3 +46,35 @@ it('defaults private Argon to low without changing other model effort settings',
  expect(pickerModels(models,true).map(m=>m.default_effort)).toEqual(['low','high'])
  expect(models[0].default_effort).toBe('medium')
 })
+
+it('prefers Argon for a private default without changing public order or explicit choices',async()=>{
+ const {preferredModel}=await import('../../src/lib/chatModels.js')
+ expect(preferredModel(models,null,true).key).toBe('agy-argon')
+ expect(preferredModel(models,null,false).key).toBe('qwen-local')
+ expect(preferredModel(models,'claude-sonnet',true).key).toBe('claude-sonnet')
+})
+
+it('moves old private Qwen defaults to Argon once and preserves later choices',async()=>{
+ const {migratePrivateModelDefaults}=await import('../../src/lib/chatModels.js')
+ const data=new Map([['chat_wire_model','qwen-local'],['chat_model','qwen'],['report_model','qwen-flash-next'],['report_effort','high']])
+ const storage={getItem:k=>data.get(k)||null,setItem:(k,v)=>data.set(k,v),removeItem:k=>data.delete(k)}
+ migratePrivateModelDefaults(false,storage)
+ expect(data.get('report_model')).toBe('qwen-flash-next')
+ migratePrivateModelDefaults(true,storage)
+ expect(data.get('chat_wire_model')).toBe('agy-argon')
+ expect(data.get('chat_model')).toBe('argon')
+ expect(data.get('report_model')).toBe('agy-argon')
+ expect(data.has('report_effort')).toBe(false)
+ data.set('chat_wire_model','qwen-local')
+ migratePrivateModelDefaults(true,storage)
+ expect(data.get('chat_wire_model')).toBe('qwen-local')
+})
+
+it('preserves an explicit non-Qwen private model and its effort',async()=>{
+ const {migratePrivateModelDefaults}=await import('../../src/lib/chatModels.js')
+ const data=new Map([['report_model','claude-sonnet'],['report_effort','high']])
+ const storage={getItem:k=>data.get(k)||null,setItem:(k,v)=>data.set(k,v),removeItem:k=>data.delete(k)}
+ migratePrivateModelDefaults(true,storage)
+ expect(data.get('report_model')).toBe('claude-sonnet')
+ expect(data.get('report_effort')).toBe('high')
+})

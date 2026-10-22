@@ -7,14 +7,14 @@ import { IS_PRIVATE_BUILD, IS_FAMILY_AI, IS_TV_BUILD } from '../lib/nav.js'
 import { saveReport } from '../lib/archive.js'
 import { getLocale, tl } from '../lib/i18n.js'
 import { LENGTHS, TONES, applyAiPreferences, loadDials, saveDials } from '../lib/aidials.js'
-import {pickerModels} from '../lib/chatModels.js'
+import {pickerModels,preferredModel,migratePrivateModelDefaults} from '../lib/chatModels.js'
 import { reportModelLabel } from '../lib/modelLabel.js'
 
 // One-click AI synthesis panel: build a prompt, stream the answer, offer
 // copy/download. On a wire build the writer is picked from the subscription
 // lineup (localStorage-sticky). The public build renders the same panel as an
 // inert preview; it never contacts either the wire or metered worker route.
-const REPORT_MODEL = 'flash'
+const REPORT_MODEL = IS_PRIVATE_BUILD ? 'argon' : 'flash'
 // pill display only — the full effort key still travels in state and requests
 const EFFORT_SHORT = { medium: 'med' }
 // reports don't need marathon thinking — the top tiers are chat-only
@@ -34,7 +34,7 @@ const INSTRUCTIONS_KEY = 'report_instructions'
 
 // Markdown-lite: headers + bold + bullets, enough to render a model's memo
 // without a parser dependency. Anything fancier falls through as plain text.
-export function MdLite({ text }) {
+export function MdLite({ text, streaming = false }) {
   // inline pass: **bold**, `code`, [label](url) — split order matters, bold
   // first so a bold segment can still carry code inside it is NOT supported
   // (flat, single-level — models rarely nest these in chat answers)
@@ -54,7 +54,8 @@ export function MdLite({ text }) {
     })
 
   // block pass with table grouping: consecutive |-rows render as a real table
-  const lines = text.split('\n')
+  const lines = (streaming ? text.trimEnd() : text).split('\n')
+  const cursor = streaming ? <span data-stream-cursor aria-hidden="true" class="text-accent">▌</span> : null
   const out = []
   for (let i = 0; i < lines.length; i++) {
     const isRow = (l) => /^\s*\|.*\|\s*$/.test(l)
@@ -69,11 +70,11 @@ export function MdLite({ text }) {
         <div key={`t${i}`} class="overflow-x-auto my-1.5">
           <table class="font-mono text-[11px] border-collapse">
             {head && <thead><tr>
-              {cells(head).map((c, j) => <th key={j} class="text-left text-muted font-semibold uppercase text-[9.5px] tracking-wider border-b border-line px-2 py-0.5">{parts(c)}</th>)}
+              {cells(head).map((c, j) => <th key={j} class="text-left text-muted font-semibold uppercase text-[9.5px] tracking-wider border-b border-line px-2 py-0.5">{parts(c)}{i === lines.length - 1 && !rest.length && j === cells(head).length - 1 && cursor}</th>)}
             </tr></thead>}
             <tbody>
               {rest.map((r, ri) => <tr key={ri} class="border-b border-line/40 last:border-0">
-                {cells(r).map((c, j) => <td key={j} class="px-2 py-0.5 text-ink-2 whitespace-nowrap">{parts(c)}</td>)}
+                {cells(r).map((c, j) => <td key={j} class="px-2 py-0.5 text-ink-2 whitespace-nowrap">{parts(c)}{i === lines.length - 1 && ri === rest.length - 1 && j === cells(r).length - 1 && cursor}</td>)}
               </tr>)}
             </tbody>
           </table>
@@ -81,28 +82,28 @@ export function MdLite({ text }) {
       )
       continue
     }
-    out.push(renderLine(lines[i], i, parts))
+    out.push(renderLine(lines[i], i, parts, i === lines.length - 1 ? cursor : null))
   }
   return out
 }
 
-function renderLine(line, i, parts) {
+function renderLine(line, i, parts, suffix = null) {
   {
     // Local models title their sections with a bold-only line rather than a
     // hash heading; rendered as inline bold, the memo had no visible sections.
     const h = line.match(/^#{1,6}\s+(.*)/) || line.match(/^\s*\*\*([^*]+)\*\*(:?)\s*$/)
     if (h) {
-      return <div key={i} class="font-anth font-bold text-accent text-[12.5px] pt-2 first:pt-0 pb-0.5">{parts(h[1] + (h[2] || ''))}</div>
+      return <div key={i} class="font-anth font-bold text-accent text-[12.5px] pt-2 first:pt-0 pb-0.5">{parts(h[1] + (h[2] || ''))}{suffix}</div>
     }
     if (/^\s*[-*]\s+/.test(line)) {
-      return <div key={i} class="pl-4 relative"><span class="absolute left-1 text-muted">·</span>{parts(line.replace(/^\s*[-*]\s+/, ''))}</div>
+      return <div key={i} class="pl-4 relative"><span class="absolute left-1 text-muted">·</span>{parts(line.replace(/^\s*[-*]\s+/, ''))}{suffix}</div>
     }
     const num = line.match(/^\s*(\d+)\.\s+(.*)/)
     if (num) {
-      return <div key={i} class="pl-5 relative"><span class="absolute left-1 text-muted font-mono text-[11px]">{num[1]}.</span>{parts(num[2])}</div>
+      return <div key={i} class="pl-5 relative"><span class="absolute left-1 text-muted font-mono text-[11px]">{num[1]}.</span>{parts(num[2])}{suffix}</div>
     }
-    if (/^\s*---+\s*$/.test(line)) return <hr key={i} class="border-line my-1.5" />
-    return <div key={i} class="min-h-[0.6em]">{parts(line)}</div>
+    if (/^\s*---+\s*$/.test(line)) return <div key={i}><hr class="border-line my-1.5" />{suffix}</div>
+    return <div key={i} class="min-h-[0.6em]">{parts(line)}{suffix}</div>
   }
 }
 
@@ -182,7 +183,10 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
   const [error, setError] = useState(null)
   const [copied, setCopied] = useState(false)
   const [models, setModels] = useState([])
-  const [writer, setWriter] = useState(() => IS_FAMILY_AI ? 'family-sonnet' : localStorage.getItem(WRITER_KEY) || 'agy-flash')
+  const [writer, setWriter] = useState(() => {
+    migratePrivateModelDefaults(IS_PRIVATE_BUILD)
+    return IS_FAMILY_AI ? 'family-sonnet' : localStorage.getItem(WRITER_KEY) || (IS_PRIVATE_BUILD ? 'agy-argon' : 'agy-flash')
+  })
   const [effort, setEffort] = useState(() => IS_FAMILY_AI ? 'medium' : localStorage.getItem(EFFORT_KEY) || '')
   const [instructions, setInstructions] = useState(() => localStorage.getItem(INSTRUCTIONS_KEY) || '')
   const bodyRef = useRef(null)
@@ -198,8 +202,8 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
         const live=pickerModels(available,IS_PRIVATE_BUILD)
         setModels(live)
         const cur = localStorage.getItem(WRITER_KEY)
-        const picked = live.find((m) => m.key === cur) || live[0]
-        const nextWriter = picked?.key || 'agy-flash'
+        const picked = preferredModel(live, cur, IS_PRIVATE_BUILD)
+        const nextWriter = picked?.key || (IS_PRIVATE_BUILD ? 'agy-argon' : 'agy-flash')
         setWriter(nextWriter)
         localStorage.setItem(WRITER_KEY, nextWriter)
         const nextEffort = clampEffort(picked, localStorage.getItem(EFFORT_KEY))
@@ -473,9 +477,8 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
       )}
       {(text || error) && (
         <div ref={bodyRef} class="ai-report-body px-4 sm:px-6 py-4 font-anth text-[13px] leading-relaxed select-text text-ink-2 max-h-[45vh] overflow-y-auto break-words">
-          {text && <MdLite text={text} />}
+          {text && <MdLite text={text} streaming={busy} />}
           {error && <div class="pt-2"><ChatFailure error={error} onRetry={generate} busy={busy} /></div>}
-          {busy && <span class="text-accent">▌</span>}
         </div>
       )}
       {/* the actions on a finished report sit with the report, not in the

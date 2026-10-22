@@ -130,9 +130,20 @@ it('paints report deltas while generation is still running',async()=>{
  await mountCard()
  await act(async()=>{button('generate').click();await started})
  expect(root.textContent).toContain('First paragraph.')
+ expect(root.querySelector('[data-stream-cursor]').parentElement.textContent).toBe('First paragraph.▌')
  expect(button('regenerate').disabled).toBe(true)
  await act(async()=>{finish();await gate})
  await act(async()=>{})
  expect(root.textContent).toContain('Second paragraph.')
+ expect(root.querySelector('[data-stream-cursor]')).toBeNull()
  expect(button('regenerate').disabled).toBe(false)
+})
+
+it('starts private reports on Argon instead of the old Qwen default',async()=>{
+ lineup.models=[{key:'qwen-local',label:'Qwen 3.8-27B',fixed_effort:'high'},
+   {key:'agy-argon',label:'Gemini 4 Argon',efforts:['low','medium','high'],default_effort:'medium'}]
+ localStorage.setItem('report_model','qwen-local')
+ await mountCard()
+ expect(localStorage.getItem('report_model')).toBe('agy-argon')
+ expect(localStorage.getItem('report_effort')).toBe('low')
 })

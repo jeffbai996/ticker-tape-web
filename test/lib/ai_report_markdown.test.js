@@ -6,8 +6,8 @@ let root
 beforeEach(() => { root = document.createElement('div') })
 afterEach(() => render(null, root))
 
-function mountMd(text) {
-  render(h(MdLite, { text }), root)
+function mountMd(text, streaming = false) {
+  render(h(MdLite, { text, streaming }), root)
   return root
 }
 
@@ -34,5 +34,28 @@ describe('report markdown', () => {
   it('reads five and six hash headings as headings', () => {
     expect(mountMd('##### Levels').firstElementChild.textContent).toBe('Levels')
     expect(mountMd('###### Levels').firstElementChild.className).toContain('text-accent')
+  })
+})
+
+
+describe('streaming cursor', () => {
+  it('follows the final text block as deltas and newlines arrive', () => {
+    mountMd('First line.\nLast **word**', true)
+    let cursor = root.querySelector('[data-stream-cursor]')
+    expect(cursor.parentElement.textContent).toBe('Last word▌')
+    mountMd('First line.\nLast **word** continues.\n\n', true)
+    cursor = root.querySelector('[data-stream-cursor]')
+    expect(cursor.parentElement.textContent).toBe('Last word continues.▌')
+    expect(root.querySelectorAll('[data-stream-cursor]')).toHaveLength(1)
+    mountMd('Finished.', false)
+    expect(root.querySelector('[data-stream-cursor]')).toBeNull()
+  })
+
+  it('stays inside the final list item or table cell', () => {
+    mountMd('- One\n- Final item', true)
+    expect(root.querySelector('[data-stream-cursor]').parentElement.textContent).toBe('·Final item▌')
+    mountMd('| Name | Value |\n| --- | --- |\n| Test | 42 |', true)
+    expect(root.querySelector('td:last-child [data-stream-cursor]')).not.toBeNull()
+    expect(root.querySelector('td:last-child').textContent).toBe('42▌')
   })
 })

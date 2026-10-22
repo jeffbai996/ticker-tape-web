@@ -4,7 +4,7 @@ import { TraceEntry } from '../components/TraceEntry.jsx'
 import {ChatNotice} from '../components/ChatNotice.jsx'
 import {ChatFailure} from '../components/ChatFailure.jsx'
 import {ConversationDelete} from '../components/ConversationDelete.jsx'
-import {pickerModels,modelGroups,fullModelName} from '../lib/chatModels.js'
+import {pickerModels,modelGroups,fullModelName,preferredModel,migratePrivateModelDefaults} from '../lib/chatModels.js'
 import {SuggestionRows} from '../components/SuggestionRows.jsx'
 import { earningsTone } from '../lib/earningsTone.js'
 import {submitTextKey} from '../lib/chatInput.js'
@@ -186,7 +186,7 @@ export function MemoryComposer({ memories, onApplied, children }) {
         + '{"op":"delete","id":N}. Apply the smallest set of changes that satisfies '
         + 'the request; reply [] if nothing applies.'
       const out = await wireComplete({
-        model: localStorage.getItem('chat_wire_model') || 'agy-flash', system,
+        model: localStorage.getItem('chat_wire_model') || (IS_PRIVATE_BUILD ? 'agy-argon' : 'agy-flash'), system,
         messages: [{ role: 'user', content: `Current memories:\n${listing}\n\nRequest: ${ask}` }],
         signal: AbortSignal.timeout(90_000),
       })
@@ -793,9 +793,10 @@ export function Chat() {
       return next
     })
   }
-  const [model, setModel] = useState(
-    IS_FAMILY_AI ? 'family-sonnet' : localStorage.getItem(modelStorageKey) || (onWire ? 'agy-argon' : 'argon'),
-  )
+  const [model, setModel] = useState(() => {
+    migratePrivateModelDefaults(IS_PRIVATE_BUILD)
+    return IS_FAMILY_AI ? 'family-sonnet' : localStorage.getItem(modelStorageKey) || (onWire ? 'agy-argon' : 'argon')
+  })
   const [effort, setEffort] = useState(IS_FAMILY_AI ? 'medium' : model==='agy-argon' ? 'low' : localStorage.getItem('chat_effort') || 'auto')
   const [spend, setSpend] = useState(null)
   const [history, setHistory] = useState(loadHistory)
@@ -1056,10 +1057,10 @@ export function Chat() {
       setModels(liveModels)
       const current = liveModels.find((candidate) => candidate.key === model)
       if (!current) {
-        const fallback = liveModels[0]?.key || (onWire ? 'agy-argon' : 'argon')
+        const info = preferredModel(liveModels, null, IS_PRIVATE_BUILD)
+        const fallback = info?.key || (onWire ? 'agy-argon' : 'argon')
         setModel(fallback)
         localStorage.setItem(modelStorageKey, fallback)
-        const info = liveModels[0]
         if (onWire) {
           const nextEffort = info?.fixed_effort || info?.default_effort || info?.efforts?.[0] || ''
           setEffort(nextEffort)

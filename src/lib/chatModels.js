@@ -33,3 +33,29 @@ export function fullModelName(model) {
  const provider=modelProvider(name)
  return provider==='claude'?`Claude ${name}`:provider==='gemini'?`Gemini ${name}`:name
 }
+
+export function preferredModel(models, saved, privateBuild = false) {
+  return models.find(model => model.key === saved)
+    || (privateBuild && models.find(model => ['agy-argon', 'argon'].includes(model.key)))
+    || models[0]
+}
+
+// Apply the private default change once; later manual selections still win.
+export function migratePrivateModelDefaults(privateBuild, storage) {
+  if (!privateBuild) return
+  try {
+    const prefs = storage || globalThis.localStorage
+    const marker = 'private_argon_default_v1'
+    if (prefs.getItem(marker)) return
+    for (const [key, model] of [
+      ['chat_wire_model', 'agy-argon'], ['chat_model', 'argon'], ['report_model', 'agy-argon'],
+    ]) {
+      const prior = prefs.getItem(key)
+      if (!prior || /^qwen(?:-|$)/i.test(prior)) {
+        prefs.setItem(key, model)
+        if (key === 'report_model' && prior) prefs.removeItem('report_effort')
+      }
+    }
+    prefs.setItem(marker, '1')
+  } catch { /* blocked storage leaves the in-memory fallback available */ }
+}
