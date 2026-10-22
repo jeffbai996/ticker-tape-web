@@ -1,6 +1,6 @@
 // @vitest-environment node
 import {expect,it} from 'vitest'
-import {pickerModels,modelGroups,fullModelName} from '../../src/lib/chatModels.js'
+import {pickerModels,modelGroups,fullModelName,cachedModelLabel,cacheModelLabels} from '../../src/lib/chatModels.js'
 const models=[
  {key:'qwen-local',label:'Local',group:'Local'},
  {key:'agy-argon',label:'Argon',group:'Antigravity'},
@@ -12,6 +12,19 @@ const models=[
  {key:'gpt-terra',label:'Terra',group:'Codex'},
  {key:'gpt-sol',label:'Sol',group:'Codex'},
 ]
+it('remembers model display names without retaining stale availability',()=>{
+ let saved
+ const storage={getItem:()=>saved,setItem:(_,value)=>{saved=value}}
+ cacheModelLabels([{key:'agy-argon',label:'Gemini 4 Argon',busy:true,efforts:['low']}],storage)
+ expect(cachedModelLabel('agy-argon',storage)).toBe('Gemini 4 Argon')
+ expect(JSON.parse(saved)).toEqual({'agy-argon':'Gemini 4 Argon'})
+ expect(cachedModelLabel('missing',storage)).toBe('')
+})
+it('ignores malformed cached model labels',()=>{
+ expect(cachedModelLabel('agy-argon',{getItem:()=>'{bad'})).toBe('')
+ expect(cachedModelLabel('agy-argon',{getItem:()=>'null'})).toBe('')
+ expect(cachedModelLabel('agy-argon',{getItem:()=>' {"agy-argon":42}'})).toBe('')
+})
 it('gives the private picker one gem group with Argon then Opus and removes retired choices',()=>{
  const visible=pickerModels(models,true),groups=modelGroups(visible,true)
  expect(visible.some(m=>['agy-flash','gpt-terra'].includes(m.key))).toBe(false)

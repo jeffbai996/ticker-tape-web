@@ -4,7 +4,7 @@ import { TraceEntry } from '../components/TraceEntry.jsx'
 import {ChatNotice} from '../components/ChatNotice.jsx'
 import {ChatFailure} from '../components/ChatFailure.jsx'
 import {ConversationDelete} from '../components/ConversationDelete.jsx'
-import {pickerModels,modelGroups,fullModelName,preferredModel,migratePrivateModelDefaults} from '../lib/chatModels.js'
+import {pickerModels,modelGroups,fullModelName,preferredModel,migratePrivateModelDefaults,cachedModelLabel,cacheModelLabels} from '../lib/chatModels.js'
 import {SuggestionRows} from '../components/SuggestionRows.jsx'
 import { earningsTone } from '../lib/earningsTone.js'
 import {submitTextKey} from '../lib/chatInput.js'
@@ -1054,6 +1054,7 @@ export function Chat() {
       : fetchChatModels().then((data) => data.models)
     load.then((available) => {
       const liveModels=pickerModels(available,IS_PRIVATE_BUILD)
+      cacheModelLabels(liveModels)
       setModels(liveModels)
       const current = liveModels.find((candidate) => candidate.key === model)
       if (!current) {
@@ -1586,6 +1587,10 @@ export function Chat() {
               the two read as one control group (Jeff 2026-08-07). The caret is
               pointer-events-none so clicking it still opens the select. */}
           <span class="relative inline-flex items-center">
+            {!models.length ? <span data-model-loading aria-label={tl('Loading models')} aria-busy="true"
+              class="inline-flex items-center min-w-[100px] h-[23px] px-2 rounded-md border border-line bg-surface-2 font-anth text-[10.5px] text-ink-2">
+              {cachedModelLabel(model) || <span aria-hidden="true" class="block w-20 h-2 rounded-sm bg-line animate-pulse motion-reduce:animate-none" />}
+            </span> : <>
             <select
               value={model}
               onChange={(e) => chooseModel(e.currentTarget.value)}
@@ -1595,8 +1600,7 @@ export function Chat() {
               class="appearance-none bg-surface-2 border border-line rounded-md pl-2 pr-5 py-[3px] font-anth text-[10.5px] text-ink-2 outline-none cursor-pointer hover:border-line-2 focus:border-accent/70 transition-colors"
             >
               {(() => {
-                const live = models.length ? models : [{ key: model, label: model }]
-                const groups=modelGroups(live,IS_PRIVATE_BUILD)
+                const groups=modelGroups(models,IS_PRIVATE_BUILD)
                 return groups.map((g) => g.name ? (
                   <optgroup key={g.name} label={`— ${g.name} —`}>
                     {g.items.map((m) => <option key={m.key} value={m.key} disabled={m.busy || m.available === false}>{m.label}</option>)}
@@ -1605,6 +1609,7 @@ export function Chat() {
               })()}
             </select>
             <span class="pointer-events-none absolute right-1.5 text-[7px] leading-none text-muted">▾</span>
+            </>}
           </span>
           <span class="flex items-center gap-0.5 bg-surface-2 border border-line rounded-md px-0.5 py-px" title={tl('transcript text size')}>
             <button type="button" onClick={() => bumpChatZoom(-0.1)}
@@ -1634,7 +1639,7 @@ export function Chat() {
                       something different from the thing it sets (Jeff
                       2026-08-07). Model names beside it aren't translated
                       either, for the same reason. */}
-                  {lv}
+                  {lv === 'medium' ? 'med' : lv}
                 </button>
               ))}
             </span>

@@ -40,6 +40,21 @@ export function preferredModel(models, saved, privateBuild = false) {
     || models[0]
 }
 
+// Cache names only: availability and effort choices must come from the live router.
+export function cachedModelLabel(key, storage = globalThis.localStorage) {
+  try {
+    const label = JSON.parse(storage.getItem('chat_model_labels_v1') || '{}')?.[key]
+    return typeof label === 'string' ? label : ''
+  } catch { return '' }
+}
+
+export function cacheModelLabels(models, storage = globalThis.localStorage) {
+  try {
+    const labels = Object.fromEntries(models.filter(m => typeof m.key === 'string' && typeof m.label === 'string').map(m => [m.key, m.label]))
+    storage.setItem('chat_model_labels_v1', JSON.stringify(labels))
+  } catch { /* the picker still works when storage is blocked */ }
+}
+
 // Apply the private default change once; later manual selections still win.
 export function migratePrivateModelDefaults(privateBuild, storage) {
   if (!privateBuild) return
