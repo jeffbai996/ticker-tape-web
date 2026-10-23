@@ -150,7 +150,7 @@ it('starts private reports on Argon instead of the old Qwen default',async()=>{
  expect(localStorage.getItem('report_effort')).toBe('low')
 })
 
-it('shows live statistics before text, updates reported usage, and removes them on completion',async()=>{
+it('shows live statistics before text and retains them after completion',async()=>{
  lineup.models=[CLOUD]
  let callbacks,finish,startedResolve
  const started=new Promise(resolve=>{startedResolve=resolve})
@@ -178,11 +178,15 @@ it('shows live statistics before text, updates reported usage, and removes them 
  expect(root.querySelector('[data-stream-cursor]').className).toContain('ai-report-cursor')
  await act(async()=>{finish();await gate})
  await act(async()=>{})
- expect(root.querySelector('[data-report-observability]')).toBeNull()
+ expect(root.querySelector('[data-report-observability]')).toBe(stats)
+ expect(stats.querySelector('[data-live]')).toBeNull()
+ expect(stats.querySelector('.chat-token-input').textContent).toBe('↑1,200')
+ expect(stats.querySelector('.chat-token-output').textContent).toBe('↓50')
+ expect(stats.textContent).toContain('25.0 tok/s')
  expect(root.querySelector('[data-stream-cursor]')).toBeNull()
 })
 
-it('keeps statistics live through one-shot fallback and clears them when it finishes',async()=>{
+it('retains the usage returned by one-shot fallback',async()=>{
  lineup.models=[CLOUD]
  let finish,startedResolve
  const started=new Promise(resolve=>{startedResolve=resolve})
@@ -194,6 +198,40 @@ it('keeps statistics live through one-shot fallback and clears them when it fini
  expect(root.querySelector('[data-report-observability]')).not.toBeNull()
  await act(async()=>{finish();await gate})
  await vi.waitFor(async()=>{await act(async()=>{});expect(root.textContent).toContain('Recovered.')})
- expect(root.querySelector('[data-report-observability]')).toBeNull()
+ const stats=root.querySelector('[data-report-observability]')
+ expect(stats.querySelector('[data-live]')).toBeNull()
+ expect(stats.querySelector('.chat-token-input').textContent).toBe('↑200')
+ expect(stats.querySelector('.chat-token-output').textContent).toBe('↓30')
+ expect(stats.textContent).toContain('15.0 tok/s')
  expect(button('regenerate').disabled).toBe(false)
+})
+
+it('shows terminal-only Qwen usage and freezes the completed elapsed time',async()=>{
+ lineup.models=[{key:'qwen-local',label:'Qwen 3.8-27B',fixed_effort:'high'}]
+ let finish,startedResolve
+ const started=new Promise(resolve=>{startedResolve=resolve})
+ const gate=new Promise(resolve=>{finish=resolve})
+ const clock=vi.spyOn(Date,'now').mockReturnValue(10000)
+ try {
+  lineup.stream=async({onDelta,onUsage})=>{
+   onDelta('Report.');startedResolve();await gate
+   onUsage({in:2048,out:320,decode_seconds:8})
+  }
+  await mountCard()
+  await act(async()=>{button('generate').click();await started})
+  expect(root.querySelector('.chat-token-input').textContent).toBe('↑—')
+  clock.mockReturnValue(22000)
+  await act(async()=>{finish();await gate})
+  await act(async()=>{})
+  const stats=root.querySelector('[data-report-observability]')
+  expect(stats.querySelector('.chat-token-input').textContent).toBe('↑2,048')
+  expect(stats.querySelector('.chat-token-output').textContent).toBe('↓320')
+  expect(stats.textContent).toContain('40.0 tok/s')
+  expect(stats.textContent).toContain('12s')
+  expect(stats.querySelector('.chat-token-model').title).toBe('Qwen 3.8-27B · high')
+  clock.mockReturnValue(42000)
+  await act(async()=>{button('Style & analysis').click()})
+  expect(stats.textContent).toContain('12s')
+  expect(stats.querySelector('[data-live]')).toBeNull()
+ } finally { clock.mockRestore() }
 })

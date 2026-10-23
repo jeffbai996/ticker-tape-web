@@ -122,7 +122,8 @@ select:not([multiple]):not(.appearance-none):dir(rtl) { background-position: lef
 .ai-report-cursor { animation: ai-report-cursor-blink 1s steps(1, end) infinite; }
 @keyframes ai-report-cursor-blink { 0%, 100% { opacity:1; } 50% { opacity:0; } }
 @media (prefers-reduced-motion: reduce) { .ai-report-cursor { animation:none; } }
-[data-report-observability] .chat-token-footer { max-width:100%; }
+[data-report-observability] .chat-token-footer,
+[data-report-observability] .chat-token-footer[data-live] { max-width:100%; flex-wrap:wrap; overflow:visible; }
 /* Narrow: the title shares the model picker's row; the remaining controls take
    the row below, right-aligned (Jeff 2026-10-07: the heading sat alone). */
 .ai-report-head > :nth-child(2) { grid-column: 2; justify-self: end; }

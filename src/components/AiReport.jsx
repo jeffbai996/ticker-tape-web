@@ -230,7 +230,8 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
 
   const generate = async () => {
     if (!serviceAvailable || busy) return
-    setGeneration({ startedAt: Date.now(), model: models.find(m => m.key === writer)?.label || (onWire ? writer : REPORT_MODEL), effort, usage: null })
+    const selected = models.find(m => m.key === writer)
+    setGeneration({ startedAt: Date.now(), model: selected?.label || (onWire ? writer : REPORT_MODEL), effort: selected?.fixed_effort || effort, usage: null })
     setBusy(true)
     setError(null)
     const reportUsage = (round, usage) => setGeneration(current => ({ ...current, usage: mergeTurnUsage(current?.usage, round, usage) }))
@@ -292,6 +293,7 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
     } catch (err) {
       setError(err.status===429?{message:String(err.message||err),status:429,code:err.code,retryAt:err.retryAt}:String(err.message||err))
     } finally {
+      setGeneration(current => ({ ...current, endedAt: Date.now() }))
       setBusy(false)
     }
   }
@@ -484,15 +486,15 @@ export function AiReport({ buildPrompt, filename = 'report.md', label = 'AI repo
         </div>
       )}
       {(text || error) && (
-        <div ref={bodyRef} class="ai-report-body px-4 sm:px-6 py-4 font-anth text-[13px] leading-relaxed select-text text-ink-2 max-h-[45vh] overflow-y-auto break-words">
+        <div ref={bodyRef} class="ai-report-body px-4 sm:px-6 py-4 font-anth text-[12px] leading-relaxed select-text text-ink-2 max-h-[45vh] overflow-y-auto break-words">
           {text && <MdLite text={text} streaming={busy} />}
           {error && <div class="pt-2"><ChatFailure error={error} onRetry={generate} busy={busy} /></div>}
         </div>
       )}
-      {busy && generation && (
+      {generation && (
         <div data-report-observability class="px-3 pb-1">
           <ChatFooter model={generation.model} effort={generation.effort} usage={generation.usage}
-            startedAt={generation.startedAt} busy />
+            startedAt={generation.startedAt} endedAt={generation.endedAt} busy={busy} />
         </div>
       )}
       {/* the actions on a finished report sit with the report, not in the
