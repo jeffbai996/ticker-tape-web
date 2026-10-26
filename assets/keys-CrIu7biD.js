@@ -1,0 +1,1 @@
+function e(e){return e?e.isContentEditable===!0||/^(INPUT|TEXTAREA|SELECT)$/.test(e.tagName||``):!1}function t(e,t){let n=globalThis.matchMedia?.(e);if(!n)return t(!0),()=>{};t(n.matches);let r=e=>t(e.matches);return n.addEventListener(`change`,r),()=>n.removeEventListener(`change`,r)}export{t as n,e as t};

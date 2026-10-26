@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="format-detection" content="telephone=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <title>ticker-tape</title>
+  <meta name="description" content="A public market dashboard: quotes, technicals, screening, and a demo portfolio. No account data, no tracking." />
+  <!-- 64px PNG first: Chrome prefers a raster it doesn't have to scale.
+       Opaque apple-touch tile: iOS composites onto white and ignores alpha. -->
+  <!-- Root-absolute, NOT /ticker-tape-web/-prefixed: vite rewrites these with
+       the build's base, so the Pages build still gets /ticker-tape-web/ while
+       the tailnet build (--base=/) stops 404ing its own favicon + manifest. -->
+  <link rel="icon" type="image/png" sizes="64x64" href="/ticker-tape-web/favicon-64.png" />
+  <link rel="icon" type="image/svg+xml" href="/ticker-tape-web/favicon.svg" />
+  <link rel="apple-touch-icon" href="/ticker-tape-web/apple-touch-icon.png" />
+  <link rel="manifest" href="/ticker-tape-web/manifest.webmanifest" />
+  <meta name="theme-color" content="#050609" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <!-- Google Fonts load without blocking render: the page paints in the
+       fallback stack and swaps. (A preload of the self-hosted UI face was
+       measured and rejected 2026-08-22 — on a 1.6 Mbps phone link it
+       competed with the bundle and pushed first paint out by ~0.5s.) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" /></noscript>
+  <script type="module" crossorigin src="/ticker-tape-web/assets/index-DJdWNzKo.js"></script>
+  <link rel="modulepreload" crossorigin href="/ticker-tape-web/assets/jsxRuntime.module-CUobyUoL.js">
+  <link rel="modulepreload" crossorigin href="/ticker-tape-web/assets/hooks.module-59Gd4DbY.js">
+  <link rel="modulepreload" crossorigin href="/ticker-tape-web/assets/rolldown-runtime-DK3Fl9T5.js">
+  <link rel="modulepreload" crossorigin href="/ticker-tape-web/assets/preferences-j0wL3Z9p.js">
+  <link rel="modulepreload" crossorigin href="/ticker-tape-web/assets/feed-D5U2aVu_.js">
+  <link rel="modulepreload" crossorigin href="/ticker-tape-web/assets/watchlist-CERaFLwg.js">
+  <link rel="modulepreload" crossorigin href="/ticker-tape-web/assets/route-CRpDhmQP.js">
+  <link rel="modulepreload" crossorigin href="/ticker-tape-web/assets/keys-CrIu7biD.js">
+  <link rel="modulepreload" crossorigin href="/ticker-tape-web/assets/i18n-DCZRw6Ul.js">
+  <link rel="modulepreload" crossorigin href="/ticker-tape-web/assets/preload-helper-BFTtlbpa.js">
+  <link rel="modulepreload" crossorigin href="/ticker-tape-web/assets/hooks-G4KpDqml.js">
+  <link rel="modulepreload" crossorigin href="/ticker-tape-web/assets/format-DqRCe3Am.js">
+  <link rel="modulepreload" crossorigin href="/ticker-tape-web/assets/Fig-RUXfuQ1z.js">
+  <link rel="modulepreload" crossorigin href="/ticker-tape-web/assets/dashboardRows-CQINry7M.js">
+  <link rel="modulepreload" crossorigin href="/ticker-tape-web/assets/fundamentals-er0WGf5k.js">
+  <link rel="modulepreload" crossorigin href="/ticker-tape-web/assets/symbolSearch-CVtnjvOv.js">
+  <link rel="modulepreload" crossorigin href="/ticker-tape-web/assets/usergroups-DdReqzxu.js">
+  <link rel="modulepreload" crossorigin href="/ticker-tape-web/assets/LazyChartMount-Cb8gjFjU.js">
+  <link rel="modulepreload" crossorigin href="/ticker-tape-web/assets/widgets-p8-jcCJO.js">
+  <link rel="modulepreload" crossorigin href="/ticker-tape-web/assets/AskAI-pVOc5g1X.js">
+  <link rel="modulepreload" crossorigin href="/ticker-tape-web/assets/Marquee-yOf_dZn0.js">
+  <link rel="modulepreload" crossorigin href="/ticker-tape-web/assets/useClassifications-RIlqjpNd.js">
+  <link rel="modulepreload" crossorigin href="/ticker-tape-web/assets/Spark-CNgtTULU.js">
+  <link rel="modulepreload" crossorigin href="/ticker-tape-web/assets/dashboard-9QFEPHq-.js">
+  <link rel="stylesheet" crossorigin href="/ticker-tape-web/assets/index-Dmz2IRjk.css">
+</head>
+<body>
+  <div id="app"></div>
+</body>
+</html>

@@ -1,0 +1,1 @@
+var e=new Set,t=new Set;function n(){for(let t of e)t()}function r(e){return t.add(e),e(),()=>t.delete(e)}var i=`local`,a=new Set;function o(){return i}function s(e){return a.add(e),e(i),()=>a.delete(e)}export{o as i,s as n,n as r,r as t};

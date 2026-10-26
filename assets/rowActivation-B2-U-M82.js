@@ -1,0 +1,1 @@
+function e(e,{role:t=`link`}={}){return{tabIndex:0,role:t,onClick:e,onKeyDown:t=>{(t.key===`Enter`||t.key===` `)&&t.target===t.currentTarget&&(t.preventDefault(),e(t))}}}export{e as t};
