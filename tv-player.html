@@ -1,25 +1,22 @@
 <!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="strict-origin-when-cross-origin"><title>Bloomberg Television</title><style>
-html,body{margin:0;width:100%;height:100%;background:#000;overflow:hidden}#player,iframe{display:block;width:100%;height:100%;border:0}#tools{display:none;background:#111;padding:4px;gap:4px;justify-content:flex-end}body.pip{display:flex;flex-direction:column}body.pip #player,body.pip iframe{flex:1;min-height:0}body.pip #tools{display:flex;flex:none}#tools button{color:#eee;background:#222;border:1px solid #555;border-radius:4px;padding:4px 7px;font:12px Arial;cursor:pointer}#tools button[aria-pressed=true]{color:#f59e0b}
-</style></head><body><div id="player"></div><div id="tools"><button id="play" aria-label="Play">▶</button><button id="captions" aria-pressed="false">CC</button><button id="mute">Mute</button><button id="stop">■</button></div><script type="module">
+html,body{margin:0;width:100%;height:100%;background:#000;overflow:hidden}#player,iframe{display:block;width:100%;height:100%;border:0;pointer-events:none}
+</style></head><body><div id="player"></div><script type="module">
 import {applyCaptionPreference} from './tv-captions.js';
 (()=>{
  const origin=location.origin,video=new URLSearchParams(location.search).get('video')||'QB5BNdBFujE';let player,controller=null,ready=false,captions=false,muted=false;
  const report=extra=>{if(controller)controller.postMessage({type:'ttw-tv-state',ready,captions,muted,title:ready?String(player.getVideoData?.().title||''):'',...extra},origin)};
  const applyCaptions=()=>{if(ready)applyCaptionPreference(player,captions)};
- const cc=value=>{captions=!!value;applyCaptions();document.getElementById('captions').setAttribute('aria-pressed',captions);report()};
- const mute=value=>{muted=!!value;if(ready)player[muted?'mute':'unMute']();document.getElementById('mute').textContent=muted?'Unmute':'Mute';report()};
+ const cc=value=>{captions=!!value;applyCaptions();report()};
+ const mute=value=>{muted=!!value;if(ready)player[muted?'mute':'unMute']();report()};
  addEventListener('message',event=>{
   if(event.origin!==origin||event.data?.type!=='ttw-tv-command')return;
   controller=event.source;const {command,value}=event.data;
-  if(command==='subscribe'){document.body.classList.toggle('pip',!!value?.pip);cc(value?.captions);mute(value?.muted);report()}
+  if(command==='subscribe'){cc(value?.captions);mute(value?.muted);report()}
+  if(command==='play')player?.playVideo?.();
   if(command==='captions')cc(value);
   if(command==='muted')mute(value);
   if(command==='stop'){player?.stopVideo?.();report({stopped:true})}
  });
- document.getElementById('play').onclick=()=>player?.playVideo?.();
- document.getElementById('captions').onclick=()=>cc(!captions);
- document.getElementById('mute').onclick=()=>mute(!muted);
- document.getElementById('stop').onclick=()=>{player?.stopVideo?.();report({stopped:true})};
  window.onYouTubeIframeAPIReady=()=>{
   player=new YT.Player('player',{host:'https://www.youtube-nocookie.com',width:'100%',height:'100%',videoId:/^[\w-]{11}$/.test(video)?video:'QB5BNdBFujE',playerVars:{autoplay:1,controls:0,playsinline:1,rel:0,enablejsapi:1,origin,widget_referrer:origin,cc_lang_pref:'en'},events:{onReady:()=>{ready=true;cc(captions);mute(muted);player.playVideo();report()},onApiChange:applyCaptions,onStateChange:event=>{if(event.data===1)applyCaptions();report()},onError:e=>report({error:`YouTube error ${e.data}`}),onAutoplayBlocked:()=>report({error:'Click video to play'})}});
  };
