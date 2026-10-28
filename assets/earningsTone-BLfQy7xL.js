@@ -1,0 +1,1 @@
+function e(e){return Number.isFinite(e)?e<=0?`text-imminent font-bold`:e<=1?`text-danger font-bold`:e<=2?`text-soon`:e<=7?`text-accent`:e<14?`text-accent/70`:`text-ink-2`:`text-ink-2`}export{e as t};
