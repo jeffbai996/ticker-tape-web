@@ -9,7 +9,7 @@
  * no quote is ever served from yesterday. The cache name carries the build
  * id; an activate wipes every other build's cache.
  */
-const VERSION = 'b20261028.045818'
+const VERSION = 'b20261028.052109'
 const CACHE = `ttw-${VERSION}`
 const SHELL = ['./', './manifest.webmanifest', './favicon.svg', './favicon-64.png', './apple-touch-icon.png', './icon-192.png', './icon-512.png']
 
