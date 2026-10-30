@@ -2,10 +2,8 @@
 
 A keyboard-first market terminal for the browser: live quotes, charts, options, a newswire and portfolio analytics, all driven from a command line at the bottom of the screen.
 
-[![JavaScript](https://img.shields.io/badge/JavaScript-ES2022-2f363d?style=flat-square&logo=javascript&logoColor=white)](src/)
-[![Preact](https://img.shields.io/badge/Preact-10-2f363d?style=flat-square&logo=preact&logoColor=white)](https://preactjs.com/)
-[![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-2f363d?style=flat-square&logo=cloudflare&logoColor=white)](https://workers.cloudflare.com/)
-[![Live demo](https://img.shields.io/badge/demo-live-2f363d?style=flat-square&logo=githubpages&logoColor=white)](https://jeffbai996.github.io/ticker-tape-web/)
+[![Live demo](https://img.shields.io/badge/live_demo-open-9a6700?style=flat-square&logo=githubpages&logoColor=white)](https://jeffbai996.github.io/ticker-tape-web/)
+[![JavaScript](https://img.shields.io/badge/JavaScript-Preact-9a6700?style=flat-square&logo=javascript&logoColor=white)](src/)
 
 ![Dashboard](docs/images/hero.jpeg)
 
