@@ -1,0 +1,239 @@
+import { isOvernight } from './marketState.js'
+
+// Pure transforms over Yahoo v8 /finance/chart results. One chart call per
+// symbol yields quote + sparkline + bars, and unlike v7/quote it needs no
+// crumb/cookie auth — which is what lets the whole app run through a dumb
+// pass-through proxy with zero secrets.
+
+export function quoteFromChart(result) {
+  const m = result?.meta || {}
+  const price = m.regularMarketPrice ?? 0
+  const prev = m.previousClose ?? m.chartPreviousClose
+  const change = prev != null && price ? price - prev : 0
+  const pct = prev ? (change / prev) * 100 : 0
+
+  return {
+    symbol: m.symbol || '',
+    name: m.longName || m.shortName || '',   // shortName is Yahoo-truncated at 31 chars
+    price,
+    currency: m.currency || null,
+    change,
+    pct,
+    prevClose: prev ?? null,
+    dayHigh: m.regularMarketDayHigh ?? null,
+    dayLow: m.regularMarketDayLow ?? null,
+    volume: m.regularMarketVolume ?? null,
+    marketTime: m.regularMarketTime ?? null,
+  }
+}
+
+/** Same quote shape from a v7 /finance/quote row (batch endpoint, crumb-authed).
+ *  change/pct are re-derived from price vs previousClose: for yield indices
+ *  (^TNX) the reported regularMarketChange fields are garbage (-50% on an
+ *  unchanged price) while price/prevClose are consistent. */
+export function quoteFromV7(row, now = new Date()) {
+  const price = row?.regularMarketPrice ?? 0
+  const prev = row?.regularMarketPreviousClose ?? null
+  const change = prev != null && price ? price - prev : (row?.regularMarketChange ?? 0)
+  const pct = prev ? (change / prev) * 100 : (row?.regularMarketChangePercent ?? 0)
+
+  // Extended hours: post-market after the close, pre-market before the open.
+  let ext = {}
+  if (row?.preMarketPrice != null && (row?.marketState === 'PRE' || row?.marketState === 'PREPRE')) {
+    ext = { extLabel: 'PM', extPrice: row.preMarketPrice, extPct: row.preMarketChangePercent ?? null,
+            extMarketTime: row.preMarketTime ?? null }
+  // PREPRE is the dead zone between the 8pm ET after-hours close and the 4am
+  // pre-market open: Yahoo has already flipped the state but preMarketPrice is
+  // still null, so without PREPRE here every AH print vanished overnight.
+  // The last after-hours trade is still the right
+  // number to show; the PM branch above takes over the moment 4am fills it in.
+  } else if (row?.postMarketPrice != null && (row?.marketState === 'POST' || row?.marketState === 'POSTPOST' || row?.marketState === 'CLOSED' || row?.marketState === 'PREPRE')) {
+    // Once the clock is past the 20:00 after-hours close, this frozen print is
+    // the overnight session's reference — labelling it AH and then letting the
+    // websocket flip each row to ON as that name happens to trade made first
+    // paint churn for minutes. The batch now names the
+    // session; live ticks only move the number.
+    ext = { extLabel: isOvernight(now) ? 'ON' : 'AH',
+            extPrice: row.postMarketPrice,
+            extPct: row.postMarketChangePercent ?? null,
+            extMarketTime: row.postMarketTime ?? null }
+  }
+
+  return {
+    symbol: row?.symbol || '',
+    name: row?.longName || row?.shortName || '',   // shortName is Yahoo-truncated
+    price,
+    currency: row?.currency || null,
+    change,
+    pct,
+    prevClose: prev,
+    dayHigh: row?.regularMarketDayHigh ?? null,
+    dayLow: row?.regularMarketDayLow ?? null,
+    volume: row?.regularMarketVolume ?? null,
+    // v7 carries a rolling baseline in the same batch as the live print. Keep
+    // it on the quote so Movers can rank ACTIVITY rather than raw share count
+    // (where AAPL wins by existing). Prefer the broader three-month series;
+    // the ten-day field is an honest fallback when Yahoo omits it.
+    avgVolume: row?.averageDailyVolume3Month ?? row?.averageDailyVolume10Day ?? null,
+    marketTime: row?.regularMarketTime ?? null,
+    // Calendar sync uses this to exclude funds, indices, futures,
+    // and crypto from company-earnings polling.
+    quoteType: row?.quoteType || '',
+    // v7 uses the short field names here (not regularMarketBid/Ask).
+    bid: row?.bid ?? null,
+    ask: row?.ask ?? null,
+    ...ext,
+  }
+}
+
+/** Merge one Yahoo streamer tick into the richer snapshot quote shape. */
+export function quoteFromStream(tick, previous = {}) {
+  if (!tick?.symbol || tick.price == null) return previous
+  const marketTime = tick.time != null ? Math.floor(tick.time / 1000) : previous.marketTime
+  const base = {
+    ...previous,
+    symbol: tick.symbol,
+    name: previous.name || tick.shortName || '',
+  }
+
+  // 0 PRE, 1 REGULAR, 2 POST, 3 EXTENDED, 4 OVERNIGHT. Non-regular ticks are
+  // measured from the cash close, so they belong in the secondary quote, not
+  // in the regular-price column. Yahoo's live stream currently emits Blue
+  // Ocean overnight equity prints as 4; keep 3 as generic AH.
+  if ([0, 2, 3, 4].includes(tick.marketHours)) {
+    return {
+      ...base,
+      extLabel: tick.marketHours === 0 ? 'PM' : tick.marketHours === 4 ? 'ON' : 'AH',
+      extPrice: tick.price,
+      extPct: tick.changePercent ?? previous.extPct ?? null,
+      extChange: tick.change ?? previous.extChange ?? null,
+      extMarketTime: tick.time != null ? Math.floor(tick.time / 1000) : (previous.extMarketTime ?? null),
+    }
+  }
+
+  // Same out-of-order rule for the stream itself: a replayed/late tick with
+  // an older event time must not repaint over a newer print.
+  if (previous.marketTime != null && marketTime != null
+      && marketTime < previous.marketTime) {
+    return previous
+  }
+
+  // A regular print makes any persisted extended-session adornment stale.
+  const { extLabel, extPrice, extPct, extChange, extMarketTime, ...regular } = base
+  return {
+    ...regular,
+    price: tick.price,
+    change: tick.change ?? previous.change ?? 0,
+    pct: tick.changePercent ?? previous.pct ?? 0,
+    volume: tick.dayVolume ?? previous.volume ?? null,
+    dayHigh: tick.dayHigh ?? previous.dayHigh ?? null,
+    dayLow: tick.dayLow ?? previous.dayLow ?? null,
+    marketTime,
+    bid: tick.bid ?? previous.bid,
+    ask: tick.ask ?? previous.ask,
+    lastSize: tick.lastSize ?? previous.lastSize,
+  }
+}
+
+/** A streamed extended-session print carries its own event time; v7 has no
+ *  overnight field at all, so its postMarketPrice is the frozen 20:00 close
+ *  with its original postMarketTime. Overnight the tape is thin enough that
+ *  most rows go quiet past STREAM_FRESH_MS, and without this the 30s batch
+ *  dragged every silent row back to the close in one synchronized step, then
+ *  the next tick jumped it forward again. Session naming stays the batch's
+ *  job; only the number and its event time are held. */
+function liveExtendedPrint(previous, snapshot) {
+  if (previous?.extMarketTime == null) return null
+  if (snapshot?.extMarketTime != null
+      && snapshot.extMarketTime >= previous.extMarketTime) return null
+  return {
+    extLabel: snapshot?.extLabel ?? previous.extLabel,
+    extPrice: previous.extPrice,
+    extPct: previous.extPct,
+    extChange: previous.extChange,
+    extMarketTime: previous.extMarketTime,
+  }
+}
+
+/** A snapshot enriches range/name data but cannot rewind a fresh live print. */
+export function mergeSnapshotQuote(previous, snapshot, streamIsFresh) {
+  // An out-of-order print must never move the tape backwards: the REST batch
+  // often reports an event 15-60s OLDER than the stream tick already painted,
+  // and replacing it flashed red on a rising tape (and green on a falling
+  // one). Yahoo's own event timestamps decide, not
+  // freshness heuristics.
+  const regressed = previous?.marketTime != null && snapshot?.marketTime != null
+    && snapshot.marketTime < previous.marketTime
+  if (!(streamIsFresh || regressed) || !previous) {
+    const ext = liveExtendedPrint(previous, snapshot)
+    return ext ? { ...snapshot, ...ext } : snapshot
+  }
+  return {
+    ...snapshot,
+    name: snapshot.name || previous.name || '',
+    price: previous.price ?? snapshot.price,
+    change: previous.change ?? snapshot.change,
+    pct: previous.pct ?? snapshot.pct,
+    volume: previous.volume ?? snapshot.volume,
+    marketTime: previous.marketTime ?? snapshot.marketTime,
+    dayHigh: snapshot.dayHigh ?? previous.dayHigh ?? null,
+    dayLow: snapshot.dayLow ?? previous.dayLow ?? null,
+    bid: previous.bid ?? snapshot.bid ?? null,
+    ask: previous.ask ?? snapshot.ask ?? null,
+    ...(previous.extLabel ? {
+      extLabel: previous.extLabel,
+      extPrice: previous.extPrice,
+      extPct: previous.extPct,
+      extChange: previous.extChange,
+      extMarketTime: previous.extMarketTime,
+    } : {}),
+  }
+}
+
+export function sparkFromChart(result) {
+  const closes = result?.indicators?.quote?.[0]?.close || []
+  return closes.filter((c) => c != null)
+}
+
+/** OHLC bars for candlestick charts; bars with a null close are dropped. */
+export function barsFromChart(result) {
+  const ts = result?.timestamp || []
+  const q = result?.indicators?.quote?.[0] || {}
+  const bars = []
+  for (let i = 0; i < ts.length; i++) {
+    if (q.close?.[i] == null) continue
+    bars.push({
+      time: ts[i],
+      open: q.open?.[i] ?? q.close[i],
+      high: q.high?.[i] ?? q.close[i],
+      low: q.low?.[i] ?? q.close[i],
+      close: q.close[i],
+      volume: q.volume?.[i] ?? null,
+    })
+  }
+  return scrubBadPrints(bars)
+}
+
+/** Yahoo v8 occasionally emits intraday bars whose wick spans a third of
+ *  the price on ZERO volume — e.g. AAPL printing isolated lows of
+ *  110–145 on a $220 stock, four bars, volume 0, and the y-axis collapsed
+ *  the whole session into a flat line. A bad print has no trade behind it
+ *  (volume 0) AND a range wildly out of line with its neighbours; a real
+ *  gap or halt-reopen prints volume. Both conditions must hold — ordinary
+ *  zero-volume pre/post-market bars keep their (small) range. */
+export function scrubBadPrints(bars) {
+  if (bars.length < 3) return bars
+  const range = (b) => Math.max(0, b.high - b.low)
+  // typical range = median of the bars that carry volume (or all, if none do)
+  const traded = bars.filter((b) => (b.volume ?? 0) > 0)
+  const pool = (traded.length >= 3 ? traded : bars).map(range).sort((a, b) => a - b)
+  const median = pool[Math.floor(pool.length / 2)]
+  const scale = bars[Math.floor(bars.length / 2)].close || 1
+  // Extended-hours volume is often reported as zero, so range has to carry
+  // the decision. Keep twelve ordinary bars of headroom and a 1.5%-of-price
+  // floor: enough for a genuine thin-session candle, but not Yahoo's isolated
+  // $10–$20 wicks on a $480 stock that flatten the rest of the chart. A true
+  // whole-bar repricing remains because its own high-low range stays tight.
+  const limit = Math.max(median * 12, scale * 0.015)
+  return bars.filter((b) => (b.volume ?? 0) > 0 || range(b) <= limit)
+}
