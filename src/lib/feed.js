@@ -95,8 +95,8 @@ const QUOTE_SWEEP_MS = 30_000    // price-only v7 batch — extended hours ticks
 /** Sweep cadence follows the tape. Regular hours: the websocket carries every
  *  print, the batch is a safety net → 30s. Pre/post: the stream is thin for
  *  most names and the ext print IS the number people watch → 15s. Overnight:
- *  the sidecar fill runs behind each sweep, so 30s keeps that leg unchanged
- *  (it is the only leg that touches the private server). Closed with no
+ *  the overnight fill runs behind each sweep, so 30s keeps that leg unchanged
+ *  (it is the only leg that touches the optional upstream feed). Closed with no
  *  overnight session (weekends, holidays): nothing prints → 120s. */
 export function sweepIntervalMs(state, overnight = false, streamUp = true) {
   if (state === 'open' && !streamUp) return 10_000
@@ -113,7 +113,7 @@ export const FOCUS_SWEEP_GRACE_MS = 3_000
 
 /** Cadence for the focused-only leg. It exists to make the rows on screen feel
  *  live, so it runs only while something is actually printing; closed and
- *  overnight get nothing at all (the overnight book has its own sidecar leg,
+ *  overnight get nothing at all (the overnight book has its own upstream-feed leg,
  *  which this must never touch). Always faster than sweepIntervalMs for the
  *  same session, and exactly one request wide — see FOCUS_MAX. */
 export function fastSweepIntervalMs(state) {
@@ -526,7 +526,7 @@ function fullSweep() {
 }
 
 /** The focused leg: at most ONE extra v7 request per tick, never while hidden,
- *  never on top of a full sweep, and never near the overnight sidecar. */
+ *  never on top of a full sweep, and never near the overnight upstream leg. */
 function fastSweep() {
   const focused = focusedSymbols()
   const go = shouldFastSweep({
@@ -539,10 +539,11 @@ function fastSweep() {
   scheduleBatch(focused.slice(0, FOCUS_MAX)) // one chunk, one request
 }
 
-/** Overnight, the wire service's /api/quotes fills the thin-stream gap:
+/** Overnight, an optional upstream feed's /api/quotes fills the thin-stream gap:
  *  Yahoo's REST print freezes at 20:00 ET and the websocket only ticks names
- *  that happen to trade, while the sidecar always has the OVERNIGHT book.
- *  Wired builds only — without an endpoint this never fires. */
+ *  that happen to trade, while the feed always has the OVERNIGHT book.
+ *  Only builds with an upstream feed configured — without an endpoint this
+ *  never fires. */
 async function overnightSweep() {
   const base = wireServiceUrl() || wireNewsUrl()
   if (hidden() || !base || !isOvernight() || !tracked.size) return
