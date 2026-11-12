@@ -9,15 +9,15 @@
  * no quote is ever served from yesterday. The cache name carries the build
  * id; an activate wipes every other build's cache.
  */
-const VERSION = 'b20261028.200408'
+const VERSION = 'b20261112.020237'
 const CACHE = `ttw-${VERSION}`
-const SHELL = ['./', './manifest.webmanifest', './favicon.svg', './favicon-64.png', './apple-touch-icon.png', './icon-192.png', './icon-512.png']
+const SHELL = ['./', './manifest.webmanifest?v=2', './favicon.svg', './favicon-64.png', './apple-touch-icon.png?v=2', './icon-192.png?v=2', './icon-512.png?v=2']
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE)
     // best effort, one by one: a missing icon must not block the shell
-    await Promise.all(SHELL.map((u) => cache.add(u).catch(() => {})))
+    await Promise.all(SHELL.map((u) => cache.add(new Request(u, { cache: 'reload' })).catch(() => {})))
     await self.skipWaiting()
   })())
 })
